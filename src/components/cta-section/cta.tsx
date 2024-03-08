@@ -1,3 +1,4 @@
+import { socials1, socials2, socials3 } from '@/icons/Icons'
 import Image from 'next/image'
 import React from 'react'
 
@@ -13,9 +14,9 @@ const CtaSection = () => {
                 <p className='text-[18px] sm:text-[16px] text-center font-primary font-semibold leading-[1.3] text-dark mb-5'>Collaborate with us at w3rk to unlock exciting possibilities in the Web 3.0 space.</p>
                 <p className='text-[18px] sm:text-[16px] text-center font-primary font-semibold leading-[1.3] text-dark'>Let’s redefine how work gets done in the decentralized era!</p>
                 <ul className="socials-widgets mt-16 flex items-center gap-9 sm:gap-[18px] justify-center">
-                    <li className="socials-widgets-items"><a href="/"><Image className='w-[50px] sm:w-[30px] h-[50px] sm:h-[30px]' src="/images/socials-icon-1.svg" alt="socials icons images" width={50} height={50} /></a></li>
-                    <li className="socials-widgets-items"><a href="/"><Image className='w-[50px] sm:w-[30px] h-[50px] sm:h-[30px]' src="/images/socials-icon-2.svg" alt="socials icons images" width={50} height={50} /></a></li>
-                    <li className="socials-widgets-items"><a href="/"><Image className='w-[50px] sm:w-[30px] h-[50px] sm:h-[30px]' src="/images/socials-icon-3.svg" alt="socials icons images" width={50} height={50} /></a></li>
+                    <li className="socials-widgets-items"><a href="/"><Image className='w-[50px] sm:w-[30px] h-[50px] sm:h-[30px]' src={socials1} alt="socials icons images" width={50} height={50} /></a></li>
+                    <li className="socials-widgets-items"><a href="/"><Image className='w-[50px] sm:w-[30px] h-[50px] sm:h-[30px]' src={socials2} alt="socials icons images" width={50} height={50} /></a></li>
+                    <li className="socials-widgets-items"><a href="/"><Image className='w-[50px] sm:w-[30px] h-[50px] sm:h-[30px]' src={socials3} alt="socials icons images" width={50} height={50} /></a></li>
                 </ul>
              </div>
         </div>

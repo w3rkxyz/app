@@ -7,7 +7,7 @@ const HomeBanner = () => {
         <div className="custom-container">
             <div className="banner-wrapper max-w-[1156px] mx-auto relative">
                 <div className="banner-modal banner-modal-top">
-                  <Image className='modal-item-2 absolute left-[139px] top-[-110px] sm:top-[-73px] sm:left-[24px] sm:w-[57px] sm:h-[57px]' src="/images/banner-modal-2.png" alt="banner modal image items" width={96} height={96} />
+                  <Image className='modal-item-2 absolute left-[139px] sm:top-[-73px] sm:left-[24px] sm:w-[57px] sm:h-[57px]' src="/images/banner-modal-2.png" alt="banner modal image items" width={96} height={96} />
                   <Image className='modal-item-3 absolute right-0 sm:top-[-96px] sm:right-0 sm:w-[80px] sm:h-[80px] sm:object-contain' src="/images/banner-modal-3.png" alt="banner modal image items" width={132} height={132} />
                 </div>
                 <div className="banner-cont-box text-center">

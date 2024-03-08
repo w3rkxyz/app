@@ -1,0 +1,46 @@
+[
+	{
+		"username": "adam.lens",
+		"profileImage": "/images/head-2.png",
+		"jobName": "Job Name",
+		"jobIcon": "/images/bagIcon.png",
+		"description": "bla bla bla lbla bla bla bla lbla bla bla lbla bla bla bla lbla bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla",
+		"contractType": "Fixed/Hourly Contract",
+		"paymentAmount": "[amount in USD]",
+		"paidIn": "[insert token logos]",
+		"tags": ["Blockchain Development", "[tag]", "[tag]"]
+	},
+	{
+		"username": "adam.lens",
+		"profileImage": "/images/head-2.png",
+		"jobName": "Job Name",
+		"jobIcon": "/images/bagIcon.png",
+		"description": "bla bla bla lbla bla bla bla lbla bla bla lbla bla bla bla lbla bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla",
+		"contractType": "Fixed/Hourly Contract",
+		"paymentAmount": "[amount in USD]",
+		"paidIn": "[insert token logos]",
+		"tags": ["Blockchain Development", "[tag]", "[tag]"]
+	},
+	{
+		"username": "adam.lens",
+		"profileImage": "/images/head-2.png",
+		"jobName": "Job Name",
+		"jobIcon": "/images/bagIcon.png",
+		"description": "bla bla bla lbla bla bla bla lbla bla bla lbla bla bla bla lbla bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla",
+		"contractType": "Fixed/Hourly Contract",
+		"paymentAmount": "[amount in USD]",
+		"paidIn": "[insert token logos]",
+		"tags": ["Blockchain Development", "[tag]", "[tag]"]
+	},
+	{
+		"username": "adam.lens",
+		"profileImage": "/images/head-2.png",
+		"jobName": "Job Name",
+		"jobIcon": "/images/bagIcon.png",
+		"description": "bla bla bla lbla bla bla bla lbla bla bla lbla bla bla bla lbla bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla",
+		"contractType": "Fixed/Hourly Contract",
+		"paymentAmount": "[amount in USD]",
+		"paidIn": "[insert token logos]",
+		"tags": ["Blockchain Development", "[tag]", "[tag]"]
+	}
+]
