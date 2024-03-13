@@ -1,15 +1,9 @@
 import React from 'react';
 import Image from 'next/image';
 
-import MyButton from '@/reusable-components/Sidebar/Button/Button';
-import {
-	closeIcon,
-	head,
-	token1,
-	token2,
-	token3,
-	twitterFo,
-} from '@/icons/Icons';
+import MyButton from '@/components/reusable/Button/Button';
+
+import CloseIcon from '@/icons/CloseIcon';
 
 const ViewListingModal = () => {
 	return (
@@ -17,24 +11,22 @@ const ViewListingModal = () => {
 			<div className="custom-container mt-7">
 				<div className="flex justify-center items-center">
 					<div className="w-[1110px] pl-[63px] pr-[78px] modal-shadow py-[47px] sm:py-5 md:py-4 sm:px-5 md:px-5 rounded-[20px] relative">
-						<div>
-							<Image
-								src={closeIcon}
-								alt=""
-								className="w-[35px] h-[35px] absolute right-[23px] sm:right-7 top-[23px] sm:top-7"
-							/>
+						<div className="w-[35px] h-[35px] absolute right-[23px] sm:right-7 top-[23px] sm:top-7">
+							<CloseIcon />
 						</div>
 
-						<div className="view-listing-modal-section flex justify-between">
+						<div className="view-listing-modal-section flex sm:flex-col justify-between">
 							<div>
-								<div className="w-[250px] flex-shrink-0 sm:h-auto bg-[#FFFFFF]/50 modal-shadow rounded-[20px] py-[26px] px-[25px] md:px-3">
+								<div className="w-[250px] flex-shrink-0 sm:w-full sm:h-auto bg-[#FFFFFF]/50 modal-shadow rounded-[20px] py-[26px] px-[25px] md:px-3">
 									<div className="flex justify-center items-center">
 										<div className="w-[120px] h-[110px] bg-[#FFFFFF]/70 flex justify-center items-center rounded-[16px] left-avatar-shadow">
 											<div>
 												<Image
-													src={head}
+													src="/images/head.svg"
 													alt="head image"
 													className="w-[65px] h-[65px] mb-2 "
+													width={65}
+													height={65}
 												/>
 												<p className="text-[14px] font-semibold font-secondary leading-[20px] tracking-[-1%] ">
 													adam.lens
@@ -103,7 +95,7 @@ const ViewListingModal = () => {
 												<a href="/">
 													<Image
 														className="w-[14.13px]  h-[13.18px]"
-														src={twitterFo}
+														src="/images/twitter-fo.svg"
 														alt="socials icons images"
 													/>
 												</a>
@@ -120,8 +112,10 @@ const ViewListingModal = () => {
 												<a href="/">
 													<Image
 														className="w-[28px] h-[28px] bg-[#F7931A] p-1 rounded-full"
-														src={token1}
+														src="/images/token-1.svg"
 														alt="socials icons images"
+														width={28}
+														height={28}
 													/>
 												</a>
 											</li>
@@ -129,8 +123,10 @@ const ViewListingModal = () => {
 												<a href="/">
 													<Image
 														className="w-[28px]  h-[28px]"
-														src={token2}
+														src="/images/token2.svg"
 														alt="socials icons images"
+														width={28}
+														height={28}
 													/>
 												</a>
 											</li>
@@ -138,8 +134,10 @@ const ViewListingModal = () => {
 												<a href="/">
 													<Image
 														className="w-[28px]  h-[28px]"
-														src={token3}
+														src="/images/token3.svg"
 														alt="socials icons images"
+														width={28}
+														height={28}
 													/>
 												</a>
 											</li>

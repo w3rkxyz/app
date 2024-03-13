@@ -1,4 +1,3 @@
-import { instagramFo, twitterFo } from '@/icons/Icons';
 import Image from 'next/image';
 import React from 'react';
 
@@ -14,7 +13,7 @@ const Footer = () => {
 						<li className="socials-widgets-item">
 							<a href="/">
 								<Image
-									src={twitterFo}
+									src="/images/twitter-fo.svg"
 									alt="socials icons image"
 									className="w-[33px] sm:w-5 h-[33px] sm:h-5"
 									width={33}
@@ -36,7 +35,7 @@ const Footer = () => {
 						<li className="socials-widgets-item">
 							<a href="/">
 								<Image
-									src={instagramFo}
+									src="/images/instagrame-fo.svg"
 									alt="socials icons image"
 									className="w-[33px] sm:w-5 h-[33px] sm:h-5"
 									width={33}

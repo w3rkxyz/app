@@ -1,8 +1,7 @@
-import SearchInput from '@/components/SearchInput/SearchInput';
-import { bag, head } from '@/icons/Icons';
+import SearchInput from '@/components/reusable/SearchInput/SearchInput';
 
-import JobCard from '@/reusable-components/JobCard/JobCard';
-import MyButton from '@/reusable-components/Sidebar/Button/Button';
+import JobCard from '@/components/JobCard/JobCard';
+import MyButton from '@/components/reusable/Button/Button';
 
 const FindTalent = () => {
 	return (
@@ -17,24 +16,25 @@ const FindTalent = () => {
 				</div>
 
 				<div className="tags-section flex sm:flex-col justify-center items-center gap-[25px] mt-7">
-					<div className="max-w-[250px] w-full sm:max-w-full h-[591px] max-h-[100vh] bg-[#FFFFFF] rounded-[20px] p-[23px]">
-						<h4 className="text-[20px] font-semibold font-secondary leading-[20px] tracking-[-1%] text-center pb-5 ">
-							Tags
+					<div className="find-work-message-section sm:w-full w-[250px] flex-shrink-0 h-[591px] sm:h-[60px] max-h-[100vh] bg-[#FFFFFF] sm:bg-transparent rounded-[20px] p-[23px] sm:flex sm:items-center sm:gap-3 sm:overflow-x-auto">
+						<h4 className="text-[20px] font-semibold font-secondary leading-[20px] tracking-[-1%] text-center pb-5">
+							Messages
 						</h4>
+
 						<MyButton
 							buttonText="Blockchain Development"
 							buttonType="secondary"
-							buttonStyles="bg-[#FFAEAE]/50 mb-[6px]"
+							buttonStyles="bg-[#FFAEAE]/50 mb-[6px] sm:font-bold sm:text-[10px] sm:leading-[11px] sm:w-full"
 						></MyButton>
 						<MyButton
 							buttonText="Programming & Development"
 							buttonType="secondary"
-							buttonStyles="bg-[#FFD5AE]/50 mb-[6px]"
+							buttonStyles="bg-[#FFD5AE]/50 mb-[6px] sm:font-bold sm:text-[10px] sm:leading-[11px]"
 						></MyButton>
 						<MyButton
 							buttonText="Design"
 							buttonType="secondary"
-							buttonStyles="bg-[#FDFFAE]/50 mb-[6px]"
+							buttonStyles="bg-[#FDFFAE]/50 mb-[6px] w-[150px]"
 						></MyButton>
 						<MyButton
 							buttonText="Marketing"
@@ -75,112 +75,24 @@ const FindTalent = () => {
 
 					<div className="w-full">
 						<JobCard
-							userAvatar={head}
+							userAvatar="/images/head.svg"
 							username="adam.lens"
-							jobName="Job Name"
-							jobIcon={bag}
-							description="bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla"
-							contractType="Fixed/Hourly Contract"
-							paymentAmount="Payment [amount in USD]"
-							paymentMethod="Paid In [insert token logos]"
-							buttonData={[
-								{
-									buttonText: 'Blockchain Development',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFAEAE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFD5AE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FDFFAE]/50 mb-[4px]',
-								},
-							]}
+							jobIcon="/images/man.svg"
 						/>
 						<JobCard
-							userAvatar={head}
+							userAvatar="/images/head.svg"
 							username="adam.lens"
-							jobName="Job Name"
-							jobIcon={bag}
-							description="bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla"
-							contractType="Fixed/Hourly Contract"
-							paymentAmount="Payment [amount in USD]"
-							paymentMethod="Paid In [insert token logos]"
-							buttonData={[
-								{
-									buttonText: 'Blockchain Development',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFAEAE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFD5AE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FDFFAE]/50 mb-[4px]',
-								},
-							]}
+							jobIcon="/images/man.svg"
 						/>
 						<JobCard
-							userAvatar={head}
+							userAvatar="/images/head.svg"
 							username="adam.lens"
-							jobName="Job Name"
-							jobIcon={bag}
-							description="bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla"
-							contractType="Fixed/Hourly Contract"
-							paymentAmount="Payment [amount in USD]"
-							paymentMethod="Paid In [insert token logos]"
-							buttonData={[
-								{
-									buttonText: 'Blockchain Development',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFAEAE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFD5AE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FDFFAE]/50 mb-[4px]',
-								},
-							]}
+							jobIcon="/images/man.svg"
 						/>
 						<JobCard
-							userAvatar={head}
+							userAvatar="/images/head.svg"
 							username="adam.lens"
-							jobName="Job Name"
-							jobIcon={bag}
-							description="bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla"
-							contractType="Fixed/Hourly Contract"
-							paymentAmount="Payment [amount in USD]"
-							paymentMethod="Paid In [insert token logos]"
-							buttonData={[
-								{
-									buttonText: 'Blockchain Development',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFAEAE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFD5AE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FDFFAE]/50 mb-[4px]',
-								},
-							]}
+							jobIcon="/images/man.svg"
 						/>
 					</div>
 				</div>

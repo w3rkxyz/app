@@ -1,10 +1,10 @@
-import CreateContractModal from '@/views/create-contract-modal/create-contract-modal'
-import React from 'react'
+import CreateContractModal from '@/views/create-contract-modal/create-contract-modal';
+import React from 'react';
 
 export default function CreateContractModalPage() {
-  return (
-    <div>
-      <CreateContractModal />
-    </div>
-  )
+	return (
+		<div>
+			<CreateContractModal />
+		</div>
+	);
 }

@@ -1,24 +1,15 @@
 import React from 'react';
 import Image from 'next/image';
 
-import {
-	bag,
-	gitHub,
-	head,
-	linkedIn,
-	token1,
-	token2,
-	token3,
-	twitterFo,
-} from '@/icons/Icons';
-import JobCard from '@/reusable-components/JobCard/JobCard';
+import JobCard from '@/components/JobCard/JobCard';
+import Sidebar from '@/components/reusable/Sidebar/Sidebar';
 
 const NewMyPost = () => {
 	return (
 		<div className="find-work-section pt-[105px]">
-			<div className="custom-container mt-7">
-				<div className="tags-section flex justify-between items-center gap-5">
-					<div>
+			<div className="custom-container">
+				<div className="flex sm:flex-col justify-between items-center gap-5">
+					<div className="">
 						<div className="flex gap-[10px] mb-3">
 							<button className="w-full text-[14px] text-white font-semibold font-secondary leading-[20px] tracking-[-1%] py-3 bg-[#A274FF] rounded-[10px]">
 								Post a Job
@@ -27,14 +18,19 @@ const NewMyPost = () => {
 								List a service
 							</button>
 						</div>
-						<div className="h-[692px] w-[250px] sm:h-auto bg-[#FFFFFF] rounded-[20px] py-[26px] px-[30px]">
+						<div className="">
+							<Sidebar height="692px" />
+						</div>
+						{/* <div className="h-[692px] w-[250px] sm:h-auto bg-[#FFFFFF] rounded-[20px] py-[26px] px-[30px]">
 							<div className="flex justify-center items-center">
 								<div className="w-[120px] h-[110px] bg-[#FFFFFF]/70 flex justify-center items-center rounded-[16px] shadow-2xl shadow-slate-200 ">
 									<div>
 										<Image
-											src={head}
+											src='/images/head.svg'
 											alt="head image"
 											className="w-[65px] h-[65px] mb-2 "
+											width={65}
+											height={65}
 										/>
 										<p className="text-[14px] font-semibold font-secondary leading-[20px] tracking-[-1%] ">
 											adam.lens
@@ -102,7 +98,7 @@ const NewMyPost = () => {
 										<a href="/">
 											<Image
 												className="w-[22px]  h-[22px]"
-												src={twitterFo}
+												src='/images/twitterFo.svg'
 												alt="socials icons images"
 												width={22}
 												height={22}
@@ -143,7 +139,7 @@ const NewMyPost = () => {
 										<a href="/">
 											<Image
 												className="w-[22px] h-[22px] bg-[#F7931A] p-1 rounded-full"
-												src={token1}
+												src='/images/token-1.svg'
 												alt="socials icons images"
 												width={22}
 												height={22}
@@ -154,7 +150,7 @@ const NewMyPost = () => {
 										<a href="/">
 											<Image
 												className="w-[22px]  h-[22px]"
-												src={token2}
+												src='/images/token2.svg'
 												alt="socials icons images"
 												width={22}
 												height={22}
@@ -165,7 +161,7 @@ const NewMyPost = () => {
 										<a href="/">
 											<Image
 												className="w-[22px]  h-[22px]"
-												src={token3}
+												src='/images/token3.svg'
 												alt="socials icons images"
 												width={22}
 												height={22}
@@ -174,134 +170,34 @@ const NewMyPost = () => {
 									</li>
 								</ul>
 							</div>
-						</div>
+						</div> */}
 					</div>
 
-					<div className="w-full">
+					<div className="right-panel w-full">
 						<JobCard
-							jobName="Job Name"
-							jobIcon={bag}
-							description="bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla"
-							contractType="Fixed/Hourly Contract"
-							paymentAmount="Payment [amount in USD]"
-							paymentMethod="Paid In [insert token logos]"
-							buttonData={[
-								{
-									buttonText: 'Blockchain Development',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFAEAE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFD5AE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FDFFAE]/50 mb-[4px]',
-								},
-							]}
+							cardStyles={
+								'flex !justify-start gap-[55px] items-center pl-[32px]'
+							}
 						/>
 						<JobCard
-							jobName="Job Name"
-							jobIcon={bag}
-							description="bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla"
-							contractType="Fixed/Hourly Contract"
-							paymentAmount="Payment [amount in USD]"
-							paymentMethod="Paid In [insert token logos]"
-							buttonData={[
-								{
-									buttonText: 'Blockchain Development',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFAEAE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFD5AE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FDFFAE]/50 mb-[4px]',
-								},
-							]}
+							cardStyles={
+								'flex !justify-start gap-[55px] items-center pl-[32px]'
+							}
 						/>
 						<JobCard
-							jobName="Job Name"
-							jobIcon={bag}
-							description="bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla"
-							contractType="Fixed/Hourly Contract"
-							paymentAmount="Payment [amount in USD]"
-							paymentMethod="Paid In [insert token logos]"
-							buttonData={[
-								{
-									buttonText: 'Blockchain Development',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFAEAE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFD5AE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FDFFAE]/50 mb-[4px]',
-								},
-							]}
+							cardStyles={
+								'flex !justify-start gap-[55px] items-center pl-[32px]'
+							}
 						/>
 						<JobCard
-							jobName="Job Name"
-							jobIcon={bag}
-							description="bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla"
-							contractType="Fixed/Hourly Contract"
-							paymentAmount="Payment [amount in USD]"
-							paymentMethod="Paid In [insert token logos]"
-							buttonData={[
-								{
-									buttonText: 'Blockchain Development',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFAEAE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFD5AE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FDFFAE]/50 mb-[4px]',
-								},
-							]}
+							cardStyles={
+								'flex !justify-start gap-[55px] items-center pl-[32px]'
+							}
 						/>
 						<JobCard
-							jobName="Job Name"
-							jobIcon={bag}
-							description="bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla"
-							contractType="Fixed/Hourly Contract"
-							paymentAmount="Payment [amount in USD]"
-							paymentMethod="Paid In [insert token logos]"
-							buttonData={[
-								{
-									buttonText: 'Blockchain Development',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFAEAE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFD5AE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FDFFAE]/50 mb-[4px]',
-								},
-							]}
+							cardStyles={
+								'flex !justify-start gap-[55px] items-center pl-[32px]'
+							}
 						/>
 					</div>
 				</div>

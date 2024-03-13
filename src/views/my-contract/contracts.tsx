@@ -1,6 +1,6 @@
 import React from 'react';
 
-import Sidebar from '@/reusable-components/Sidebar/Sidebar';
+import Sidebar from '@/components/reusable/Sidebar/Sidebar';
 
 const MyContracts = () => {
 	return (
@@ -22,16 +22,16 @@ const MyContracts = () => {
 							</div>
 						</div>
 						<div className="grid grid-rows-4 gap-[21px]">
-							<div className="bg-white rounded-[20px] h-[132px]">
+							<div className="bg-white rounded-[20px] sm:h-[197px] h-[132px]">
 								hello
 							</div>
-							<div className="bg-white rounded-[20px] h-[132px]">
+							<div className="bg-white rounded-[20px] sm:h-[197px] h-[132px]">
 								hello
 							</div>
-							<div className="bg-white rounded-[20px] h-[132px]">
+							<div className="bg-white rounded-[20px] sm:h-[197px] h-[132px]">
 								hello
 							</div>
-							<div className="bg-white rounded-[20px] h-[132px]">
+							<div className="bg-white rounded-[20px] sm:h-[197px] h-[132px]">
 								hello
 							</div>
 						</div>

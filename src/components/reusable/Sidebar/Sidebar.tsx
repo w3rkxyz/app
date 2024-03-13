@@ -1,15 +1,5 @@
 import Image from 'next/image';
 
-import {
-	head,
-	linkedIn,
-	twitterFo,
-	gitHub,
-	token1,
-	token2,
-	token3,
-} from '@/icons/Icons';
-
 interface height {
 	height: string;
 }
@@ -19,7 +9,7 @@ const Sidebar = ({ height }: height) => {
 		<div>
 			<div
 				style={{ height: height }}
-				className="w-[250px] sm:w-full sm:h-[231px] bg-[#FFFFFF] rounded-[20px] py-[26px] sm:py-[16px] px-[30px] sm:px-[16px]"
+				className="w-[250px] sm:h-[231px] bg-[#FFFFFF] rounded-[20px] py-[26px] sm:py-[16px] px-[30px] sm:px-[16px]"
 			>
 				<div className="sm:flex items-center sm:gap-[16px]">
 					<div className="flex justify-center items-center">
@@ -27,9 +17,11 @@ const Sidebar = ({ height }: height) => {
 							<div>
 								<div className="flex justify-center items-center">
 									<Image
-										src={head}
+										src="/images/head.svg"
 										alt="head image"
 										className="w-[65px] h-[65px] sm:w-[48px] sm:h-[48px] mb-2 "
+										width={65}
+										height={65}
 									/>
 								</div>
 								<p className="text-[14px] font-semibold sm:font-bold font-secondary leading-[20px] sm:leading-[17.6px] tracking-[-1%] ">
@@ -61,7 +53,7 @@ const Sidebar = ({ height }: height) => {
 										735
 									</p>
 								</div>
-								<div className="">
+								<div className="hidden sm:visible md:hidden lg:hidden">
 									<p className="text-[14px] sm:text-[10px] font-semibold font-secondary leading-[20px] sm:leading-[10px] tracking-[-1%] text-[#000000] mb-[4px]">
 										Links
 									</p>
@@ -70,7 +62,7 @@ const Sidebar = ({ height }: height) => {
 											<a href="/">
 												<Image
 													className="w-[22px] sm:w-[13.94px]  h-[22px] sm:h-[13px]"
-													src={twitterFo}
+													src="/images/twitter-fo.svg"
 													alt="socials icons images"
 													width={22}
 													height={22}
@@ -81,7 +73,7 @@ const Sidebar = ({ height }: height) => {
 											<a href="/">
 												<Image
 													className="w-[22px] sm:w-[13.94px]  h-[22px] sm:h-[13px]"
-													src={gitHub}
+													src="/images/gitHub.svg"
 													alt="socials icons images"
 													width={22}
 													height={22}
@@ -92,7 +84,7 @@ const Sidebar = ({ height }: height) => {
 											<a href="/">
 												<Image
 													className="w-[22px] sm:w-[13.94px]  h-[22px] sm:h-[13px]"
-													src={linkedIn}
+													src="/images/linkedIn.svg"
 													alt="socials icons images"
 													width={22}
 													height={22}
@@ -104,7 +96,7 @@ const Sidebar = ({ height }: height) => {
 							</div>
 						</div>
 
-						<div className="mt-[8px] sm:mt-0 sm:hidden">
+						<div className="mt-[8px] sm:mt-0 hidden">
 							<p className="text-[14px] sm:text-[10px] font-semibold font-secondary leading-[20px] sm:leading-[10px] tracking-[-1%] text-[#000000]">
 								Links
 							</p>
@@ -113,7 +105,7 @@ const Sidebar = ({ height }: height) => {
 									<a href="/">
 										<Image
 											className="w-[22px] sm:w-[13.94px]  h-[22px] sm:h-[13px]"
-											src={twitterFo}
+											src="/images/twitter-fo.svg"
 											alt="socials icons images"
 											width={22}
 											height={22}
@@ -124,7 +116,7 @@ const Sidebar = ({ height }: height) => {
 									<a href="/">
 										<Image
 											className="w-[22px] sm:w-[13.94px]  h-[22px] sm:h-[13px]"
-											src={gitHub}
+											src="/images/gitHub.svg"
 											alt="socials icons images"
 											width={22}
 											height={22}
@@ -135,7 +127,7 @@ const Sidebar = ({ height }: height) => {
 									<a href="/">
 										<Image
 											className="w-[22px] sm:w-[13.94px]  h-[22px] sm:h-[13px]"
-											src={linkedIn}
+											src="/images/linedIn.svg"
 											alt="socials icons images"
 											width={22}
 											height={22}
@@ -145,7 +137,7 @@ const Sidebar = ({ height }: height) => {
 							</ul>
 						</div>
 
-						<div className="mt-[8px] sm:mt-0">
+						<div className="mt-[8px] sm:mt-0 hidden">
 							<p className="text-[14px] sm:text-[10px] font-semibold font-secondary leading-[20px] sm:leading-[10px] tracking-[-1%] text-[#000000]">
 								Accepted Tokens
 							</p>
@@ -154,8 +146,10 @@ const Sidebar = ({ height }: height) => {
 									<a href="/">
 										<Image
 											className="w-[26.5px] h-[26.5px] sm:w-[20px] sm:h-[20px] bg-[#F7931A] rounded-full p-[2px]"
-											src={token1}
+											src="/images/token-1.svg"
 											alt="socials icons images"
+											width={26.5}
+											height={26.5}
 										/>
 									</a>
 								</li>
@@ -163,8 +157,10 @@ const Sidebar = ({ height }: height) => {
 									<a href="/">
 										<Image
 											className="w-[28px]  h-[28px] sm:w-[20px] sm:h-[20px]"
-											src={token2}
+											src="/images/token2.svg"
 											alt="socials icons images"
+											width={28}
+											height={28}
 										/>
 									</a>
 								</li>
@@ -172,8 +168,10 @@ const Sidebar = ({ height }: height) => {
 									<a href="/">
 										<Image
 											className="w-[28px]  h-[28px] sm:w-[20px] sm:h-[20px]"
-											src={token3}
+											src="/images/token3.svg"
 											alt="socials icons images"
+											width={28}
+											height={28}
 										/>
 									</a>
 								</li>
@@ -209,6 +207,7 @@ const Sidebar = ({ height }: height) => {
 						</p>
 					</div>
 				</div>
+
 				<div className="sm:hidden mt-[8px] sm:mt-0">
 					<p className="text-[14px] sm:text-[10px] font-semibold font-secondary leading-[20px] sm:leading-[10px] tracking-[-1%] text-[#000000]">
 						Links
@@ -218,7 +217,7 @@ const Sidebar = ({ height }: height) => {
 							<a href="/">
 								<Image
 									className="w-[22px] sm:w-[13.94px]  h-[22px] sm:h-[13px]"
-									src={twitterFo}
+									src="/images/twitter-fo.svg"
 									alt="socials icons images"
 									width={22}
 									height={22}
@@ -229,7 +228,7 @@ const Sidebar = ({ height }: height) => {
 							<a href="/">
 								<Image
 									className="w-[22px] sm:w-[13.94px]  h-[22px] sm:h-[13px]"
-									src={gitHub}
+									src="/images/gitHub.svg"
 									alt="socials icons images"
 									width={22}
 									height={22}
@@ -240,7 +239,7 @@ const Sidebar = ({ height }: height) => {
 							<a href="/">
 								<Image
 									className="w-[22px] sm:w-[13.94px]  h-[22px] sm:h-[13px]"
-									src={linkedIn}
+									src="/images/linkedIn.svg"
 									alt="socials icons images"
 									width={22}
 									height={22}
@@ -259,8 +258,10 @@ const Sidebar = ({ height }: height) => {
 							<a href="/">
 								<Image
 									className="w-[26.5px] h-[26.5px] sm:w-[20px] sm:h-[20px] bg-[#F7931A] rounded-full p-[2px]"
-									src={token1}
+									src="/images/token-1.svg"
 									alt="socials icons images"
+									width={26.5}
+									height={26.5}
 								/>
 							</a>
 						</li>
@@ -268,8 +269,10 @@ const Sidebar = ({ height }: height) => {
 							<a href="/">
 								<Image
 									className="w-[28px]  h-[28px] sm:w-[20px] sm:h-[20px]"
-									src={token2}
+									src="/images/token2.svg"
 									alt="socials icons images"
+									width={28}
+									height={28}
 								/>
 							</a>
 						</li>
@@ -277,8 +280,10 @@ const Sidebar = ({ height }: height) => {
 							<a href="/">
 								<Image
 									className="w-[28px]  h-[28px] sm:w-[20px] sm:h-[20px]"
-									src={token3}
+									src="/images/token3.svg"
 									alt="socials icons images"
+									width={28}
+									height={28}
 								/>
 							</a>
 						</li>

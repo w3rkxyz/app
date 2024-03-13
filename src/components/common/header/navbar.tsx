@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { brandLogo, closeIcon, headerTrigger } from '@/icons/Icons';
 
 const Navbar = () => {
 	const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -25,7 +24,7 @@ const Navbar = () => {
 								onClick={handleMobileMenuToggle}
 							>
 								<Image
-									src={headerTrigger}
+									src="/images/header-trigger.svg"
 									alt="navbar trigger"
 									width={20}
 									height={12}
@@ -33,14 +32,14 @@ const Navbar = () => {
 							</div>
 							<a href="/">
 								<Image
-									src={brandLogo}
+									src="/images/brand-logo.svg"
 									className="sm:hidden"
 									width={135}
 									height={47}
 									alt="company brand logo"
-								/>
+								></Image>
 								<Image
-									src={brandLogo}
+									src="/images/brand-logo.svg"
 									className="hidden sm:block"
 									width={69}
 									height={24}
@@ -90,7 +89,7 @@ const Navbar = () => {
 							onClick={closeMobileMenu}
 						>
 							<Image
-								src={closeIcon}
+								src="/images/Close.svg"
 								alt="navbar trigger close"
 								width={16}
 								height={16}

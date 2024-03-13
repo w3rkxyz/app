@@ -1,5 +1,5 @@
 import React from 'react';
-import Sidebar from '@/reusable-components/Sidebar/Sidebar';
+import Sidebar from '@/components/reusable/Sidebar/Sidebar';
 
 const MyWallet = () => {
 	return (
@@ -7,7 +7,7 @@ const MyWallet = () => {
 			<div className="custom-container mt-7">
 				<div className="my-wallet-section flex sm:flex-col justify-between items-center gap-6">
 					<div>
-						<Sidebar height="" />
+						<Sidebar height="675px" />
 					</div>
 
 					<div className="h-[675px] sm:h-[197px] w-[792px] sm:w-full bg-white rounded-[20px] p-[20px]">

@@ -1,8 +1,8 @@
 import React from 'react';
 
-import Sidebar from '@/reusable-components/Sidebar/Sidebar';
-import JobCard from '@/reusable-components/JobCard/JobCard';
-import { bag } from '@/icons/Icons';
+import Sidebar from '@/components/reusable/Sidebar/Sidebar';
+import JobCard from '@/components/JobCard/JobCard';
+import { bag, man } from '@/icons/Icons';
 
 const OtherUserFollowing = () => {
 	return (
@@ -15,129 +15,24 @@ const OtherUserFollowing = () => {
 
 					<div className="w-full">
 						<JobCard
-							jobName="Job Name"
-							jobIcon={bag}
-							description="bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla"
-							contractType="Fixed/Hourly Contract"
-							paymentAmount="Payment [amount in USD]"
-							paymentMethod="Paid In [insert token logos]"
-							buttonData={[
-								{
-									buttonText: 'Blockchain Development',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFAEAE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFD5AE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FDFFAE]/50 mb-[4px]',
-								},
-							]}
+							jobIcon="/images/man.svg"
+							cardStyles={'!flex !justify-evenly !items-center'}
 						/>
 						<JobCard
-							jobName="Job Name"
-							jobIcon={bag}
-							description="bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla"
-							contractType="Fixed/Hourly Contract"
-							paymentAmount="Payment [amount in USD]"
-							paymentMethod="Paid In [insert token logos]"
-							buttonData={[
-								{
-									buttonText: 'Blockchain Development',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFAEAE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFD5AE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FDFFAE]/50 mb-[4px]',
-								},
-							]}
+							jobIcon="/images/man.svg"
+							cardStyles={'!flex !justify-evenly !items-center'}
 						/>
 						<JobCard
-							jobName="Job Name"
-							jobIcon={bag}
-							description="bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla"
-							contractType="Fixed/Hourly Contract"
-							paymentAmount="Payment [amount in USD]"
-							paymentMethod="Paid In [insert token logos]"
-							buttonData={[
-								{
-									buttonText: 'Blockchain Development',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFAEAE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFD5AE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FDFFAE]/50 mb-[4px]',
-								},
-							]}
+							jobIcon="/images/man.svg"
+							cardStyles={'!flex !justify-evenly !items-center'}
 						/>
 						<JobCard
-							jobName="Job Name"
-							jobIcon={bag}
-							description="bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla"
-							contractType="Fixed/Hourly Contract"
-							paymentAmount="Payment [amount in USD]"
-							paymentMethod="Paid In [insert token logos]"
-							buttonData={[
-								{
-									buttonText: 'Blockchain Development',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFAEAE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFD5AE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FDFFAE]/50 mb-[4px]',
-								},
-							]}
+							jobIcon="/images/man.svg"
+							cardStyles={'!flex !justify-evenly !items-center'}
 						/>
 						<JobCard
-							jobName="Job Name"
-							jobIcon={bag}
-							description="bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla"
-							contractType="Fixed/Hourly Contract"
-							paymentAmount="Payment [amount in USD]"
-							paymentMethod="Paid In [insert token logos]"
-							buttonData={[
-								{
-									buttonText: 'Blockchain Development',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFAEAE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FFD5AE]/50 mb-[4px]',
-								},
-								{
-									buttonText: '[tag]',
-									buttonType: 'accent',
-									buttonStyles: 'bg-[#FDFFAE]/50 mb-[4px]',
-								},
-							]}
+							jobIcon="/images/man.svg"
+							cardStyles={'!flex !justify-evenly !items-center'}
 						/>
 					</div>
 				</div>

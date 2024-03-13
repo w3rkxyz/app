@@ -3,7 +3,7 @@ import React from 'react';
 interface ButtonElement {
 	buttonText: string;
 	buttonStyles: string;
-	buttonType: 'primary' | 'secondary' | 'accent' | 'terterry' | 'custom'; // Specify the types of buttons
+	buttonType: 'primary' | 'secondary' | 'accent' | 'terterry' | 'custom';
 }
 
 const MyButton: React.FC<ButtonElement> = ({

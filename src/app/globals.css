@@ -149,6 +149,7 @@
 }
 
 @layer utilities {
+
 	.custom-container {
 		max-width: 1420px;
 		padding-left: 30px;
@@ -275,4 +276,9 @@
 		-ms-transition: all 350ms ease 0s;
 		-o-transition: all 350ms ease 0s;
 	}
+
+	.find-work-message-section::-webkit-scrollbar {
+		width: 0px;
+	}
+
 }
