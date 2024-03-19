@@ -1,12 +1,11 @@
 import SearchInput from '@/components/reusable/SearchInput/SearchInput';
 
-import DynamicCard from '@/components/JobCard/JobCard';
 import JobCard from '@/components/JobCard/JobCard';
 import MyButton from '@/components/reusable/Button/Button';
 
 const FindWork = async () => {
 	return (
-		<div className="find-work-section pt-[105px]">
+		<div className="find-work-section pt-[170px]  sm:pt-20 pb-[99px] sm:pb-10">
 			<div className="custom-container">
 				<div className="flex sm:flex-col md:flex-col justify-between items-center my-[30px]">
 					<h2 className="section-title text-center text-[32px] sm:text-[24px] font-semibold font-secondary leading-[20px] tracking-[-4%] pb-4">
@@ -16,9 +15,9 @@ const FindWork = async () => {
 					<SearchInput />
 				</div>
 
-				<div className="tags-section flex sm:flex-col justify-center items-center gap-[25px] my-[30px]">
-					<div className="find-work-message-section sm:w-full w-[250px] flex-shrink-0 h-[591px] sm:h-[60px] max-h-[100vh] bg-[#FFFFFF] sm:bg-transparent rounded-[20px] p-[23px] sm:flex sm:items-center sm:gap-3 sm:overflow-x-auto">
-						<h4 className="text-[20px] font-semibold font-secondary leading-[20px] tracking-[-1%] text-center pb-5">
+				<div className="tags-section flex sm:flex-col justify-center items-center gap-[25px] mt-[30px]">
+					<div className="find-work-message-section w-[250px] flex-shrink-0 h-[591px] sm:h-auto sm:my-0 sm:py-0 bg-[#FFFFFF] sm:bg-transparent rounded-[20px] sm:rounded-[0px] p-[23px] sm:w-full sm:flex sm:items-center gap-2 sm:whitespace-nowrap overflow-x-auto">
+						<h4 className="text-[20px] font-semibold font-secondary leading-[20px] tracking-[-1%] text-center pb-5 sm:pb-[10px]">
 							Tags
 						</h4>
 

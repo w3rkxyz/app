@@ -149,7 +149,6 @@
 }
 
 @layer utilities {
-
 	.custom-container {
 		max-width: 1420px;
 		padding-left: 30px;
@@ -253,13 +252,18 @@
 		box-shadow: 8px 40px 80px -16px #00000080;
 	}
 
-	left-avatar-shadow {
-		box-shadow: 24px -20px 56px 0px #00000080;
-	}
-
 	.our-technology-cards-item .card-modal:hover {
 		box-shadow: 0px 4px 4px 0px #00000040;
 	}
+
+	.top-pick-card-shadow {
+		box-shadow: 0px 4px 4px 0px #00000040;
+	}
+
+	.banner-modal-shadow {
+		box-shadow: 0 4px 4px 0 #00000040;
+	}
+
 	.mobile-menu {
 		left: -100%;
 		transition: all 170ms ease 0s;
@@ -280,5 +284,4 @@
 	.find-work-message-section::-webkit-scrollbar {
 		width: 0px;
 	}
-
 }

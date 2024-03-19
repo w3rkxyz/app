@@ -14,7 +14,7 @@ const OurTechnology = () => {
 				</div>
 				<div className="our-technology-wrapper">
 					<div className="our-technology-cards-item sm:flex-col sm:gap-4 flex items-center gap-[14px] max-w-[864px] mx-auto mb-[18px] sm:mb-10">
-						<div className="card-modal flex justify-center items-center relative py-[25px] sm:py-[17px] rounded-[40px] sm:rounded-[20px] bg-[#FFFFFF1A] max-w-[150px] max-h-[150px] sm:max-w-[100px] sm:max-h-[100px] min-w-[150px] min-h-[150px] sm:min-w-[100px] sm:min-h-[100px]">
+						<div className="flex justify-center items-center relative py-[25px] sm:py-[17px] rounded-[40px] sm:rounded-[20px] bg-[#FFFFFF1A] max-w-[150px] max-h-[150px] sm:max-w-[100px] sm:max-h-[100px] min-w-[150px] min-h-[150px] sm:min-w-[100px] sm:min-h-[100px] top-pick-card-shadow">
 							<Image
 								src="/images/tech-icon-1.svg"
 								className="absolute top-0 bottom-0 left-0 right-0 m-auto"
@@ -30,7 +30,7 @@ const OurTechnology = () => {
 						</p>
 					</div>
 					<div className="our-technology-cards-item sm:flex-col sm:gap-4 flex items-center gap-[14px] max-w-[864px] mx-auto mb-[18px] sm:mb-10">
-						<div className="card-modal flex justify-center items-center relative p-[25px] sm:p-[17px] rounded-[40px] sm:rounded-[20px] bg-[#FFFFFF1A] max-w-[150px] max-h-[150px] sm:max-w-[100px] sm:max-h-[100px] min-w-[150px] min-h-[150px] sm:min-w-[100px] sm:min-h-[100px]">
+						<div className="flex justify-center items-center relative p-[25px] sm:p-[17px] rounded-[40px] sm:rounded-[20px] bg-[#FFFFFF1A] max-w-[150px] max-h-[150px] sm:max-w-[100px] sm:max-h-[100px] min-w-[150px] min-h-[150px] sm:min-w-[100px] sm:min-h-[100px] top-pick-card-shadow">
 							<Image
 								src="/images/tech-icon-2.svg"
 								className="relative top-0 bottom-0 left-0 right-0 m-auto"
@@ -46,7 +46,7 @@ const OurTechnology = () => {
 						</p>
 					</div>
 					<div className="our-technology-cards-item sm:flex-col sm:gap-4 flex items-center gap-[14px] max-w-[864px] mx-auto mb-[18px] sm:mb-10">
-						<div className="card-modal flex justify-center items-center relative p-[25px] sm:p-[17px]  rounded-[40px] sm:rounded-[20px] bg-[#FFFFFF1A] max-w-[150px] max-h-[150px] sm:max-w-[100px] sm:max-h-[100px] min-w-[150px] min-h-[150px] sm:min-w-[100px] sm:min-h-[100px]">
+						<div className="flex justify-center items-center relative p-[25px] sm:p-[17px]  rounded-[40px] sm:rounded-[20px] bg-[#FFFFFF1A] max-w-[150px] max-h-[150px] sm:max-w-[100px] sm:max-h-[100px] min-w-[150px] min-h-[150px] sm:min-w-[100px] sm:min-h-[100px] top-pick-card-shadow">
 							<Image
 								src="/images/tech-icon-3.svg"
 								className="relative top-0 bottom-0 left-0 right-0 m-auto w-full"
@@ -62,7 +62,7 @@ const OurTechnology = () => {
 						</p>
 					</div>
 					<div className="our-technology-cards-item sm:flex-col sm:gap-4 flex items-center gap-[14px] max-w-[864px] mx-auto">
-						<div className="card-modal flex justify-center items-center relative p-[25px] sm:p-[17px] rounded-[40px] sm:rounded-[20px] bg-[#FFFFFF1A] max-w-[150px] max-h-[150px] sm:max-w-[100px] sm:max-h-[100px] min-w-[150px] min-h-[150px] sm:min-w-[100px] sm:min-h-[100px]">
+						<div className="flex justify-center items-center relative p-[25px] sm:p-[17px] rounded-[40px] sm:rounded-[20px] bg-[#FFFFFF1A] max-w-[150px] max-h-[150px] sm:max-w-[100px] sm:max-h-[100px] min-w-[150px] min-h-[150px] sm:min-w-[100px] sm:min-h-[100px] top-pick-card-shadow">
 							<Image
 								src="/images/tech-icon-4.svg"
 								className="relative top-0 bottom-0 left-0 right-0 m-auto"

@@ -11,23 +11,23 @@ const MyButton: React.FC<ButtonElement> = ({
 	buttonType,
 	buttonStyles,
 }) => {
-	const getButtonStyles = (type: string) => {
+	const getButtonTypes = (type: string) => {
 		switch (type) {
 			case 'primary':
 				return 'text-[20px] font-semibold font-secondary leading-[24px] tracking-[-3%] text-left max-w-[220px] height-[56px] py-[16px] px-[40px] rounded-[16px] bg-[#a274ff80] text-[#ffffff] hover:bg-[#120037]';
 			case 'secondary':
-				return 'text-[12px] font-semibold font-secondary leading-[20px] tracking-[-1%] w-full height-[40px] py-[10px] text-center  rounded-[10px] text-[#000000]';
+				return 'text-[12px] sm:text-[10px] font-semibold font-secondary leading-[20px] sm:leading-[12px] tracking-[-1%] w-full sm:w-auto h-[40px] sm:h-[31px] sm:py-[10px] sm:px-3 text-center  rounded-[10px] text-[#000000]';
 			case 'accent':
 				return 'text-[10px] font-semibold font-secondary text-center leading-[20px] tracking-[-1%] w-full height-[30px] py-1 mb-[6px] rounded-[6px] text-[#000000]';
 			case 'terterry':
-				return 'text-[16px] font-semibold font-secondary text-center leading-[24px] tracking-[-3%] py-2   w-[132.86px] height-[40px] py-1 mb-[6px] rounded-[10px] ';
+				return 'text-[16px] sm:text-[14px] font-semibold font-secondary text-center leading-[24px] sm:leading-[14px] tracking-[-3%] py-2 sm:py-[10px] w-[132.86px] sm:w-[104px] height-[40px] sm:h-[34px] rounded-[8px]';
 			default:
-				return 'bg-gray-500'; // Default style
+				return 'bg-gray-500';
 		}
 	};
 
 	return (
-		<button className={` ${buttonStyles} ${getButtonStyles(buttonType)}`}>
+		<button className={` ${buttonStyles} ${getButtonTypes(buttonType)}`}>
 			{buttonText}
 		</button>
 	);

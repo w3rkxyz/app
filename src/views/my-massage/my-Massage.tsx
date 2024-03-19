@@ -16,33 +16,34 @@ const MyMessageOpenChat = () => {
 
 	const handleSendMessage = () => {
 		if (inputMessage.trim() !== '') {
-			// Create a new message object
 			const newMessage = {
 				id: messages.length + 1,
-				sender: 'User', // You can replace with the actual sender's name or ID
+				sender: 'User',
 				text: inputMessage,
 			};
 
-			// Update the messages state with the new message
 			setMessages([...messages, newMessage]);
 
-			// Clear the input field after sending the message
 			setInputMessage('');
 		}
 	};
 
 	return (
-
-		<div className="pt-[205px] sm:pb-5 mb-[200px]">
+		<div className="pt-[181px] sm:pt-[90px] sm:pb-5 mb-[112px] sm:mb-[230px]">
 			<div className="custom-container">
 				<div className="flex sm:flex-col items-center gap-[25px] h-[675px]">
-					<div className="left-panel-message-section w-[250px] flex-shrink-0 sm:w-full h-full sm:h-[428px] overflow-y-auto bg-[#FFFFFF]/50 rounded-[20px] px-[23px] pt-[26px] pb-[28px] shadow-2xl shadow-[#000000]/50 ">
-
+					<div className="left-panel-message-section w-[250px] flex-shrink-0 sm:w-full sm:h-[428px] overflow-auto bg-[#FFFFFF]/50 rounded-[20px] px-[23px] pt-[26px] pb-[28px] shadow-2xl shadow-[#000000]/50 ">
 						<h2 className="text-[20px] text-center font-semibold leading-5 tracking-[-1%] font-secondary pb-[15px]">
-
 							Messages
 						</h2>
-						<div className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-[10px] bg-white rounded-[20px]">
+						<div className="mb-[10px]">
+							<input
+								type="text"
+								placeholder="[search]"
+								className="h-[31px] sm:w-full rounded-[8px] pl-2 font-secondary font-medium text-[14px] leading-[20px] tracking-[-1%] text-[#00000080] "
+							/>
+						</div>
+						<div className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-2 bg-white rounded-[20px]">
 							<div className="-mt-1">
 								<Image
 									src="/images/head.svg"
@@ -63,7 +64,7 @@ const MyMessageOpenChat = () => {
 								</div>
 							</div>
 						</div>
-						<div className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-[10px] bg-white rounded-[20px]">
+						<div className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-2 bg-white rounded-[20px]">
 							<div className="-mt-1">
 								<Image
 									src="/images/head.svg"
@@ -84,7 +85,7 @@ const MyMessageOpenChat = () => {
 								</div>
 							</div>
 						</div>
-						<div className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-[10px] bg-white rounded-[20px]">
+						<div className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-2 bg-white rounded-[20px]">
 							<div className="-mt-1">
 								<Image
 									src="/images/head.svg"
@@ -105,7 +106,7 @@ const MyMessageOpenChat = () => {
 								</div>
 							</div>
 						</div>
-						<div className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-[10px] bg-white rounded-[20px]">
+						<div className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-2 bg-white rounded-[20px]">
 							<div className="-mt-1">
 								<Image
 									src="/images/head.svg"
@@ -126,7 +127,7 @@ const MyMessageOpenChat = () => {
 								</div>
 							</div>
 						</div>
-						<div className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-[10px] bg-white rounded-[20px]">
+						<div className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-2 bg-white rounded-[20px]">
 							<div className="-mt-1">
 								<Image
 									src="/images/head.svg"
@@ -147,7 +148,7 @@ const MyMessageOpenChat = () => {
 								</div>
 							</div>
 						</div>
-						<div className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-[10px] bg-white rounded-[20px]">
+						<div className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-2 bg-white rounded-[20px]">
 							<div className="-mt-1">
 								<Image
 									src="/images/head.svg"
@@ -168,7 +169,7 @@ const MyMessageOpenChat = () => {
 								</div>
 							</div>
 						</div>
-						<div className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-[10px] bg-white rounded-[20px]">
+						<div className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-2 bg-white rounded-[20px]">
 							<div className="-mt-1">
 								<Image
 									src="/images/head.svg"
@@ -191,13 +192,13 @@ const MyMessageOpenChat = () => {
 						</div>
 					</div>
 
-					<div className="right-panel-input-section flex-1 sm:w-ful bg-[#FFFFFF]/50 h-full sm:h-[428px] relative rounded-[20px] p-[27px] sm:p-4 shadow-2xl shadow-[#000000]/25 flex flex-col justify-between">
+					<div className="right-panel-input-section flex-1 sm:w-ful bg-[#FFFFFF]/50 h-full sm:min-h-[428px] sm:max-h-[428px] relative rounded-[20px] p-[27px] sm:p-4 shadow-2xl shadow-[#000000]/25 flex flex-col justify-between">
 						<div className="">
 							<input
 								type="text"
-								className="rounded-[10px] pl-3 text py-4 sm:py-2 w-full text-[#000000] font-semibold text-[14px] font-secondary leading-[20px] tracking-[-1%]"
+								className="h-[50px] sm:h-[46px] rounded-[10px] pl-3 text py-4 sm:py-2 w-full text-[#000000] font-semibold text-[14px] font-secondary leading-[20px] tracking-[-1%]"
 							/>
-							<button className="text-[14px] font-secondary font-semibold leading-[20px] tracking-[-1%] absolute right-[3.6%] md:right-[6.5%] sm:right-[5%] top-[4.6%] sm:top-[10%] bg-[#A274FF]/50 text-white  py-3 sm:py-[6px] px-7 sm:px-3 rounded-[10px]">
+							<button className="text-[14px] sm:text-[10px] h-[38px] sm:h-[26px] font-secondary font-semibold leading-[20px] sm:leading-[14px] tracking-[-1%] sm:tracking-[-3%] absolute right-[3.6%] md:right-[7.5%] sm:right-[7%] top-[4.9%] sm:top-[6.2%] bg-[#A274FF]/50 text-white  py-[9px] sm:py-[6px] px-[14px] sm:px-[10px] rounded-[6px]">
 								Enter Contract
 							</button>
 						</div>
@@ -223,7 +224,6 @@ const MyMessageOpenChat = () => {
 													</p>
 												</div>
 											</div>
-
 										</div>
 									</div>
 								))}
@@ -237,16 +237,25 @@ const MyMessageOpenChat = () => {
 									onChange={(e) =>
 										setInputMessage(e.target.value)
 									}
-									className="rounded-[10px] py-4  sm:py-2 pl-3 pr-[200px] w-full text-black font-semibold text-[14px]"
+									className="rounded-[10px] py-4 h-[50px] sm:h-[48px] sm:py-2 pl-3 pr-[200px] w-full text-black font-semibold text-[14px]"
 								/>
-								<button className="absolute right-[12%] md:right-[22%] sm:right-[20%] top-[9.2%] sm:top-[10.5%]  w-[43px] sm:w-[30px] h-[43px] sm:h-[30px] sm:p-1 border-[2px] rounded-[10px] border-[#000000]/50 flex justify-center items-center">
+								<button className="w-[38px] sm:w-[24px] h-[38px] sm:h-[24px] absolute right-[9.3%] md:right-[23%] sm:right-[17%] top-[12%] sm:top-[20%] sm:p-1 border-[2px] sm:border-none rounded-[6px] border-[#000000]/50 flex justify-center items-center">
 									<DownloadIcon />
 								</button>
 								<button
-									className="text-[14px] font-secondary font-semibold leading-[20px] tracking-[-1%] absolute right-[.5%] md:right-[1.5%] sm:right-[1%] top-[8.5%] sm:top-[10.5%] bg-[#A274FF]/50 text-white  py-3 sm:py-[6px] px-7 sm:px-3 rounded-[10px]"
+									className="text-[14px] h-[38px]  sm:w-[40px] sm:h-[40px] absolute right-[.8%] md:right-[1.5%] sm:right-[3%] top-[12%] sm:top-[9%] font-secondary font-semibold leading-[20px] tracking-[-1%] bg-[#A274FF]/50 text-white  py-[9px] sm:py-[10px] px-[12px] sm:px-3 rounded-[6px] flex items-center gap-2"
 									onClick={handleSendMessage}
 								>
-									Send
+									<span className="inline sm:hidden">
+										Send
+									</span>
+									<Image
+										src="/images/arrow-right.svg"
+										alt="right arrow"
+										className=""
+										width={14}
+										height={20}
+									/>
 								</button>
 							</div>
 						</div>

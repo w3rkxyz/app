@@ -11,7 +11,7 @@ const CtaSection = () => {
 					</h2>
 				</div>
 				<div className="cta-wrapper">
-					<div className="cta-content-box py-[64px] px-[75px] sm:py-8 sm:px-10 rounded-[30px] bg-white-gray max-w-[643px] mx-auto">
+					<div className="cta-content-box top-pick-card-shadow py-[64px] px-[75px] sm:py-8 sm:px-10 rounded-[30px] bg-white-gray max-w-[643px] mx-auto">
 						<p className="text-[18px] sm:text-[16px] text-center font-primary font-semibold leading-[1.3] text-dark mb-5">
 							Collaborate with us at w3rk to unlock exciting
 							possibilities in the Web 3.0 space.

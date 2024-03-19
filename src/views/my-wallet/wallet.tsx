@@ -3,11 +3,24 @@ import Sidebar from '@/components/reusable/Sidebar/Sidebar';
 
 const MyWallet = () => {
 	return (
-		<div className="find-work-section mt-[181px] pb-10">
-			<div className="custom-container mt-7">
+		<div className="find-work-section mt-[181px] sm:mt-20 mb-[115px]">
+			<div className="custom-container">
 				<div className="my-wallet-section flex sm:flex-col justify-between items-center gap-6">
-					<div>
+					<div className="sm:bg-[#FFFFFF] sm:px-4 sm:rounded-[16px] sm:modal-shadow">
 						<Sidebar height="675px" />
+					</div>
+
+					<div className="hidden sm:block mt-4 mb-7">
+						<div className="flex justify-center items-center">
+							<div className="bg-white rounded-[10px] flex justify-between p-1">
+								<button className="bg-[#A274FF80] text-white py-3 rounded-[10px] px-8 text-[14px] sm:text-[12px] font-semibold font-secondary leading-[20px] tracking-[-1%] ">
+									Transactions
+								</button>
+								<button className="bg-white py-3 rounded-[10px] px-8 text-[14px] font-semibold font-secondary leading-[20px] tracking-[-1%]">
+									Balance
+								</button>
+							</div>
+						</div>
 					</div>
 
 					<div className="h-[675px] sm:h-[197px] w-[792px] sm:w-full bg-white rounded-[20px] p-[20px]">
