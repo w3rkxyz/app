@@ -27,12 +27,12 @@ const HomeBanner = () => {
 
 						{/* modal image container 3 */}
 						<div className="modal-item-3 w-[132px] h-[132px] absolute right-0 sm:top-[-96px] sm:right-0 sm:w-[80px] sm:h-[80px] bg-[#A274FF1A] rounded-[32px] sm:rounded-[19px] flex justify-center items-center banner-modal-shadow">
-							<div className="mt-[-10px]">
+							<div>
 								<div className="flex justify-center items-center mb-[8px] sm:mb-1">
 									<Image
 										src="/images/banner-modal-3.svg"
 										alt="banner modal image items"
-										className="sm:w-[34px] h-[32px] "
+										className="sm:w-[34px] sm:h-[32px] "
 										width={62}
 										height={62}
 									/>
@@ -50,7 +50,7 @@ const HomeBanner = () => {
 							<br />
 							Freelancing Marketplace
 						</h1>
-						<p className="banner-desc max-w-[570px] sm:mb-6 mx-auto mb-[44px] text-[18px] text-center font-semibold sm:font-normal sm:text-[14px] font-secondary tracking-[.01em] leading-[24px] sm:leading-[19.5px]">
+						<p className="banner-desc max-w-[570px] sm:mb-6 mx-auto mb-[44px] text-[18px] text-center font-semibold sm:font-normal sm:text-[14px] font-secondary tracking-[.01em] leading-[24px] sm:leading-[19.5px] text-[#00000080]">
 							At w3rk we are on a mission to to reshape the
 							freelancing and hiring landscape for the Web 3.0
 							world, proudly bridging global businesses with
@@ -63,7 +63,7 @@ const HomeBanner = () => {
 					</div>
 					<div className="banner-modal banner-modal-bottom">
 						{/* modal image container 4 */}
-						<div className="modal-item-4 w-[264px] h-[264px] absolute right-0 bottom-[-141px] sm:bottom-[-182px] sm:right-[-20px] sm:w-[158px] sm:h-[158px] sm:object-contain bg-[#A274FF1A] rounded-[40px] flex justify-center items-center banner-modal-shadow">
+						<div className="modal-item-4 w-[264px] h-[264px] absolute right-0 bottom-[-141px] sm:bottom-[-182px] sm:right-[0px] sm:w-[158px] sm:h-[158px] sm:object-contain bg-[#A274FF1A] rounded-[40px] sm:rounded-[24px] flex justify-center items-center banner-modal-shadow">
 							<div className="">
 								<div className="flex justify-center items-center mb-[19px] sm:mb-[14px]">
 									<Image
@@ -81,7 +81,7 @@ const HomeBanner = () => {
 						</div>
 
 						{/* modal image container 5 */}
-						<div className="modal-item-5 w-[196px] h-[196px] absolute left-[100px] bottom-[-161px] sm:bottom-[-245px] sm:w-[117px] sm:h-[117px] sm:object-contain sm:left-[55px] bg-white rounded-[32px] sm:rounded-[19px] flex justify-center items-center banner-modal-shadow">
+						<div className="modal-item-5 w-[196px] h-[196px] absolute left-[100px] bottom-[-161px] sm:bottom-[-275px] sm:w-[117px] sm:h-[117px] sm:object-contain sm:left-[55px] bg-white rounded-[32px] sm:rounded-[19px] flex justify-center items-center banner-modal-shadow">
 							<div>
 								<div className="flex justify-center items-center mb-[16px] sm:mb-[10px]">
 									<Image

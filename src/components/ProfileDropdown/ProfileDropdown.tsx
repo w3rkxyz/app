@@ -2,9 +2,9 @@ import React from 'react';
 
 const ProfileDropdown = () => {
 	return (
-		<div className="mt-[105px]">
-			<div className="custom-container our-technology-cards-item">
-				<div className="w-[201px] h-[273px] card-modal rounded-[20px] pt-[12px] px-[17px] pb-[19px] ">
+		<div className="profile-dropdown-section">
+			<div className="custom-container">
+				<div className="w-[201px] h-[273px] top-pick-card-shadow rounded-[20px] pt-[12px] px-[17px] pb-[19px] bg-[#EFEFEF]">
 					<p className="text-[14px] font-medium font-secondary leading-[24px] tracking-[-3%] text-[#000000] mb-[9px]">
 						@user.lens
 					</p>

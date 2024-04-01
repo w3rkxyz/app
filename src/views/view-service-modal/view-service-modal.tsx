@@ -2,13 +2,24 @@ import MyButton from '@/components/reusable/Button/Button';
 import CloseIcon from '@/icons/CloseIcon';
 import Sidebar from '@/components/reusable/Sidebar/Sidebar';
 
-const ViewServiceModal = () => {
+type Props = {
+	closeJobCardModal: () => void;
+};
+
+const ViewServiceModal = ({ closeJobCardModal }: Props) => {
+	const handleClose = () => {
+		console.log('Closing modal');
+		closeJobCardModal();
+	};
 	return (
-		<div className="find-work-section pt-[184px] sm:pt-20 pb-10">
+		<div className="view-service-section">
 			<div className="custom-container">
 				<div className="flex justify-center items-center">
-					<div className="w-[1110px] modal-shadow pt-[47px] pb-[65px] sm:py-5 pl-[63px] pr-[78px] md:p-5 sm:px-5 rounded-[20px] relative">
-						<div className="w-[35px] h-[35px] sm:w-4 sm:h-4 absolute right-[23px] sm:right-[30px] top-[23px] sm:top-[10px]">
+					<div className="bg-[#EFEFEF] w-[1110px] pt-[47px] pb-[65px] sm:py-5 pl-[63px] pr-[78px] md:p-5 sm:px-5 rounded-[20px] relative">
+						<div
+							onClick={handleClose}
+							className="w-[35px] h-[35px] sm:w-4 sm:h-4 absolute right-[23px] sm:right-[30px] top-[23px] sm:top-[10px] cursor-pointer"
+						>
 							<CloseIcon />
 						</div>
 

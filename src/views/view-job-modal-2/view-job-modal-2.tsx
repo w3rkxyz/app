@@ -6,15 +6,26 @@ import MyButton from '@/components/reusable/Button/Button';
 import CloseIcon from '@/icons/CloseIcon';
 import Sidebar from '@/components/reusable/Sidebar/Sidebar';
 
-const ViewJobModal2 = () => {
+type Props = {
+	closeJobCardModal: () => void;
+};
+
+const ViewJobModal2 = ({ closeJobCardModal }: Props) => {
 	return (
-		<div className="find-work-section pt-[184px] sm:pt-20 pb-10">
+		<div className="view-job-modal-2-section">
 			<div className="custom-container">
 				<div className="flex justify-center items-center">
-					<div className="w-[1110px] pl-[63px] pr-[78px] modal-shadow md:p-5 pt-[47px] pb-[65px] sm:py-5  sm:px-5 rounded-[20px] relative">
-						<div className="w-[35px] sm:w-[16px] h-[35px] sm:h-[16px] absolute right-[23px] sm:right-[30px] top-[23px] sm:top-[10px]">
-							<CloseIcon />
-						</div>
+					<div className="bg-[#EFEFEF] w-[1110px] pl-[63px] pr-[78px] md:p-5 pt-[47px] pb-[65px] sm:py-5  sm:px-5 rounded-[20px] relative">
+						<button className="w-[35px] sm:w-[16px] h-[35px] sm:h-[16px] absolute right-[23px] sm:right-[30px] top-[23px] sm:top-[10px] cursor-pointer">
+							{/* <CloseIcon /> */}
+							<Image
+								onClick={closeJobCardModal}
+								src="images/Close.svg"
+								alt="close icon"
+								width={35}
+								height={35}
+							/>
+						</button>
 						<div className="view-job-modal2-section flex sm:flex-col justify-between">
 							<div>
 								<Sidebar height="auto" />

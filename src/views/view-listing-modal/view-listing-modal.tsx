@@ -1,18 +1,34 @@
+'use client';
+
 import React from 'react';
-import Image from 'next/image';
 
 import MyButton from '@/components/reusable/Button/Button';
 
 import CloseIcon from '@/icons/CloseIcon';
 import Sidebar from '@/components/reusable/Sidebar/Sidebar';
+import Link from 'next/link';
 
-const ViewListingModal = () => {
+type Props = {
+	closeTalentModal?: () => void;
+	closeJobCardModal?: () => void;
+};
+
+const ViewListingModal = ({ closeTalentModal, closeJobCardModal }: Props) => {
 	return (
-		<div className="view-listing-modal-section pt-[184px] sm:pt-20 pb-10">
+		<div className="view-listing-modal-section">
 			<div className="custom-container sm:mt-0">
 				<div className="flex justify-center items-center">
-					<div className="w-[1110px] pl-[63px] pr-[78px] modal-shadow pt-[47px] pb-[65px] sm:py-5 md:p-5 sm:px-5 rounded-[20px] relative">
-						<div className="w-[35px] h-[35px] sm:w-4 sm:h-4 absolute right-[23px] sm:right-[30px] top-[23px] sm:top-[10px]">
+					<div className="w-[1110px] bg-[#EFEFEF] pl-[63px] pr-[78px] pt-[47px] pb-[65px] md:p-5 sm:p-5 rounded-[20px] relative">
+						<div
+							onClick={() => {
+								if (closeTalentModal) {
+									closeTalentModal();
+								} else if (closeJobCardModal) {
+									closeJobCardModal();
+								}
+							}}
+							className="w-[35px] h-[35px] sm:w-4 sm:h-4 absolute right-[23px] sm:right-[30px] top-[23px] sm:top-[10px]"
+						>
 							<CloseIcon />
 						</div>
 
@@ -122,16 +138,20 @@ const ViewListingModal = () => {
 
 						<div className="sm:mt-6">
 							<div className="flex justify-end sm:justify-center items-center -mt-10 sm:-mt-0">
-								<MyButton
-									buttonText="View Profile"
-									buttonType="terterry"
-									buttonStyles="bg-white text-[#000000] mr-[14.14px]"
-								/>
-								<MyButton
-									buttonText="Message"
-									buttonType="terterry"
-									buttonStyles="bg-[#A274FF]/50 text-white"
-								/>
+								<Link href="/other-user-follow">
+									<MyButton
+										buttonText="View Profile"
+										buttonType="terterry"
+										buttonStyles="bg-white text-[#000000] mr-[14.14px]"
+									/>
+								</Link>
+								<Link href="/my-message">
+									<MyButton
+										buttonText="Message"
+										buttonType="terterry"
+										buttonStyles="bg-[#A274FF]/50 text-white"
+									/>
+								</Link>
 							</div>
 						</div>
 					</div>

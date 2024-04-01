@@ -9,7 +9,7 @@ const Sidebar = ({ height }: height) => {
 		<div>
 			<div className="sm:hidden">
 				<div
-					className="w-[250px] flex-shrink-0 sm:w-full sm:h-auto bg-[#FFFFFF]/50 modal-shadow rounded-[20px] py-[26px] px-[25px]"
+					className="w-[250px] flex-shrink-0 sm:w-full sm:h-auto bg-[#FFFFFF] rounded-[20px] py-[26px] px-[25px]"
 					style={{ height: height }}
 				>
 					<div className="flex justify-center items-center">
@@ -166,7 +166,7 @@ const Sidebar = ({ height }: height) => {
 							<p className="text-[14px] font-semibold mb-2  font-secondary leading-[20px] tracking-[-1%] text-[#000000]">
 								Job Title
 							</p>
-							<div className="flex flex-wrap gap-2 items-center">
+							<div className="flex flex-wrap items-center gap-[17px]">
 								<div>
 									<p className="text-[10px] font-semibold text-center font-secondary leading-[10px] tracking-[-1%] text-[#000000] mb-1">
 										Following
@@ -202,40 +202,40 @@ const Sidebar = ({ height }: height) => {
 									</ul>
 								</div>
 								<div className="">
-									<p className="text-[14px] font-semibold font-secondary leading-[20px] tracking-[-1%] text-[#000000]">
+									<p className="text-[10px] font-semibold font-secondary leading-[10px] tracking-[-1%] text-[#000000]">
 										Accepted Tokens
 									</p>
 									<ul className="socials-widgets gap-[5px] flex mt-1">
 										<li className="socials-widgets-items">
 											<a href="/">
 												<Image
-													className="w-[28px] h-[28px] bg-[#F7931A] p-1 rounded-full"
+													className="w-[20px] h-[20px] bg-[#F7931A] p-1 rounded-full"
 													src="/images/token-1.svg"
 													alt="socials icons images"
-													width={28}
-													height={28}
+													width={20}
+													height={20}
 												/>
 											</a>
 										</li>
 										<li className="socials-widgets-items">
 											<a href="/">
 												<Image
-													className="w-[28px]  h-[28px]"
+													className="w-[20px]  h-[20px]"
 													src="/images/token2.svg"
 													alt="socials icons images"
-													width={28}
-													height={28}
+													width={20}
+													height={20}
 												/>
 											</a>
 										</li>
 										<li className="socials-widgets-items">
 											<a href="/">
 												<Image
-													className="w-[28px]  h-[28px]"
+													className="w-[20px]  h-[20px]"
 													src="/images/token3.svg"
 													alt="socials icons images"
-													width={28}
-													height={28}
+													width={20}
+													height={20}
 												/>
 											</a>
 										</li>

@@ -1,5 +1,4 @@
 import Image from 'next/image';
-import React from 'react';
 
 interface PostJobModalProps {
 	title: string;
@@ -18,6 +17,7 @@ interface PostJobModalProps {
 	portfolioLabel: string;
 	portfolioPlaceholder: string;
 	buttonText: string;
+	closeModal?: () => void;
 }
 
 const PostListModal = ({
@@ -35,30 +35,35 @@ const PostListModal = ({
 	portfolioLabel,
 	portfolioPlaceholder,
 	buttonText,
+	closeModal,
 }: PostJobModalProps) => {
 	return (
-		<div className="mt-[170px] sm:mt-[99px] mb-[56px]">
+		<div>
 			<div className="custom-container">
-				<div className="shadow-2xl shadow-[#000000]/25 max-w-[1110px] w-full mx-auto relative px-[108px] sm:px-5 py-[28px] sm:py-5 rounded-[20px] ">
+				<div className="bg-[#EFEFEF] max-w-[1110px] w-full mx-auto relative px-[108px] md:px-5 sm:px-5 py-[28px] sm:py-5 rounded-[20px] ">
 					<div className="absolute top-[10px] right-[10px] sm:top-[10px]">
 						<div className="sm:hidden">
-							<Image
-								src="/images/close.svg"
-								alt="close icon"
-								width={35}
-								height={35}
-							/>
+							<button onClick={closeModal}>
+								<Image
+									src="/images/Close.svg"
+									alt="close icon"
+									width={35}
+									height={35}
+								/>
+							</button>
 						</div>
 						<div className="hidden sm:block">
-							<Image
-								src="/images/close-2.svg"
-								alt="close icon"
-								width={16}
-								height={16}
-							/>
+							<button onClick={closeModal}>
+								<Image
+									src="/images/close-2.svg"
+									alt="close icon"
+									width={16}
+									height={16}
+								/>
+							</button>
 						</div>
 					</div>
-					<h2 className="text-[36px] sm:text-[25px] font-semibold font-secondary leading-[40xp] tracking-[-4%] text-center ">
+					<h2 className="text-[36px] sm:text-[25px] font-semibold font-secondary leading-[40xp] tracking-[-4%] text-center text-[#000000]">
 						{title}
 					</h2>
 					<div className="grid grid-cols-2 sm:grid-cols-1 gap-10 sm:gap-0">

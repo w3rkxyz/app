@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import DownloadIcon from '@/icons/DownloadIcon';
+import CreateContractModal from '../create-contract-modal/create-contract-modal';
 
 interface Message {
 	id: number;
@@ -13,6 +14,16 @@ interface Message {
 const MyMessageOpenChat = () => {
 	const [messages, setMessages] = useState<Message[]>([]);
 	const [inputMessage, setInputMessage] = useState('');
+
+	const [isContractModalOpen, setIsContractModalOpen] = useState(false);
+
+	const handleEnterContractClick = () => {
+		setIsContractModalOpen(true);
+	};
+
+	const handleCloseModal = () => {
+		setIsContractModalOpen(false);
+	};
 
 	const handleSendMessage = () => {
 		if (inputMessage.trim() !== '') {
@@ -32,7 +43,7 @@ const MyMessageOpenChat = () => {
 		<div className="pt-[181px] sm:pt-[90px] sm:pb-5 mb-[112px] sm:mb-[230px]">
 			<div className="custom-container">
 				<div className="flex sm:flex-col items-center gap-[25px] h-[675px]">
-					<div className="left-panel-message-section w-[250px] flex-shrink-0 sm:w-full sm:h-[428px] overflow-auto bg-[#FFFFFF]/50 rounded-[20px] px-[23px] pt-[26px] pb-[28px] shadow-2xl shadow-[#000000]/50 ">
+					<div className="left-panel-message-section w-[250px] flex-shrink-0 sm:w-full sm:h-[428px] overflow-auto bg-[#FFFFFF]/50 rounded-[20px] px-[23px] pt-[26px] pb-[28px]">
 						<h2 className="text-[20px] text-center font-semibold leading-5 tracking-[-1%] font-secondary pb-[15px]">
 							Messages
 						</h2>
@@ -192,15 +203,29 @@ const MyMessageOpenChat = () => {
 						</div>
 					</div>
 
-					<div className="right-panel-input-section flex-1 sm:w-ful bg-[#FFFFFF]/50 h-full sm:min-h-[428px] sm:max-h-[428px] relative rounded-[20px] p-[27px] sm:p-4 shadow-2xl shadow-[#000000]/25 flex flex-col justify-between">
-						<div className="">
-							<input
-								type="text"
-								className="h-[50px] sm:h-[46px] rounded-[10px] pl-3 text py-4 sm:py-2 w-full text-[#000000] font-semibold text-[14px] font-secondary leading-[20px] tracking-[-1%]"
-							/>
-							<button className="text-[14px] sm:text-[10px] h-[38px] sm:h-[26px] font-secondary font-semibold leading-[20px] sm:leading-[14px] tracking-[-1%] sm:tracking-[-3%] absolute right-[3.6%] md:right-[7.5%] sm:right-[7%] top-[4.9%] sm:top-[6.2%] bg-[#A274FF]/50 text-white  py-[9px] sm:py-[6px] px-[14px] sm:px-[10px] rounded-[6px]">
+					<div className="right-panel-input-section flex-1 sm:w-full bg-[#FFFFFF]/50 h-full sm:min-h-[428px] sm:max-h-[428px] rounded-[20px] p-[27px] sm:p-4 flex flex-col justify-between">
+						<div className="bg-white h-[50px] sm:h-[46px] rounded-[10px] pl-3 text py-4 sm:py-2 w-full flex justify-between items-center">
+							<p className="text-[#000000] font-semibold text-[14px] font-secondary leading-[20px] tracking-[-1%]">
+								adam.lens
+							</p>
+							<button
+								onClick={handleEnterContractClick}
+								className="text-[14px] sm:text-[10px] h-[38px] sm:h-[26px] font-secondary font-semibold leading-[20px] sm:leading-[14px] tracking-[-1%] sm:tracking-[-3%] bg-[#A274FF]/50 text-white mr-2 py-[9px] sm:py-[6px] px-[14px] sm:px-[10px] rounded-[6px]"
+							>
 								Enter Contract
 							</button>
+
+							{isContractModalOpen && (
+								<div className="fixed inset-0 sm:w-full z-50 overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center">
+									<div className="w-full">
+										<CreateContractModal
+											closeContractModal={
+												handleCloseModal
+											}
+										/>
+									</div>
+								</div>
+							)}
 						</div>
 
 						<div className="overflow-y-auto overflow-x-hidden">
@@ -237,26 +262,30 @@ const MyMessageOpenChat = () => {
 									onChange={(e) =>
 										setInputMessage(e.target.value)
 									}
-									className="rounded-[10px] py-4 h-[50px] sm:h-[48px] sm:py-2 pl-3 pr-[200px] w-full text-black font-semibold text-[14px]"
+									className="rounded-[10px] py-4 !h-[50px] sm:h-[48px] sm:py-2 pl-3 pr-[200px] w-full text-black font-semibold text-[14px]"
 								/>
-								<button className="w-[38px] sm:w-[24px] h-[38px] sm:h-[24px] absolute right-[9.3%] md:right-[23%] sm:right-[17%] top-[12%] sm:top-[20%] sm:p-1 border-[2px] sm:border-none rounded-[6px] border-[#000000]/50 flex justify-center items-center">
-									<DownloadIcon />
-								</button>
-								<button
-									className="text-[14px] h-[38px]  sm:w-[40px] sm:h-[40px] absolute right-[.8%] md:right-[1.5%] sm:right-[3%] top-[12%] sm:top-[9%] font-secondary font-semibold leading-[20px] tracking-[-1%] bg-[#A274FF]/50 text-white  py-[9px] sm:py-[10px] px-[12px] sm:px-3 rounded-[6px] flex items-center gap-2"
-									onClick={handleSendMessage}
-								>
-									<span className="inline sm:hidden">
-										Send
-									</span>
-									<Image
-										src="/images/arrow-right.svg"
-										alt="right arrow"
-										className=""
-										width={14}
-										height={20}
-									/>
-								</button>
+								<div className="absolute top-[6px] right-[8px] sm:top-[5px]">
+									<div className="flex justify-end items-center gap-2">
+										<button className="w-[38px] sm:w-[24px] h-[38px] sm:h-[24px]  sm:p-1 border-[2px] sm:border-none rounded-[6px] border-[#000000]/50 flex justify-center items-center">
+											<DownloadIcon />
+										</button>
+										<button
+											className="text-[14px] h-[38px]  sm:w-[40px] sm:h-[40px]  font-secondary font-semibold leading-[20px] tracking-[-1%] bg-[#A274FF]/50 text-white  py-[9px] sm:py-[10px] px-[12px] sm:px-3 rounded-[6px] flex items-center gap-2"
+											onClick={handleSendMessage}
+										>
+											<span className="inline sm:hidden">
+												Send
+											</span>
+											<Image
+												src="/images/arrow-right.svg"
+												alt="right arrow"
+												className=""
+												width={14}
+												height={20}
+											/>
+										</button>
+									</div>
+								</div>
 							</div>
 						</div>
 					</div>

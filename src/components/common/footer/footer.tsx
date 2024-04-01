@@ -5,8 +5,8 @@ const Footer = () => {
 	return (
 		<footer className="footer-section pb-[70px] sm:pb-[30px] sm:pt-0">
 			<div className="custom-container">
-				<div className="footer-wrapper flex items-center">
-					<p className="foot-copyright-text ml-auto sm:ml-0 font-primary font-semibold text-[12px] text-dark-gray">
+				<div className="footer-wrapper flex  items-center">
+					<p className="foot-copyright-text text-center ml-auto pl-[140px] sm:pl-0 md:pl-[75px] sm:ml-0 font-primary font-semibold text-[12px] text-dark-gray">
 						2024 w3rk. All Rights Reserved.
 					</p>
 					<ul className="socials-widgets ml-auto flex items-center gap-[17px] sm:gap-[11px]">

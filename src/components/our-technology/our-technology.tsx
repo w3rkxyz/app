@@ -40,9 +40,9 @@ const OurTechnology = () => {
 							/>
 						</div>
 						<p className="tect-card-desc text-left sm:text-center">
-							Create your Web 3.0 identity effortlessly via Lens
-							where you can showcase your expertise and
-							experience.
+							List your services or post a job directly on the
+							blockchain, creating a strong foundation for
+							fruitful collaborations on-chain.
 						</p>
 					</div>
 					<div className="our-technology-cards-item sm:flex-col sm:gap-4 flex items-center gap-[14px] max-w-[864px] mx-auto mb-[18px] sm:mb-10">
@@ -56,9 +56,9 @@ const OurTechnology = () => {
 							/>
 						</div>
 						<p className="tect-card-desc text-left sm:text-center">
-							Create your Web 3.0 identity effortlessly via Lens
-							where you can showcase your expertise and
-							experience.
+							Experience secure and transparent payments,
+							freelancers set their rates and organisations pay
+							seamlessly in cryptocurrency.
 						</p>
 					</div>
 					<div className="our-technology-cards-item sm:flex-col sm:gap-4 flex items-center gap-[14px] max-w-[864px] mx-auto">
@@ -72,9 +72,10 @@ const OurTechnology = () => {
 							/>
 						</div>
 						<p className="tect-card-desc text-left sm:text-center">
-							Create your Web 3.0 identity effortlessly via Lens
-							where you can showcase your expertise and
-							experience.
+							We ensure secure escrow services and efficient
+							dispute resolution, benefiting both parties.
+							Transactions are protected until obligations are
+							met, fostering trust and reliability for all.
 						</p>
 					</div>
 				</div>

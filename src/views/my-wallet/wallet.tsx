@@ -3,7 +3,7 @@ import Sidebar from '@/components/reusable/Sidebar/Sidebar';
 
 const MyWallet = () => {
 	return (
-		<div className="find-work-section mt-[181px] sm:mt-20 mb-[115px]">
+		<div className="find-work-section mt-[181px] sm:mt-[90px] mb-[115px] sm:mb-10">
 			<div className="custom-container">
 				<div className="my-wallet-section flex sm:flex-col justify-between items-center gap-6">
 					<div className="sm:bg-[#FFFFFF] sm:px-4 sm:rounded-[16px] sm:modal-shadow">

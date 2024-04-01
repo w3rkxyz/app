@@ -284,4 +284,13 @@
 	.find-work-message-section::-webkit-scrollbar {
 		width: 0px;
 	}
+
+	.payment::-webkit-scrollbar {
+		display: none;
+		width: 0;
+	}
+	.payment {
+		scrollbar-width: none;
+		scrollbar-color: white;
+	}
 }

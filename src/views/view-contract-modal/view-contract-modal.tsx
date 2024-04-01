@@ -16,9 +16,9 @@ const ViewContractModal = () => {
 								height={16}
 							/>
 						</div>
-						<div className="px-[97px] sm:px-[16px] md:px-[50px]">
+						<div className="px-[97px] sm:px-[16px] md:px-[50px] pb-[60px]">
 							<h2 className="text-[36px] sm:text-[16px] sm:font-bold font-semibold font-secondary leading-[40xp] sm:leading-[17.6px] tracking-[-4%] text-center pt-[47px] pb-[51px] sm:py-[16px]">
-								Create A Contract
+								Your Contract
 							</h2>
 							<div className="">
 								<div>
@@ -80,11 +80,6 @@ const ViewContractModal = () => {
 									</div>
 								</div>
 							</div>
-						</div>
-						<div className="flex justify-center items-center mt-[113px] md:mt-[50px] mb-[15px] sm:my-[16px]">
-							<button className="button-primary !px-16 flex justify-center items-center">
-								Create
-							</button>
 						</div>
 					</div>
 				</div>

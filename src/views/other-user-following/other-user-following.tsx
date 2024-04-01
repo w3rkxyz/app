@@ -1,17 +1,31 @@
-import React from 'react';
+'use client';
 
-import Sidebar from '@/components/reusable/Sidebar/Sidebar';
+import React, { useState } from 'react';
+
 import JobCard from '@/components/JobCard/JobCard';
 import Image from 'next/image';
+import ViewListingModal from '../view-listing-modal/view-listing-modal';
+import ViewJobModal from '../view-job-modal/view-job-modal';
+import Link from 'next/link';
 
 const OtherUserFollowing = () => {
+	const [selectedJobName, setSelectedJobName] = useState('');
+	const [isJobCardOpen, setIsJobCardOpen] = useState(false);
+
+	const handleJobCardOpen = (jobName: string) => {
+		setIsJobCardOpen(true);
+		setSelectedJobName(jobName);
+	};
+	const handleJobCardClose = () => {
+		setIsJobCardOpen(false);
+	};
 	return (
 		<div className="find-work-section pt-[105px] pb-10">
 			<div className="custom-container">
-				<div className="tags-section flex sm:flex-col justify-center items-center gap-[25px] mt-7">
+				<div className="tags-section flex sm:flex-col justify-center items-center md:items-start gap-[25px] mt-7">
 					<div>
 						<div className="sm:hidden">
-							<div className="w-[250px] h-[744px] flex-shrink-0 sm:w-full sm:h-auto bg-[#FFFFFF]/50 modal-shadow rounded-[20px] py-[26px] px-[25px]">
+							<div className="w-[250px] h-[744px] flex-shrink-0 sm:w-full sm:h-auto bg-[#FFFFFF] rounded-[20px] py-[26px] px-[25px]">
 								<div className="flex justify-center items-center">
 									<div className="w-[120px] h-[110px] bg-[#FFFFFF]/70 flex justify-center items-center rounded-[16px]">
 										<div>
@@ -63,7 +77,7 @@ const OtherUserFollowing = () => {
 										/>{' '}
 									</button>
 									<button className="w-[93px] h-[34px] rounded-[10px] bg-white text-[#000000] font-semibold font-secondary text-[14px] leading-[20px] tracking-[-1%] ">
-										Message
+										<Link href="/my-message">Message</Link>
 									</button>
 								</div>
 
@@ -158,11 +172,11 @@ const OtherUserFollowing = () => {
 
 						{/* small screen sidebar */}
 						<div className="hidden sm:block">
-							<div className="w-full h-auto rounded-[20px] py-[16px]">
+							<div className="w-full h-auto rounded-[20px] py-[16px] bg-[#FFFFFF] p-5 ">
 								<div className="flex gap-5">
 									<div className="flex justify-center items-center">
-										<div className="w-[120px] h-[110px] bg-[#FFFFFF]/70 flex justify-center items-center rounded-[16px]  left-avatar-shadow">
-											<div>
+										<div className="w-[120px] h-[110px] bg-[#FFFFFF]/70 flex justify-center items-center rounded-[16px]">
+											<div className="items-center">
 												<Image
 													src="/images/head.svg"
 													alt="head image"
@@ -170,7 +184,7 @@ const OtherUserFollowing = () => {
 													width={65}
 													height={65}
 												/>
-												<p className="text-[14px] font-semibold font-secondary leading-[20px] tracking-[-1%] ">
+												<p className="text-[14px] font-secondary text-center font-bold leading-[17.6px] ml-[-5px]">
 													adam.lens
 												</p>
 											</div>
@@ -181,7 +195,7 @@ const OtherUserFollowing = () => {
 										<p className="text-[14px] font-semibold mb-2  font-secondary leading-[20px] tracking-[-1%] text-[#000000]">
 											Job Title
 										</p>
-										<div className="flex flex-wrap gap-2 items-center">
+										<div className="flex flex-wrap gap-4 items-center">
 											<div>
 												<p className="text-[10px] font-semibold text-center font-secondary leading-[10px] tracking-[-1%] text-[#000000] mb-1">
 													Following
@@ -260,6 +274,20 @@ const OtherUserFollowing = () => {
 									</div>
 								</div>
 
+								<div className="flex items-center justify-center gap-[5px] my-[22px]">
+									<button className="w-[34px] h-[34px] rounded-[10px] bg-[#A274FF80] text-white font-semibold font-secondary text-[14px] leading-[20px] tracking-[-1%] flex justify-center items-center gap-[9px] ">
+										<Image
+											src="/images/man-icon.svg"
+											alt="man icon"
+											width={19}
+											height={19}
+										/>{' '}
+									</button>
+									<button className="w-[93px] h-[34px] rounded-[10px] bg-white text-[#000000] font-semibold font-secondary text-[14px] leading-[20px] tracking-[-1%] ">
+										Message
+									</button>
+								</div>
+
 								<div className="grid grid-cols-2 gap-4">
 									<div className="mt-3">
 										<p className="text-[12px] font-semibold font-secondary leading-[20px] tracking-[-1%] text-[#000000]">
@@ -294,25 +322,58 @@ const OtherUserFollowing = () => {
 
 					<div className="w-full">
 						<JobCard
+							jobName="Job Name"
 							jobIcon="/images/man.svg"
 							cardStyles={'!flex !justify-evenly !items-center'}
+							onCardClick={() => handleJobCardOpen('Job Name')}
 						/>
 						<JobCard
+							jobName="Service Name"
 							jobIcon="/images/man.svg"
 							cardStyles={'!flex !justify-evenly !items-center'}
+							onCardClick={() =>
+								handleJobCardOpen('Service Name')
+							}
 						/>
 						<JobCard
+							jobName="Job Name"
 							jobIcon="/images/man.svg"
 							cardStyles={'!flex !justify-evenly !items-center'}
+							onCardClick={() => handleJobCardOpen('Job Name')}
 						/>
 						<JobCard
+							jobName="Service Name"
 							jobIcon="/images/man.svg"
 							cardStyles={'!flex !justify-evenly !items-center'}
+							onCardClick={() =>
+								handleJobCardOpen('Service Name')
+							}
 						/>
 						<JobCard
+							jobName="Job Name"
 							jobIcon="/images/man.svg"
 							cardStyles={'!flex !justify-evenly !items-center'}
+							onCardClick={() => handleJobCardOpen('Job Name')}
 						/>
+						{isJobCardOpen && (
+							<div className="fixed inset-0 z-50 overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center">
+								<div className="w-full">
+									{selectedJobName === 'Service Name' ? (
+										<ViewListingModal
+											closeJobCardModal={
+												handleJobCardClose
+											}
+										/>
+									) : selectedJobName === 'Job Name' ? (
+										<ViewJobModal
+											closeJobCardModal={
+												handleJobCardClose
+											}
+										/>
+									) : null}
+								</div>
+							</div>
+						)}
 					</div>
 				</div>
 			</div>

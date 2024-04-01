@@ -4,11 +4,11 @@ import Sidebar from '@/components/reusable/Sidebar/Sidebar';
 
 const MyContracts = () => {
 	return (
-		<div className="find-work-section pt-[184px] sm:pt-20 pb-[114px]">
+		<div className="find-work-section pt-[184px] sm:pt-[90px] pb-[114px] sm:pb-10">
 			<div className="custom-container">
 				<div className="my-contracts-section flex sm:flex-col justify-between items-center gap-[25px]">
 					{/* sidebar content  */}
-					<div className="sm:bg-[#FFFFFF] sm:px-4 sm:rounded-[16px] sm:modal-shadow">
+					<div className="sm:bg-[#FFFFFF] sm:px-4 sm:rounded-[16px] ">
 						<Sidebar height="692px" />
 					</div>
 
