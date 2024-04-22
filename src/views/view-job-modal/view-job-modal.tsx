@@ -141,18 +141,18 @@ const ViewJobModal = ({ handleCloseModal, closeJobCardModal }: Props) => {
 
 						<div className="sm:mt-6">
 							<div className="flex justify-end sm:justify-center items-center -mt-10 sm:-mt-0">
-								<Link href="/other-user-follow">
+								<Link href="/other-user-following">
 									<MyButton
 										buttonText="View Profile"
-										buttonType="terterry"
-										buttonStyles="bg-white text-[#000000] mr-[14.14px]"
+										buttonType="tertiary"
+										buttonStyles="bg-white hover:bg-[#120037] hover:text-white duration-300 text-[#000000] mr-[14.14px]"
 									/>
 								</Link>
 								<Link href="/my-message">
 									<MyButton
 										buttonText="Message"
-										buttonType="terterry"
-										buttonStyles="bg-[#A274FF]/50 text-white"
+										buttonType="tertiary"
+										buttonStyles="bg-[#A274FF]/50 hover:bg-[#120037] duration-300 text-white"
 									/>
 								</Link>
 							</div>

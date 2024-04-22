@@ -1,5 +1,4 @@
 import Image from 'next/image';
-import React from 'react';
 
 type Props = {
 	closeContractModal: () => void;
@@ -7,9 +6,9 @@ type Props = {
 
 const CreateContractModal = ({ closeContractModal }: Props) => {
 	const handleCloseConract = () => {
-		console.log('close contract');
 		closeContractModal();
 	};
+
 	return (
 		<div className=" sm:bg-transparent">
 			<div className="custom-container">

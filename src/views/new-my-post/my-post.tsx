@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import JobCard from '@/components/JobCard/JobCard';
 import Sidebar from '@/components/reusable/Sidebar/Sidebar';
 import PostJobModal from '../post-job-modal/post-job-modal';
@@ -24,8 +24,41 @@ const NewMyPost = () => {
 
 	const handleCloseModal = () => {
 		setIsPostJobModalOpen(false);
+	};
+	const handleCloseModal2 = () => {
 		setIsListServiceModalOpen(false);
 	};
+
+	useEffect(() => {
+		const handleClickOutsideModal = (event: MouseEvent) => {
+			if (
+				isListServiceModalOpen &&
+				(event.target as HTMLElement).closest('.modal-content') === null
+			) {
+				handleCloseModal2();
+			}
+		};
+
+		document.addEventListener('click', handleClickOutsideModal);
+		return () => {
+			document.removeEventListener('click', handleClickOutsideModal);
+		};
+	}, [isListServiceModalOpen]);
+	useEffect(() => {
+		const handleClickOutsideModal = (event: MouseEvent) => {
+			if (
+				isPostJobModalOpen &&
+				(event.target as HTMLElement).closest('.modal-content') === null
+			) {
+				handleCloseModal();
+			}
+		};
+
+		document.addEventListener('click', handleClickOutsideModal);
+		return () => {
+			document.removeEventListener('click', handleClickOutsideModal);
+		};
+	}, [isPostJobModalOpen]);
 
 	const handleJobCardOpen = (jobName: string) => {
 		setIsJobCardOpen(true);
@@ -33,8 +66,24 @@ const NewMyPost = () => {
 	};
 	const handleJobCardClose = () => {
 		setIsJobCardOpen(false);
-		console.log('job card close');
 	};
+
+	useEffect(() => {
+		const handleClickOutsideModal = (event: MouseEvent) => {
+			if (
+				isJobCardOpen &&
+				(event.target as HTMLElement).closest('.modal-content') === null
+			) {
+				handleJobCardClose();
+			}
+		};
+
+		document.addEventListener('click', handleClickOutsideModal);
+
+		return () => {
+			document.removeEventListener('click', handleClickOutsideModal);
+		};
+	}, [isJobCardOpen]);
 
 	return (
 		<div className="find-work-section pt-[170px] mb-[57px] sm:mb-10 sm:pt-[90px]">
@@ -67,7 +116,7 @@ const NewMyPost = () => {
 								<div className="fixed inset-0 z-50 overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center">
 									<div className="w-full">
 										<ListServiceModal
-											closeModal={handleCloseModal}
+											closeModal={handleCloseModal2}
 										/>
 									</div>
 								</div>
@@ -80,31 +129,31 @@ const NewMyPost = () => {
 
 					<div className="right-panel flex-1">
 						<JobCard
-							cardStyles="flex !justify-start md:!justify-between gap-[55px] md:gap-5 items-center pl-[32px] md:pl-0"
+							cardStyles="flex !justify-start md:!justify-between gap-[55px] md:gap-5 sm:gap-0 items-center pl-[32px] md:pl-0"
 							jobName="Service Name"
 							onCardClick={() =>
 								handleJobCardOpen('Service Name')
 							}
 						/>
 						<JobCard
-							cardStyles="flex !justify-start md:!justify-between gap-[55px] md:gap-5 items-center pl-[32px] md:pl-0"
+							cardStyles="flex !justify-start md:!justify-between gap-[55px] md:gap-5 sm:gap-0 items-center pl-[32px] md:pl-0"
 							jobName="Job Name"
 							onCardClick={() => handleJobCardOpen('Job Name')}
 						/>
 						<JobCard
-							cardStyles="flex !justify-start md:!justify-between gap-[55px] md:gap-5 items-center pl-[32px] md:pl-0"
+							cardStyles="flex !justify-start md:!justify-between gap-[55px] md:gap-5 sm:gap-0 items-center pl-[32px] md:pl-0"
 							jobName="Service Name"
 							onCardClick={() =>
 								handleJobCardOpen('Service Name')
 							}
 						/>
 						<JobCard
-							cardStyles="flex !justify-start md:!justify-between gap-[55px] md:gap-5 items-center pl-[32px] md:pl-0"
+							cardStyles="flex !justify-start md:!justify-between gap-[55px] md:gap-5 sm:gap-0 items-center pl-[32px] md:pl-0"
 							jobName="Job Name"
 							onCardClick={() => handleJobCardOpen('Job Name')}
 						/>
 						<JobCard
-							cardStyles="flex !justify-start md:!justify-between gap-[55px] md:gap-5 items-center pl-[32px] md:pl-0"
+							cardStyles="flex !justify-start md:!justify-between gap-[55px] md:gap-5 sm:gap-0 items-center pl-[32px] md:pl-0"
 							jobName="Service Name"
 							onCardClick={() =>
 								handleJobCardOpen('Service Name')

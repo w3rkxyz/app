@@ -5,7 +5,6 @@ const SearchInput = () => {
 		<>
 			<div className="flex justify-between items-center max-w-[671px] w-full bg-[#FFFFFF]/50 rounded-[20px] p-[6px] sm:my-[16px]">
 				<input
-					type="search"
 					className="rounded-[10px] pl-3 py-1 w-full"
 					placeholder="[search query here]"
 				/>

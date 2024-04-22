@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import SecondNav from './secondNav';
@@ -15,6 +15,22 @@ const Navbar = () => {
 	const closeMobileMenu = () => {
 		setMobileMenuOpen(false);
 	};
+	useEffect(() => {
+		const handleClickOutsideModal = (event: MouseEvent) => {
+			if (
+				isMobileMenuOpen &&
+				(event.target as HTMLElement).closest('.modal-content') === null
+			) {
+				closeMobileMenu();
+			}
+		};
+
+		document.addEventListener('click', handleClickOutsideModal);
+
+		return () => {
+			document.removeEventListener('click', handleClickOutsideModal);
+		};
+	}, [isMobileMenuOpen]);
 
 	const handleConnectWallet = () => {
 		setShowNavbar(false);
@@ -26,7 +42,7 @@ const Navbar = () => {
 				<header className="header-section py-[42px] sm:py-[16px] absolute w-full top-0 left-0">
 					<div className="custom-container">
 						<div className="header-wrapper">
-							<nav className="navbar-nav-main flex items-center gap-3 sm:justify-between w-full">
+							<nav className="navbar-nav-main flex items-center gap-3 justify-between w-full">
 								<div className="header-brand-box sm:flex sm:items-center sm:gap-6">
 									<div
 										className="navbar-trigger hidden sm:block"

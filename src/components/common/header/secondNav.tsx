@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import Notifications from '@/components/Notifications/Notifications';
@@ -16,6 +16,22 @@ const SecondNav = () => {
 	const closeModal = () => {
 		setShowNotifications(false);
 	};
+	useEffect(() => {
+		const handleClickOutsideModal = (event: MouseEvent) => {
+			if (
+				showNotifications &&
+				(event.target as HTMLElement).closest('.modal-content') === null
+			) {
+				closeModal();
+			}
+		};
+
+		document.addEventListener('click', handleClickOutsideModal);
+
+		return () => {
+			document.removeEventListener('click', handleClickOutsideModal);
+		};
+	}, [showNotifications]);
 
 	const openProfileDropdown = () => {
 		setShowProfileDropdown(true);
@@ -23,6 +39,22 @@ const SecondNav = () => {
 	const closeProfileDropdown = () => {
 		setShowProfileDropdown(false);
 	};
+	useEffect(() => {
+		const handleClickOutsideModal = (event: MouseEvent) => {
+			if (
+				showProfileDropdown &&
+				(event.target as HTMLElement).closest('.modal-content') === null
+			) {
+				closeProfileDropdown();
+			}
+		};
+
+		document.addEventListener('click', handleClickOutsideModal);
+
+		return () => {
+			document.removeEventListener('click', handleClickOutsideModal);
+		};
+	}, [showProfileDropdown]);
 
 	const handleMobileMenuToggle = () => {
 		setMobileMenuOpen(!isMobileMenuOpen);
@@ -31,6 +63,22 @@ const SecondNav = () => {
 	const closeMobileMenu = () => {
 		setMobileMenuOpen(false);
 	};
+	useEffect(() => {
+		const handleClickOutsideModal = (event: MouseEvent) => {
+			if (
+				isMobileMenuOpen &&
+				(event.target as HTMLElement).closest('.modal-content') === null
+			) {
+				closeMobileMenu();
+			}
+		};
+
+		document.addEventListener('click', handleClickOutsideModal);
+
+		return () => {
+			document.removeEventListener('click', handleClickOutsideModal);
+		};
+	}, [isMobileMenuOpen]);
 
 	return (
 		<header className="header-section py-[42px] sm:py-[16px] absolute w-full top-0 left-0">
@@ -121,17 +169,21 @@ const SecondNav = () => {
 									)}
 								</div>
 							</div>
-							<button>
-								<Image
-									src="/images/message-icon.svg"
-									alt="message icon"
-									width={27.25}
-									height={25}
-								/>
-							</button>
+							<Link href="/my-message">
+								<button>
+									<Image
+										className="mt-[-5px]"
+										src="/images/message-icon.svg"
+										alt="message icon"
+										width={27.25}
+										height={25}
+									/>
+								</button>
+							</Link>
 							<div>
 								<button onClick={openProfileDropdown}>
 									<Image
+										className="rounded-[12px] sm:w-[34px] sm:h-[34px] sm:rounded-[8.16px]"
 										src="/images/profile-image.svg"
 										alt="notification icon"
 										width={50}

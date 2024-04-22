@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import JobCard from '@/components/JobCard/JobCard';
 import Image from 'next/image';
 import ViewJobModal from '../view-job-modal/view-job-modal';
@@ -18,10 +18,28 @@ const OtherUserFollow = () => {
 	const handleJobCardClose = () => {
 		setIsJobCardOpen(false);
 	};
+
+	useEffect(() => {
+		const handleClickOutsideModal = (event: MouseEvent) => {
+			if (
+				isJobCardOpen &&
+				(event.target as HTMLElement).closest('.modal-content') === null
+			) {
+				handleJobCardClose();
+			}
+		};
+
+		document.addEventListener('click', handleClickOutsideModal);
+
+		return () => {
+			document.removeEventListener('click', handleClickOutsideModal);
+		};
+	}, [isJobCardOpen]);
+
 	return (
 		<div className="other-user-follow-section pt-[105px] pb-10">
 			<div className="custom-container">
-				<div className="tags-section flex sm:flex-col justify-center md:items-start items-center gap-[25px] mt-7">
+				<div className="tags-section flex sm:flex-col justify-center items-center md:items-start gap-[25px] mt-7">
 					<div>
 						<div className="sm:hidden">
 							<div className="w-[250px] h-[744px] flex-shrink-0 sm:w-full sm:h-auto bg-[#FFFFFF] rounded-[20px] py-[26px] px-[25px]">
@@ -68,7 +86,7 @@ const OtherUserFollow = () => {
 
 								<div className="flex items-center justify-center gap-[5px] my-[22px]">
 									<Link href="/other-user-following">
-										<button className="w-[93px] h-[34px] rounded-[10px] bg-[#A274FF80] text-white font-semibold font-secondary text-[14px] leading-[20px] tracking-[-1%] flex justify-center items-center gap-[9px] ">
+										<button className="w-[93px] h-[34px] rounded-[10px] bg-[#A274FF80] hover:bg-[#120037] duration-300 text-white font-semibold font-secondary text-[14px] leading-[20px] tracking-[-1%] flex justify-center items-center gap-[9px] ">
 											<Image
 												src="/images/man-icon.svg"
 												alt="man icon"
@@ -78,7 +96,7 @@ const OtherUserFollow = () => {
 											Follow
 										</button>
 									</Link>
-									<button className="w-[93px] h-[34px] rounded-[10px] bg-white text-[#000000] font-semibold font-secondary text-[14px] leading-[20px] tracking-[-1%] ">
+									<button className="w-[93px] h-[34px] rounded-[10px] bg-white text-[#000000] font-semibold font-secondary text-[14px] leading-[20px] tracking-[-1%] hover:bg-[#120037] duration-300 hover:text-white">
 										<Link href="/my-message">Message</Link>
 									</button>
 								</div>
@@ -323,7 +341,7 @@ const OtherUserFollow = () => {
 						</div>
 					</div>
 
-					<div className="md:w-[450px] sm:w-full">
+					<div className="w-full">
 						<JobCard
 							jobName="Job Name"
 							jobIcon="/images/man.svg"

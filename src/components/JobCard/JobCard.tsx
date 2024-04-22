@@ -25,7 +25,7 @@ const JobCard = ({
 }: CardProps) => {
 	return (
 		<div
-			className={`flex sm:flex-col items-center md:items-start gap-[29px] sm:w-full sm:h-auto md:w-full h-[132px] md:h-auto md:gap-3 bg-[#FFFFFF] py-[17px] rounded-[20px] my-[21px] md:mb-[21px] md:mt-0 pl-[38px] md:pl-0 sm:pl-[16px] pr-[18px] overflow-hidden`}
+			className={`flex sm:flex-col items-center md:items-start gap-[29px] sm:w-full sm:h-auto md:w-full h-[132px] md:h-auto md:gap-3 bg-[#FFFFFF] py-[17px] rounded-[20px] my-[21px] md:mb-[21px] md:mt-0 pl-[38px] md:pl-0 sm:pl-[16px] pr-[18px] cursor-pointer`}
 			onClick={() => {
 				if (handlePostJobOpen) {
 					handlePostJobOpen();
@@ -125,7 +125,7 @@ const JobCard = ({
 				</div>
 
 				<div className="hidden sm:block md:block">
-					<div className="w-full sm:w-[340px] flex flex-row items-center justify-center gap-3 whitespace-nowrap overflow-auto payment mt-3 sm:mx-0">
+					<div className="flex flex-row items-center gap-3 whitespace-nowrap w-full sm:w-[340px] overflow-auto payment mt-3 sm:mt-2 sm:mx-0">
 						<p className="text-[12px] font-medium font-secondary leading-[20px] tracking-[-1%] text-[#000000]">
 							Fixed/Hourly Contract
 						</p>

@@ -8,7 +8,6 @@ type Props = {
 
 const ViewServiceModal = ({ closeJobCardModal }: Props) => {
 	const handleClose = () => {
-		console.log('Closing modal');
 		closeJobCardModal();
 	};
 	return (
@@ -131,13 +130,13 @@ const ViewServiceModal = ({ closeJobCardModal }: Props) => {
 							<div className="flex justify-end sm:justify-center items-center gap-[14.4px] -mt-10 sm:-mt-0">
 								<MyButton
 									buttonText="Edit"
-									buttonType="terterry"
-									buttonStyles="bg-[#BEC6C6]/50	text-[#000000]"
+									buttonType="tertiary"
+									buttonStyles="bg-[#BEC6C6]/50 hover:bg-[#F5F5F5] duration-300 text-[#000000]"
 								/>
 								<MyButton
 									buttonText="Delete"
-									buttonType="terterry"
-									buttonStyles="bg-[#FFAEAE]/50 text-[#000000]"
+									buttonType="tertiary"
+									buttonStyles="bg-[#FFAEAE]/50 hover:bg-[#FAE5D3] duration-300 text-[#000000]"
 								/>
 							</div>
 						</div>
