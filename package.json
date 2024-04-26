@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "deploy": "next build && rsync -avzhe ssh out/* w3rk:/var/www/testnet.w3rk.xyz/html",
+    "deploy-prod": "next build && rsync -avzhe ssh out/* w3rk:/var/www/w3rk.xyz/html"
   },
   "dependencies": {
     "react": "^18",
