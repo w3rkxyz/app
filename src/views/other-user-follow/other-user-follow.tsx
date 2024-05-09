@@ -20,7 +20,7 @@ const OtherUserFollow = () => {
   const [selectedJobName, setSelectedJobName] = useState("");
   const [isJobCardOpen, setIsJobCardOpen] = useState(false);
   const { data: profile, loading } = useProfile({
-    forHandle: "lens/handle44",
+    forHandle: "lens/qa1715157334578",
   });
   const { data: session, loading: sessionLoading } = useSession();
   const { execute: follow, loading: followLoading } = useFollow();
@@ -71,6 +71,8 @@ const OtherUserFollow = () => {
       });
     }
   }, [loading]);
+
+  useEffect(() => {}, [profile]);
 
   const handleFollow = async () => {
     if (profile) {
