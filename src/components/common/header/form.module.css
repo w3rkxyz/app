@@ -1,0 +1,209 @@
+/* Format headers */
+.form h1 {
+  font-size: 3rem;
+}
+
+.form h2 {
+  font-size: 2.6rem;
+  margin-top: 3rem;
+}
+
+.form h3 {
+  font-size: 2rem;
+  margin-top: 3rem;
+}
+
+.form h4 {
+  font-size: 1.44rem;
+}
+
+.form h5 {
+  font-size: 1.15rem;
+}
+
+.form h6 {
+  font-size: 0.96rem;
+}
+
+/* Prevent long strings from overflowing container */
+.form p,
+.form h1,
+.form h2,
+.form h3,
+.form h4,
+.form h5,
+.form h6 {
+  overflow-wrap: break-word;
+}
+
+/* Fix line height when title wraps */
+.form h1,
+.form h2,
+.form h3 {
+  line-height: 1.1;
+}
+
+.form button,
+.form [role="button"],
+.form input[type="submit"],
+.form input[type="reset"],
+.form input[type="button"],
+.form label[type="button"] {
+  border: none;
+  border-radius: 5px;
+  background-color: var(--accent);
+  font-size: 1rem;
+  color: var(--bg);
+  padding: 0.7rem 0.9rem;
+  margin: 0.5rem 0;
+}
+
+.form button[disabled],
+.form [role="button"][aria-disabled="true"],
+.form input[type="submit"][disabled],
+.form input[type="reset"][disabled],
+.form input[type="button"][disabled],
+.form input[type="checkbox"][disabled],
+.form input[type="radio"][disabled],
+.form select[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.form input:disabled,
+.form textarea:disabled,
+.form select:disabled {
+  cursor: not-allowed;
+  background-color: var(--disabled);
+}
+
+.form input[type="range"] {
+  padding: 0;
+}
+
+.form button:focus,
+.form button:enabled:hover,
+.form [role="button"]:focus,
+.form [role="button"]:not([aria-disabled="true"]):hover,
+.form input[type="submit"]:focus,
+.form input[type="submit"]:enabled:hover,
+.form input[type="reset"]:focus,
+.form input[type="reset"]:enabled:hover,
+.form input[type="button"]:focus,
+.form input[type="button"]:enabled:hover,
+.form label[type="button"]:focus,
+.form label[type="button"]:hover {
+  filter: brightness(1.4);
+  cursor: pointer;
+}
+
+.form article,
+.form fieldset {
+  border: 1px solid var(--border);
+  padding: 1rem;
+  border-radius: 5px;
+  margin-bottom: 1rem;
+}
+
+/* Format forms */
+.form textarea,
+.form select,
+.form input {
+  font-size: inherit;
+  font-family: inherit;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--text);
+  background-color: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  box-shadow: none;
+  max-width: 100%;
+  display: inline-block;
+}
+.form label {
+  display: block;
+}
+.form textarea:not([cols]) {
+  width: 100%;
+}
+
+/* Add arrow to drop-down */
+.form select:not([multiple]) {
+  background-image: linear-gradient(45deg, transparent 49%, var(--text) 51%),
+    linear-gradient(135deg, var(--text) 51%, transparent 49%);
+  background-position: calc(100% - 15px), calc(100% - 10px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 25px;
+}
+
+/* checkbox and radio button style */
+.form input[type="checkbox"],
+.form input[type="radio"] {
+  vertical-align: middle;
+  position: relative;
+  width: min-content;
+}
+
+.form input[type="checkbox"] + label,
+.form input[type="radio"] + label {
+  display: inline-block;
+}
+
+.form input[type="radio"] {
+  border-radius: 100%;
+}
+
+.form input[type="checkbox"]:checked,
+.form input[type="radio"]:checked {
+  background-color: var(--accent);
+}
+
+.form input[type="checkbox"]:checked::after {
+  /* Creates a rectangle with colored right and bottom borders which is rotated to look like a check mark */
+  content: " ";
+  width: 0.18em;
+  height: 0.32em;
+  border-radius: 0;
+  position: absolute;
+  top: 0.05em;
+  left: 0.17em;
+  background-color: transparent;
+  border-right: solid var(--bg) 0.08em;
+  border-bottom: solid var(--bg) 0.08em;
+  font-size: 1.8em;
+  transform: rotate(45deg);
+}
+.form input[type="radio"]:checked::after {
+  /* creates a colored circle for the checked radio button  */
+  content: " ";
+  width: 0.25em;
+  height: 0.25em;
+  border-radius: 100%;
+  position: absolute;
+  top: 0.125em;
+  background-color: var(--bg);
+  left: 0.125em;
+  font-size: 32px;
+}
+
+/* Makes input fields wider on smaller screens */
+@media only screen and (max-width: 720px) {
+  .form textarea,
+  .form select,
+  .form input {
+    width: 100%;
+  }
+}
+
+/* Set a height for color input */
+.form input[type="color"] {
+  height: 2.5rem;
+  padding: 0.2rem;
+}
+
+/* do not show border around file selector button */
+.form input[type="file"] {
+  border: 0;
+}
