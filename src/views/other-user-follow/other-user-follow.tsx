@@ -64,7 +64,10 @@ const OtherUserFollow = () => {
         handle:
           `${profile.handle?.localName}.${profile?.handle?.namespace}` ||
           userData.handle,
-        picture: profile.metadata?.picture?.raw.uri || userData.picture,
+        picture:
+          profile.metadata?.picture?.__typename == "ImageSet"
+            ? profile.metadata?.picture?.raw.uri
+            : userData.picture,
         following: profile.stats.following,
         followers: profile.stats.followers,
         about: profile.metadata?.bio || userData.about,

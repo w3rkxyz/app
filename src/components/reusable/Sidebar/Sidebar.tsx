@@ -1,3 +1,4 @@
+"use client";
 import Image from "next/image";
 import { useSession, SessionType } from "@lens-protocol/react-web";
 import { useEffect, useState } from "react";
@@ -25,7 +26,10 @@ const Sidebar = ({ height }: height) => {
         handle:
           `${session.profile.handle?.localName}.${session.profile.handle?.namespace}` ||
           user.handle,
-        picture: session.profile.metadata?.picture?.raw.uri || user.picture,
+        picture:
+          session.profile.metadata?.picture?.__typename == "ImageSet"
+            ? session.profile.metadata?.picture?.raw.uri
+            : user.picture,
         following: session.profile.stats.following,
         followers: session.profile.stats.followers,
         about: session.profile.metadata?.bio || user.about,
