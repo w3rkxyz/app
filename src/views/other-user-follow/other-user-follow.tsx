@@ -106,7 +106,7 @@ const OtherUserFollow = () => {
                         src={
                           profile?.metadata?.picture?.__typename == "ImageSet"
                             ? profile?.metadata?.picture?.raw?.uri
-                            : userData.picture
+                            : "/images/head.svg"
                         }
                         alt="head image"
                         className="w-[65px] h-[65px] mb-2 "

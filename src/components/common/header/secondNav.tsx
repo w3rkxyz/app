@@ -192,7 +192,7 @@ const SecondNav = ({ profile }: { profile?: any }) => {
                   {showProfileDropdown && (
                     <>
                       <ProfileDropdown
-                        handle={profile.handle ? profile.handle : undefined}
+                        handle={profile?.handle ? profile.handle : undefined}
                       />
                       <div
                         className="absolute top-2 right-10 cursor-pointer"
