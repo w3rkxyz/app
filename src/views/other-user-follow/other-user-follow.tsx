@@ -104,8 +104,9 @@ const OtherUserFollow = () => {
                     <div>
                       <Image
                         src={
-                          profile?.metadata?.picture?.raw?.uri ||
-                          userData.picture
+                          profile?.metadata?.picture?.__typename == "ImageSet"
+                            ? profile?.metadata?.picture?.raw?.uri
+                            : userData.picture
                         }
                         alt="head image"
                         className="w-[65px] h-[65px] mb-2 "
