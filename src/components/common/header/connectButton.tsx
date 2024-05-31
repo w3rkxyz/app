@@ -13,8 +13,9 @@ export const Connect = () => {
         // Note: If your app doesn't use authentication, you
         // can remove all 'authenticationStatus' checks
         const connected = account && chain;
+
         return (
-          <div>
+          <>
             {(() => {
               if (!connected) {
                 return (
@@ -39,7 +40,7 @@ export const Connect = () => {
                 );
               }
             })()}
-          </div>
+          </>
         );
       }}
     </ConnectButton.Custom>

@@ -58,20 +58,6 @@ const OtherUserFollow = () => {
     };
   }, [isJobCardOpen]);
 
-  useEffect(() => {
-    if (profile) {
-      setUserData({
-        handle:
-          `${profile.handle?.localName}.${profile?.handle?.namespace}` ||
-          userData.handle,
-        picture: profile.metadata?.picture?.raw.uri || userData.picture,
-        following: profile.stats.following,
-        followers: profile.stats.followers,
-        about: profile.metadata?.bio || userData.about,
-      });
-    }
-  }, [loading]);
-
   useEffect(() => {}, [profile]);
 
   const handleFollow = async () => {
@@ -86,7 +72,7 @@ const OtherUserFollow = () => {
 
         if (result.isFailure()) {
           // handle failure scenarios
-          console.log("Failed follow");
+          toast.error("couldn't follow user, try again later");
           return;
         }
 
@@ -117,14 +103,19 @@ const OtherUserFollow = () => {
                   <div className="w-[120px] h-[110px] bg-[#FFFFFF]/70 flex justify-center items-center rounded-[16px]">
                     <div>
                       <Image
-                        src={userData.picture}
+                        src={
+                          profile?.metadata?.picture?.raw?.uri ||
+                          userData.picture
+                        }
                         alt="head image"
                         className="w-[65px] h-[65px] mb-2 "
                         width={65}
                         height={65}
                       />
                       <p className="text-[14px] font-semibold font-secondary leading-[20px] tracking-[-1%] ">
-                        {userData.handle}
+                        {profile?.handle?.localName
+                          ? `${profile?.handle?.localName}.${profile?.handle?.namespace}`
+                          : "adam.lens"}
                       </p>
                     </div>
                   </div>
@@ -140,7 +131,7 @@ const OtherUserFollow = () => {
                         Following
                       </p>
                       <p className="text-[14px] font-semibold font-secondary leading-[20px] tracking-[-1%] text-[#000000]/50">
-                        {userData.following}
+                        {profile ? profile.stats.following : 100}
                       </p>
                     </div>
                     <div>
@@ -148,7 +139,7 @@ const OtherUserFollow = () => {
                         Followers
                       </p>
                       <p className="text-[14px] font-semibold font-secondary leading-[20px] tracking-[-1%] text-[#000000]/50">
-                        {userData.followers}
+                        {profile ? profile.stats.followers : 75}
                       </p>
                     </div>
                   </div>
@@ -195,7 +186,9 @@ const OtherUserFollow = () => {
                     About Me
                   </p>
                   <p className="text-[14px] font-semibold  font-secondary leading-[20px] tracking-[-1%] text-[#000000]/50">
-                    {userData.about}
+                    {profile?.metadata?.bio
+                      ? profile.metadata.bio
+                      : userData.about}
                   </p>
                 </div>
 

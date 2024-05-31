@@ -179,7 +179,7 @@ const SecondNav = ({ profile }: { profile?: any }) => {
                   <Image
                     className="rounded-[12px] sm:w-[34px] sm:h-[34px] sm:rounded-[8.16px]"
                     src={
-                      profile
+                      profile?.metadata?.picture?.raw?.uri
                         ? profile.metadata.picture.raw.uri
                         : "/images/profile-image.svg"
                     }
