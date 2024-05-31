@@ -181,7 +181,7 @@ const SecondNav = ({ profile }: { profile?: any }) => {
                     src={
                       profile?.metadata?.picture?.raw?.uri
                         ? profile.metadata.picture.raw.uri
-                        : "/images/profile-image.svg"
+                        : "/images/head.svg"
                     }
                     alt="notification icon"
                     width={50}
