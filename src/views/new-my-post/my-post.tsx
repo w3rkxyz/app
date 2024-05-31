@@ -29,37 +29,6 @@ const NewMyPost = () => {
     setIsListServiceModalOpen(false);
   };
 
-  useEffect(() => {
-    const handleClickOutsideModal = (event: MouseEvent) => {
-      if (
-        isListServiceModalOpen &&
-        (event.target as HTMLElement).closest(".modal-content") === null
-      ) {
-        handleCloseModal2();
-      }
-    };
-
-    document.addEventListener("click", handleClickOutsideModal);
-    return () => {
-      document.removeEventListener("click", handleClickOutsideModal);
-    };
-  }, [isListServiceModalOpen]);
-  useEffect(() => {
-    const handleClickOutsideModal = (event: MouseEvent) => {
-      if (
-        isPostJobModalOpen &&
-        (event.target as HTMLElement).closest(".modal-content") === null
-      ) {
-        handleCloseModal();
-      }
-    };
-
-    document.addEventListener("click", handleClickOutsideModal);
-    return () => {
-      document.removeEventListener("click", handleClickOutsideModal);
-    };
-  }, [isPostJobModalOpen]);
-
   const handleJobCardOpen = (jobName: string) => {
     setIsJobCardOpen(true);
     setSelectedJobName(jobName);
@@ -67,23 +36,6 @@ const NewMyPost = () => {
   const handleJobCardClose = () => {
     setIsJobCardOpen(false);
   };
-
-  useEffect(() => {
-    const handleClickOutsideModal = (event: MouseEvent) => {
-      if (
-        isJobCardOpen &&
-        (event.target as HTMLElement).closest(".modal-content") === null
-      ) {
-        handleJobCardClose();
-      }
-    };
-
-    document.addEventListener("click", handleClickOutsideModal);
-
-    return () => {
-      document.removeEventListener("click", handleClickOutsideModal);
-    };
-  }, [isJobCardOpen]);
 
   return (
     <div className="find-work-section pt-[170px] mb-[57px] sm:mb-10 sm:pt-[90px]">
@@ -99,9 +51,7 @@ const NewMyPost = () => {
               </button>
               {isPostJobModalOpen && (
                 <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center">
-                  <div className="w-full">
-                    <PostJobModal closeModal={handleCloseModal} />
-                  </div>
+                  <PostJobModal closeModal={handleCloseModal} />
                 </div>
               )}
               <button
@@ -112,9 +62,7 @@ const NewMyPost = () => {
               </button>
               {isListServiceModalOpen && (
                 <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center">
-                  <div className="w-full">
-                    <ListServiceModal closeModal={handleCloseModal2} />
-                  </div>
+                  <ListServiceModal closeModal={handleCloseModal2} />
                 </div>
               )}
             </div>
@@ -152,13 +100,11 @@ const NewMyPost = () => {
 
             {isJobCardOpen && (
               <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center">
-                <div className="w-full">
-                  {selectedJobName === "Service Name" ? (
-                    <ViewServiceModal closeJobCardModal={handleJobCardClose} />
-                  ) : selectedJobName === "Job Name" ? (
-                    <ViewJobModal2 closeJobCardModal={handleJobCardClose} />
-                  ) : null}
-                </div>
+                {selectedJobName === "Service Name" ? (
+                  <ViewServiceModal closeJobCardModal={handleJobCardClose} />
+                ) : selectedJobName === "Job Name" ? (
+                  <ViewJobModal2 closeJobCardModal={handleJobCardClose} />
+                ) : null}
               </div>
             )}
           </div>
