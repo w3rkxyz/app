@@ -11,20 +11,30 @@
     "deploy-prod": "next build && rsync -avzhe ssh out/* w3rk:/var/www/w3rk.xyz/html"
   },
   "dependencies": {
+    "@lens-protocol/client": "^2.0.0-alpha.38",
+    "@lens-protocol/react-web": "^2.2.0",
+    "@lens-protocol/wagmi": "^4.1.2",
+    "@rainbow-me/rainbowkit": "^2.0.6",
+    "@tanstack/react-query": "^5.35.1",
+    "encoding": "^0.1.13",
+    "next": "14.1.0",
+    "pino-pretty": "^11.0.0",
     "react": "^18",
     "react-dom": "^18",
-    "next": "14.1.0"
+    "react-hot-toast": "^2.4.1",
+    "viem": "^2.10.1",
+    "wagmi": "^2.8.1"
   },
   "author": "zakir",
   "devDependencies": {
-    "typescript": "^5",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.0.1",
+    "eslint": "^8",
+    "eslint-config-next": "14.1.0",
     "postcss": "^8",
     "tailwindcss": "^3.3.0",
-    "eslint": "^8",
-    "eslint-config-next": "14.1.0"
+    "typescript": "^5"
   }
 }
