@@ -370,11 +370,13 @@ const OtherUserFollowing = () => {
             />
             {isJobCardOpen && (
               <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center">
-                {selectedJobName === "Service Name" ? (
-                  <ViewListingModal closeJobCardModal={handleJobCardClose} />
-                ) : selectedJobName === "Job Name" ? (
-                  <ViewJobModal closeJobCardModal={handleJobCardClose} />
-                ) : null}
+                <div className="w-full">
+                  {selectedJobName === "Service Name" ? (
+                    <ViewListingModal closeJobCardModal={handleJobCardClose} />
+                  ) : selectedJobName === "Job Name" ? (
+                    <ViewJobModal closeJobCardModal={handleJobCardClose} />
+                  ) : null}
+                </div>
               </div>
             )}
           </div>

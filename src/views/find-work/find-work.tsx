@@ -119,7 +119,9 @@ const FindWork = () => {
       </div>
       {isModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center">
-          <ViewJobModal handleCloseModal={handleCloseModal} />
+          <div className="w-full">
+            <ViewJobModal handleCloseModal={handleCloseModal} />
+          </div>
         </div>
       )}
     </div>

@@ -100,11 +100,13 @@ const NewMyPost = () => {
 
             {isJobCardOpen && (
               <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center">
-                {selectedJobName === "Service Name" ? (
-                  <ViewServiceModal closeJobCardModal={handleJobCardClose} />
-                ) : selectedJobName === "Job Name" ? (
-                  <ViewJobModal2 closeJobCardModal={handleJobCardClose} />
-                ) : null}
+                <div className="w-full">
+                  {selectedJobName === "Service Name" ? (
+                    <ViewServiceModal closeJobCardModal={handleJobCardClose} />
+                  ) : selectedJobName === "Job Name" ? (
+                    <ViewJobModal2 closeJobCardModal={handleJobCardClose} />
+                  ) : null}
+                </div>
               </div>
             )}
           </div>

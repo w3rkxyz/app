@@ -126,7 +126,9 @@ const FindTalent = () => {
       </div>
       {isTalentModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center">
-          <ViewListingModal closeTalentModal={handleCloseTalentModal} />
+          <div className="w-full">
+            <ViewListingModal closeTalentModal={handleCloseTalentModal} />
+          </div>
         </div>
       )}
     </div>
