@@ -181,7 +181,7 @@ const SecondNav = ({ profile }: { profile?: any }) => {
                     src={
                       profile?.metadata?.picture?.raw?.uri
                         ? profile.metadata.picture.raw.uri
-                        : "/images/profile-image.svg"
+                        : "/images/head.svg"
                     }
                     alt="notification icon"
                     width={50}
@@ -191,7 +191,9 @@ const SecondNav = ({ profile }: { profile?: any }) => {
                 <div className="absolute right-[-40px] top-[55px] z-[9999]">
                   {showProfileDropdown && (
                     <>
-                      <ProfileDropdown handle={profile.handle} />{" "}
+                      <ProfileDropdown
+                        handle={profile?.handle ? profile.handle : undefined}
+                      />
                       <div
                         className="absolute top-2 right-10 cursor-pointer"
                         onClick={closeProfileDropdown}

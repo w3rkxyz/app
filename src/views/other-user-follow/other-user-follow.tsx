@@ -20,7 +20,7 @@ const OtherUserFollow = () => {
   const [selectedJobName, setSelectedJobName] = useState("");
   const [isJobCardOpen, setIsJobCardOpen] = useState(false);
   const { data: profile, loading } = useProfile({
-    forHandle: "lens/handle44",
+    forHandle: "lens/primal",
   });
   const { data: session, loading: sessionLoading } = useSession();
   const { execute: follow, loading: followLoading } = useFollow();
@@ -106,7 +106,7 @@ const OtherUserFollow = () => {
                         src={
                           profile?.metadata?.picture?.__typename == "ImageSet"
                             ? profile?.metadata?.picture?.raw?.uri
-                            : userData.picture
+                            : "/images/head.svg"
                         }
                         alt="head image"
                         className="w-[65px] h-[65px] mb-2 "
