@@ -158,7 +158,6 @@ const Navbar = () => {
                       </a>
                     </li>
                   </ul>
-                  <Connect />
                 </div>
               </div>
             </div>

@@ -1,167 +1,189 @@
-import React from 'react';
-import Image from 'next/image';
+"use client";
 
-import MyButton from '@/components/reusable/Button/Button';
+import React, { useRef, useEffect } from "react";
+import Image from "next/image";
 
-import Sidebar from '@/components/reusable/Sidebar/Sidebar';
-import Link from 'next/link';
+import MyButton from "@/components/reusable/Button/Button";
+
+import Sidebar from "@/components/reusable/Sidebar/Sidebar";
+import Link from "next/link";
 
 type Props = {
-	handleCloseModal?: () => void;
-	closeJobCardModal?: () => void;
+  handleCloseModal?: () => void;
+  closeJobCardModal?: () => void;
 };
 
 const ViewJobModal = ({ handleCloseModal, closeJobCardModal }: Props) => {
-	return (
-		<div className="view-job-modal-section">
-			<div className="custom-container">
-				<div className="flex justify-center items-center">
-					<div className="w-[1110px] sm:w-full pl-[63px] pr-[78px] md:p-5 pt-[47px] pb-[65px] sm:p-5 bg-[#EFEFEF] rounded-[20px] relative">
-						<button
-							onClick={() => {
-								if (handleCloseModal) {
-									handleCloseModal();
-								} else if (closeJobCardModal) {
-									closeJobCardModal();
-								}
-							}}
-							className="w-[35px] sm:w-[16px] h-[35px] sm:h-[16px] absolute right-[23px] sm:right-[10px] top-[23px] sm:top-[10px] z-[9999]"
-						>
-							<Image
-								src="images/Close.svg"
-								alt="close icon"
-								width={35}
-								height={35}
-							/>
-						</button>
+  const myDivRef = useRef<HTMLDivElement>(null);
 
-						<div className="view-job-modal-section flex sm:flex-col justify-between">
-							<Sidebar height="auto" />
+  useEffect(() => {
+    function handleClickOutside(event: any) {
+      console.log("Was cliked");
+      if (
+        myDivRef.current &&
+        !myDivRef.current.contains(event.target as Node)
+      ) {
+        if (handleCloseModal) {
+          handleCloseModal();
+        } else if (closeJobCardModal) {
+          closeJobCardModal();
+        }
+      }
+    }
 
-							<div className="flex-1 pl-[79px] md:pl-5 md:px sm:px-0">
-								<h3 className="text-[36px] sm:text-[14px] font-secondary font-semibold leading-[80px] sm:leading-[20px] tracking-[-4%] sm:tracking-[-1] sm:pt-[16px] sm:pb-[24px] text-[#000000]">
-									Job Name
-								</h3>
-								<div>
-									<div className="flex sm:flex-col justify-between">
-										<div className="mb-3">
-											<p className="text-[18px] sm:text-[14px] font-semibold sm:font-bold font-secondary leading-[24px] sm:leading-[17.6px] tracking-[-3%] text-[#000000]">
-												Description
-											</p>
-											<p className="text-[16px] h-[64px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-4 tracking-[-3%] sm:tracking-[-1%] text-[#00000080]">
-												[service description]
-											</p>
-										</div>
-										<div>
-											<div className="sm:hidden">
-												<div className="mb-[13px] sm:mb-3">
-													<p className="text-[18px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[10px] tracking-[-3%] sm:tracking-[-1] text-[#000000] sm:mb-1">
-														Contract Type
-													</p>
-													<p className="text-[16px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[12px] tracking-[-3%] sm:tracking-[-1%] text-[#00000080]">
-														[amount in USD][fixed /
-														hourly]
-													</p>
-												</div>
-												<div className="mb-[13px] sm:mb-3">
-													<p className="text-[18px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[10px] tracking-[-3%] sm:tracking-[-1] text-[#000000] sm:mb-1">
-														Payment
-													</p>
-													<p className="text-[16px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[12px] tracking-[-3%] sm:tracking-[-1%] text-[#00000080]">
-														[amount in USD]
-													</p>
-												</div>
-												<div className="mb-[13px] sm:mb-3">
-													<p className="text-[18px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[10px] tracking-[-3%] sm:tracking-[-1] text-[#000000] sm:mb-1">
-														Paid In
-													</p>
-													<p className="text-[16px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[12px] tracking-[-3%] sm:tracking-[-1%] text-[#00000080]">
-														[select cryptocurrency]
-													</p>
-												</div>
-												<div>
-													<p className="text-[18px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[10px] tracking-[-3%] sm:tracking-[-1] text-[#000000] sm:mb-1">
-														Tags
-													</p>
-													<p className="text-[16px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[12px] tracking-[-3%] sm:tracking-[-1%] text-[#00000080]">
-														[select 1-3 tags]
-													</p>
-												</div>
-											</div>
+    document.addEventListener("mousedown", handleClickOutside);
 
-											<div className="hidden sm:block">
-												<div className="flex gap-3">
-													<div>
-														<div className="mb-[13px] sm:mb-3">
-															<p className="text-[18px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[10px] tracking-[-3%] sm:tracking-[-1] text-[#000000] sm:mb-1">
-																Contract Type
-															</p>
-															<p className="text-[16px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[12px] tracking-[-3%] sm:tracking-[-1%] text-[#00000080]">
-																[amount in USD]{' '}
-																<span className="pl-3"></span>{' '}
-																[fixed / hourly]
-															</p>
-														</div>
-														<div className="mb-[13px] sm:mb-3">
-															<p className="text-[18px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[10px] tracking-[-3%] sm:tracking-[-1] text-[#000000] sm:mb-1">
-																Paid In
-															</p>
-															<p className="text-[16px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[12px] tracking-[-3%] sm:tracking-[-1%] text-[#00000080]">
-																[select
-																cryptocurrency]
-															</p>
-														</div>
-													</div>
-													<div>
-														<div className="mb-[13px] sm:mb-3">
-															<p className="text-[18px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[10px] tracking-[-3%] sm:tracking-[-1] text-[#000000] sm:mb-1">
-																Payment
-															</p>
-															<p className="text-[16px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[12px] tracking-[-3%] sm:tracking-[-1%] text-[#00000080]">
-																[amount in USD]
-															</p>
-														</div>
-														<div>
-															<p className="text-[18px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[10px] tracking-[-3%] sm:tracking-[-1] text-[#000000] sm:mb-1">
-																Tags
-															</p>
-															<p className="text-[16px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[12px] tracking-[-3%] sm:tracking-[-1%] text-[#00000080]">
-																[select 1-3
-																tags]
-															</p>
-														</div>
-													</div>
-												</div>
-											</div>
-										</div>
-									</div>
-								</div>
-							</div>
-						</div>
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
-						<div className="sm:mt-6">
-							<div className="flex justify-end sm:justify-center items-center -mt-10 sm:-mt-0">
-								<Link href="/other-user-following">
-									<MyButton
-										buttonText="View Profile"
-										buttonType="tertiary"
-										buttonStyles="bg-white hover:bg-[#120037] hover:text-white duration-300 text-[#000000] mr-[14.14px]"
-									/>
-								</Link>
-								<Link href="/my-message">
-									<MyButton
-										buttonText="Message"
-										buttonType="tertiary"
-										buttonStyles="bg-[#A274FF]/50 hover:bg-[#120037] duration-300 text-white"
-									/>
-								</Link>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	);
+  return (
+    <div className="view-job-modal-section" ref={myDivRef}>
+      <div className="custom-container">
+        <div className="flex justify-center items-center">
+          <div className="w-[1110px] sm:w-full pl-[63px] pr-[78px] md:p-5 pt-[47px] pb-[65px] sm:p-5 bg-[#EFEFEF] rounded-[20px] relative">
+            <button
+              onClick={() => {
+                if (handleCloseModal) {
+                  handleCloseModal();
+                } else if (closeJobCardModal) {
+                  closeJobCardModal();
+                }
+              }}
+              className="w-[35px] sm:w-[16px] h-[35px] sm:h-[16px] absolute right-[23px] sm:right-[10px] top-[23px] sm:top-[10px] z-[9999]"
+            >
+              <Image
+                src="images/Close.svg"
+                alt="close icon"
+                width={35}
+                height={35}
+              />
+            </button>
+
+            <div className="view-job-modal-section flex sm:flex-col justify-between">
+              <Sidebar height="auto" />
+
+              <div className="flex-1 pl-[79px] md:pl-5 md:px sm:px-0">
+                <h3 className="text-[36px] sm:text-[14px] font-secondary font-semibold leading-[80px] sm:leading-[20px] tracking-[-4%] sm:tracking-[-1] sm:pt-[16px] sm:pb-[24px] text-[#000000]">
+                  Job Name
+                </h3>
+                <div>
+                  <div className="flex sm:flex-col justify-between">
+                    <div className="mb-3">
+                      <p className="text-[18px] sm:text-[14px] font-semibold sm:font-bold font-secondary leading-[24px] sm:leading-[17.6px] tracking-[-3%] text-[#000000]">
+                        Description
+                      </p>
+                      <p className="text-[16px] h-[64px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-4 tracking-[-3%] sm:tracking-[-1%] text-[#00000080]">
+                        [service description]
+                      </p>
+                    </div>
+                    <div>
+                      <div className="sm:hidden">
+                        <div className="mb-[13px] sm:mb-3">
+                          <p className="text-[18px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[10px] tracking-[-3%] sm:tracking-[-1] text-[#000000] sm:mb-1">
+                            Contract Type
+                          </p>
+                          <p className="text-[16px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[12px] tracking-[-3%] sm:tracking-[-1%] text-[#00000080]">
+                            [amount in USD][fixed / hourly]
+                          </p>
+                        </div>
+                        <div className="mb-[13px] sm:mb-3">
+                          <p className="text-[18px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[10px] tracking-[-3%] sm:tracking-[-1] text-[#000000] sm:mb-1">
+                            Payment
+                          </p>
+                          <p className="text-[16px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[12px] tracking-[-3%] sm:tracking-[-1%] text-[#00000080]">
+                            [amount in USD]
+                          </p>
+                        </div>
+                        <div className="mb-[13px] sm:mb-3">
+                          <p className="text-[18px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[10px] tracking-[-3%] sm:tracking-[-1] text-[#000000] sm:mb-1">
+                            Paid In
+                          </p>
+                          <p className="text-[16px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[12px] tracking-[-3%] sm:tracking-[-1%] text-[#00000080]">
+                            [select cryptocurrency]
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[18px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[10px] tracking-[-3%] sm:tracking-[-1] text-[#000000] sm:mb-1">
+                            Tags
+                          </p>
+                          <p className="text-[16px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[12px] tracking-[-3%] sm:tracking-[-1%] text-[#00000080]">
+                            [select 1-3 tags]
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="hidden sm:block">
+                        <div className="flex gap-3">
+                          <div>
+                            <div className="mb-[13px] sm:mb-3">
+                              <p className="text-[18px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[10px] tracking-[-3%] sm:tracking-[-1] text-[#000000] sm:mb-1">
+                                Contract Type
+                              </p>
+                              <p className="text-[16px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[12px] tracking-[-3%] sm:tracking-[-1%] text-[#00000080]">
+                                [amount in USD] <span className="pl-3"></span>{" "}
+                                [fixed / hourly]
+                              </p>
+                            </div>
+                            <div className="mb-[13px] sm:mb-3">
+                              <p className="text-[18px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[10px] tracking-[-3%] sm:tracking-[-1] text-[#000000] sm:mb-1">
+                                Paid In
+                              </p>
+                              <p className="text-[16px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[12px] tracking-[-3%] sm:tracking-[-1%] text-[#00000080]">
+                                [select cryptocurrency]
+                              </p>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="mb-[13px] sm:mb-3">
+                              <p className="text-[18px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[10px] tracking-[-3%] sm:tracking-[-1] text-[#000000] sm:mb-1">
+                                Payment
+                              </p>
+                              <p className="text-[16px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[12px] tracking-[-3%] sm:tracking-[-1%] text-[#00000080]">
+                                [amount in USD]
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[18px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[10px] tracking-[-3%] sm:tracking-[-1] text-[#000000] sm:mb-1">
+                                Tags
+                              </p>
+                              <p className="text-[16px] sm:text-[10px] font-semibold font-secondary leading-[24px] sm:leading-[12px] tracking-[-3%] sm:tracking-[-1%] text-[#00000080]">
+                                [select 1-3 tags]
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="sm:mt-6">
+              <div className="flex justify-end sm:justify-center items-center -mt-10 sm:-mt-0">
+                <Link href="/other-user-following">
+                  <MyButton
+                    buttonText="View Profile"
+                    buttonType="tertiary"
+                    buttonStyles="bg-white hover:bg-[#120037] hover:text-white duration-300 text-[#000000] mr-[14.14px]"
+                  />
+                </Link>
+                <Link href="/my-message">
+                  <MyButton
+                    buttonText="Message"
+                    buttonType="tertiary"
+                    buttonStyles="bg-[#A274FF]/50 hover:bg-[#120037] duration-300 text-white"
+                  />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default ViewJobModal;

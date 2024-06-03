@@ -278,14 +278,20 @@ const OtherUserFollow = () => {
                     <div className="w-[120px] h-[110px] bg-[#FFFFFF]/70 flex justify-center items-center rounded-[16px]  left-avatar-shadow">
                       <div>
                         <Image
-                          src="/images/head.svg"
+                          src={
+                            profile?.metadata?.picture?.__typename == "ImageSet"
+                              ? profile?.metadata?.picture?.raw?.uri
+                              : "/images/head.svg"
+                          }
                           alt="head image"
                           className="w-[65px] h-[65px] mb-2 "
                           width={65}
                           height={65}
                         />
                         <p className="text-[14px] font-bold font-secondary text-center leading-[17.6px] ml-[-5px]">
-                          adam.lens
+                          {profile?.handle?.localName
+                            ? `${profile?.handle?.localName}.${profile?.handle?.namespace}`
+                            : "adam.lens"}
                         </p>
                       </div>
                     </div>
@@ -301,7 +307,7 @@ const OtherUserFollow = () => {
                           Following
                         </p>
                         <p className="text-[10px] font-semibold font-secondary leading-[12px] tracking-[-1%] text-[#000000]/50">
-                          100
+                          {profile ? profile.stats.following : 100}
                         </p>
                       </div>
                       <div>
@@ -309,7 +315,7 @@ const OtherUserFollow = () => {
                           Followers
                         </p>
                         <p className="text-[10px] font-semibold font-secondary leading-[12px] tracking-[-1%] text-[#000000]/50">
-                          735
+                          {profile ? profile.stats.followers : 75}
                         </p>
                       </div>
                       <div>
@@ -395,9 +401,9 @@ const OtherUserFollow = () => {
                       About Me
                     </p>
                     <p className="text-[10px] font-semibold  font-secondary leading-[16px] tracking-[-1%] text-[#000000]/50">
-                      bla bla bla bla bla bla bla bla bla bla bla bla bla bla
-                      bla bla bla bla bla bla bla bla bla bla bla bla bla bla
-                      bla bla bla bla
+                      {profile?.metadata?.bio
+                        ? profile.metadata.bio
+                        : userData.about}
                     </p>
                   </div>
 

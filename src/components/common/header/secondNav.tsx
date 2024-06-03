@@ -164,7 +164,7 @@ const SecondNav = ({ profile }: { profile?: any }) => {
                 </div>
               </div>
               <Link href="/my-message">
-                <button>
+                <button style={{ paddingTop: "4px" }}>
                   <Image
                     className="mt-[-5px]"
                     src="/images/message-icon.svg"
