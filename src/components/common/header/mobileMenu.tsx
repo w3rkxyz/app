@@ -7,8 +7,10 @@ const MobileProfileDropdown = ({
   handle,
   menuOpen,
   closeMenu,
+  profilePic,
 }: {
   handle?: HandleInfo;
+  profilePic: string;
   menuOpen: boolean;
   closeMenu: () => void;
 }) => {
@@ -36,15 +38,19 @@ const MobileProfileDropdown = ({
         />
       </button>
       <div className="rounded-[12px] border-[1px] border-[#E4E4E7] flex align-middle p-[12px] gap-[12px] mb-[12px]">
-        <Image
-          src={"/images/paco.svg"}
-          alt="notification icon"
-          width={50}
-          height={50}
-        />
+        <div className="w-[50px] h-[50px] relative">
+          <Image
+            src={profilePic}
+            layout="fill"
+            className="rounded-[12px]"
+            alt="user icon"
+          />
+        </div>
         <div className="flex flex-col justify-center gap-[6px] py-[2px]">
           <span className="bold-h2">Display Name</span>
-          <span className="bold-h2-subtext">@0xPaco</span>
+          <span className="bold-h2-subtext">
+            {handle ? `@${handle.localName}.${handle.namespace}` : "@0xPaco"}
+          </span>
         </div>
       </div>
       <hr className="w-full h-[1px] bg-[#E4E4E7] border-0 mb-[14px]" />

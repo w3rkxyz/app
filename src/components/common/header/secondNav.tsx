@@ -187,6 +187,11 @@ const SecondNav = ({
             handle={profile?.handle ? profile.handle : undefined}
             menuOpen={isMobileMenuOpen}
             closeMenu={handleMobileMenuToggle}
+            profilePic={
+              profile?.metadata?.picture?.raw?.uri
+                ? profile.metadata.picture.raw.uri
+                : "/images/paco.svg"
+            }
           />
         </div>
       </div>
