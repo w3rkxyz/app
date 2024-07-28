@@ -1,19 +1,26 @@
-import SearchIcon from '@/icons/SearchIcon';
+import SearchIcon from "@/icons/SearchIcon";
 
-const SearchInput = () => {
-	return (
-		<>
-			<div className="flex justify-between items-center max-w-[671px] w-full bg-[#FFFFFF]/50 rounded-[20px] p-[6px] sm:my-[16px]">
-				<input
-					className="rounded-[10px] pl-3 py-1 w-full"
-					placeholder="[search query here]"
-				/>
-				<button className="search-button p-[2px] bg-primary/50 -ml-10 mr-[4px] rounded-[8px]">
-					<SearchIcon />
-				</button>
-			</div>
-		</>
-	);
+interface Search {
+  toggleCategories?: any;
+}
+
+const SearchInput = ({ toggleCategories }: Search) => {
+  return (
+    <>
+      <div className="flex justify-start sm:justify-between items-center max-w-[600px] bg-white w-full border-[1px] border-[#E4E4E7] rounded-[12px]">
+        <input
+          className="search-input rounded-[12px] p-[11px]"
+          placeholder="Search..."
+        />
+        <button
+          className="hidden sm:block search-button -ml-10 mr-[4px] border-l-[1px] border-l-[#E4E4E7] px-[5px]"
+          onClick={() => toggleCategories?.()}
+        >
+          <SearchIcon />
+        </button>
+      </div>
+    </>
+  );
 };
 
 export default SearchInput;

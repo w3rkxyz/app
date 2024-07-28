@@ -5,26 +5,92 @@ import Image from "next/image";
 import DownloadIcon from "@/icons/DownloadIcon";
 import CreateContractModal from "../create-contract-modal/create-contract-modal";
 import OpenMessage from "./OpenMessage";
+import NewConversation from "./newConversation";
+import getCurrentTime from "@/utils/currentTime";
 
 interface Message {
   id: number;
   sender: string;
   text: string;
+  time: string;
 }
+
+const placeholderMessages: Message[][] = [
+  [
+    {
+      id: 1,
+      sender: "me",
+      time: "11:20am",
+      text: "Hey! You’re really cool would like to connect asap!",
+    },
+    {
+      id: 2,
+      sender: "tom",
+      time: "11:25am",
+      text: `Hey! Really cool to see your service listing. 
+Would be great to connect and better understand your skill-sets... 
+When would you be available for a call?`,
+    },
+  ],
+  [
+    {
+      id: 3,
+      sender: "me",
+      time: "12:20am",
+      text: "How are you man!",
+    },
+    {
+      id: 4,
+      sender: "dan",
+      time: "1:25am",
+      text: `Doing great! What's up?`,
+    },
+  ],
+  [
+    {
+      id: 5,
+      sender: "me",
+      time: "6:20am",
+      text: "Good morning, we need to talk.",
+    },
+    {
+      id: 6,
+      sender: "emmanuel",
+      time: "11:25am",
+      text: `Hey...`,
+    },
+    {
+      id: 7,
+      sender: "emmanuel",
+      time: "11:25am",
+      text: `about what?`,
+    },
+  ],
+];
 
 const MyMessageOpenChat = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[][]>(placeholderMessages);
   const [inputMessage, setInputMessage] = useState("");
-
+  const [messagesEnabled, setMessagesEnabled] = useState(false);
+  const [isNewConversationModalOpen, setIsNewConversationModalOpen] =
+    useState(false);
+  const [selectedConversation, setSelectedConversation] = useState<
+    number | null
+  >(null);
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
+  const [showMessagesMobile, setShowMessagesMobile] = useState(false);
 
-  const handleEnterContractClick = () => {
-    setIsContractModalOpen(true);
-  };
+  // const handleEnterContractClick = () => {
+  //   setIsContractModalOpen(true);
+  // };
 
   const handleCloseModal = () => {
     setIsContractModalOpen(false);
+  };
+
+  const handleCloseNewConversationModal = () => {
+    setIsNewConversationModalOpen(false);
   };
 
   useEffect(() => {
@@ -47,472 +113,260 @@ const MyMessageOpenChat = () => {
   const handleSendMessage = () => {
     if (inputMessage.trim() !== "") {
       const newMessage = {
-        id: messages.length + 1,
-        sender: "User",
+        id: messages[selectedConversation as number].length + 1,
+        sender: "me",
         text: inputMessage,
+        time: getCurrentTime(),
       };
 
-      setMessages([...messages, newMessage]);
+      var allmessages = messages;
+      allmessages[selectedConversation as number].push(newMessage);
+
+      setMessages(allmessages);
 
       setInputMessage("");
     }
   };
 
-  const handleMessageOpen = () => {
-    setIsOpen(true);
+  const handleKeyDown = (event: any) => {
+    if (event.key === "Enter") {
+      handleSendMessage();
+    }
   };
 
+  const handleNewConversation = (event: any) => {
+    if (event.key === "Enter") {
+      handleCloseNewConversationModal();
+      setShowMessagesMobile(true);
+    }
+  };
+
+  // const handleMessageOpen = () => {
+  //   setIsOpen(true);
+  // };
+
   return (
-    <div className="pt-[181px] sm:pt-[90px] mb-[112px] sm:mb-[30px]">
-      <div className="custom-container">
-        <div className="flex sm:flex-col items-center gap-[25px] h-[675px] sm:h-[428px]">
-          <div className="left-panel-message-section sm:hidden w-[250px] flex-shrink-0 sm:w-full sm:h-[428px] overflow-auto bg-[#FFFFFF]/50 rounded-[20px] px-[23px] pt-[26px] pb-[28px]">
-            <h2 className="text-[20px] text-center font-semibold leading-5 tracking-[-1%] font-secondary pb-[15px]">
-              Messages
-            </h2>
-            <div className="mb-[10px]">
-              <input
-                type="text"
-                placeholder="[search]"
-                className="h-[31px] w-[204px] sm:w-full rounded-[8px] pl-2 font-secondary font-medium text-[14px] leading-[20px] tracking-[-1%] text-[#00000080] "
-              />
-            </div>
-
+    <div className="pt-[121px] sm:pt-[60px] px-[156px] sm:px-[16px] flex gap-[5px] mb-[40px]">
+      <div
+        className={`horizontal-box px-[12px] w-[367px] sm:w-full flex ${
+          selectedConversation !== null ? "sm:hidden" : "sm:flex"
+        } flex-col`}
+      >
+        <div className="flex justify-between items-center py-[19px] px-[9px]">
+          <span className="leading-[16.94px] font-medium text-[16px]">
+            Messages
+          </span>
+          {messagesEnabled && (
+            <Image
+              onClick={() => setIsNewConversationModalOpen(true)}
+              src="/images/new-message.svg"
+              className="cursor-pointer"
+              alt="new message"
+              width={26}
+              height={26}
+            />
+          )}
+        </div>
+        <hr className="bg-[#E4E4E7] h-[1px] mb-[0px]" />
+        {messagesEnabled ? (
+          <>
             <div
-              className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-2 bg-white rounded-[20px]"
-              onClick={handleMessageOpen}
+              className={`flex ${
+                showMessagesMobile ? "sm:flex" : "sm:hidden"
+              } flex-col gap-[5px] mt-[8px]`}
             >
-              <div className="-mt-1">
-                <Image
-                  src="/images/head.svg"
-                  alt="message model image"
-                  className="w-[40px] h-[40px] mr-3"
-                  width={40}
-                  height={40}
-                />
-              </div>
-              <div>
-                <div className="pt-2 sm:pt-1">
-                  <p className="text-[12px] font-semibold font-secondary leading-[10px] tracking-[-1%]">
-                    adam.lens
-                  </p>
-                  <p className="text-[8px] font-medium font-secondary leading[0px] tracking-[-1%] text-ellipsis">
-                    [message content goes here]
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div
-              className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-2 bg-white rounded-[20px]"
-              onClick={handleMessageOpen}
-            >
-              <div className="-mt-1">
-                <Image
-                  src="/images/head.svg"
-                  alt="message model image"
-                  className="w-[40px] h-[40px] mr-3"
-                  width={40}
-                  height={40}
-                />
-              </div>
-              <div>
-                <div className="pt-2 sm:pt-1">
-                  <p className="text-[12px] font-semibold font-secondary leading-[10px] tracking-[-1%]">
-                    adam.lens
-                  </p>
-                  <p className="text-[8px] font-medium font-secondary leading[0px] tracking-[-1%] text-ellipsis">
-                    [message content goes here]
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div
-              className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-2 bg-white rounded-[20px]"
-              onClick={handleMessageOpen}
-            >
-              <div className="-mt-1">
-                <Image
-                  src="/images/head.svg"
-                  alt="message model image"
-                  className="w-[40px] h-[40px] mr-3"
-                  width={40}
-                  height={40}
-                />
-              </div>
-              <div>
-                <div className="pt-2 sm:pt-1">
-                  <p className="text-[12px] font-semibold font-secondary leading-[10px] tracking-[-1%]">
-                    adam.lens
-                  </p>
-                  <p className="text-[8px] font-medium font-secondary leading[0px] tracking-[-1%] text-ellipsis">
-                    [message content goes here]
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div
-              className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-2 bg-white rounded-[20px]"
-              onClick={handleMessageOpen}
-            >
-              <div className="-mt-1">
-                <Image
-                  src="/images/head.svg"
-                  alt="message model image"
-                  className="w-[40px] h-[40px] mr-3"
-                  width={40}
-                  height={40}
-                />
-              </div>
-              <div>
-                <div className="pt-2 sm:pt-1">
-                  <p className="text-[12px] font-semibold font-secondary leading-[10px] tracking-[-1%]">
-                    adam.lens
-                  </p>
-                  <p className="text-[8px] font-medium font-secondary leading[0px] tracking-[-1%] text-ellipsis">
-                    [message content goes here]
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div
-              className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-2 bg-white rounded-[20px]"
-              onClick={handleMessageOpen}
-            >
-              <div className="-mt-1">
-                <Image
-                  src="/images/head.svg"
-                  alt="message model image"
-                  className="w-[40px] h-[40px] mr-3"
-                  width={40}
-                  height={40}
-                />
-              </div>
-              <div>
-                <div className="pt-2 sm:pt-1">
-                  <p className="text-[12px] font-semibold font-secondary leading-[10px] tracking-[-1%]">
-                    adam.lens
-                  </p>
-                  <p className="text-[8px] font-medium font-secondary leading[0px] tracking-[-1%] text-ellipsis">
-                    [message content goes here]
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div
-              className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-2 bg-white rounded-[20px]"
-              onClick={handleMessageOpen}
-            >
-              <div className="-mt-1">
-                <Image
-                  src="/images/head.svg"
-                  alt="message model image"
-                  className="w-[40px] h-[40px] mr-3"
-                  width={40}
-                  height={40}
-                />
-              </div>
-              <div>
-                <div className="pt-2 sm:pt-1">
-                  <p className="text-[12px] font-semibold font-secondary leading-[10px] tracking-[-1%]">
-                    adam.lens
-                  </p>
-                  <p className="text-[8px] font-medium font-secondary leading[0px] tracking-[-1%] text-ellipsis">
-                    [message content goes here]
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div
-              className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-2 bg-white rounded-[20px]"
-              onClick={handleMessageOpen}
-            >
-              <div className="-mt-1">
-                <Image
-                  src="/images/head.svg"
-                  alt="message model image"
-                  className="w-[40px] h-[40px] mr-3"
-                  width={40}
-                  height={40}
-                />
-              </div>
-              <div>
-                <div className="pt-2 sm:pt-1">
-                  <p className="text-[12px] font-semibold font-secondary leading-[10px] tracking-[-1%]">
-                    adam.lens
-                  </p>
-                  <p className="text-[8px] font-medium font-secondary leading[0px] tracking-[-1%] text-ellipsis">
-                    [message content goes here]
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="right-panel-input-section sm:hidden flex-1 sm:w-full bg-[#FFFFFF]/50 h-full sm:min-h-[428px] sm:max-h-[428px] rounded-[20px] p-[27px] sm:p-4 flex flex-col justify-between">
-            <div className="bg-white h-[50px] sm:h-[46px] rounded-[10px] pl-3 text py-4 sm:py-2 w-full flex justify-between items-center">
-              <p className="text-[#000000] font-semibold text-[14px] font-secondary leading-[20px] tracking-[-1%]">
-                adam.lens
-              </p>
-              <button
-                onClick={handleEnterContractClick}
-                className="text-[14px] sm:text-[10px] h-[38px] sm:h-[26px] font-secondary font-semibold leading-[20px] sm:leading-[14px] tracking-[-1%] sm:tracking-[-3%] bg-[#A274FF]/50 hover:bg-[#120037] duration-300 text-white mr-2 py-[9px] sm:py-[6px] px-[14px] sm:px-[10px] rounded-[6px]"
-              >
-                Enter Contract
-              </button>
-
-              {isContractModalOpen && (
-                <div className="fixed inset-0 sm:w-full z-50 overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center">
-                  <div className="w-full">
-                    <CreateContractModal
-                      closeContractModal={handleCloseModal}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="overflow-y-auto overflow-x-hidden">
-              <div>
-                {messages.map((message) => (
-                  <div key={message.id} className="flex justify-end">
-                    <div
-                      className="mb-[10px] h-auto bg-[#A274FF1A] rounded-[10px]"
-                      style={{
-                        width: "fit-content",
-                        maxWidth: "315px",
-                      }}
-                    >
-                      <div>
-                        <div className="py-[15px]">
-                          <p className="text-[14px] px-[14px] font-semibold font-secondary leading-[20px] tracking-[-1%]">
-                            {message.text}
-                          </p>
+              {[0, 1, 2].map((id) => {
+                return (
+                  <div
+                    className="p-[8px] w-full bg-[#FAFAFA] rounded-[8px] cursor-pointer"
+                    onClick={() => setSelectedConversation(id)}
+                  >
+                    <div className="flex justify-between align-top mb-[6px]">
+                      <div className="flex gap-[10px]">
+                        <Image
+                          src={"/images/paco.svg"}
+                          alt="paco pic"
+                          width={40}
+                          height={40}
+                        />
+                        <div className="flex flex-col gap-[5px] sm:gap-[1px] pt-[5px]">
+                          <span className="text-[14px] leading-[16.94px] font-medium">
+                            Display Name
+                          </span>
+                          <span className="text-[14px] leading-[16.94px] font-medium text-[#707070]">
+                            lens.handle
+                          </span>
                         </div>
                       </div>
+                      <span className="text-[#707070] leading-[12.1px] text-[12px] font-semibold">
+                        4m ago
+                      </span>
                     </div>
+                    <p className="line-clamp-1 text-[11px] sm:text-[10px] text-[#000000] leading-[12px] font-medium">
+                      {messages[id][messages[id].length - 1].text}
+                    </p>
                   </div>
-                ))}
-              </div>
-
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="[type message here]"
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  className="rounded-[10px] py-4 !h-[50px] sm:h-[48px] sm:py-2 pl-3 pr-[200px] w-full text-black font-semibold text-[14px]"
+                );
+              })}
+            </div>
+            <div className="flex items-center justify-center h-full">
+              <div className="hidden sm:flex flex-col gap-[11px] justify-center items-center">
+                <Image
+                  src="/images/discuss.svg"
+                  className="cursor-pointer"
+                  alt="new message"
+                  width={24}
+                  height={21}
                 />
-                <div className="absolute top-[6px] right-[8px] sm:top-[5px]">
-                  <div className="flex justify-end items-center gap-2">
-                    <button className="w-[38px] sm:w-[24px] h-[38px] sm:h-[24px]  sm:p-1 border-[2px] sm:border-none rounded-[6px] border-[#000000]/50 flex justify-center items-center">
-                      <DownloadIcon />
-                    </button>
-                    <button
-                      className="text-[14px] h-[38px]  sm:w-[40px] sm:h-[40px]  font-secondary font-semibold leading-[20px] tracking-[-1%] bg-[#A274FF]/50 hover:bg-[#120037] duration-300 text-white  py-[9px] sm:py-[10px] px-[12px] sm:px-3 rounded-[6px] flex items-center gap-2"
-                      onClick={handleSendMessage}
-                    >
-                      <span className="inline sm:hidden">Send</span>
-                      <Image
-                        src="/images/arrow-right.svg"
-                        alt="right arrow"
-                        className=""
-                        width={14}
-                        height={20}
-                      />
-                    </button>
-                  </div>
-                </div>
+                <span className="leading-[16.94px] max-w-[174px] text-center font-medium text-[14px] text-black">
+                  Select a conversation to start messaging
+                </span>
               </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <div className="flex flex-col gap-[11px] justify-center items-center">
+              <Image
+                src="/images/discuss.svg"
+                className="cursor-pointer"
+                alt="new message"
+                width={24}
+                height={21}
+              />
+              <span className="leading-[16.94px] font-medium text-[14px] text-black">
+                Enable Messages
+              </span>
+              <button
+                className="rounded-[8px] bg-[#C6AAFF] px-[17px] py-[8px] text-white leading-[16.94px] font-medium text-[14px]"
+                onClick={() => setMessagesEnabled(true)}
+              >
+                Enable
+              </button>
             </div>
           </div>
-
-          {!isOpen && (
-            <div className="left-panel-message-section hidden sm:block w-[250px] flex-shrink-0 sm:w-full sm:h-[428px] overflow-auto bg-[#FFFFFF]/50 rounded-[20px] px-[23px] pt-[26px] pb-[28px]">
-              <h2 className="text-[20px] text-center font-semibold leading-5 tracking-[-1%] font-secondary pb-[15px]">
-                Messages
-              </h2>
-              <div className="mb-[10px]">
-                <input
-                  type="text"
-                  placeholder="[search]"
-                  className="h-[31px] sm:w-full rounded-[8px] pl-2 font-secondary font-medium text-[14px] leading-[20px] tracking-[-1%] text-[#00000080] "
+        )}
+      </div>
+      <div
+        className={`horizontal-box ${
+          selectedConversation !== null ? "" : "sm:hidden"
+        } flex-1 px-[12px]`}
+      >
+        {!messagesEnabled ? (
+          <div className="flex flex-col gap-[5px] mt-[8px]"></div>
+        ) : selectedConversation !== null ? (
+          <div className="flex flex-col h-full">
+            <div className="flex justify-start sm:gap-[18px] items-center py-[10px] px-[0px]">
+              <Image
+                src={"/images/arrow-left.svg"}
+                className="hidden sm:block cursor-pointer"
+                alt="paco pic"
+                width={24}
+                height={24}
+                onClick={() => setSelectedConversation(null)}
+              />
+              <div className="flex gap-[10px]">
+                <Image
+                  src={"/images/paco.svg"}
+                  alt="paco pic"
+                  width={43}
+                  height={43}
                 />
-              </div>
-              <div
-                className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-2 bg-white rounded-[20px]"
-                onClick={handleMessageOpen}
-              >
-                <div className="-mt-1">
-                  <Image
-                    src="/images/head.svg"
-                    alt="message model image"
-                    className="w-[40px] h-[40px] mr-3"
-                    width={40}
-                    height={40}
-                  />
-                </div>
-                <div>
-                  <div className="pt-2 sm:pt-1">
-                    <p className="text-[12px] font-semibold font-secondary leading-[10px] tracking-[-1%]">
-                      adam.lens
-                    </p>
-                    <p className="text-[8px] font-medium font-secondary leading[0px] tracking-[-1%] text-ellipsis">
-                      [message content goes here]
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div
-                className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-2 bg-white rounded-[20px]"
-                onClick={handleMessageOpen}
-              >
-                <div className="-mt-1">
-                  <Image
-                    src="/images/head.svg"
-                    alt="message model image"
-                    className="w-[40px] h-[40px] mr-3"
-                    width={40}
-                    height={40}
-                  />
-                </div>
-                <div>
-                  <div className="pt-2 sm:pt-1">
-                    <p className="text-[12px] font-semibold font-secondary leading-[10px] tracking-[-1%]">
-                      adam.lens
-                    </p>
-                    <p className="text-[8px] font-medium font-secondary leading[0px] tracking-[-1%] text-ellipsis">
-                      [message content goes here]
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div
-                className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-2 bg-white rounded-[20px]"
-                onClick={handleMessageOpen}
-              >
-                <div className="-mt-1">
-                  <Image
-                    src="/images/head.svg"
-                    alt="message model image"
-                    className="w-[40px] h-[40px] mr-3"
-                    width={40}
-                    height={40}
-                  />
-                </div>
-                <div>
-                  <div className="pt-2 sm:pt-1">
-                    <p className="text-[12px] font-semibold font-secondary leading-[10px] tracking-[-1%]">
-                      adam.lens
-                    </p>
-                    <p className="text-[8px] font-medium font-secondary leading[0px] tracking-[-1%] text-ellipsis">
-                      [message content goes here]
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div
-                className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-2 bg-white rounded-[20px]"
-                onClick={handleMessageOpen}
-              >
-                <div className="-mt-1">
-                  <Image
-                    src="/images/head.svg"
-                    alt="message model image"
-                    className="w-[40px] h-[40px] mr-3"
-                    width={40}
-                    height={40}
-                  />
-                </div>
-                <div>
-                  <div className="pt-2 sm:pt-1">
-                    <p className="text-[12px] font-semibold font-secondary leading-[10px] tracking-[-1%]">
-                      adam.lens
-                    </p>
-                    <p className="text-[8px] font-medium font-secondary leading[0px] tracking-[-1%] text-ellipsis">
-                      [message content goes here]
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div
-                className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-2 bg-white rounded-[20px]"
-                onClick={handleMessageOpen}
-              >
-                <div className="-mt-1">
-                  <Image
-                    src="/images/head.svg"
-                    alt="message model image"
-                    className="w-[40px] h-[40px] mr-3"
-                    width={40}
-                    height={40}
-                  />
-                </div>
-                <div>
-                  <div className="pt-2 sm:pt-1">
-                    <p className="text-[12px] font-semibold font-secondary leading-[10px] tracking-[-1%]">
-                      adam.lens
-                    </p>
-                    <p className="text-[8px] font-medium font-secondary leading[0px] tracking-[-1%] text-ellipsis">
-                      [message content goes here]
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div
-                className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-2 bg-white rounded-[20px]"
-                onClick={handleMessageOpen}
-              >
-                <div className="-mt-1">
-                  <Image
-                    src="/images/head.svg"
-                    alt="message model image"
-                    className="w-[40px] h-[40px] mr-3"
-                    width={40}
-                    height={40}
-                  />
-                </div>
-                <div>
-                  <div className="pt-2 sm:pt-1">
-                    <p className="text-[12px] font-semibold font-secondary leading-[10px] tracking-[-1%]">
-                      adam.lens
-                    </p>
-                    <p className="text-[8px] font-medium font-secondary leading[0px] tracking-[-1%] text-ellipsis">
-                      [message content goes here]
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div
-                className="w-[204px] sm:w-full h-[71px] flex items-center gap-3 p-[13px] mb-2 bg-white rounded-[20px]"
-                onClick={handleMessageOpen}
-              >
-                <div className="-mt-1">
-                  <Image
-                    src="/images/head.svg"
-                    alt="message model image"
-                    className="w-[40px] h-[40px] mr-3"
-                    width={40}
-                    height={40}
-                  />
-                </div>
-                <div>
-                  <div className="pt-2 sm:pt-1">
-                    <p className="text-[12px] font-semibold font-secondary leading-[10px] tracking-[-1%]">
-                      adam.lens
-                    </p>
-                    <p className="text-[8px] font-medium font-secondary leading[0px] tracking-[-1%] text-ellipsis">
-                      [message content goes here]
-                    </p>
-                  </div>
+                <div className="flex flex-col gap-[2px] pt-[5px]">
+                  <span className="text-[14px] leading-[16.94px] font-medium">
+                    Display Name
+                  </span>
+                  <span className="text-[14px] leading-[16.94px] font-medium text-[#707070]">
+                    lens.handle
+                  </span>
                 </div>
               </div>
             </div>
-          )}
-
-          {isOpen && <OpenMessage />}
-        </div>
+            <hr className="bg-[#E4E4E7] h-[1px] mb-[0px]" />
+            <div className="flex-1 flex flex-col justify-end sm:justify-start">
+              <span className="text-[12px] leading-[12.1px] font-medium self-center mb-[15px] sm:mt-[15px]">
+                Today
+              </span>
+              {messages[selectedConversation as number].map(
+                (message: Message) => {
+                  return (
+                    <div
+                      className={`rounded-[8px] whitespace-pre-wrap min-w-[200px] sm:min-w-[150px] max-w-[450px] text-[12px] laptop-x:max-w-[350px] sm:max-w-[262px] laptop-x:text-[14px] mb-[12px] relative font-normal leading-[20px] p-[11px] py-[9px] 
+                      pr-[48px] sm:px-[8px] sm:pr-[9px] sm:pb-[23px] ${
+                        message.sender === "me"
+                          ? "self-end bg-[#C6AAFF] text-white"
+                          : "self-start bg-[#F4F4F5]"
+                      } `}
+                    >
+                      {message.text}
+                      <span className="absolute right-[6px] bottom-[0px] text-[10px]">
+                        {message.time}
+                      </span>
+                    </div>
+                  );
+                }
+              )}
+            </div>
+            <hr className="bg-[#E4E4E7] h-[1px] mb-[0px]" />
+            <div className="flex py-[12px] gap-[5px] w-full items-center">
+              <input
+                className="form-input rounded-[8px] p-[10px] border-[1px] border-[#E4E4E7] w-full"
+                placeholder="Type your message here.."
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyDown={handleKeyDown}
+                value={inputMessage}
+              />
+              <button className="rounded-[8px] bg-[#F4F4F5] p-[9px] h-fit">
+                <Image
+                  src={"/images/share.svg"}
+                  alt="paco pic"
+                  width={24}
+                  height={24}
+                />
+              </button>
+              <button
+                className="px-[18px] sm:px-[10px] py-[10px] bg-[#C6AAFF] rounded-[8px] flex w-fit gap-[7px] h-fit items-center"
+                onClick={handleSendMessage}
+              >
+                <span className="text-[15px] text-white leading-none sm:hidden">
+                  Send
+                </span>
+                <Image
+                  src={"/images/arrow-right.svg"}
+                  alt="paco pic"
+                  width={16}
+                  height={16}
+                />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <div className="flex flex-col gap-[11px] justify-center items-center">
+              <Image
+                src="/images/discuss.svg"
+                className="cursor-pointer"
+                alt="new message"
+                width={24}
+                height={21}
+              />
+              <span className="leading-[16.94px] font-medium text-[14px] text-black">
+                Select a conversation to start messaging
+              </span>
+            </div>
+          </div>
+        )}
       </div>
+      {isNewConversationModalOpen && (
+        <div className="fixed inset-0 z-[99991] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center">
+          <div className="w-full flex justify-center align-middle">
+            <NewConversation
+              handleCloseModal={handleCloseNewConversationModal}
+              handleSend={handleNewConversation}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

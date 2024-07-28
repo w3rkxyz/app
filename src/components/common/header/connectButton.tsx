@@ -1,4 +1,5 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import Link from "next/link";
 export const Connect = () => {
   return (
     <ConnectButton.Custom>
@@ -17,18 +18,15 @@ export const Connect = () => {
         return (
           <>
             {(() => {
-              if (!connected) {
+              if (connected) {
                 return (
-                  <button
-                    onClick={openConnectModal}
-                    type="button"
-                    className="button-primary ml-auto"
-                  >
-                    Connect Wallet
-                  </button>
+                  <Link href="/other-user-follow">
+                    <button type="button" className="button-primary mx-auto">
+                      Get Started
+                    </button>
+                  </Link>
                 );
-              }
-              if (chain?.unsupported) {
+              } else if (chain?.unsupported) {
                 return (
                   <button
                     onClick={openChainModal}
@@ -36,6 +34,16 @@ export const Connect = () => {
                     className="button-primary ml-auto"
                   >
                     Wrong network
+                  </button>
+                );
+              } else {
+                return (
+                  <button
+                    onClick={openConnectModal}
+                    type="button"
+                    className="button-primary ml-auto"
+                  >
+                    Connect Wallet
                   </button>
                 );
               }

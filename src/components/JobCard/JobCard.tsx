@@ -1,189 +1,107 @@
-'use client';
+"use client";
 
-import Image from 'next/image';
-import MyButton from '../reusable/Button/Button';
+import Image from "next/image";
+import MyButton from "../reusable/Button/Button";
 
 interface CardProps {
-	userAvatar?: string;
-	username?: string;
-	jobName?: string;
-	jobIcon?: string;
-	cardStyles?: string;
-	onClick?: () => void;
-	onCardClick?: () => void;
-	handlePostJobOpen?: () => void;
+  userAvatar?: string;
+  username?: string;
+  jobName?: string;
+  jobIcon?: string;
+  cardStyles?: string;
+  type: string;
+  onClick?: () => void;
+  onCardClick?: () => void;
+  handlePostJobOpen?: () => void;
 }
 
 const JobCard = ({
-	userAvatar,
-	username,
-	jobName,
-	jobIcon,
-	cardStyles,
-	onCardClick,
-	handlePostJobOpen,
+  userAvatar,
+  username,
+  jobName,
+  jobIcon,
+  cardStyles,
+  onCardClick,
+  handlePostJobOpen,
+  type,
 }: CardProps) => {
-	return (
-		<div
-			className={`flex sm:flex-col items-center md:items-start gap-[29px] sm:w-full sm:h-auto md:w-full h-[132px] md:h-auto md:gap-3 bg-[#FFFFFF] py-[17px] rounded-[20px] my-[21px] md:mb-[21px] md:mt-0 pl-[38px] md:pl-0 sm:pl-[16px] pr-[18px] cursor-pointer`}
-			onClick={() => {
-				if (handlePostJobOpen) {
-					handlePostJobOpen();
-				} else if (onCardClick) {
-					onCardClick();
-				}
-			}}
-		>
-			<div className="sm:flex gap-[8px]">
-				<div className="">
-					{userAvatar && username && (
-						<div className="items-center pr-2">
-							<div className="flex justify-center items-center ">
-								<div className="w-[57px] h-[54px] sm:w-[48px] sm:h-[48px] rounded-[10px]">
-									<Image
-										src={userAvatar}
-										alt="User Avatar"
-										className="w-full h-full rounded-[10px] p-[4px] mb-[10px]"
-										width={100}
-										height={100}
-									/>
-								</div>
-							</div>
-							<p className="text-[12px] sm:text-[14px] mt-[8px] sm:font-bold py-1 px-3 sm:px-[6px] bg-white rounded-[10px] font-bold font-secondary leading-[20px] sm:leading-[17.6px] tracking-[-1%]">
-								{username}
-							</p>
-						</div>
-					)}
-				</div>
-
-				<div className="max-w-[444px] hidden sm:block">
-					<div className="flex items-center gap-3 pb-2">
-						<p className="text-[12px] font-bold font-secondary leading-[20px] tracking-[-1%]">
-							{jobName}
-						</p>
-						{jobIcon && (
-							<div className="flex justify-center items-center rounded-[4px] w-[20px] h-[20px] bg-[#120037] ">
-								<Image
-									src={jobIcon}
-									alt="job icon image"
-									className="w-[12px] h-[12px]"
-									width={12}
-									height={12}
-								/>
-							</div>
-						)}
-					</div>
-					<p className="text-[10px] font-medium font-secondary leading-[14px] tracking-[-1%] md:overflow-ellipsis">
-						bla bla bla lbla bla bla bla lbla bla bla bla lbla bla
-						bla bla lbla bla bla bla lbla bla bla bla lbla bla bla
-						bla lbla bla bla bla lbla bla bla bla lbla a bla bla bla
-						lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla
-						lbla a bla bla bla lbla a bla bla bla lbla
-					</p>
-				</div>
-			</div>
-			<div
-				className={`w-full flex sm:flex-col-reverse md:flex-col justify-between ${cardStyles} items-center`}
-			>
-				<div className="sm:hidden">
-					<div className="flex items-center gap-3 pb-2">
-						<p className="text-[12px] font-bold font-secondary leading-[20px] tracking-[-1%]">
-							{jobName}
-						</p>
-						{jobIcon && (
-							<div className="flex justify-center items-center rounded-[4px] w-[20px] h-[20px] bg-[#120037] ">
-								<Image
-									src={jobIcon}
-									alt="job icon image"
-									className="w-[12px] h-[12px]"
-									width={12}
-									height={12}
-								/>
-							</div>
-						)}
-					</div>
-					<p className="text-[12px] font-medium max-w-[444px] font-secondary leading-[20px] tracking-[-1%] md:overflow-ellipsis">
-						bla bla bla lbla bla bla bla lbla bla bla bla lbla bla
-						bla bla lbla bla bla bla lbla bla bla bla lbla bla bla
-						bla lbla bla bla bla lbla bla bla bla lbla a bla bla bla
-						lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla
-						lbla a bla bla bla lbla a bla bla bla lbla
-					</p>
-				</div>
-
-				{/* paid amount details */}
-				<div className="sm:hidden md:hidden">
-					<p className="text-[12px] font-medium font-secondary leading-[20px] tracking-[-1%] text-[#000000]">
-						Fixed/Hourly Contract
-					</p>
-					<p className="text-[12px] font-medium font-secondary leading-[20px] tracking-[-1%] text-[#000000]">
-						Payment [amount in USD]
-					</p>
-					<p className="text-[12px] font-medium font-secondary leading-[20px] tracking-[-1%] text-[#000000]">
-						Paid In [insert token logos]
-					</p>
-				</div>
-
-				<div className="hidden sm:block md:block">
-					<div className="flex flex-row items-center gap-3 whitespace-nowrap w-full sm:w-[340px] overflow-auto payment mt-3 sm:mt-2 sm:mx-0">
-						<p className="text-[12px] font-medium font-secondary leading-[20px] tracking-[-1%] text-[#000000]">
-							Fixed/Hourly Contract
-						</p>
-						<p className="text-[12px] font-medium font-secondary leading-[20px] tracking-[-1%] text-[#000000]">
-							Payment [amount in USD]
-						</p>
-						<p className="text-[12px] font-medium font-secondary leading-[20px] tracking-[-1%] text-[#000000]">
-							Paid In [insert token logos]
-						</p>
-					</div>
-				</div>
-
-				<div className="sm:hidden md:hidden">
-					<MyButton
-						buttonText="Blockchain Development"
-						buttonType="accent"
-						buttonStyles="bg-[#FFAEAE]/50 mb-[4px]"
-					/>
-					<MyButton
-						buttonText="[tag]"
-						buttonType="accent"
-						buttonStyles="bg-[#FFD5AE]/50 mb-[4px]"
-					/>
-					<MyButton
-						buttonText="[tag]"
-						buttonType="accent"
-						buttonStyles="bg-[#FDFFAE]/50"
-					/>
-				</div>
-
-				<div className="hidden sm:block md:block">
-					<div className="flex flex-row items-center gap-3 whitespace-nowrap w-full sm:w-[340px] overflow-auto payment mt-3 sm:mt-2 sm:mx-0">
-						<div className="!w-[146px]">
-							<MyButton
-								buttonText="Blockchain Development"
-								buttonType="accent"
-								buttonStyles="bg-[#FFAEAE80] mb-[4px] w-[146px]"
-							/>
-						</div>
-						<div className="w-[146px]">
-							<MyButton
-								buttonText="[tag]"
-								buttonType="accent"
-								buttonStyles="bg-[#FFD5AE80] mb-[4px] w-[146px]"
-							/>
-						</div>
-						<div className="w-[146px]">
-							<MyButton
-								buttonText="[tag]"
-								buttonType="accent"
-								buttonStyles="bg-[#FDFFAE80] mb-[4px] w-[146px]"
-							/>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	);
+  return (
+    <div
+      className="bg-[white] hover:bg-[#F0F0F0] border-[1px] border-[#E4E4E7] rounded-[12px] p-[16px] cursor-pointer w-full"
+      onClick={() => {
+        if (handlePostJobOpen) {
+          handlePostJobOpen();
+        } else if (onCardClick) {
+          onCardClick();
+        }
+      }}
+    >
+      <div className="flex justify-between align-top mb-[10px]">
+        <div className="flex gap-[15px]">
+          <Image
+            src={`/images/${type === "job" ? "werk.svg" : "paco.svg"}`}
+            alt="w3rk logo"
+            width={60}
+            height={60}
+          />
+          <div className="flex flex-col gap-[5px] pt-[5px]">
+            <span className="text-[14px] leading-[16.94px] font-semibold">
+              Display Name
+            </span>
+            <span className="text-[14px] leading-[16.94px] font-semibold">
+              Job Title
+            </span>
+            <span className="text-[#707070] text-[12px] leading-[14.52px] font-semibold">
+              $0.00 /hr
+            </span>
+          </div>
+        </div>
+        {type === "job" ? (
+          <button className="flex align-middle gap-[5px] text-[white] leading-[12.1px] text-[12px] font-semibold py-[5.4px] px-[17px] bg-[#C6AAFF] rounded-[4px] h-fit">
+            <span>Job</span>
+            <Image
+              src="/images/case.svg"
+              alt="suitcase icon"
+              width={12}
+              height={12}
+            />
+          </button>
+        ) : (
+          <button className="flex align-middle gap-[5px] text-[white] leading-[12.1px] text-[12px] font-semibold py-[5.4px] px-[17px] bg-[#351A6B] rounded-[4px] h-fit">
+            <span>Service</span>
+            <Image
+              src="/images/service.svg"
+              alt="suitcase icon"
+              width={12}
+              height={12}
+            />
+          </button>
+        )}
+      </div>
+      <span className="leading-[16.94px] sm:leading-[1.94px] text-[14px] font-semibold mb-[4px] sm:mb-[8px]">
+        {jobName}
+      </span>
+      <p className="line-clamp-6 leading-[15.52px] text-[13px] sm:text-[13px] font-normal mb-[12px] sm:mb-[17px] w-full laptop-x:text-[14px]">
+        User information can go here along with service offered information,
+        total character limit will have to be decided bc we don’t wanna run over
+        the limit. User information can go here along with service offered
+        information, total character limit will have to be decided bc we don’t
+        wanna run over the limit. User information can go here along... service
+        offered information, total character limit will have to be
+      </p>
+      <div className="flex sm:flex-col gap-[15px] sm:gap-[10px]">
+        <button className="bg-[#E4E4E7] rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] px-[70px] sm:px-[66px] sm:max-w-[190px]">
+          Tag Name
+        </button>
+        <button className="bg-[#E4E4E7] rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] px-[70px] sm:px-[66px] sm:max-w-[190px]">
+          Tag Name
+        </button>
+        <button className="bg-[#E4E4E7] rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] px-[70px] sm:px-[66px] sm:max-w-[190px]">
+          Tag Name
+        </button>
+      </div>
+    </div>
+  );
 };
 
 export default JobCard;

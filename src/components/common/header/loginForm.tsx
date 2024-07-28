@@ -40,8 +40,9 @@ export function LoginForm({
         )}`
       );
 
-      profiles?.map((profile) => {
+      profiles?.map((profile: any) => {
         if (profile.id === id) {
+          localStorage.setItem("activeHandle", profile.handle?.fullHandle);
           setProfile(profile);
           onClose();
         }
@@ -88,23 +89,16 @@ export function LoginForm({
           position: "absolute",
           width: "100vw",
           height: "100vh",
-          zIndex: 2,
+          zIndex: 2000,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           backgroundColor: "rgba(128, 128, 128, 0.5)",
         }}
       >
-        {" "}
-        <p
-          style={{
-            backgroundColor: "white",
-            padding: "15px 60px",
-            borderRadius: "5px",
-          }}
-        >
-          No profiles on this wallet.
-        </p>{" "}
+        <p className="bg-[#FF8484] rounded-[16px] text-[18px] px-[46px] py-[33px] font-medium">
+          No Lens Handle Found
+        </p>
       </div>
     );
   }

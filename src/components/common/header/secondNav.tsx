@@ -4,11 +4,22 @@ import Image from "next/image";
 import Link from "next/link";
 import Notifications from "@/components/Notifications/Notifications";
 import ProfileDropdown from "@/components/ProfileDropdown/ProfileDropdown";
+import { usePathname } from "next/navigation";
+import MobileProfileDropdown from "./mobileMenu";
 
-const SecondNav = ({ profile }: { profile?: any }) => {
+const SecondNav = ({
+  profile,
+  setProfile,
+}: {
+  profile?: any;
+  setProfile: any;
+}) => {
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const path = usePathname();
+  console.log(path);
+  console.log("Profile: ", profile);
 
   const openModal = () => {
     setShowNotifications(true);
@@ -60,49 +71,18 @@ const SecondNav = ({ profile }: { profile?: any }) => {
     setMobileMenuOpen(!isMobileMenuOpen);
   };
 
-  const closeMobileMenu = () => {
-    setMobileMenuOpen(false);
-  };
-  useEffect(() => {
-    const handleClickOutsideModal = (event: MouseEvent) => {
-      if (
-        isMobileMenuOpen &&
-        (event.target as HTMLElement).closest(".modal-content") === null
-      ) {
-        closeMobileMenu();
-      }
-    };
-
-    document.addEventListener("click", handleClickOutsideModal);
-
-    return () => {
-      document.removeEventListener("click", handleClickOutsideModal);
-    };
-  }, [isMobileMenuOpen]);
-
   return (
-    <header className="header-section py-[42px] sm:py-[16px] absolute w-full top-0 left-0">
+    <header className="header-section py-[10px] px-[156px] sm:px-[16px] absolute w-full top-0 left-0 bg-white border-b-[1px] border-b-[#EEEEEE] z-[999]">
       <div className="custom-container">
         <div className="header-wrapper">
           <nav className="navbar-nav-main flex items-center gap-3 justify-between w-full relative">
             <div className="header-brand-box sm:flex sm:items-center sm:gap-6">
-              <div
-                className="navbar-trigger hidden sm:block"
-                onClick={handleMobileMenuToggle}
-              >
-                <Image
-                  src="/images/header-trigger.svg"
-                  alt="navbar trigger"
-                  width={20}
-                  height={12}
-                />
-              </div>
               <a href="/">
                 <Image
                   src="/images/brand-logo.svg"
                   className="sm:hidden"
-                  width={135}
-                  height={47}
+                  width={110}
+                  height={35}
                   alt="company brand logo"
                 ></Image>
                 <Image
@@ -115,59 +95,45 @@ const SecondNav = ({ profile }: { profile?: any }) => {
               </a>
             </div>
             <div className="navbar-right-cont flex items-center">
-              <ul className="navbar-nav flex items-center sm:hidden ml-auto">
-                <li className="navbar-nav-items">
-                  <a href="/" className="px-5 py-3">
-                    Home
-                  </a>
-                </li>
-                <li className="navbar-nav-items">
-                  <Link href="/find-work" className="px-5 py-3">
+              <ul className="navbar-nav flex items-center sm:hidden ml-auto gap-[43px]">
+                <li
+                  className={`navbar-nav-items ${
+                    path === "/find-work" ? "selected-path" : ""
+                  }`}
+                >
+                  <Link href="/find-work" className="">
                     Find Work
                   </Link>
                 </li>
-                <li className="navbar-nav-items">
-                  <Link href="/find-talent" className="px-5 py-3">
+                <li
+                  className={`navbar-nav-items ${
+                    path === "/find-talent" ? "selected-path" : ""
+                  }`}
+                >
+                  <Link href="/find-talent" className="">
                     Find Talent
                   </Link>
                 </li>
               </ul>
             </div>
-            <div className="flex items-center gap-6">
-              <div>
-                <button onClick={openModal}>
+
+            {/* Right Items */}
+            <div className="flex items-center gap-[18px] sm:hidden">
+              <Link href="/notifications">
+                <button>
                   <Image
-                    src="/images/Nofication-icon.svg"
+                    src="/images/notification.svg"
                     alt="notification icon"
-                    width={22}
-                    height={26.25}
+                    width={23}
+                    height={26}
                   />
                 </button>
-                <div className="absolute right-0 top-[55px] z-[9999]">
-                  {showNotifications && (
-                    <>
-                      {" "}
-                      <Notifications />{" "}
-                      <div
-                        className="absolute top-2 right-10 cursor-pointer"
-                        onClick={closeModal}
-                      >
-                        <Image
-                          src="/images/Close-2.svg"
-                          alt="close icon"
-                          width={20}
-                          height={20}
-                        />
-                      </div>{" "}
-                    </>
-                  )}
-                </div>
-              </div>
-              <Link href="/my-message">
-                <button style={{ paddingTop: "4px" }}>
+              </Link>
+              <Link href="/messages">
+                <button style={{ paddingTop: "11px" }}>
                   <Image
                     className="mt-[-5px]"
-                    src="/images/message-icon.svg"
+                    src="/images/discuss.svg"
                     alt="message icon"
                     width={27.25}
                     height={25}
@@ -176,86 +142,52 @@ const SecondNav = ({ profile }: { profile?: any }) => {
               </Link>
               <div>
                 <button onClick={openProfileDropdown}>
-                  <Image
-                    className="rounded-[12px] sm:w-[34px] sm:h-[34px] sm:rounded-[8.16px]"
-                    src={
-                      profile?.metadata?.picture?.raw?.uri
-                        ? profile.metadata.picture.raw.uri
-                        : "/images/head.svg"
-                    }
-                    alt="notification icon"
-                    width={50}
-                    height={50}
-                  />
+                  <div className="w-[50px] h-[50px] sm:w-[34px] sm:h-[34px] relative">
+                    <Image
+                      src={
+                        profile?.metadata?.picture?.raw?.uri
+                          ? profile.metadata.picture.raw.uri
+                          : "/images/paco.svg"
+                      }
+                      layout="fill"
+                      className="rounded-[12px] sm:rounded-[8.16px]"
+                      alt="user icon"
+                    />
+                  </div>
                 </button>
-                <div className="absolute right-[-40px] top-[55px] z-[9999]">
+
+                {/* Dropdown */}
+                <div className="absolute right-[0px] top-[55px] z-[9999]">
                   {showProfileDropdown && (
                     <>
                       <ProfileDropdown
                         handle={profile?.handle ? profile.handle : undefined}
+                        setProfile={setProfile}
                       />
-                      <div
-                        className="absolute top-2 right-10 cursor-pointer"
-                        onClick={closeProfileDropdown}
-                      >
-                        <Image
-                          src="/images/Close-2.svg"
-                          alt="close icon"
-                          width={20}
-                          height={20}
-                        />
-                      </div>{" "}
                     </>
                   )}
                 </div>
               </div>
             </div>
-          </nav>
-          <div
-            className={`mobile-menu absolute top-0 left-0 z-[99999] px-8 pt-4 pb-8 rounded-br-[10px] bg-white ${
-              isMobileMenuOpen ? "open-menu" : ""
-            }`}
-          >
-            <button
-              className="close-trigger ml-auto w-[16px] block cursor-pointer h-[16px] relative right-[-16px]"
-              onClick={closeMobileMenu}
+            <div
+              className="navbar-trigger hidden sm:block"
+              onClick={handleMobileMenuToggle}
             >
               <Image
-                src="/images/Close.svg"
-                alt="navbar trigger close"
-                width={16}
-                height={16}
+                src="/images/header-trigger.svg"
+                alt="navbar trigger"
+                width={20}
+                height={12}
               />
-            </button>
-            <div className="navbar-right-cont">
-              <ul className="navbar-nav">
-                <li className="navbar-nav-items block">
-                  <a
-                    href="/"
-                    className="py-4 border-b border-b-[#00000010] block text-dark !text-left"
-                  >
-                    Home
-                  </a>
-                </li>
-                <li className="navbar-nav-items block">
-                  <a
-                    href="/find-work"
-                    className="py-4 border-b border-b-[#00000010] block text-dark !text-left"
-                  >
-                    Find Work
-                  </a>
-                </li>
-                <li className="navbar-nav-items block">
-                  <a
-                    href="/find-talent"
-                    className="py-4 border-b border-b-[#00000010] block text-dark !text-left"
-                  >
-                    Find Talent
-                  </a>
-                </li>
-              </ul>
             </div>
-          </div>
+          </nav>
+
+          {/* Mobile Menu */}
+          <MobileProfileDropdown
+            handle={profile?.handle ? profile.handle : undefined}
+            menuOpen={isMobileMenuOpen}
+            closeMenu={handleMobileMenuToggle}
+          />
         </div>
       </div>
     </header>
