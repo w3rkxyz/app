@@ -18,6 +18,7 @@ const ConditionalNav = () => {
         <Navbar />
       ) : (
         <SecondNav
+          setProfile={() => {}}
           profile={
             session?.type === SessionType.WithProfile ? session.profile : null
           }
