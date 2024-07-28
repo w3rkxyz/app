@@ -175,9 +175,10 @@ const MyMessageOpenChat = () => {
                 showMessagesMobile ? "sm:flex" : "sm:hidden"
               } flex-col gap-[5px] mt-[8px]`}
             >
-              {[0, 1, 2].map((id) => {
+              {[0, 1, 2].map((id, index) => {
                 return (
                   <div
+                    key={index}
                     className="p-[8px] w-full bg-[#FAFAFA] rounded-[8px] cursor-pointer"
                     onClick={() => setSelectedConversation(id)}
                   >
@@ -288,9 +289,10 @@ const MyMessageOpenChat = () => {
                 Today
               </span>
               {messages[selectedConversation as number].map(
-                (message: Message) => {
+                (message: Message, index) => {
                   return (
                     <div
+                      key={index}
                       className={`rounded-[8px] whitespace-pre-wrap min-w-[200px] sm:min-w-[150px] max-w-[450px] text-[12px] laptop-x:max-w-[350px] sm:max-w-[262px] laptop-x:text-[14px] mb-[12px] relative font-normal leading-[20px] p-[11px] py-[9px] 
                       pr-[48px] sm:px-[8px] sm:pr-[9px] sm:pb-[23px] ${
                         message.sender === "me"

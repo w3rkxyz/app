@@ -5,7 +5,6 @@ import SearchInput from "@/components/reusable/SearchInput/SearchInput";
 import JobCard from "@/components/JobCard/JobCard";
 import MyButton from "@/components/reusable/Button/Button";
 import { MouseEventHandler, useEffect, useState } from "react";
-import ViewListingModal from "../view-listing-modal/view-listing-modal";
 import ViewJobModal from "../view-job-modal/view-job-modal";
 
 const FindTalent = () => {

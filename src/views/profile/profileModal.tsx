@@ -65,6 +65,7 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

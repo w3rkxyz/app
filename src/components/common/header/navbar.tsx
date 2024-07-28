@@ -52,6 +52,7 @@ const Navbar = () => {
         }
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected, session?.authenticated]);
 
   return (

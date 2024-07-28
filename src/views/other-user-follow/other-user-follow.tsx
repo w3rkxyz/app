@@ -3,11 +3,6 @@
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import JobCard from "@/components/JobCard/JobCard";
-import Sidebar from "@/components/reusable/Sidebar/Sidebar";
-import PostJobModal from "../post-job-modal/post-job-modal";
-import ListServiceModal from "../list-service-modal/list-service-modal";
-import ViewJobModal2 from "../view-job-modal-2/view-job-modal-2";
-import ViewServiceModal from "../view-service-modal/view-service-modal";
 import ProfileModal from "../profile/profileModal";
 import {
   useProfile,
