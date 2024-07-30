@@ -18,8 +18,6 @@ const SecondNav = ({
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const path = usePathname();
-  console.log(path);
-  console.log("Profile: ", profile);
 
   const openModal = () => {
     setShowNotifications(true);
@@ -72,32 +70,25 @@ const SecondNav = ({
   };
 
   return (
-    <header className="header-section py-[10px] px-[156px] sm:px-[16px] absolute w-full top-0 left-0 bg-white border-b-[1px] border-b-[#EEEEEE] z-[999]">
+    <header className="header-section h-[60px] px-[156px] sm:px-[16px] absolute w-full top-0 left-0 bg-white border-b-[1px] border-b-[#EEEEEE] z-[999]">
       <div className="custom-container">
         <div className="header-wrapper">
-          <nav className="navbar-nav-main flex items-center gap-3 justify-between w-full relative">
-            <div className="header-brand-box sm:flex sm:items-center sm:gap-6">
+          <nav className="navbar-nav-main h-[60px] flex items-center gap-3 justify-between w-full relative">
+            <div className="header-brand-box sm:flex sm:items-center">
               <a href="/">
                 <Image
                   src="/images/brand-logo.svg"
-                  className="sm:hidden"
-                  width={110}
-                  height={35}
+                  className="relative h-[80px] w-[80px]"
+                  width={80}
+                  height={80}
                   alt="company brand logo"
                 ></Image>
-                <Image
-                  src="/images/brand-logo.svg"
-                  className="hidden sm:block"
-                  width={69}
-                  height={24}
-                  alt="company brand logo"
-                />
               </a>
             </div>
             <div className="navbar-right-cont flex items-center">
-              <ul className="navbar-nav flex items-center sm:hidden ml-auto gap-[43px]">
+              <ul className="navbar-nav flex items-center sm:hidden ml-auto gap-[7px]">
                 <li
-                  className={`navbar-nav-items ${
+                  className={`navbar-nav-items px-[18px] py-[7px] ${
                     path === "/find-work" ? "selected-path" : ""
                   }`}
                 >
@@ -106,7 +97,7 @@ const SecondNav = ({
                   </Link>
                 </li>
                 <li
-                  className={`navbar-nav-items ${
+                  className={`navbar-nav-items px-[18px] py-[7px] ${
                     path === "/find-talent" ? "selected-path" : ""
                   }`}
                 >
@@ -124,8 +115,8 @@ const SecondNav = ({
                   <Image
                     src="/images/notification.svg"
                     alt="notification icon"
-                    width={23}
-                    height={26}
+                    width={20}
+                    height={23}
                   />
                 </button>
               </Link>
@@ -135,16 +126,17 @@ const SecondNav = ({
                     className="mt-[-5px]"
                     src="/images/discuss.svg"
                     alt="message icon"
-                    width={27.25}
-                    height={25}
+                    width={24.25}
+                    height={22}
                   />
                 </button>
               </Link>
               <div>
                 <button onClick={openProfileDropdown}>
-                  <div className="w-[50px] h-[50px] sm:w-[34px] sm:h-[34px] relative">
+                  <div className="w-[40px] h-[40px] sm:w-[34px] sm:h-[34px] relative">
                     <Image
                       src={
+                        profile?.metadata &&
                         profile?.metadata?.picture?.raw?.uri
                           ? profile.metadata.picture.raw.uri
                           : "/images/paco.svg"
@@ -188,7 +180,7 @@ const SecondNav = ({
             menuOpen={isMobileMenuOpen}
             closeMenu={handleMobileMenuToggle}
             profilePic={
-              profile?.metadata?.picture?.raw?.uri
+              profile?.metadata && profile?.metadata?.picture?.raw?.uri
                 ? profile.metadata.picture.raw.uri
                 : "/images/paco.svg"
             }

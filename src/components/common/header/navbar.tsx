@@ -60,26 +60,19 @@ const Navbar = () => {
       {isConnected && profile ? (
         <SecondNav profile={profile} setProfile={setProfile} />
       ) : (
-        <header className="header-section py-[10px] px-[156px] sm:px-[16px] absolute w-full top-0 left-0 bg-white border-b-[1px] border-b-[#EEEEEE] z-[999]">
+        <header className="header-section h-[60px] px-[156px] sm:px-[16px] absolute w-full top-0 left-0 bg-white border-b-[1px] border-b-[#EEEEEE] z-[999]">
           <div className="custom-container">
             <div className="header-wrapper">
-              <nav className="navbar-nav-main flex items-center gap-3 justify-between w-full">
-                <div className="header-brand-box sm:flex sm:items-center sm:gap-6">
+              <nav className="navbar-nav-main flex items-center gap-3 justify-between h-[60px] w-full">
+                <div className="header-brand-box sm:flex sm:items-center">
                   <a href="/">
                     <Image
                       src="/images/brand-logo.svg"
-                      className="sm:hidden"
-                      width={110}
-                      height={35}
+                      className="relative h-[80px] w-[80px]"
+                      width={80}
+                      height={80}
                       alt="company brand logo"
                     ></Image>
-                    <Image
-                      src="/images/brand-logo.svg"
-                      className="hidden sm:block"
-                      width={69}
-                      height={24}
-                      alt="company brand logo"
-                    />
                   </a>
                 </div>
                 <div className="navbar-right-cont">

@@ -23,7 +23,7 @@ const FindWork = () => {
   };
 
   return (
-    <div className="find-work-section pt-[92px] md:pt-[120px] sm:pt-[50px] mb-[99px] sm:mb-10">
+    <div className="find-work-section pt-[82px] md:pt-[120px] sm:pt-[60px] mb-[99px] sm:mb-10">
       <div className="custom-container">
         <div className="flex sm:flex-col md:flex-col justify-between items-center my-[30px] sm:items-start sm:gap-[16px] relative">
           <h2 className="section-title text-center sm:text-start text-[32px] sm:text-[20px] font-semibold font-secondary leading-[20px] tracking-[-4%]">

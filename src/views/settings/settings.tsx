@@ -25,8 +25,8 @@ const Settings = () => {
   };
 
   return (
-    <div className="px-[156px] sm:px-[16px] pt-[110px] sm:w-full">
-      <div className="absolute w-full mx-0 left-0 top-156px sm:top-[66px] px-[156px] sm:px-[16px] z-20">
+    <div className="px-[156px] sm:px-[16px] pt-[110px] sm:pt-[122px] sm:w-full">
+      <div className="absolute w-full mx-0 left-0 top-156px sm:top-[79px] px-[156px] sm:px-[16px] z-20">
         <div
           className="bg-white w-full h-[196px] sm:h-[110px] rounded-[16px] relative flex justify-end items-end p-[16px]"
           style={{ backgroundImage: `url(${backgroundImage})` }}

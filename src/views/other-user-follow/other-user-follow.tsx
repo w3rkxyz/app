@@ -76,8 +76,8 @@ const OtherUserFollow = () => {
   };
 
   return (
-    <div className="px-[156px] sm:px-[16px] pt-[110px] sm:w-full mb-[40px]">
-      <div className="absolute w-full mx-0 left-0 top-156px sm:top-[66px] px-[156px] sm:px-[16px] -z-40">
+    <div className="px-[156px] sm:px-[16px] pt-[110px] sm:pt-[122px] sm:w-full mb-[40px]">
+      <div className="absolute w-full mx-0 left-0 top-156px sm:top-[79px] px-[156px] sm:px-[16px] -z-40">
         <div className="bg-[#E4E4E7] w-full h-[196px] sm:h-[110px] rounded-[16px] relative"></div>
       </div>
       <div className="flex sm:flex-col sm:w-full gap-[24px] pt-[116px] sm:pt-[26px] px-[32px] sm:px-[0px]">
@@ -86,7 +86,7 @@ const OtherUserFollow = () => {
             <Image
               src={
                 profile?.metadata?.picture?.__typename == "ImageSet"
-                  ? profile?.metadata?.picture?.raw?.uri
+                  ? profile?.metadata && profile?.metadata?.picture?.raw?.uri
                   : "/images/paco.svg"
               }
               layout="fill"

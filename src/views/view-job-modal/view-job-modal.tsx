@@ -55,54 +55,55 @@ const ViewJobModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
           height={20}
         />
       </div>
-      <div className="bg-[white] rounded-[12px] sm:rounded-none p-[16px] sm:w-full max-w-[664px] flex flex-col">
-        <div className="flex justify-between align-top mb-[16px]">
-          <div className="flex gap-[15px]">
+      <div className="bg-[white] rounded-[12px] sm:rounded-none p-[16px] sm:w-full max-w-[750px] flex flex-col">
+        <div className="flex justify-between align-top mb-[18px]">
+          <div className="flex gap-[16px]">
             <Image
               src={`/images/${type === "job" ? "werk.svg" : "paco.svg"}`}
               alt="w3rk logo"
-              width={60}
-              height={60}
+              className="sm:w-[60px] sm:h-[60px]"
+              width={64}
+              height={64}
             />
             <div className="flex flex-col gap-[5px] pt-[5px]">
-              <span className="text-[14px] leading-[16.94px] font-semibold">
+              <span className="text-[16px] sm:text-[14px] leading-[16.94px] font-semibold">
                 Display Name
               </span>
-              <span className="text-[14px] leading-[16.94px] font-semibold">
+              <span className="text-[16px] sm:text-[14px] leading-[16.94px] font-semibold">
                 Job Title
               </span>
-              <span className="text-[#707070] text-[12px] leading-[14.52px] font-semibold">
+              <span className="text-[#707070] text-[14px] sm:text-[12px] leading-[14.52px] font-semibold">
                 {type === "job" ? "$0.00 - Fixed Price" : "$0.00 /hr"}
               </span>
             </div>
           </div>
           {type === "job" ? (
-            <button className="flex align-middle gap-[5px] text-[white] leading-[12.1px] text-[12px] font-semibold py-[5.4px] px-[17px] bg-[#C6AAFF] rounded-[4px] h-fit">
+            <button className="flex align-middle items-center gap-[5px] text-[white] leading-[12.1px] text-[14px] font-semibold py-[5.4px] px-[17px] bg-[#C6AAFF] rounded-[4px] h-fit">
               <span>Job</span>
               <Image
                 src="/images/case.svg"
                 alt="suitcase icon"
-                width={12}
-                height={12}
+                width={14}
+                height={14}
               />
             </button>
           ) : (
-            <button className="flex align-middle gap-[5px] text-[white] leading-[12.1px] text-[12px] font-semibold py-[5.4px] px-[17px] bg-[#351A6B] rounded-[4px] h-fit">
+            <button className="flex align-middle items-center gap-[5px] text-[white] leading-[12.1px] text-[14px] font-semibold py-[5.4px] px-[17px] bg-[#351A6B] rounded-[4px] h-fit">
               <span>Service</span>
               <Image
                 src="/images/service.svg"
                 alt="suitcase icon"
-                width={12}
-                height={12}
+                width={14}
+                height={14}
               />
             </button>
           )}
         </div>
-        <p className="leading-[16.94px] text-[16px] font-semibold mb-[16px]">
+        <p className="leading-[16.94px] text-[18px] sm:text-[16px] font-semibold mb-[16px]">
           Website Updates - Full Stack Developer
         </p>
         {type === "job" ? (
-          <div className="width-full rounded-[12px] leading-[16.52px] font-normal text-[14px] sm:text-[12px] border-[1px] border-[#E4E4E7] p-[9px] pb-[10px] mb-[18px]">
+          <div className="width-full rounded-[12px] leading-[19.52px] sm:leading-[16.52px] font-normal text-[16px] sm:text-[12px] border-[1px] border-[#E4E4E7] p-[13px] pb-[90px] sm:p-[9px] sm:pb-[10px] mb-[18px]">
             We are seeking an experienced Full Stack Developer to help us update
             and enhance our website. The ideal candidate will have a strong
             background in both front-end and back-end development, with a keen
@@ -124,7 +125,7 @@ const ViewJobModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
             <br />* Troubleshoot and resolve any issues or bugs.
           </div>
         ) : (
-          <div className="width-full rounded-[12px] leading-[16.52px] font-normal text-[14px] sm:text-[12px] border-[1px] border-[#E4E4E7] p-[9px] pb-[10px] mb-[18px]">
+          <div className="width-full rounded-[12px] leading-[19.52px] sm:leading-[16.52px] font-normal text-[16px] sm:text-[12px] border-[1px] border-[#E4E4E7] p-[9px] pb-[10px] mb-[18px]">
             ​I have 3+ years of experience specializing in UI/UX
             <br />
             <br />
@@ -151,127 +152,127 @@ const ViewJobModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
             💎 UI/UX: Mobile Design
           </div>
         )}
-        <div className="flex gap-[14px] sm:gap-[10px] align-middle mb-[20px] sm:mb-[14px]">
-          <span className="text-[16px] font-medium font-secondary  tracking-[-1%] text-[#000000] sm:hidden">
+        <div className="flex gap-[16px] sm:gap-[10px] align-middle mb-[20px] sm:mb-[14px]">
+          <span className="text-[17px] sm:text-[16px] font-medium font-secondary  tracking-[-1%] text-[#000000] sm:hidden">
             Paid in:
           </span>
-          <span className="text-[16px] font-medium font-secondary  tracking-[-1%] text-[#000000] hidden sm:block">
+          <span className="text-[17px] sm:text-[16px] font-medium font-secondary  tracking-[-1%] text-[#000000] hidden sm:block">
             Accepts:
           </span>
           <ul className="socials-widgets gap-[5px] flex">
             <li className="socials-widgets-items">
               <a href="/">
                 <Image
-                  className="w-[24px] h-[24px] bg-[#F7931A] p-1 rounded-full"
+                  className="w-[26px] h-[26px] sm:w-[24px] sm:h-[24px] bg-[#F7931A] p-1 rounded-full"
                   src="/images/token-1.svg"
                   alt="socials icons images"
-                  width={24}
-                  height={24}
+                  width={26}
+                  height={26}
                 />
               </a>
             </li>
             <li className="socials-widgets-items">
               <a href="/">
                 <Image
-                  className="w-[24px]  h-[24px]"
+                  className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
                   src="/images/token2.svg"
                   alt="socials icons images"
-                  width={24}
-                  height={24}
+                  width={26}
+                  height={26}
                 />
               </a>
             </li>
             <li className="socials-widgets-items">
               <a href="/">
                 <Image
-                  className="w-[24px]  h-[24px]"
+                  className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
                   src="/images/token3.svg"
                   alt="socials icons images"
-                  width={24}
-                  height={24}
+                  width={26}
+                  height={26}
                 />
               </a>
             </li>
             <li className="socials-widgets-items">
               <a href="/">
                 <Image
-                  className="w-[24px]  h-[24px]"
+                  className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
                   src="/images/bnb.svg"
                   alt="socials icons images"
-                  width={24}
-                  height={24}
+                  width={26}
+                  height={26}
                 />
               </a>
             </li>
             <li className="socials-widgets-items">
               <a href="/">
                 <Image
-                  className="w-[24px]  h-[24px]"
+                  className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
                   src="/images/solana.svg"
                   alt="socials icons images"
-                  width={24}
-                  height={24}
+                  width={26}
+                  height={26}
                 />
               </a>
             </li>
             <li className="socials-widgets-items">
               <a href="/">
                 <Image
-                  className="w-[24px]  h-[24px]"
+                  className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
                   src="/images/usdt.svg"
                   alt="socials icons images"
-                  width={24}
-                  height={24}
+                  width={26}
+                  height={26}
                 />
               </a>
             </li>
             <li className="socials-widgets-items">
               <a href="/">
                 <Image
-                  className="w-[24px]  h-[24px]"
+                  className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
                   src="/images/dai.svg"
                   alt="socials icons images"
-                  width={24}
-                  height={24}
+                  width={26}
+                  height={26}
                 />
               </a>
             </li>
             <li className="socials-widgets-items">
               <a href="/">
                 <Image
-                  className="w-[24px]  h-[24px]"
+                  className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
                   src="/images/green-coin.svg"
                   alt="socials icons images"
-                  width={24}
-                  height={24}
+                  width={26}
+                  height={26}
                 />
               </a>
             </li>
             <li className="socials-widgets-items">
               <a href="/">
                 <Image
-                  className="w-[24px]  h-[24px]"
+                  className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
                   src="/images/bw-coin.svg"
                   alt="socials icons images"
-                  width={24}
-                  height={24}
+                  width={26}
+                  height={26}
                 />
               </a>
             </li>
           </ul>
         </div>
-        <div className="flex sm:flex-col sm:gap-[10px] justify-between sm:justify-start mb-[24px]">
-          <button className="bg-[#E4E4E7] rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] px-[72px] sm:px-[70px] sm:w-fit">
+        <div className="flex gap-[18px] sm:flex-col sm:gap-[10px] justify-between sm:justify-start mb-[24px]">
+          <button className="bg-[#E4E4E7] rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] flex-1 sm:px-[70px] sm:w-fit">
             Tag Name
           </button>
-          <button className="bg-[#E4E4E7] rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] px-[72px] sm:px-[70px] sm:w-fit">
+          <button className="bg-[#E4E4E7] rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] flex-1 sm:px-[70px] sm:w-fit">
             Tag Name
           </button>
-          <button className="bg-[#E4E4E7] rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] px-[72px] sm:px-[70px] sm:w-fit">
+          <button className="bg-[#E4E4E7] rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] flex-1 sm:px-[70px] sm:w-fit">
             Tag Name
           </button>
         </div>
-        <button className="mx-auto w-fit py-[8px] px-[23px] tx-[14px] leading-[14.5px] text-white bg-[#C6AAFF] rounded-[8px] font-semibold mb-[8px]">
+        <button className="mx-auto w-fit py-[9px] px-[26px] tx-[18px] Sm:py-[8px] sm:px-[23px] tx-[14px] leading-[14.5px] text-white bg-[#C6AAFF] rounded-[9px] sm:rounded-[8px] font-semibold mb-[8px]">
           Contact
         </button>
       </div>

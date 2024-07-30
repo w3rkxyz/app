@@ -30,7 +30,7 @@ const FindTalent = () => {
   };
 
   return (
-    <div className="find-work-section pt-[92px] md:pt-[120px] sm:pt-[50px] pb-[99px] sm:pb-10">
+    <div className="find-work-section pt-[82px] md:pt-[120px] sm:pt-[60px] pb-[99px] sm:pb-10">
       <div className="custom-container">
         <div className="flex sm:flex-col md:flex-col justify-between items-center mt-[30px] sm:items-start sm:gap-[16px] relative">
           <h2 className="section-title text-center text-[32px] sm:text-[24px] font-semibold font-secondary leading-[20px] tracking-[-4%]">

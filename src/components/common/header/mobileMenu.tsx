@@ -24,7 +24,7 @@ const MobileProfileDropdown = ({
 
   return (
     <div
-      className={`mobile-menu absolute top-0 left-0 z-[99999] bg-white w-full h-screen p-[16px] ${
+      className={`mobile-menu fixed top-0 right-0 z-[99999] bg-white w-full h-screen p-[16px] ${
         menuOpen ? "open-menu" : ""
       }`}
     >

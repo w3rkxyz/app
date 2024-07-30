@@ -146,7 +146,7 @@ const MyMessageOpenChat = () => {
   // };
 
   return (
-    <div className="pt-[121px] sm:pt-[60px] px-[156px] sm:px-[16px] flex gap-[5px] mb-[40px]">
+    <div className="pt-[107px] sm:pt-[75px] px-[156px] sm:px-[16px] flex gap-[5px] mb-[55px]">
       <div
         className={`horizontal-box px-[12px] w-[367px] sm:w-full flex ${
           selectedConversation !== null ? "sm:hidden" : "sm:flex"

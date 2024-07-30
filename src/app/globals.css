@@ -150,7 +150,6 @@
   .selected-path {
     background-color: #e4e4e7;
     border-radius: 8px;
-    padding: 7px 18px;
   }
 
   .search-input {
@@ -343,7 +342,7 @@
   }
 
   .mobile-menu {
-    left: -100%;
+    right: -100%;
     transition: all 170ms ease 0s;
     -webkit-transition: all 170ms ease 0s;
     -moz-transition: all 170ms ease 0s;
@@ -352,7 +351,7 @@
   }
 
   .mobile-menu.open-menu {
-    left: 0;
+    right: 0;
     transition: all 350ms ease 0s;
     -webkit-transition: all 350ms ease 0s;
     -moz-transition: all 350ms ease 0s;
@@ -484,7 +483,7 @@
     .horizontal-box {
       background-color: white;
       border-radius: 16px;
-      height: calc(100vh - 80px);
+      height: calc(100vh - 90px);
     }
   }
 

@@ -6,7 +6,7 @@ import { Connect } from "../common/header/connectButton";
 
 const HomeBanner = () => {
   return (
-    <div className="banner-section pt-[269px] sm:pt-[182px] footer-space overflow-hidden overflow-y-hidden relative">
+    <div className="banner-section pt-[269px] sm:pt-[192px] footer-space overflow-hidden overflow-y-hidden relative">
       <div className="custom-container">
         <div className="banner-wrapper max-w-[1156px] mx-auto relative">
           <div className="banner-modal banner-modal-top">

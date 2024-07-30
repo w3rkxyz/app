@@ -3,10 +3,10 @@ import React from "react";
 
 const Footer = () => {
   return (
-    <footer className="footer-section pb-[16px] sm:pb-[24px] sm:pt-0">
-      <div className="custom-container">
-        <div className="footer-wrapper flex sm:flex-col sm:gap-[12px] sm:align-middle items-center">
-          <p className="foot-copyright-text text-center ml-auto pl-[140px] sm:pl-0 md:pl-[75px] sm:ml-0 font-primary font-semibold text-[12px] text-black">
+    <footer className="footer-section pb-[16px] sm:pb-[24px] sm:pt-0 w-full px-[156px] sm:px-0 bg-[#FAFAFA]">
+      <div className="custom-container w-full">
+        <div className="footer-wrapper flex sm:flex-col sm:gap-[12px] sm:align-middle items-center relative w-full">
+          <p className="foot-copyright-text text-center absolute sm:relative w-full sm:w-fit sm:pl-0 sm:ml-0 px-auto font-primary font-semibold text-[12px] text-black">
             2024 w3rk. All Rights Reserved.
           </p>
           <ul className="socials-widgets ml-auto sm:ml-0 flex items-center gap-[17px] sm:gap-[11px]">
@@ -21,18 +21,6 @@ const Footer = () => {
                 />
               </a>
             </li>
-            {/* <li className="socials-widgets-item">
-              <a href="/">
-                <Image
-                  src="/images/discord-fo.svg"
-                  alt="socials icons image"
-                  color="black"
-                  className="w-[33px] sm:w-5 h-[33px] sm:h-5"
-                  width={33}
-                  height={33}
-                />
-              </a>
-            </li> */}
             <li className="socials-widgets-item">
               <a href="/">
                 <Image
