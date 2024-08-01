@@ -7,10 +7,6 @@ import ProfileModal from "./profileModal";
 import { useSession, SessionType } from "@lens-protocol/react-web";
 
 const Profile = () => {
-  const [isPostJobModalOpen, setIsPostJobModalOpen] = useState(false);
-  const [isListServiceModalOpen, setIsListServiceModalOpen] = useState(false);
-  const [selectedJobName, setSelectedJobName] = useState("");
-  const [isJobCardOpen, setIsJobCardOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
@@ -20,8 +16,8 @@ const Profile = () => {
   //     });
   const { data: session, loading: sessionLoading } = useSession();
   const [userData, setUserData] = useState<any>({
-    handle: "adam.lens",
-    picture: "/images/paco.svg",
+    handle: "@lenshandle.lens",
+    picture: "/images/paco-square.svg",
     following: 100,
     followers: 75,
     about:
@@ -60,7 +56,7 @@ const Profile = () => {
           session.profile?.metadata &&
           session.profile?.metadata?.picture?.__typename == "ImageSet"
             ? session.profile?.metadata?.picture?.raw?.uri
-            : "/images/paco.svg",
+            : "/images/paco-square.svg",
         following: profile ? profile.stats.following : 100,
         followers: profile ? profile.stats.followers : 75,
         about: profile?.metadata?.bio ? profile.metadata.bio : userData.about,
@@ -85,13 +81,13 @@ const Profile = () => {
               alt="user icon"
             />
           </div>
-          <h3 className="leading-[19px] text-[16px] font-semibold mb-[12px] sm:mb-[0px]">
+          <h3 className="leading-[19px] text-[16px] font-semibold mb-[0px] sm:mb-[0px]">
             Display Name
           </h3>
-          <span className="text-[#707070] leading-[16.94px] text-[14px] font-medium mb-[12px] sm:mb-[20px]">
+          <span className="text-[#707070] leading-[16.94px] text-[14px] font-medium sm:mb-[20px]">
             {userData.handle}
           </span>
-          <h3 className="leading-[19px] text-[16px] font-semibold mb-[12px] sm:mt-[6px]">
+          <h3 className="leading-[19px] text-[16px] font-semibold mt-[10px] mb-[12px] sm:mt-[6px]">
             Job Title
           </h3>
           <div className="flex gap-[4px] leading-[16.94px] text-[14px] font-medium">
@@ -145,7 +141,7 @@ const Profile = () => {
             />
           </div>
           <div className="flex flex-col gap-[16px] mb-[20px] sm:mb-[0px]">
-            <div className="flex gap-[12px] align-middle">
+            <div className="flex gap-[11.6px] items-center">
               <Image
                 src="/images/earth.svg"
                 alt="earth icon"
@@ -156,23 +152,23 @@ const Profile = () => {
                 user website url
               </span>
             </div>
-            <div className="flex gap-[12px] align-middle">
+            <div className="flex gap-[14.2px] items-center pl-[3.2px]">
               <Image
                 src="/images/location.svg"
                 alt="earth icon"
-                width={24}
+                width={18.33}
                 height={24}
               />
               <span className="leading-[16.94px] text-[14px] font-medium text-[black]">
                 Location
               </span>
             </div>
-            <div className="flex gap-[12px] align-middle">
+            <div className="flex gap-[12.7px] items-center">
               <Image
                 src="/images/w.svg"
                 alt="earth icon"
                 width={24}
-                height={24}
+                height={15.3}
               />
               <span className="leading-[16.94px] text-[14px] font-medium text-[black]">
                 23,694

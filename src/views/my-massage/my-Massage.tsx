@@ -179,7 +179,11 @@ const MyMessageOpenChat = () => {
                 return (
                   <div
                     key={index}
-                    className="p-[8px] w-full bg-[#FAFAFA] rounded-[8px] cursor-pointer"
+                    className={`p-[8px] w-full ${
+                      selectedConversation === id
+                        ? "bg-[#E4E4E7]"
+                        : "bg-[#FAFAFA]"
+                    } rounded-[8px] cursor-pointer`}
                     onClick={() => setSelectedConversation(id)}
                   >
                     <div className="flex justify-between align-top mb-[6px]">
@@ -239,7 +243,7 @@ const MyMessageOpenChat = () => {
                 Enable Messages
               </span>
               <button
-                className="rounded-[8px] bg-[#C6AAFF] px-[17px] py-[8px] text-white leading-[16.94px] font-medium text-[14px]"
+                className="rounded-[8px] bg-[#C6AAFF] hover:bg-[#351A6B] px-[17px] py-[8px] text-white leading-[16.94px] font-medium text-[14px]"
                 onClick={() => setMessagesEnabled(true)}
               >
                 Enable
@@ -327,7 +331,7 @@ const MyMessageOpenChat = () => {
                 />
               </button>
               <button
-                className="px-[18px] sm:px-[10px] py-[10px] bg-[#C6AAFF] rounded-[8px] flex w-fit gap-[7px] h-fit items-center"
+                className="px-[18px] sm:px-[10px] py-[10px] bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] flex w-fit gap-[7px] h-fit items-center"
                 onClick={handleSendMessage}
               >
                 <span className="text-[15px] text-white leading-none sm:hidden">

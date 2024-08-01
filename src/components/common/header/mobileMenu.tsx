@@ -55,6 +55,31 @@ const MobileProfileDropdown = ({
       </div>
       <hr className="w-full h-[1px] bg-[#E4E4E7] border-0 mb-[14px]" />
       <div className="flex flex-col gap-[19px] pt-[10px] pb-[5px] pr-[15px] bg-white mb-[20px]">
+        <Link href="/find-work" onClick={closeMenu}>
+          <div className="drop-down-item">
+            <Image
+              src="/images/case-grey.svg"
+              width={22}
+              height={22}
+              alt="notification icon"
+            ></Image>
+            <span className="drop-down-text">Find Work</span>
+          </div>
+        </Link>
+        <Link href="/find-talent" onClick={closeMenu}>
+          <div className="drop-down-item">
+            <Image
+              src="/images/find-talent-grey.svg"
+              width={22}
+              height={22}
+              alt="discuss icon"
+            ></Image>
+            <span className="drop-down-text">Find Talent</span>
+          </div>
+        </Link>
+      </div>
+      <hr className="w-full h-[1px] bg-[#E4E4E7] border-0 mb-[14px]" />
+      <div className="flex flex-col gap-[19px] pt-[10px] pb-[5px] pr-[15px] bg-white mb-[20px]">
         <Link href="/notifications" onClick={closeMenu}>
           <div className="drop-down-item">
             <Image

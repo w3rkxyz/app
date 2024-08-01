@@ -68,7 +68,7 @@ const Navbar = () => {
                   <a href="/">
                     <Image
                       src="/images/brand-logo.svg"
-                      className="relative h-[80px] w-[80px]"
+                      className="relative h-[80px] w-[80px] translate-y-[5px]"
                       width={80}
                       height={80}
                       alt="company brand logo"

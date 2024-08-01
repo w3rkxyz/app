@@ -68,6 +68,13 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    document.body.style.overflowY = "hidden";
+    return () => {
+      document.body.style.overflowY = "auto";
+    };
+  }, []);
+
   return (
     <div
       className={`view-job-modal-section sm:w-full rounded-[12px] sm:rounded-none sm:rounded-tl-[12px]  sm:rounded-tr-[12px] bg-white nav-space sm:absolute sm:mobile-modal 
@@ -80,6 +87,7 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
         </span>
         <Image
           onClick={handleCloseModal}
+          className="cursor-pointer"
           src="/images/Close.svg"
           alt="close icon"
           width={20}
@@ -337,7 +345,7 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
             </button>
           ))}
         </div>
-        <button className="mx-auto w-fit py-[8px] px-[23px] tx-[14px] leading-[14.5px] text-white bg-[#C6AAFF] rounded-[8px] font-semibold mb-[8px]">
+        <button className="mx-auto w-fit py-[8px] px-[23px] tx-[14px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px]">
           Post
         </button>
       </div>

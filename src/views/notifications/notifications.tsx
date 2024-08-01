@@ -10,7 +10,7 @@ const Notifications = () => {
         All Notifications
       </button>
       <div className="notification-box rounded-[16px] border-[1px] border-[#E4E4E7] px-[16px] py-[12px] flex flex-col gap-[9px] mb-[20px]">
-        <div className="p-[16px] flex items-center pl-[32px] sm:pl-[16px] bg-white rounded-[8px] h-fit relative border-[1px] border-[#E4E4E7]">
+        <div className="p-[16px] flex items-center pl-[32px] sm:pl-[16px] bg-white rounded-[8px] h-fit relative border-[1px] border-[#E4E4E7] hover:bg-[#F0F0F0] cursor-pointer">
           <Image
             src={"/images/add-file.svg"}
             alt="file add pic"
@@ -28,7 +28,7 @@ const Notifications = () => {
             4m ago
           </span>
         </div>
-        <div className="p-[16px] flex items-center pl-[32px] sm:pl-[16px] bg-white rounded-[8px] h-fit relative border-[1px] border-[#E4E4E7]">
+        <div className="p-[16px] flex items-center pl-[32px] sm:pl-[16px] bg-white rounded-[8px] h-fit relative border-[1px] border-[#E4E4E7] hover:bg-[#F0F0F0] cursor-pointer">
           <Image
             src={"/images/add-user.svg"}
             alt="file add pic"

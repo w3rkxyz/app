@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
-import JobCard from "@/components/JobCard/JobCard";
 
 const Settings = () => {
   const [backgroundImage, setBackgroundImage] = useState<any>(null);
@@ -148,7 +147,7 @@ const Settings = () => {
             placeholder="Enter Location"
           />
         </div>
-        <button className="mx-auto w-fit py-[4px] px-[24px] tx-[14px] leading-[24px] text-white bg-[#C6AAFF] rounded-[8px] font-semibold mb-[36px]">
+        <button className="mx-auto w-fit py-[4px] px-[24px] tx-[14px] leading-[24px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[36px]">
           Save
         </button>
       </div>

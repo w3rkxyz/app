@@ -1,9 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import React, { useState } from "react";
 import { HandleInfo, useLogout } from "@lens-protocol/react-web";
 import { LoginForm } from "../common/header/loginForm";
-import { useAccount } from "wagmi";
+import { useAccount, useDisconnect } from "wagmi";
+import { useRouter } from "next/router";
 
 const ProfileDropdown = ({
   handle,
@@ -14,11 +17,15 @@ const ProfileDropdown = ({
 }) => {
   const { execute: logout, loading } = useLogout();
   const { isConnected, address } = useAccount();
+  const { disconnect } = useDisconnect();
   const [showLoginForm, setShowLoginForm] = useState(false);
+  const router = useRouter();
 
   const handleLogOut = () => {
     if (handle) {
       logout();
+      disconnect();
+      router.push("/");
     }
   };
 
