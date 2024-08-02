@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import Image from "next/image";
 import JobCard from "@/components/JobCard/JobCard";
 import ProfileModal from "./profileModal";
@@ -116,9 +117,11 @@ const Profile = () => {
               </span>
             </div>
           </div>
-          <button className="rounded-[8px] bg-[#E4E4E7] text-black px-[16px] py-[7px] mb-[16px] text-[14px]">
-            Edit Profile
-          </button>
+          <Link href={"/settings"}>
+            <button className="rounded-[8px] bg-[#E4E4E7] text-black px-[16px] py-[7px] mb-[16px] text-[14px]">
+              Edit Profile
+            </button>
+          </Link>
           <hr className="bg-[#E4E4E7] h-[1px] mb-[16px]" />
           <div className="flex gap-[12px] mb-[19px]">
             <Image

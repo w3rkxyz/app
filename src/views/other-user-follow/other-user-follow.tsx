@@ -11,17 +11,17 @@ import {
   SessionType,
 } from "@lens-protocol/react-web";
 import { toast } from "react-hot-toast";
+import ViewJobModal from "../view-job-modal/view-job-modal";
 
 const OtherUserFollow = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isJobModalOpen, setIsJobModalOpen] = useState(false);
-  const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
 
   const { data: profile, loading } = useProfile({
     forHandle: "lens/primal",
   });
   const { data: session, loading: sessionLoading } = useSession();
   const { execute: follow, loading: followLoading } = useFollow();
+  const [cardType, setCardType] = useState("job");
   const [userData, setUserData] = useState<any>({
     handle: "adam.lens",
     picture: "/images/paco-square.svg",
@@ -31,12 +31,8 @@ const OtherUserFollow = () => {
       "bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla",
   });
 
-  const handleCloseJobModal = () => {
-    setIsJobModalOpen(false);
-  };
-
-  const handleCloseServiceModal = () => {
-    setIsServiceModalOpen(false);
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
   };
 
   const handleOpenCardModal = () => {
@@ -219,6 +215,7 @@ const OtherUserFollow = () => {
               jobName="Post Title"
               jobIcon="/images/bag.svg"
               onCardClick={handleOpenCardModal}
+              setType={setCardType}
               type="service"
             />
             <JobCard
@@ -227,25 +224,16 @@ const OtherUserFollow = () => {
               jobName="Post Title"
               jobIcon="/images/bag.svg"
               onCardClick={handleOpenCardModal}
+              setType={setCardType}
               type="job"
             />
           </div>
         </div>
       </div>
-      {isJobModalOpen && (
-        <div className="fixed inset-0 z-[99991] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center sm:items-end">
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[99991] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center sm:items-end cursor-auto">
           <div className="w-full flex justify-center sm:just align-middle sm:align-bottom">
-            <ProfileModal type="job" handleCloseModal={handleCloseJobModal} />
-          </div>
-        </div>
-      )}
-      {isServiceModalOpen && (
-        <div className="fixed inset-0 z-[99991] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center sm:items-end">
-          <div className="w-full flex justify-center sm:just align-middle sm:align-bottom">
-            <ProfileModal
-              type="service"
-              handleCloseModal={handleCloseServiceModal}
-            />
+            <ViewJobModal handleCloseModal={handleCloseModal} type={cardType} />
           </div>
         </div>
       )}

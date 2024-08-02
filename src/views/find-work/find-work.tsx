@@ -4,8 +4,8 @@ import SearchInput from "@/components/reusable/SearchInput/SearchInput";
 
 import JobCard from "@/components/JobCard/JobCard";
 import MyButton from "@/components/reusable/Button/Button";
-import { useEffect, useState } from "react";
 import ViewJobModal from "../view-job-modal/view-job-modal";
+import { useEffect, useState } from "react";
 
 const buttons = [
   {
@@ -32,9 +32,18 @@ const buttons = [
 const FindWork = () => {
   const [categoriesMobile, setCategoriesMobile] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<number>();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const toggleCategoriesMobile = () => {
     setCategoriesMobile(!categoriesMobile);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
+
+  const handleOpenModal = () => {
+    setIsModalOpen(true);
   };
 
   return (
@@ -136,6 +145,7 @@ const FindWork = () => {
               username="adam.lens"
               jobName="Post Title"
               jobIcon="/images/bag.svg"
+              onCardClick={handleOpenModal}
               type="job"
             />
             <JobCard
@@ -143,6 +153,7 @@ const FindWork = () => {
               username="adam.lens"
               jobName="Post Title"
               jobIcon="/images/bag.svg"
+              onCardClick={handleOpenModal}
               type="job"
             />
             <JobCard
@@ -150,6 +161,7 @@ const FindWork = () => {
               username="adam.lens"
               jobName="UI/UX Designer | Figma | Web, Dashboard Analytic, Mobile App | SaaS"
               jobIcon="/images/bag.svg"
+              onCardClick={handleOpenModal}
               type="job"
             />
             <JobCard
@@ -157,11 +169,19 @@ const FindWork = () => {
               username="adam.lens"
               jobName="Post Title"
               jobIcon="/images/bag.svg"
+              onCardClick={handleOpenModal}
               type="job"
             />
           </div>
         </div>
       </div>
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[99991] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center sm:items-end cursor-auto">
+          <div className="w-full flex justify-center sm:just align-middle sm:align-bottom">
+            <ViewJobModal handleCloseModal={handleCloseModal} type="job" />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import React from "react";
 import { HandleInfo, useLogout } from "@lens-protocol/react-web";
+import { useDisconnect } from "wagmi";
 
 const MobileProfileDropdown = ({
   handle,
@@ -15,10 +16,14 @@ const MobileProfileDropdown = ({
   closeMenu: () => void;
 }) => {
   const { execute: logout, loading } = useLogout();
+  const { disconnect } = useDisconnect();
 
-  const handleLogOut = () => {
+  const handleLogOut = async () => {
     if (handle) {
-      logout();
+      await logout();
+      disconnect();
+      closeMenu();
+      window.location.href = "/";
     }
   };
 
@@ -130,7 +135,6 @@ const MobileProfileDropdown = ({
         className="drop-down-item pt-[8px] pb-[7px]"
         onClick={() => {
           handleLogOut();
-          closeMenu();
         }}
       >
         <Image

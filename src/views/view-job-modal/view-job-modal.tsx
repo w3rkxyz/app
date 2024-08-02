@@ -17,15 +17,12 @@ const ViewJobModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
     setShowMobile(true);
 
     function handleClickOutside(event: any) {
-      console.log("Was cliked");
       if (
         myDivRef.current &&
         !myDivRef.current.contains(event.target as Node)
       ) {
         if (handleCloseModal) {
           handleCloseModal();
-        } else if (closeJobCardModal) {
-          closeJobCardModal();
         }
       }
     }
@@ -51,15 +48,18 @@ const ViewJobModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
       ${showMobile ? "open-modal" : ""}`}
       ref={myDivRef}
     >
-      <div
-        className="hidden w-full sm:flex justify-end px-[16px] py-[13px] border-b-[1px] border-b-[#E4E4E7] rounded-tl-[12px] rounded-tr-[12px]"
-        onClick={handleCloseModal}
-      >
+      <div className="hidden w-full sm:flex justify-end px-[16px] py-[13px] border-b-[1px] border-b-[#E4E4E7] rounded-tl-[12px] rounded-tr-[12px] z-[2543265346536]">
         <Image
           src="/images/Close.svg"
           alt="close icon"
+          className="cursor-pointer"
           width={20}
           height={20}
+          onClick={() => {
+            if (handleCloseModal) {
+              handleCloseModal();
+            }
+          }}
         />
       </div>
       <div className="bg-[white] rounded-[12px] sm:rounded-none p-[16px] sm:w-full max-w-[750px] flex flex-col">

@@ -21,6 +21,9 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
   const [showMobile, setShowMobile] = useState(false);
   const [selectedTag, setSelectedTag] = useState<number | null>(null);
   const [showTokens, setShowTokens] = useState(false);
+  const [payementType, setPayementType] = useState<"hourly" | "fixed">(
+    "hourly"
+  );
 
   const handleTagClick = (id: number) => {
     setSelectedTag(selectedTag === id ? null : id);
@@ -115,22 +118,34 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
         </div>
         <div className="flex gap-[10px] mb-[16px]">
           <div className="w-[100px]">
-            <span className="leading-[14.52px] text-[14px] font-medium text-[black]">
+            <span
+              className={`leading-[14.52px] text-[14px] font-medium ${
+                payementType === "hourly" ? "text-[black]" : "text-[#E4E4E7]"
+              }`}
+            >
               Hourly Rate
             </span>
             <input
               className="form-input rounded-[8px] px-[11px] py-[7px] border-[1px] border-[#E4E4E7]"
               placeholder="$ /hr..."
+              type="number"
+              onChange={() => setPayementType("hourly")}
             />
           </div>
           <span className="mt-[26px] text-[#707070]">or</span>
           <div className="w-[100px]">
-            <span className="leading-[14.52px] text-[14px] font-medium text-[#E4E4E7]">
+            <span
+              className={`leading-[14.52px] text-[14px] font-medium ${
+                payementType === "fixed" ? "text-[black]" : "text-[#E4E4E7]"
+              }`}
+            >
               Fixed Price
             </span>
             <input
-              className="form-input rounded-[8px] px-[11px] py-[7px] border-[1px] border-[#E4E4E7]"
+              className={`form-input rounded-[8px] px-[11px] py-[7px] border-[1px] border-[#E4E4E7]`}
               placeholder="$ Amount..."
+              type="number"
+              onChange={() => setPayementType("fixed")}
             />
           </div>
         </div>
@@ -267,7 +282,7 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
           {[1, 2, 3].map((id) => (
             <button
               key={id}
-              className="rounded-[8px] border-[1px] border-[#E4E4E7] p-[7px] flex justify-between items-center w-[200px] relative"
+              className="rounded-[8px] border-[1px] border-[#E4E4E7] px-[9px] py-[10px] flex justify-between items-center w-[200px] relative"
               onClick={() => handleTagClick(id)}
             >
               <span className="font-normal leading-[14.52px] text-[12px] text-[#707070]">
@@ -276,11 +291,11 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
               <Image
                 src="/images/plus.svg"
                 alt="drop-down icon"
-                width={20}
-                height={20}
+                width={12}
+                height={12}
               />
               <div
-                className={`find-work-message-section w-[206px] bg-[#FFFFFF] rounded-[8px] p-[8px] sm:items-center gap-[3px] absolute top-[-575px] sm:top-[-478px] left-0
+                className={`find-work-message-section w-[200px] bg-[#FFFFFF] rounded-[8px] p-[20px] sm:items-center gap-[3px] absolute top-[-381px] sm:top-[-478px] left-0
               border-[1px] border-[#E4E4E7] ${
                 selectedTag === id ? "flex" : "hidden"
               } flex-col z-[999]`}
@@ -288,58 +303,53 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
               >
                 <MyButton
                   buttonText="Blockchain Development"
-                  buttonType="secondary"
+                  buttonType="dropdown"
                   buttonStyles="bg-[#FFC2C2] mb-[8px] sm:font-bold sm:text-[10px] sm:leading-[11px] sm:w-full"
                 ></MyButton>
                 <MyButton
                   buttonText="Programming & Development"
-                  buttonType="secondary"
+                  buttonType="dropdown"
                   buttonStyles="bg-[#FFD8C2] mb-[8px] sm:font-bold sm:text-[10px] sm:leading-[11px] sm:w-full"
                 ></MyButton>
                 <MyButton
                   buttonText="Design"
-                  buttonType="secondary"
+                  buttonType="dropdown"
                   buttonStyles="bg-[#FFF2C2] mb-[8px] w-[150px] sm:w-full"
                 ></MyButton>
                 <MyButton
                   buttonText="Marketing"
-                  buttonType="secondary"
+                  buttonType="dropdown"
                   buttonStyles="bg-[#EFFFC2] mb-[8px] sm:w-full"
                 ></MyButton>
                 <MyButton
                   buttonText="Admin Support"
-                  buttonType="secondary"
+                  buttonType="dropdown"
                   buttonStyles="bg-[#C2FFC5] mb-[8px] sm:w-full"
                 ></MyButton>
                 <MyButton
                   buttonText="Customer Service"
-                  buttonType="secondary"
+                  buttonType="dropdown"
                   buttonStyles="bg-[#C2FFFF] mb-[8px] sm:w-full"
                 ></MyButton>
                 <MyButton
-                  buttonText="IT & Networking"
-                  buttonType="secondary"
-                  buttonStyles="bg-[#C2EAFF] mb-[8px] sm:w-full"
+                  buttonText="Security & Auditing"
+                  buttonType="dropdown"
+                  buttonStyles="bg-[#C2CCFF] mb-[8px] sm:w-full"
                 ></MyButton>
                 <MyButton
-                  buttonText="Writing"
-                  buttonType="secondary"
-                  buttonStyles="bg-[#C2D1FF] mb-[8px] sm:w-full"
+                  buttonText="Consulting & Advisory"
+                  buttonType="dropdown"
+                  buttonStyles="bg-[#D9C2FF] mb-[8px] sm:w-full"
                 ></MyButton>
                 <MyButton
-                  buttonText="Translation"
-                  buttonType="secondary"
-                  buttonStyles="bg-[#E3C2FF] mb-[8px] sm:w-full"
+                  buttonText="Community Building"
+                  buttonType="dropdown"
+                  buttonStyles="bg-[#FAC2FF] mb-[8px] sm:w-full"
                 ></MyButton>
                 <MyButton
-                  buttonText="Legal"
-                  buttonType="secondary"
-                  buttonStyles="bg-[#FFC2E5] mb-[8px] sm:w-full"
-                ></MyButton>
-                <MyButton
-                  buttonText="Engineering & Architecture"
-                  buttonType="secondary"
-                  buttonStyles="bg-[#DDDDDD] mb-[8px] sm:w-full"
+                  buttonText="Other"
+                  buttonType="dropdown"
+                  buttonStyles="bg-[#E4E4E7] mb-[0px] sm:w-full"
                 ></MyButton>
               </div>
             </button>

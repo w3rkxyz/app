@@ -14,6 +14,7 @@ interface CardProps {
   type: string;
   onClick?: () => void;
   onCardClick?: () => void;
+  setType?: any;
   handlePostJobOpen?: () => void;
 }
 
@@ -24,21 +25,16 @@ const JobCard = ({
   jobIcon,
   cardStyles,
   onCardClick,
+  setType,
   type,
 }: CardProps) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const handleOpenModal = () => {
-    setIsModalOpen(true);
-  };
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-  };
-
   return (
     <div
       className="bg-[white] hover:bg-[#F0F0F0] border-[1px] border-[#E4E4E7] rounded-[12px] p-[16px] cursor-pointer w-full"
-      onClick={handleOpenModal}
+      onClick={() => {
+        setType?.(type);
+        onCardClick?.();
+      }}
     >
       <div className="flex justify-between align-top mb-[10px]">
         <div className="flex gap-[15px]">
@@ -105,13 +101,6 @@ const JobCard = ({
           Tag Name
         </button>
       </div>
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[99991] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center sm:items-end">
-          <div className="w-full flex justify-center sm:just align-middle sm:align-bottom">
-            <ViewJobModal handleCloseModal={handleCloseModal} type={type} />
-          </div>
-        </div>
-      )}
     </div>
   );
 };
