@@ -154,11 +154,11 @@
 
 @layer components {
   .navbar-nav .navbar-nav-items a {
-    @apply font-primary text-[14px] font-medium leading-[16.94px] text-center;
+    @apply font-primary text-[15px] font-medium leading-[16.94px] text-center;
   }
 
   .nav-center {
-    left: calc(50% - 107.394px);
+    left: calc(50% - 112.1px);
   }
 
   .selected-path {

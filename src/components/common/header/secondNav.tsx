@@ -88,7 +88,7 @@ const SecondNav = ({
             <div className="navbar-right-cont nav-center flex items-center absolute h-full w-fit">
               <ul className="navbar-nav flex items-center sm:hidden ml-auto gap-[7px]">
                 <li
-                  className={`navbar-nav-items px-[19px] py-[7px] ${
+                  className={`navbar-nav-items px-[19px] py-[5px] ${
                     path === "/find-work" ? "selected-path" : ""
                   }`}
                 >
@@ -115,34 +115,34 @@ const SecondNav = ({
                   <Image
                     src="/images/notification.svg"
                     alt="notification icon"
-                    width={16}
-                    height={19}
+                    width={17}
+                    height={20}
                   />
                 </button>
               </Link>
               <Link href="/messages">
-                <button style={{ paddingTop: "12px" }}>
+                <button style={{ paddingTop: "13px" }}>
                   <Image
                     className="mt-[-5px]"
                     src="/images/discuss.svg"
                     alt="message icon"
-                    width={19}
-                    height={16}
+                    width={20}
+                    height={17}
                   />
                 </button>
               </Link>
               <div>
                 <button onClick={openProfileDropdown}>
-                  <div className="w-[32px] h-[32px] sm:w-[34px] sm:h-[34px] relative">
+                  <div className="w-[34px] h-[34px] sm:w-[34px] sm:h-[34px] relative">
                     <Image
                       src={
                         profile?.metadata &&
                         profile?.metadata?.picture?.raw?.uri
                           ? profile.metadata.picture.raw.uri
-                          : "/images/paco.svg"
+                          : "/images/paco-square.svg"
                       }
                       layout="fill"
-                      className="rounded-[12px] sm:rounded-[8.16px] relative mt-[2px]"
+                      className="rounded-[8px] sm:rounded-[8.16px] relative mt-[2px]"
                       alt="user icon"
                     />
                   </div>
