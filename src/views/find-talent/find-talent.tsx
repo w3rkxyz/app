@@ -10,28 +10,43 @@ import ViewJobModal from "../view-job-modal/view-job-modal";
 const buttons = [
   {
     buttonText: "Blockchain Development",
-    buttonStyles: "bg-[#FFC2C2] mb-[8px]",
+    buttonStyles: "bg-[#FFC2C2] mb-[8px] sm:w-full",
   },
   {
     buttonText: "Programming & Development",
-    buttonStyles: "bg-[#FFD8C2] mb-[8px]",
+    buttonStyles: "bg-[#FFD8C2] mb-[8px] sm:w-full",
   },
-  { buttonText: "Design", buttonStyles: "bg-[#FFF2C2] mb-[8px] w-[150px]" },
-  { buttonText: "Marketing", buttonStyles: "bg-[#EFFFC2] mb-[8px]" },
-  { buttonText: "Admin Support", buttonStyles: "bg-[#C2FFC5] mb-[8px]" },
-  { buttonText: "Customer Service", buttonStyles: "bg-[#C2FFFF] mb-[8px]" },
-  { buttonText: "Security & Auditing", buttonStyles: "bg-[#C2CCFF] mb-[8px]" },
+  {
+    buttonText: "Design",
+    buttonStyles: "bg-[#FFF2C2] mb-[8px] sm:w-full w-[150px]",
+  },
+  { buttonText: "Marketing", buttonStyles: "bg-[#EFFFC2] mb-[8px] sm:w-full" },
+  {
+    buttonText: "Admin Support",
+    buttonStyles: "bg-[#C2FFC5] mb-[8px] sm:w-full",
+  },
+  {
+    buttonText: "Customer Service",
+    buttonStyles: "bg-[#C2FFFF] mb-[8px] sm:w-full",
+  },
+  {
+    buttonText: "Security & Auditing",
+    buttonStyles: "bg-[#C2CCFF] mb-[8px] sm:w-full",
+  },
   {
     buttonText: "Consulting & Advisory",
-    buttonStyles: "bg-[#D9C2FF] mb-[8px]",
+    buttonStyles: "bg-[#D9C2FF] mb-[8px] sm:w-full",
   },
-  { buttonText: "Community Building", buttonStyles: "bg-[#FAC2FF] mb-[8px]" },
-  { buttonText: "Other", buttonStyles: "bg-[#E4E4E7] mb-[8px]" },
+  {
+    buttonText: "Community Building",
+    buttonStyles: "bg-[#FAC2FF] mb-[8px] sm:w-full",
+  },
+  { buttonText: "Other", buttonStyles: "bg-[#E4E4E7] mb-[8px] sm:w-full" },
 ];
 
 const FindTalent = () => {
   const [categoriesMobile, setCategoriesMobile] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<number>();
+  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const toggleCategoriesMobile = () => {
@@ -44,6 +59,17 @@ const FindTalent = () => {
 
   const handleOpenModal = () => {
     setIsModalOpen(true);
+  };
+
+  const onCLickCategory = (index: number) => {
+    if (selectedCategories.includes(index)) {
+      const updated = selectedCategories.filter((item) => item !== index);
+      setSelectedCategories(updated);
+    } else {
+      var current = [...selectedCategories];
+      current.push(index);
+      setSelectedCategories(current);
+    }
   };
 
   return (
@@ -60,56 +86,19 @@ const FindTalent = () => {
               categoriesMobile ? "sm:flex" : "sm:hidden"
             } sm:flex-col`}
           >
-            <MyButton
-              buttonText="Blockchain Development"
-              buttonType="secondary"
-              buttonStyles="bg-[#FFC2C2] mb-[8px] sm:font-bold sm:text-[10px] sm:leading-[11px] sm:w-full"
-            ></MyButton>
-            <MyButton
-              buttonText="Programming & Development"
-              buttonType="secondary"
-              buttonStyles="bg-[#FFD8C2] mb-[8px] sm:font-bold sm:text-[10px] sm:leading-[11px] sm:w-full"
-            ></MyButton>
-            <MyButton
-              buttonText="Design"
-              buttonType="secondary"
-              buttonStyles="bg-[#FFF2C2] mb-[8px] w-[150px] sm:w-full"
-            ></MyButton>
-            <MyButton
-              buttonText="Marketing"
-              buttonType="secondary"
-              buttonStyles="bg-[#EFFFC2] mb-[8px] sm:w-full"
-            ></MyButton>
-            <MyButton
-              buttonText="Admin Support"
-              buttonType="secondary"
-              buttonStyles="bg-[#C2FFC5] mb-[8px] sm:w-full"
-            ></MyButton>
-            <MyButton
-              buttonText="Customer Service"
-              buttonType="secondary"
-              buttonStyles="bg-[#C2FFFF] mb-[8px] sm:w-full"
-            ></MyButton>
-            <MyButton
-              buttonText="Security & Auditing"
-              buttonType="secondary"
-              buttonStyles="bg-[#C2CCFF] mb-[8px] sm:w-full"
-            ></MyButton>
-            <MyButton
-              buttonText="Consulting & Advisory"
-              buttonType="secondary"
-              buttonStyles="bg-[#D9C2FF] mb-[8px] sm:w-full"
-            ></MyButton>
-            <MyButton
-              buttonText="Community Building"
-              buttonType="secondary"
-              buttonStyles="bg-[#FAC2FF] mb-[8px] sm:w-full"
-            ></MyButton>
-            <MyButton
-              buttonText="Other"
-              buttonType="secondary"
-              buttonStyles="bg-[#E4E4E7] mb-[8px] sm:w-full"
-            ></MyButton>
+            {buttons.map((button, index) => (
+              <MyButton
+                key={index}
+                buttonText={button.buttonText}
+                buttonType="secondary"
+                buttonStyles={`${button.buttonStyles} ${
+                  selectedCategories?.includes(index)
+                    ? "border-[1px] border-black"
+                    : ""
+                }`}
+                action={() => onCLickCategory(index)}
+              />
+            ))}
             <button className="mx-auto w-fit py-[10px] px-[20px] tx-[12px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px] mt-[8px]">
               Apply
             </button>
@@ -131,9 +120,11 @@ const FindTalent = () => {
                 buttonText={button.buttonText}
                 buttonType="secondary"
                 buttonStyles={`${button.buttonStyles} ${
-                  selectedCategory === index ? "border-[1px] border-black" : ""
+                  selectedCategories?.includes(index)
+                    ? "border-[1px] border-black"
+                    : ""
                 }`}
-                action={() => setSelectedCategory(index)}
+                action={() => onCLickCategory(index)}
               />
             ))}
           </div>

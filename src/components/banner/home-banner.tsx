@@ -1,12 +1,12 @@
 "use client";
 import Image from "next/image";
 import React from "react";
-import Footer from "../common/footer/footer";
 import { Connect } from "../common/header/connectButton";
+import Footer from "../common/footer/footer";
 
 const HomeBanner = () => {
   return (
-    <div className="banner-section pt-[269px] sm:pt-[192px] footer-space overflow-hidden overflow-y-hidden relative">
+    <div className="banner-section pt-[269px] sm:pt-[192px] home-banner absolute top-0 left-0">
       <div className="custom-container">
         <div className="banner-wrapper max-w-[1156px] mx-auto relative">
           <div className="banner-modal banner-modal-top">
@@ -51,12 +51,12 @@ const HomeBanner = () => {
               <br />
               freelancing & hiring
             </h1>
-            <p className="banner-desc max-w-[620px] sm:max-w-[350px] sm:mb-6 mx-auto mb-[24px] text-[18px] text-center font-semibold sm:font-normal sm:text-[16px] font-secondary tracking-[.01em] leading-[24px] sm:leading-[19.5px] text-[#000000] text-[400] sm:hidden">
+            <p className="banner-desc max-w-[570px] sm:max-w-[350px] sm:mb-6 mx-auto mb-[24px] text-[18px] text-center font-medium sm:font-normal sm:text-[16px] font-secondary tracking-[.01em] leading-[24px] sm:leading-[19.5px] text-[#000000] text-[400] sm:hidden">
               Empowering decentralized freelancing within the SocialFi
               ecosystem. Proudly bridging global businesses with exceptional
               professionals who embrace cryptocurrency payments.
             </p>
-            <p className="banner-desc max-w-[620px] sm:max-w-[350px] sm:mb-[46px] mx-auto mb-[24px] text-[18px] text-center font-semibold sm:font-normal sm:text-[16px] font-secondary tracking-[.01em] leading-[24px] sm:leading-[19.5px] text-[#000000] hidden sm:block">
+            <p className="banner-desc max-w-[620px] sm:max-w-[350px] sm:mb-[46px] mx-auto mb-[24px] text-[18px] text-center font-medium sm:font-normal sm:text-[16px] font-secondary tracking-[.01em] leading-[24px] sm:leading-[19.5px] text-[#000000] hidden sm:block">
               Empowering decentralized freelancing within the SocialFi
               ecosystem. <br /> Proudly bridging global businesses with
               exceptional professionals who embrace cryptocurrency payments.
@@ -122,6 +122,9 @@ const HomeBanner = () => {
             </div>
           </div>
         </div>
+      </div>
+      <div className="w-full absolute bottom-0 left-0 sm:mb-[10px]">
+        <Footer />
       </div>
     </div>
   );

@@ -31,7 +31,7 @@ const buttons = [
 
 const FindWork = () => {
   const [categoriesMobile, setCategoriesMobile] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<number>();
+  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const toggleCategoriesMobile = () => {
@@ -44,6 +44,17 @@ const FindWork = () => {
 
   const handleOpenModal = () => {
     setIsModalOpen(true);
+  };
+
+  const onCLickCategory = (index: number) => {
+    if (selectedCategories.includes(index)) {
+      const updated = selectedCategories.filter((item) => item !== index);
+      setSelectedCategories(updated);
+    } else {
+      var current = [...selectedCategories];
+      current.push(index);
+      setSelectedCategories(current);
+    }
   };
 
   return (
@@ -132,9 +143,11 @@ const FindWork = () => {
                 buttonText={button.buttonText}
                 buttonType="secondary"
                 buttonStyles={`${button.buttonStyles} ${
-                  selectedCategory === index ? "border-[1px] border-black" : ""
+                  selectedCategories?.includes(index)
+                    ? "border-[1px] border-black"
+                    : ""
                 }`}
-                action={() => setSelectedCategory(index)}
+                action={() => onCLickCategory(index)}
               />
             ))}
           </div>
