@@ -2,8 +2,20 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import MyButton from "../reusable/Button/Button";
-import ViewJobModal from "@/views/view-job-modal/view-job-modal";
+import { AnyPublication, Post } from "@lens-protocol/react-web";
+
+const tagColors: any = {
+  "Blockchain Development": "#FFC2C2",
+  "Programming & Development": "#FFD8C2",
+  Design: "#FFF2C2",
+  Marketing: "#EFFFC2",
+  "Admin Support": "#C2FFC5",
+  "Customer Service": "#C2FFFF",
+  "Security & Auditing": "#C2CCFF",
+  "Consulting & Advisory": "#D9C2FF",
+  "Community Building": "#FAC2FF",
+  Other: "#E4E4E7",
+};
 
 interface CardProps {
   userAvatar?: string;
@@ -16,6 +28,7 @@ interface CardProps {
   onCardClick?: () => void;
   setType?: any;
   handlePostJobOpen?: () => void;
+  publication?: Post;
 }
 
 const JobCard = ({
@@ -27,7 +40,20 @@ const JobCard = ({
   onCardClick,
   setType,
   type,
+  publication,
 }: CardProps) => {
+  const data =
+    publication && publication.metadata.__typename === "ArticleMetadataV3"
+      ? publication
+      : undefined;
+
+  var attributes: any = {};
+  if (publication) {
+    publication.metadata.attributes?.map((attribute) => {
+      attributes[attribute.key] = attribute.value;
+    });
+  }
+
   return (
     <div
       className="bg-[white] hover:bg-[#F0F0F0] border-[1px] border-[#E4E4E7] rounded-[12px] p-[16px] cursor-pointer w-full"
@@ -39,7 +65,15 @@ const JobCard = ({
       <div className="flex justify-between align-top mb-[10px]">
         <div className="flex gap-[15px]">
           <Image
-            src={`/images/${type === "job" ? "werk.svg" : "paco-square.svg"}`}
+            src={
+              data &&
+              data.by.metadata &&
+              data.by.metadata?.picture?.__typename == "ImageSet"
+                ? data.by.metadata?.picture?.raw?.uri
+                : type === "job"
+                ? "/images/werk.svg"
+                : "/images/paco-square.svg"
+            }
             alt="w3rk logo"
             className="rounded-[8px]"
             width={60}
@@ -47,13 +81,19 @@ const JobCard = ({
           />
           <div className="flex flex-col gap-[5px] pt-[5px]">
             <span className="text-[14px] leading-[16.94px] font-semibold">
-              Display Name
+              {data ? data.by.metadata?.displayName : "Display Name"}
             </span>
             <span className="text-[14px] leading-[16.94px] font-semibold">
-              Job Title
+              {data && data.metadata.__typename === "ArticleMetadataV3"
+                ? data.metadata.title
+                : "Job Title"}
             </span>
             <span className="text-[#707070] text-[12px] leading-[14.52px] font-semibold">
-              $0.00 /hr
+              {attributes["payement type"]
+                ? attributes["payement type"] === "hourly"
+                  ? `$${attributes["hourly"]} /hr`
+                  : `$${attributes["fixed"]} - Fixed Price`
+                : "$0.00 /hr"}
             </span>
           </div>
         </div>
@@ -80,25 +120,51 @@ const JobCard = ({
         )}
       </div>
       <span className="leading-[16.94px] sm:leading-[1.94px] text-[14px] font-semibold mb-[4px] sm:mb-[8px]">
-        {jobName}
+        {data && data.metadata.__typename === "ArticleMetadataV3"
+          ? data.metadata.title
+          : "Post Title"}
       </span>
-      <p className="line-clamp-6 leading-[15.52px] text-[13px] sm:text-[13px] font-normal mb-[12px] sm:mb-[17px] w-full laptop-x:text-[14px]">
-        User information can go here along with service offered information,
-        total character limit will have to be decided bc we don’t wanna run over
-        the limit. User information can go here along with service offered
-        information, total character limit will have to be decided bc we don’t
-        wanna run over the limit. User information can go here along... service
-        offered information, total character limit will have to be
+      <p
+        className={`line-clamp-6 leading-[15.52px] text-[13px] sm:text-[13px] font-normal mb-[12px] sm:mb-[17px] w-full laptop-x:text-[14px] ${
+          data ? "whitespace-pre-wrap" : ""
+        }`}
+      >
+        {data && data.metadata.__typename === "ArticleMetadataV3"
+          ? data.metadata.content
+          : `User information can go here along with service offered information,
+                total character limit will have to be decided bc we don’t wanna run over
+                the limit. User information can go here along with service offered
+                information, total character limit will have to be decided bc we don’t
+                wanna run over the limit. User information can go here along... service
+                offered information, total character limit will have to be`}
       </p>
       <div className="flex sm:flex-col gap-[15px] sm:gap-[10px]">
-        <button className="bg-[#E4E4E7] rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] px-[70px] sm:px-[66px] sm:max-w-[190px]">
-          Tag Name
+        <button
+          className={`${
+            data?.metadata.tags
+              ? `bg-[${tagColors[data?.metadata.tags[0]]}]`
+              : "bg-[#E4E4E7]"
+          } rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] px-[70px] sm:px-0 sm:w-[190px] sm:flex sm:justify-center`}
+        >
+          {data?.metadata.tags ? data?.metadata.tags[0] : "Tag Name"}
         </button>
-        <button className="bg-[#E4E4E7] rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] px-[70px] sm:px-[66px] sm:max-w-[190px]">
-          Tag Name
+        <button
+          className={`${
+            data?.metadata.tags
+              ? `bg-[${tagColors[data?.metadata.tags[1]]}]`
+              : "bg-[#E4E4E7]"
+          } rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] px-[70px] sm:px-0 sm:w-[190px] sm:flex sm:justify-center`}
+        >
+          {data?.metadata.tags ? data?.metadata.tags[1] : "Tag Name"}
         </button>
-        <button className="bg-[#E4E4E7] rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] px-[70px] sm:px-[66px] sm:max-w-[190px]">
-          Tag Name
+        <button
+          className={`${
+            data?.metadata.tags
+              ? `bg-[${tagColors[data?.metadata.tags[2]]}]`
+              : "bg-[#E4E4E7]"
+          } rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] px-[70px] sm:px-0 sm:w-[190px] sm:flex sm:justify-center`}
+        >
+          {data?.metadata.tags ? data?.metadata.tags[2] : "Tag Name"}
         </button>
       </div>
     </div>

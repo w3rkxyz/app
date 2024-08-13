@@ -9,6 +9,7 @@ import {
   LensConfig,
   development,
   LensProvider,
+  production,
 } from "@lens-protocol/react-web";
 import { bindings as wagmiBindings } from "@lens-protocol/wagmi";
 
@@ -30,7 +31,7 @@ const queryClient = new QueryClient();
 // Lens Protocol config
 const lensConfig: LensConfig = {
   bindings: wagmiBindings(config),
-  environment: development,
+  environment: production,
 };
 
 // Rainbow kit and Lens Context wrapper

@@ -2,16 +2,73 @@
 
 import React, { useRef, useEffect, useState } from "react";
 import Image from "next/image";
+import { Post } from "@lens-protocol/react-web";
 
 type Props = {
   handleCloseModal?: () => void;
   type: string;
   closeJobCardModal?: () => void;
+  publication?: Post;
 };
 
-const ViewJobModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
+const tokenImages: { [key: string]: string } = {
+  BTC: "/images/btc.svg",
+  ETH: "/images/eth.svg",
+  USDT: "/images/usdt.svg", // Corrected to "/images/usdt.svg" if it's a duplicate
+  USDC: "images/usdc.svg",
+  BNB: "/images/bnb.svg",
+  SOL: "/images/solana.svg",
+  DAI: "/images/dai.svg",
+  GHO: "/images/green-coin.svg",
+  BONSAI: "/images/bw-coin.svg",
+};
+
+const tagColors: any = {
+  "Blockchain Development": "#FFC2C2",
+  "Programming & Development": "#FFD8C2",
+  Design: "#FFF2C2",
+  Marketing: "#EFFFC2",
+  "Admin Support": "#C2FFC5",
+  "Customer Service": "#C2FFFF",
+  "Security & Auditing": "#C2CCFF",
+  "Consulting & Advisory": "#D9C2FF",
+  "Community Building": "#FAC2FF",
+  Other: "#E4E4E7",
+};
+
+function splitTokens(tokenString: string) {
+  return tokenString.split(",").map((token) => token.trim());
+}
+
+const ViewJobModal = ({
+  handleCloseModal,
+  closeJobCardModal,
+  type,
+  publication,
+}: Props) => {
   const myDivRef = useRef<HTMLDivElement>(null);
   const [showMobile, setShowMobile] = useState(false);
+
+  const data =
+    publication && publication.metadata.__typename === "ArticleMetadataV3"
+      ? publication
+      : undefined;
+
+  var attributes: any = {};
+  var tokens: string[] = [];
+  if (publication) {
+    publication.metadata.attributes?.map((attribute) => {
+      attributes[attribute.key] = attribute.value;
+
+      if (attribute.key === "paid in") {
+        tokens = splitTokens(attribute.value);
+      }
+      console.log(tokens);
+      if (data && data.metadata.__typename === "ArticleMetadataV3") {
+        console.log("Content: ", data?.metadata?.content);
+      }
+    });
+  }
 
   useEffect(() => {
     setShowMobile(true);
@@ -62,11 +119,19 @@ const ViewJobModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
           }}
         />
       </div>
-      <div className="bg-[white] rounded-[12px] sm:rounded-none p-[16px] sm:w-full max-w-[750px] flex flex-col">
+      <div className="bg-[white] rounded-[12px] sm:rounded-none p-[16px] min-h-[589px] w-[750px] sm:w-full flex flex-col">
         <div className="flex justify-between align-top mb-[18px]">
           <div className="flex gap-[16px]">
             <Image
-              src={`/images/${type === "job" ? "werk.svg" : "paco.svg"}`}
+              src={
+                data &&
+                data.by.metadata &&
+                data.by.metadata?.picture?.__typename == "ImageSet"
+                  ? data.by.metadata?.picture?.raw?.uri
+                  : type === "job"
+                  ? "werk.svg"
+                  : "paco-square.svg"
+              }
               alt="w3rk logo"
               className="sm:w-[60px] sm:h-[60px]"
               width={64}
@@ -74,13 +139,19 @@ const ViewJobModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
             />
             <div className="flex flex-col gap-[5px] pt-[5px]">
               <span className="text-[16px] sm:text-[14px] leading-[16.94px] font-semibold">
-                Display Name
+                {data ? data.by.metadata?.displayName : "Display Name"}
               </span>
               <span className="text-[16px] sm:text-[14px] leading-[16.94px] font-semibold">
-                Job Title
+                {data && data.metadata.__typename === "ArticleMetadataV3"
+                  ? data.metadata.title
+                  : "Job Title"}
               </span>
               <span className="text-[#707070] text-[14px] sm:text-[12px] leading-[14.52px] font-semibold">
-                {type === "job" ? "$0.00 - Fixed Price" : "$0.00 /hr"}
+                {attributes["payement type"]
+                  ? attributes["payement type"] === "hourly"
+                    ? `$${attributes["hourly"]} /hr`
+                    : `$${attributes["fixed"]} - Fixed Price`
+                  : "$0.00 /hr"}
               </span>
             </div>
           </div>
@@ -107,9 +178,15 @@ const ViewJobModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
           )}
         </div>
         <p className="leading-[16.94px] text-[18px] sm:text-[16px] font-semibold mb-[16px]">
-          Website Updates - Full Stack Developer
+          {data && data.metadata.__typename === "ArticleMetadataV3"
+            ? data.metadata.title
+            : "Website Updates - Full Stack Developer"}
         </p>
-        {type === "job" ? (
+        {data && data.metadata.__typename === "ArticleMetadataV3" ? (
+          <div className="width-full rounded-[12px] leading-[19.52px] min-h-[312px] sm:leading-[16.52px] font-normal text-[16px] sm:text-[12px] border-[1px] border-[#E4E4E7] p-[13px] pb-[90px] sm:p-[9px] sm:pb-[10px] mb-[18px] whitespace-pre-wrap">
+            {data.metadata.content}
+          </div>
+        ) : type === "job" ? (
           <div className="width-full rounded-[12px] leading-[19.52px] sm:leading-[16.52px] font-normal text-[16px] sm:text-[12px] border-[1px] border-[#E4E4E7] p-[13px] pb-[90px] sm:p-[9px] sm:pb-[10px] mb-[18px]">
             We are seeking an experienced Full Stack Developer to help us update
             and enhance our website. The ideal candidate will have a strong
@@ -159,124 +236,162 @@ const ViewJobModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
             💎 UI/UX: Mobile Design
           </div>
         )}
-        <div className="flex gap-[16px] sm:gap-[10px] align-middle mb-[20px] sm:mb-[14px]">
+        <div className="flex gap-[16px] sm:gap-[10px] items-center mb-[20px] sm:mb-[14px]">
           <span className="text-[17px] sm:text-[16px] font-medium font-secondary  tracking-[-1%] text-[#000000] sm:hidden">
             Paid in:
           </span>
           <span className="text-[17px] sm:text-[16px] font-medium font-secondary  tracking-[-1%] text-[#000000] hidden sm:block">
             Accepts:
           </span>
-          <ul className="socials-widgets gap-[5px] flex">
-            <li className="socials-widgets-items">
-              <a href="/">
-                <Image
-                  className="w-[26px] h-[26px] sm:w-[24px] sm:h-[24px] bg-[#F7931A] p-1 rounded-full"
-                  src="/images/token-1.svg"
-                  alt="socials icons images"
-                  width={26}
-                  height={26}
-                />
-              </a>
-            </li>
-            <li className="socials-widgets-items">
-              <a href="/">
-                <Image
-                  className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
-                  src="/images/token2.svg"
-                  alt="socials icons images"
-                  width={26}
-                  height={26}
-                />
-              </a>
-            </li>
-            <li className="socials-widgets-items">
-              <a href="/">
-                <Image
-                  className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
-                  src="/images/token3.svg"
-                  alt="socials icons images"
-                  width={26}
-                  height={26}
-                />
-              </a>
-            </li>
-            <li className="socials-widgets-items">
-              <a href="/">
-                <Image
-                  className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
-                  src="/images/bnb.svg"
-                  alt="socials icons images"
-                  width={26}
-                  height={26}
-                />
-              </a>
-            </li>
-            <li className="socials-widgets-items">
-              <a href="/">
-                <Image
-                  className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
-                  src="/images/solana.svg"
-                  alt="socials icons images"
-                  width={26}
-                  height={26}
-                />
-              </a>
-            </li>
-            <li className="socials-widgets-items">
-              <a href="/">
-                <Image
-                  className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
-                  src="/images/usdt.svg"
-                  alt="socials icons images"
-                  width={26}
-                  height={26}
-                />
-              </a>
-            </li>
-            <li className="socials-widgets-items">
-              <a href="/">
-                <Image
-                  className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
-                  src="/images/dai.svg"
-                  alt="socials icons images"
-                  width={26}
-                  height={26}
-                />
-              </a>
-            </li>
-            <li className="socials-widgets-items">
-              <a href="/">
-                <Image
-                  className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
-                  src="/images/green-coin.svg"
-                  alt="socials icons images"
-                  width={26}
-                  height={26}
-                />
-              </a>
-            </li>
-            <li className="socials-widgets-items">
-              <a href="/">
-                <Image
-                  className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
-                  src="/images/bw-coin.svg"
-                  alt="socials icons images"
-                  width={26}
-                  height={26}
-                />
-              </a>
-            </li>
-          </ul>
+          {data ? (
+            <ul className="socials-widgets gap-[5px] flex items-center">
+              {tokens.map((token: string, index: number) => {
+                return (
+                  <li className="socials-widgets-items" key={index}>
+                    <a href="/">
+                      <Image
+                        className={`w-[34px] h-[34px] sm:w-[24px] sm:h-[24px] p-1 rounded-full`}
+                        src={tokenImages[token]}
+                        alt="socials icons images"
+                        width={34}
+                        height={34}
+                      />
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <ul className="socials-widgets gap-[5px] flex">
+              <li className="socials-widgets-items">
+                <a href="/">
+                  <Image
+                    className="w-[26px] h-[26px] sm:w-[24px] sm:h-[24px] bg-[#F7931A] p-1 rounded-full"
+                    src="/images/token-1.svg"
+                    alt="socials icons images"
+                    width={26}
+                    height={26}
+                  />
+                </a>
+              </li>
+              <li className="socials-widgets-items">
+                <a href="/">
+                  <Image
+                    className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
+                    src="/images/token2.svg"
+                    alt="socials icons images"
+                    width={26}
+                    height={26}
+                  />
+                </a>
+              </li>
+              <li className="socials-widgets-items">
+                <a href="/">
+                  <Image
+                    className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
+                    src="/images/token3.svg"
+                    alt="socials icons images"
+                    width={26}
+                    height={26}
+                  />
+                </a>
+              </li>
+              <li className="socials-widgets-items">
+                <a href="/">
+                  <Image
+                    className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
+                    src="/images/bnb.svg"
+                    alt="socials icons images"
+                    width={26}
+                    height={26}
+                  />
+                </a>
+              </li>
+              <li className="socials-widgets-items">
+                <a href="/">
+                  <Image
+                    className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
+                    src="/images/solana.svg"
+                    alt="socials icons images"
+                    width={26}
+                    height={26}
+                  />
+                </a>
+              </li>
+              <li className="socials-widgets-items">
+                <a href="/">
+                  <Image
+                    className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
+                    src="/images/usdt.svg"
+                    alt="socials icons images"
+                    width={26}
+                    height={26}
+                  />
+                </a>
+              </li>
+              <li className="socials-widgets-items">
+                <a href="/">
+                  <Image
+                    className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
+                    src="/images/dai.svg"
+                    alt="socials icons images"
+                    width={26}
+                    height={26}
+                  />
+                </a>
+              </li>
+              <li className="socials-widgets-items">
+                <a href="/">
+                  <Image
+                    className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
+                    src="/images/green-coin.svg"
+                    alt="socials icons images"
+                    width={26}
+                    height={26}
+                  />
+                </a>
+              </li>
+              <li className="socials-widgets-items">
+                <a href="/">
+                  <Image
+                    className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
+                    src="/images/bw-coin.svg"
+                    alt="socials icons images"
+                    width={26}
+                    height={26}
+                  />
+                </a>
+              </li>
+            </ul>
+          )}
         </div>
         <div className="flex gap-[18px] sm:flex-col sm:gap-[10px] justify-between sm:justify-start mb-[24px]">
-          <button className="bg-[#E4E4E7] rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] flex-1 sm:px-[70px] sm:w-fit">
-            Tag Name
+          <button
+            className={`${
+              data?.metadata.tags
+                ? `bg-[${tagColors[data?.metadata.tags[0]]}]`
+                : "bg-[#E4E4E7]"
+            } rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] flex-1 sm:px-[70px] sm:w-fit`}
+          >
+            {data?.metadata.tags ? data?.metadata.tags[0] : "Tag Name"}
           </button>
-          <button className="bg-[#E4E4E7] rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] flex-1 sm:px-[70px] sm:w-fit">
-            Tag Name
+          <button
+            className={`${
+              data?.metadata.tags
+                ? `bg-[${tagColors[data?.metadata.tags[1]]}]`
+                : "bg-[#E4E4E7]"
+            } rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] flex-1 sm:px-[70px] sm:w-fit`}
+          >
+            {data?.metadata.tags ? data?.metadata.tags[1] : "Tag Name"}
           </button>
-          <button className="bg-[#E4E4E7] rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] flex-1 sm:px-[70px] sm:w-fit">
-            Tag Name
+          <button
+            className={`${
+              data?.metadata.tags
+                ? `bg-[${tagColors[data?.metadata.tags[2]]}]`
+                : "bg-[#E4E4E7]"
+            } rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] flex-1 sm:px-[70px] sm:w-fit`}
+          >
+            {data?.metadata.tags ? data?.metadata.tags[2] : "Tag Name"}
           </button>
         </div>
         <button className="mx-auto w-fit py-[9px] px-[26px] tx-[18px] Sm:py-[8px] sm:px-[23px] tx-[14px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[9px] sm:rounded-[8px] font-semibold mb-[8px]">

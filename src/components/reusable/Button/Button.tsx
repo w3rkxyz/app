@@ -41,7 +41,10 @@ const MyButton: React.FC<ButtonElement> = ({
       className={` ${buttonStyles} ${getButtonTypes(buttonType)} ${
         buttonType === "secondary" || "dropdown" ? "button-shadow" : ""
       }`}
-      onClick={() => action?.()}
+      onClick={(e) => {
+        e.stopPropagation();
+        action?.();
+      }}
     >
       {buttonText}
     </button>

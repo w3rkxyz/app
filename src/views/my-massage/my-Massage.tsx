@@ -7,70 +7,113 @@ import CreateContractModal from "../create-contract-modal/create-contract-modal"
 import OpenMessage from "./OpenMessage";
 import NewConversation from "./newConversation";
 import getCurrentTime from "@/utils/currentTime";
+import { Client, Conversation, DecodedMessage } from "@xmtp/xmtp-js";
+import {
+  Profile,
+  ProfileId,
+  useSession,
+  SessionType,
+  useProfiles,
+  profileId,
+} from "@lens-protocol/react-web";
+import toast from "react-hot-toast"; // Get the keys using a valid Signer. Save them somewhere secure.
+import { useEthersSigner } from "@/utils/getSigner";
+import moment from "moment";
 
-interface Message {
-  id: number;
-  sender: string;
-  text: string;
-  time: string;
+// interface Message {
+//   id: number;
+//   sender: string;
+//   text: string;
+//   time: string;
+// }
+
+const PREFIX = "lens.dev/dm";
+
+const buildConversationId = (profileIdA: string, profileIdB: string) => {
+  const profileIdAParsed = parseInt(profileIdA, 16);
+  const profileIdBParsed = parseInt(profileIdB, 16);
+
+  return profileIdAParsed < profileIdBParsed
+    ? `${PREFIX}/${profileIdA}-${profileIdB}`
+    : `${PREFIX}/${profileIdB}-${profileIdA}`;
+};
+
+// const placeholderMessages: Message[][] = [
+//   [
+//     {
+//       id: 1,
+//       sender: "me",
+//       time: "11:20am",
+//       text: "Hey! You’re really cool would like to connect asap!",
+//     },
+//     {
+//       id: 2,
+//       sender: "tom",
+//       time: "11:25am",
+//       text: `Hey! Really cool to see your service listing.
+// Would be great to connect and better understand your skill-sets...
+// When would you be available for a call?`,
+//     },
+//   ],
+//   [
+//     {
+//       id: 3,
+//       sender: "me",
+//       time: "12:20am",
+//       text: "How are you man!",
+//     },
+//     {
+//       id: 4,
+//       sender: "dan",
+//       time: "1:25am",
+//       text: `Doing great! What's up?`,
+//     },
+//   ],
+//   [
+//     {
+//       id: 5,
+//       sender: "me",
+//       time: "6:20am",
+//       text: "Good morning, we need to talk.",
+//     },
+//     {
+//       id: 6,
+//       sender: "emmanuel",
+//       time: "11:25am",
+//       text: `Hey...`,
+//     },
+//     {
+//       id: 7,
+//       sender: "emmanuel",
+//       time: "11:25am",
+//       text: `about what?`,
+//     },
+//   ],
+// ];
+
+function getOtherId(id: string, url: string): string {
+  const ids = url.split("/").pop()?.split("-") || [];
+  return ids.find((item) => item !== id) || "";
 }
 
-const placeholderMessages: Message[][] = [
-  [
-    {
-      id: 1,
-      sender: "me",
-      time: "11:20am",
-      text: "Hey! You’re really cool would like to connect asap!",
-    },
-    {
-      id: 2,
-      sender: "tom",
-      time: "11:25am",
-      text: `Hey! Really cool to see your service listing. 
-Would be great to connect and better understand your skill-sets... 
-When would you be available for a call?`,
-    },
-  ],
-  [
-    {
-      id: 3,
-      sender: "me",
-      time: "12:20am",
-      text: "How are you man!",
-    },
-    {
-      id: 4,
-      sender: "dan",
-      time: "1:25am",
-      text: `Doing great! What's up?`,
-    },
-  ],
-  [
-    {
-      id: 5,
-      sender: "me",
-      time: "6:20am",
-      text: "Good morning, we need to talk.",
-    },
-    {
-      id: 6,
-      sender: "emmanuel",
-      time: "11:25am",
-      text: `Hey...`,
-    },
-    {
-      id: 7,
-      sender: "emmanuel",
-      time: "11:25am",
-      text: `about what?`,
-    },
-  ],
-];
+function isConversationParticipant(id: string, url: string): boolean {
+  const ids = url.split("/").pop()?.split("-") || [];
+  return ids.includes(id);
+}
 
 const MyMessageOpenChat = () => {
+  const { data: session, loading: sessionLoading } = useSession();
+  const signer = useEthersSigner();
+  const [chatUserIds, setChatUserIds] = useState<ProfileId[]>([]);
+  const { data: profiles } = useProfiles({
+    where: {
+      profileIds: chatUserIds,
+    },
+  });
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[][]>(placeholderMessages);
+  const [messages, setMessages] = useState<Conversation<string | undefined>[]>(
+    []
+  );
   const [inputMessage, setInputMessage] = useState("");
   const [messagesEnabled, setMessagesEnabled] = useState(false);
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] =
@@ -78,12 +121,176 @@ const MyMessageOpenChat = () => {
   const [selectedConversation, setSelectedConversation] = useState<
     number | null
   >(null);
+  const [connectingXMTP, setConnectingXMTP] = useState(false);
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
   const [showMessagesMobile, setShowMessagesMobile] = useState(false);
+  const [xmtp, setXmtp] = useState<Client>();
+  const [activeMessages, setActiveMessages] = useState<DecodedMessage[]>([]);
+  const [conversationDates, setConversationDates] = useState<(Date | string)[]>(
+    []
+  );
+  const [latestMessage, setLatestMessage] = useState<string[]>([]);
+  const [unactivatedUserProfile, setUnactivatedUserProfile] =
+    useState<Profile>();
 
-  // const handleEnterContractClick = () => {
-  //   setIsContractModalOpen(true);
-  // };
+  const handleIncomingMessages = async (client: Client) => {
+    for await (const message of await client.conversations.streamAllMessages()) {
+      const conversations = await client.conversations.list();
+      var conversationsFilteredById: Conversation<string | undefined>[] = [];
+      var ids: ProfileId[] = [];
+      var dates: (Date | string)[] = [];
+      var recentMessage: string[] = [];
+      for (let i = 0; i < conversations.length; i++) {
+        const conversation = conversations[i];
+        if (session?.type === SessionType.WithProfile) {
+          if (
+            isConversationParticipant(
+              session.profile.id,
+              conversation.context?.conversationId as string
+            )
+          ) {
+            conversationsFilteredById.push(conversation);
+            const otherUserID = getOtherId(
+              session.profile.id,
+              conversation.context?.conversationId as string
+            );
+            ids.push(profileId(otherUserID));
+            const lastMessage = await conversation.messages();
+            dates.push(
+              lastMessage && lastMessage.length > 0
+                ? lastMessage[lastMessage.length - 1].sent
+                : ""
+            );
+            recentMessage.push(
+              lastMessage && lastMessage.length > 0
+                ? (lastMessage[lastMessage.length - 1].content as string)
+                : ""
+            );
+          }
+        }
+      }
+      setLatestMessage(recentMessage);
+      setChatUserIds(ids);
+      setConversationDates(dates);
+      setMessages(conversationsFilteredById);
+
+      const scrollableDiv = document.getElementById("scrollableDiv");
+      const bottomMarker = document.getElementById("bottomMarker");
+
+      bottomMarker?.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  const createXMTPClient = async () => {
+    if (signer) {
+      setConnectingXMTP(true);
+      const client = await Client.create(signer, { env: "dev" });
+
+      console.log("reached here 1");
+      handleIncomingMessages(client);
+      console.log("reached here 2");
+
+      setXmtp(client);
+      const conversations = await client.conversations.list();
+      var conversationsFilteredById: Conversation<string | undefined>[] = [];
+      var ids: ProfileId[] = [];
+      var dates: (Date | string)[] = [];
+      var recentMessage: string[] = [];
+      for (let i = 0; i < conversations.length; i++) {
+        const conversation = conversations[i];
+        if (session?.type === SessionType.WithProfile) {
+          if (
+            isConversationParticipant(
+              session.profile.id,
+              conversation.context?.conversationId as string
+            )
+          ) {
+            conversationsFilteredById.push(conversation);
+            const otherUserID = getOtherId(
+              session.profile.id,
+              conversation.context?.conversationId as string
+            );
+            ids.push(profileId(otherUserID));
+            const lastMessage = await conversation.messages();
+            dates.push(
+              lastMessage && lastMessage.length > 0
+                ? lastMessage[lastMessage.length - 1].sent
+                : ""
+            );
+            recentMessage.push(
+              lastMessage && lastMessage.length > 0
+                ? (lastMessage[lastMessage.length - 1].content as string)
+                : ""
+            );
+            console.log(`Last Message ${i}: `, lastMessage);
+          }
+        }
+      }
+      setMessages(conversationsFilteredById);
+      setChatUserIds(ids);
+      setConversationDates(dates);
+      setLatestMessage(recentMessage);
+      setMessagesEnabled(true);
+      setConnectingXMTP(false);
+
+      const stream = await client.conversations.stream();
+      for await (const conversation of stream) {
+        console.log("This ran!");
+        const conversations = await client.conversations.list();
+        var conversationsFilteredById: Conversation<string | undefined>[] = [];
+        var ids: ProfileId[] = [];
+        var dates: (Date | string)[] = [];
+        var recentMessage: string[] = [];
+        for (let i = 0; i < conversations.length; i++) {
+          const conversation = conversations[i];
+          if (session?.type === SessionType.WithProfile) {
+            if (
+              isConversationParticipant(
+                session.profile.id,
+                conversation.context?.conversationId as string
+              )
+            ) {
+              conversationsFilteredById.push(conversation);
+              const otherUserID = getOtherId(
+                session.profile.id,
+                conversation.context?.conversationId as string
+              );
+              ids.push(profileId(otherUserID));
+              const lastMessage = await conversation.messages();
+              dates.push(
+                lastMessage && lastMessage.length > 0
+                  ? lastMessage[lastMessage.length - 1].sent
+                  : ""
+              );
+              recentMessage.push(
+                lastMessage && lastMessage.length > 0
+                  ? (lastMessage[lastMessage.length - 1].content as string)
+                  : ""
+              );
+            }
+          }
+        }
+        setLatestMessage(recentMessage);
+        setChatUserIds(ids);
+        setConversationDates(dates);
+        setMessages(conversationsFilteredById);
+        setSelectedConversation(conversations.length - 1);
+      }
+    }
+  };
+
+  const openConversation = async (index: number) => {
+    const conversationMessages = await messages[index].messages();
+    setActiveMessages(conversationMessages);
+    setSelectedConversation(index);
+
+    for await (const message of await messages[index].streamMessages()) {
+      setActiveMessages((prevMessages) => {
+        const updatedMessages = [...prevMessages, message];
+        return updatedMessages;
+      });
+    }
+  };
 
   const handleCloseModal = () => {
     setIsContractModalOpen(false);
@@ -111,19 +318,12 @@ const MyMessageOpenChat = () => {
   }, [isContractModalOpen]);
 
   const handleSendMessage = () => {
-    if (inputMessage.trim() !== "") {
-      const newMessage = {
-        id: messages[selectedConversation as number].length + 1,
-        sender: "me",
-        text: inputMessage,
-        time: getCurrentTime(),
-      };
-
-      var allmessages = messages;
-      allmessages[selectedConversation as number].push(newMessage);
-
-      setMessages(allmessages);
-
+    console.log("Sending a message");
+    if (inputMessage.trim() !== "" && selectedConversation !== null) {
+      console.log("got here");
+      messages[selectedConversation].send(inputMessage, {
+        timestamp: new Date(),
+      });
       setInputMessage("");
     }
   };
@@ -134,19 +334,53 @@ const MyMessageOpenChat = () => {
     }
   };
 
-  const handleNewConversation = (event: any) => {
-    if (event.key === "Enter") {
-      handleCloseNewConversationModal();
-      setShowMessagesMobile(true);
+  const handleNewConversation = async (profile: Profile) => {
+    if (xmtp && profile.handle && session?.type === SessionType.WithProfile) {
+      const isOnNetwork = await xmtp.canMessage(profile.handle?.ownedBy);
+      if (isOnNetwork) {
+        const conversationId = buildConversationId(
+          session.profile.id,
+          profile.id
+        );
+        const conversation = await xmtp.conversations.newConversation(
+          profile.handle.ownedBy,
+          {
+            conversationId: conversationId,
+            metadata: {},
+          }
+        );
+        messages.map((message, index) => {
+          if (
+            conversation.context?.conversationId ===
+            message.context?.conversationId
+          ) {
+            setSelectedConversation(index);
+          }
+        });
+        console.log("Created conversation: ", conversation);
+      } else {
+        setUnactivatedUserProfile(profile);
+        setSelectedConversation(10000);
+      }
     }
+    setIsNewConversationModalOpen(false);
   };
 
-  // const handleMessageOpen = () => {
-  //   setIsOpen(true);
-  // };
+  useEffect(() => {
+    if (profiles) {
+      console.log(profiles);
+    }
+  }, [profiles]);
+
+  useEffect(() => {
+    const scrollableDiv = document.getElementById("scrollableDiv");
+    const bottomMarker = document.getElementById("bottomMarker");
+
+    bottomMarker?.scrollIntoView({ behavior: "instant" });
+  }, [selectedConversation]);
 
   return (
-    <div className="pt-[107px] sm:pt-[75px] px-[156px] sm:px-[16px] flex gap-[5px] mb-[55px]">
+    <div className="h-screen w-screen overflow-hidden pt-[107px] sm:pt-[75px] px-[156px] sm:px-[16px] flex gap-[5px] mb-[0px] absolute top-0 left-0 z-[100]">
       <div
         className={`horizontal-box px-[12px] w-[367px] sm:w-full flex ${
           selectedConversation !== null ? "sm:hidden" : "sm:flex"
@@ -175,40 +409,54 @@ const MyMessageOpenChat = () => {
                 showMessagesMobile ? "sm:flex" : "sm:hidden"
               } flex-col gap-[5px] mt-[8px]`}
             >
-              {[0, 1, 2].map((id, index) => {
+              {messages.map((message, index) => {
                 return (
                   <div
                     key={index}
                     className={`p-[8px] w-full ${
-                      selectedConversation === id
+                      selectedConversation === index
                         ? "bg-[#E4E4E7]"
                         : "bg-[#FAFAFA]"
                     } rounded-[8px] cursor-pointer`}
-                    onClick={() => setSelectedConversation(id)}
+                    onClick={() => openConversation(index)}
                   >
                     <div className="flex justify-between align-top mb-[6px]">
                       <div className="flex gap-[10px]">
                         <Image
-                          src={"/images/paco.svg"}
+                          src={
+                            profiles &&
+                            profiles[index]?.metadata?.picture?.__typename ===
+                              "ImageSet"
+                              ? profiles[index]?.metadata &&
+                                profiles[index]?.metadata?.picture?.raw?.uri
+                              : "/images/paco-square.svg"
+                          }
+                          className="rounded-[8px]"
                           alt="paco pic"
                           width={40}
                           height={40}
                         />
                         <div className="flex flex-col gap-[5px] sm:gap-[1px] pt-[5px]">
                           <span className="text-[14px] leading-[16.94px] font-medium">
-                            Display Name
+                            {profiles && profiles[index]?.metadata?.displayName
+                              ? profiles[index]?.metadata?.displayName
+                              : "Display Name"}
                           </span>
                           <span className="text-[14px] leading-[16.94px] font-medium text-[#707070]">
-                            lens.handle
+                            {profiles && profiles[index]?.handle?.localName
+                              ? `${profiles[index]?.handle?.localName}.${profiles[index]?.handle?.namespace}`
+                              : "@lenshandle.lens"}
                           </span>
                         </div>
                       </div>
                       <span className="text-[#707070] leading-[12.1px] text-[12px] font-semibold">
-                        4m ago
+                        {conversationDates[index] !== ""
+                          ? moment(conversationDates[index]).format("h:mmA")
+                          : ""}
                       </span>
                     </div>
                     <p className="line-clamp-1 text-[11px] sm:text-[10px] text-[#000000] leading-[12px] font-medium">
-                      {messages[id][messages[id].length - 1].text}
+                      {latestMessage[index]}
                     </p>
                   </div>
                 );
@@ -244,9 +492,9 @@ const MyMessageOpenChat = () => {
               </span>
               <button
                 className="rounded-[8px] bg-[#C6AAFF] hover:bg-[#351A6B] px-[17px] py-[8px] text-white leading-[16.94px] font-medium text-[14px]"
-                onClick={() => setMessagesEnabled(true)}
+                onClick={createXMTPClient}
               >
-                Enable
+                {connectingXMTP ? "Connecting..." : "Enable"}
               </button>
             </div>
           </div>
@@ -259,6 +507,89 @@ const MyMessageOpenChat = () => {
       >
         {!messagesEnabled ? (
           <div className="flex flex-col gap-[5px] mt-[8px]"></div>
+        ) : selectedConversation === 10000 && unactivatedUserProfile ? (
+          <div className="flex flex-col h-full">
+            <div className="flex justify-start sm:gap-[18px] items-center py-[10px] px-[0px]">
+              <Image
+                src={"/images/arrow-left.svg"}
+                className="hidden sm:block cursor-pointer"
+                alt="paco pic"
+                width={24}
+                height={24}
+                onClick={() => setSelectedConversation(null)}
+              />
+              <div className="flex gap-[10px]">
+                <Image
+                  src={"/images/paco.svg"}
+                  alt="paco pic"
+                  width={43}
+                  height={43}
+                />
+                <div className="flex flex-col gap-[2px] pt-[5px]">
+                  <span className="text-[14px] leading-[16.94px] font-medium">
+                    {unactivatedUserProfile?.metadata?.displayName
+                      ? unactivatedUserProfile?.metadata?.displayName
+                      : unactivatedUserProfile?.handle?.localName}
+                  </span>
+                  <span className="text-[14px] leading-[16.94px] font-medium text-[#707070]">
+                    {unactivatedUserProfile?.handle?.localName
+                      ? `${unactivatedUserProfile?.handle?.localName}.${unactivatedUserProfile?.handle?.namespace}`
+                      : "@lenshandle.lens"}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <hr className="bg-[#E4E4E7] h-[1px] mb-[0px]" />
+            <div className="flex-1 flex flex-col justify-center items-center align-middle">
+              <Image
+                src="/images/mail.svg"
+                className="cursor-pointer"
+                alt="new message"
+                width={28}
+                height={28}
+              />
+              <span className="leading-[16.94px] text-center font-bold text-[14px] text-black mt-[6px]">
+                User is not on XMTP
+              </span>
+            </div>
+            <hr className="bg-[#E4E4E7] h-[1px] mb-[0px]" />
+            <div className="flex py-[12px] gap-[5px] w-full items-center">
+              <input
+                className="form-input rounded-[8px] p-[10px] border-[1px] border-[#E4E4E7] w-full"
+                placeholder="Type your message here.."
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyDown={handleKeyDown}
+                value={inputMessage}
+                disabled
+              />
+              <button
+                className="rounded-[8px] bg-[#F4F4F5] p-[9px] h-fit"
+                disabled
+              >
+                <Image
+                  src={"/images/share.svg"}
+                  alt="paco pic"
+                  width={24}
+                  height={24}
+                />
+              </button>
+              <button
+                className="px-[18px] sm:px-[10px] py-[10px] bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] flex w-fit gap-[7px] h-fit items-center"
+                onClick={handleSendMessage}
+                disabled
+              >
+                <span className="text-[15px] text-white leading-none sm:hidden">
+                  Send
+                </span>
+                <Image
+                  src={"/images/arrow-right.svg"}
+                  alt="paco pic"
+                  width={16}
+                  height={16}
+                />
+              </button>
+            </div>
+          </div>
         ) : selectedConversation !== null ? (
           <div className="flex flex-col h-full">
             <div className="flex justify-start sm:gap-[18px] items-center py-[10px] px-[0px]">
@@ -279,39 +610,48 @@ const MyMessageOpenChat = () => {
                 />
                 <div className="flex flex-col gap-[2px] pt-[5px]">
                   <span className="text-[14px] leading-[16.94px] font-medium">
-                    Display Name
+                    {profiles &&
+                    profiles[selectedConversation]?.metadata?.displayName
+                      ? profiles[selectedConversation]?.metadata?.displayName
+                      : "Display Name"}
                   </span>
                   <span className="text-[14px] leading-[16.94px] font-medium text-[#707070]">
-                    lens.handle
+                    {profiles &&
+                    profiles[selectedConversation]?.handle?.localName
+                      ? `${profiles[selectedConversation]?.handle?.localName}.${profiles[selectedConversation]?.handle?.namespace}`
+                      : "@lenshandle.lens"}
                   </span>
                 </div>
               </div>
             </div>
             <hr className="bg-[#E4E4E7] h-[1px] mb-[0px]" />
-            <div className="flex-1 flex flex-col justify-end sm:justify-start">
+            <div
+              className="flex-1 flex flex-col sm:justify-start scrollbar-hide"
+              id="scrollableDiv"
+            >
               <span className="text-[12px] leading-[12.1px] font-medium self-center mb-[15px] sm:mt-[15px]">
                 Today
               </span>
-              {messages[selectedConversation as number].map(
-                (message: Message, index) => {
-                  return (
-                    <div
-                      key={index}
-                      className={`rounded-[8px] whitespace-pre-wrap min-w-[200px] sm:min-w-[150px] max-w-[450px] text-[12px] laptop-x:max-w-[350px] sm:max-w-[262px] laptop-x:text-[14px] mb-[12px] relative font-normal leading-[20px] p-[11px] py-[9px] 
+              {activeMessages.map((message: DecodedMessage, index) => {
+                return (
+                  <div
+                    key={index}
+                    className={`rounded-[8px] whitespace-pre-wrap min-w-[200px] sm:min-w-[150px] max-w-[450px] text-[12px] laptop-x:max-w-[350px] sm:max-w-[262px] laptop-x:text-[14px] mb-[12px] relative font-normal leading-[20px] p-[11px] py-[9px] 
                       pr-[48px] sm:px-[8px] sm:pr-[9px] sm:pb-[23px] ${
-                        message.sender === "me"
+                        session?.type === SessionType.WithProfile &&
+                        message.senderAddress === session.address
                           ? "self-end bg-[#C6AAFF] text-white"
                           : "self-start bg-[#F4F4F5]"
                       } `}
-                    >
-                      {message.text}
-                      <span className="absolute right-[6px] bottom-[0px] text-[10px]">
-                        {message.time}
-                      </span>
-                    </div>
-                  );
-                }
-              )}
+                  >
+                    {message.content}
+                    <span className="absolute right-[6px] bottom-[0px] text-[10px]">
+                      {moment(message.sent).format("h:mmA")}
+                    </span>
+                  </div>
+                );
+              })}
+              <div id="bottomMarker"></div>
             </div>
             <hr className="bg-[#E4E4E7] h-[1px] mb-[0px]" />
             <div className="flex py-[12px] gap-[5px] w-full items-center">
@@ -364,11 +704,11 @@ const MyMessageOpenChat = () => {
         )}
       </div>
       {isNewConversationModalOpen && (
-        <div className="fixed inset-0 z-[99991] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center">
+        <div className="fixed inset-0 z-[1000] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center">
           <div className="w-full flex justify-center align-middle">
             <NewConversation
               handleCloseModal={handleCloseNewConversationModal}
-              handleSend={handleNewConversation}
+              handleStartConversation={handleNewConversation}
             />
           </div>
         </div>

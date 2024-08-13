@@ -2,19 +2,30 @@
 
 import React, { useRef, useEffect, useState } from "react";
 import Image from "next/image";
+import {
+  useSearchProfiles,
+  LimitType,
+  Profile,
+} from "@lens-protocol/react-web";
+import { Oval } from "react-loader-spinner";
 
 type Props = {
   handleCloseModal?: () => void;
   closeJobCardModal?: () => void;
-  handleSend: any;
+  handleStartConversation: any;
 };
 
 const NewConversation = ({
   handleCloseModal,
   closeJobCardModal,
-  handleSend,
+  handleStartConversation,
 }: Props) => {
   const myDivRef = useRef<HTMLDivElement>(null);
+  const [searchText, setSearchText] = useState("");
+  const { data, error, loading } = useSearchProfiles({
+    query: searchText,
+  });
+  const [profiles, setProfiles] = useState<Profile[]>();
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -38,6 +49,12 @@ const NewConversation = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (data) {
+      setProfiles(data);
+    }
+  }, [data]);
+
   return (
     <div
       className="w-[400px] sm:w-[94%] rounded-[12px] bg-white nav-space absolute px-[16px] sm:h-fit"
@@ -59,8 +76,69 @@ const NewConversation = ({
       <input
         className="form-input rounded-[8px] p-[9px] border-[1px] border-[#E4E4E7] w-full my-[16px]"
         placeholder="Search..."
-        onKeyDown={(e) => handleSend(e)}
+        onChange={(e) => setSearchText(e.target.value)}
       />
+      {profiles && profiles.length > 0 && searchText !== "" ? (
+        <div
+          className={`user-search-box mt-[0px] flex flex-col gap-[5px] absolute top-[105px] left-[16px] rounded-[10px] border-[1px] border-[#E4E4E7] bg-white py-[10px]`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {profiles.map((profile, index) => {
+            return (
+              <div
+                className="text-[14px] hover:bg-[#f1f1f1] w-full gap-[8px] flex items-center cursor-pointer px-[10px] py-[8px]"
+                key={index}
+                onClick={() => handleStartConversation(profile)}
+              >
+                <div className="circle-div relative">
+                  <Image
+                    src={
+                      profile?.metadata &&
+                      profile?.metadata?.picture?.__typename == "ImageSet"
+                        ? profile.metadata.picture.raw.uri
+                        : "/images/paco-square.svg"
+                    }
+                    layout="fill"
+                    className="circle-div relative"
+                    alt="user icon"
+                  />
+                </div>
+                <span className="text-[14px] text-black mt-[1px]">
+                  {profile?.metadata?.displayName
+                    ? profile.metadata?.displayName
+                    : `${profile?.handle?.localName}`}
+                </span>
+                <span className="text-[13px] text-[#c1c0c0] mt-[1px]">
+                  @
+                  {profile?.handle?.localName
+                    ? `${profile?.handle?.localName}.${profile?.handle?.namespace}`
+                    : "@lenshandle.lens"}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      ) : loading && searchText !== "" ? (
+        <div
+          className={`user-search-box mt-[0px] flex flex-col absolute top-[105px] left-[16px] rounded-[10px] border-[1px] border-[#E4E4E7] bg-white py-[20px] align-middle items-center`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Oval
+            visible={true}
+            height="24"
+            width="24"
+            color="#000000"
+            secondaryColor="#E4E4E7"
+            strokeWidth={"5"}
+            ariaLabel="oval-loading"
+            wrapperStyle={{}}
+            wrapperClass=""
+          />
+          <span className="font-bold text-[14px] mt-[6px]">
+            Searching Users
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 };

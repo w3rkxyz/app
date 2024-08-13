@@ -2,11 +2,17 @@
 
 import React, { useRef, useEffect, useState } from "react";
 import Image from "next/image";
-
 import MyButton from "@/components/reusable/Button/Button";
-
 import Sidebar from "@/components/reusable/Sidebar/Sidebar";
 import Link from "next/link";
+import {
+  article,
+  MetadataAttributeType,
+  textOnly,
+} from "@lens-protocol/metadata";
+import { uploadJsonToIPFS } from "@/utils/uploadToIPFS";
+import toast from "react-hot-toast";
+import { useCreatePost } from "@lens-protocol/react-web";
 
 type Props = {
   handleCloseModal?: () => void;
@@ -14,19 +20,174 @@ type Props = {
   closeJobCardModal?: () => void;
 };
 
+const categories = [
+  {
+    buttonText: "Blockchain Development",
+    buttonStyles:
+      "bg-[#FFC2C2] mb-[8px] sm:font-bold sm:text-[10px] sm:leading-[11px] sm:w-full",
+  },
+  {
+    buttonText: "Programming & Development",
+    buttonStyles:
+      "bg-[#FFD8C2] mb-[8px] sm:font-bold sm:text-[10px] sm:leading-[11px] sm:w-full",
+  },
+  {
+    buttonText: "Design",
+    buttonStyles: "bg-[#FFF2C2] mb-[8px] w-[150px] sm:w-full",
+  },
+  {
+    buttonText: "Marketing",
+    buttonStyles: "bg-[#EFFFC2] mb-[8px] sm:w-full",
+  },
+  {
+    buttonText: "Admin Support",
+    buttonStyles: "bg-[#C2FFC5] mb-[8px] sm:w-full",
+  },
+  {
+    buttonText: "Customer Service",
+    buttonStyles: "bg-[#C2FFFF] mb-[8px] sm:w-full",
+  },
+  {
+    buttonText: "Security & Auditing",
+    buttonStyles: "bg-[#C2CCFF] mb-[8px] sm:w-full",
+  },
+  {
+    buttonText: "Consulting & Advisory",
+    buttonStyles: "bg-[#D9C2FF] mb-[8px] sm:w-full",
+  },
+  {
+    buttonText: "Community Building",
+    buttonStyles: "bg-[#FAC2FF] mb-[8px] sm:w-full",
+  },
+  {
+    buttonText: "Other",
+    buttonStyles: "bg-[#E4E4E7] mb-[0px] sm:w-full",
+  },
+];
+
+const tokens = [
+  { text: "Bitcoin (BTC)", image: "/images/btc.svg" },
+  { text: "Ethereum (ETH)", image: "/images/eth.svg" },
+  { text: "Tether (USDT)", image: "/images/usdt.svg" },
+  { text: "BNB (BNB)", image: "/images/bnb.svg" },
+  { text: "Solana (SOL)", image: "/images/solana.svg" },
+  { text: "USDC (USDC)", image: "/images/usdc.svg" },
+  { text: "Dai (DAI)", image: "/images/dai.svg" },
+  { text: "GHO (GHO)", image: "/images/green-coin.svg" },
+  { text: "Bonsai (BONSAI)", image: "/images/bw-coin.svg" },
+];
+
+function getTokenNamesByIndexes(indexes: number[]): string {
+  return indexes
+    .map((index) => {
+      const match = tokens[index].text.match(/\(([^)]+)\)/);
+      return match ? match[1] : ""; // Return the token name if matched, otherwise return an empty string
+    })
+    .filter((name) => name !== "")
+    .join(", "); // Filter out any empty strings just in case
+}
+
 const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
+  const { execute, loading, error } = useCreatePost();
   const myDivRef = useRef<HTMLDivElement>(null);
-  const tagModalRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const tokenModalRef = useRef<HTMLDivElement>(null);
+  const tagModalRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const tokenModalRef = useRef<HTMLButtonElement>(null);
   const [showMobile, setShowMobile] = useState(false);
   const [selectedTag, setSelectedTag] = useState<number | null>(null);
   const [showTokens, setShowTokens] = useState(false);
   const [payementType, setPayementType] = useState<"hourly" | "fixed">(
     "hourly"
   );
+  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
+  const [selectedTokens, setSelectedTokens] = useState<number[]>([]);
+  const [tags, setTags] = useState<string[]>(["", "", ""]);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [hourlyRate, setHourlyRate] = useState("");
+  const [fixedPrice, setFixedPrice] = useState("");
 
   const handleTagClick = (id: number) => {
     setSelectedTag(selectedTag === id ? null : id);
+  };
+
+  const canSubmitPost = () => {
+    const payementAmount = payementType === "fixed" ? fixedPrice : hourlyRate;
+    const tagSelected = tags[0] !== "" || tags[1] !== "" || tags[2] !== "";
+    if (
+      title !== "" &&
+      description !== "" &&
+      payementAmount !== "" &&
+      selectedTokens.length !== 0 &&
+      tagSelected
+    ) {
+      return true;
+    } else {
+      return false;
+    }
+  };
+
+  const handleTagSelect = (id: number, tag: string) => {
+    var temp = [...tags];
+    categories.map((category, index) => {
+      if (category.buttonText === temp[id]) {
+        const updated = selectedCategories.filter((item) => item !== index);
+        setSelectedCategories(updated);
+      }
+    });
+    temp[id] = temp[id] === tag ? "" : tag;
+    setTags(temp);
+  };
+
+  const toggleTokensModal = () => {
+    setShowTokens(!showTokens);
+  };
+
+  const onCLickCategory = (index: number, buttonIndex: number) => {
+    // if (
+    //   selectedCategories.includes(index) &&
+    //   tags[buttonIndex] === categories[index].buttonText
+    // ) {
+    //   const updated = selectedCategories.filter((item) => item !== index);
+    //   setSelectedCategories(updated);
+    // } else {
+    //   var current = [...selectedCategories];
+    //   current.push(index);
+    //   setSelectedCategories(current);
+    // }
+
+    // var newSelectedCategories: number[] = [];
+    // categories.map((category, index) => {
+    //   if (tags.includes(category.buttonText)) {
+    //     newSelectedCategories.push(index);
+    //   }
+    // });
+    // setSelectedCategories(newSelectedCategories);
+    if (
+      !selectedCategories.includes(index) &&
+      !tags.includes(categories[index].buttonText) &&
+      tags[buttonIndex] === ""
+    ) {
+      var current = [...selectedCategories];
+      current.push(index);
+      setSelectedCategories(current);
+      handleTagSelect(buttonIndex, categories[index].buttonText);
+    } else if (tags[buttonIndex] === categories[index].buttonText) {
+      const updated = selectedCategories.filter((item) => item !== index);
+      setSelectedCategories(updated);
+      handleTagSelect(buttonIndex, categories[index].buttonText);
+    } else {
+    }
+  };
+
+  const onCLickToken = (index: number) => {
+    if (selectedTokens.includes(index)) {
+      const updated = selectedTokens.filter((item) => item !== index);
+      setSelectedTokens(updated);
+    } else {
+      var current = [...selectedTokens];
+      current.push(index);
+      setSelectedTokens(current);
+    }
   };
 
   useEffect(() => {
@@ -59,6 +220,7 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
         tokenModalRef.current &&
         !tokenModalRef.current.contains(event.target as Node)
       ) {
+        console.log("outside the div");
         setShowTokens(false);
       }
     }
@@ -77,6 +239,95 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
       document.body.style.overflowY = "auto";
     };
   }, []);
+
+  const handlePost = async () => {
+    var updatedTags = tags.filter((item) => item !== "");
+    updatedTags = [...updatedTags, type];
+    if (canSubmitPost()) {
+      const metadata = article({
+        title: title,
+        content: description,
+        tags: updatedTags,
+        appId: process.env.NEXT_PUBLIC_APP_ID,
+        attributes: [
+          {
+            key: "paid in",
+            value: getTokenNamesByIndexes(selectedTokens),
+            type: MetadataAttributeType.STRING,
+          },
+          {
+            key: "payement type",
+            value: payementType,
+            type: MetadataAttributeType.STRING,
+          },
+          {
+            key: payementType,
+            value: payementType === "fixed" ? fixedPrice : hourlyRate,
+            type: MetadataAttributeType.STRING,
+          },
+          {
+            key: "post type",
+            value: type,
+            type: MetadataAttributeType.STRING,
+          },
+        ],
+      });
+
+      const metadataURI = await uploadJsonToIPFS(metadata);
+
+      const result = await execute({
+        metadata: metadataURI,
+      });
+
+      if (result.isFailure()) {
+        toast.error(result.error.message);
+        return;
+      }
+
+      const completion = await result.value.waitForCompletion();
+
+      if (completion.isFailure()) {
+        toast.error(completion.error.message);
+        return;
+      }
+
+      const publicContent = `\\*\\* ${
+        type === "job" ? "Job Posting" : "Service Listing"
+      } \\*\\*\n\nTitle: ${title}\n\nDescription: ${description}\n\nPay: ${
+        payementType === "fixed" ? `$${fixedPrice}` : `$${hourlyRate}/hr`
+      }`;
+      const heyMetadata = textOnly({
+        content: publicContent,
+        appId: process.env.NEXT_PUBLIC_GLOBAL_APP_ID,
+        tags: updatedTags,
+      });
+
+      const heyMetadataURI = await uploadJsonToIPFS(heyMetadata);
+
+      const heyResult = await execute({
+        metadata: heyMetadataURI,
+      });
+
+      if (heyResult.isFailure()) {
+        toast.error(heyResult.error.message);
+        return;
+      }
+
+      const heyCompletion = await heyResult.value.waitForCompletion();
+
+      if (heyCompletion.isFailure()) {
+        toast.error(heyCompletion.error.message);
+        return;
+      }
+
+      handleCloseModal?.();
+      type === "job"
+        ? toast.success("Job Posted Succesfully!")
+        : toast.success("Service Listed!");
+    } else {
+      toast.error("Fill all fields and select at least one tag!");
+    }
+  };
 
   return (
     <div
@@ -105,6 +356,7 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
           <input
             className="form-input rounded-[12px] p-[11px] border-[1px] border-[#E4E4E7] sm:w-full"
             placeholder="Title your post.."
+            onChange={(e) => setTitle(e.target.value)}
           />
         </div>
         <div className="flex flex-col gap-[4px] sm:gap-[6px] mb-[16px]">
@@ -114,6 +366,7 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
           <textarea
             className="form-input rounded-[12px] p-[11px] h-[160px] border-[1px] border-[#E4E4E7] resize-none sm:w-full"
             placeholder="Type a description.."
+            onChange={(e) => setDescription(e.target.value)}
           />
         </div>
         <div className="flex gap-[10px] mb-[16px]">
@@ -129,7 +382,10 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
               className="form-input rounded-[8px] px-[11px] py-[7px] border-[1px] border-[#E4E4E7]"
               placeholder="$ /hr..."
               type="number"
-              onChange={() => setPayementType("hourly")}
+              onChange={(e) => {
+                setPayementType("hourly");
+                setHourlyRate(e.target.value);
+              }}
             />
           </div>
           <span className="mt-[26px] text-[#707070]">or</span>
@@ -145,7 +401,10 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
               className={`form-input rounded-[8px] px-[11px] py-[7px] border-[1px] border-[#E4E4E7]`}
               placeholder="$ Amount..."
               type="number"
-              onChange={() => setPayementType("fixed")}
+              onChange={(e) => {
+                setPayementType("fixed");
+                setFixedPrice(e.target.value);
+              }}
             />
           </div>
         </div>
@@ -155,7 +414,11 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
           </span>
           <button
             className="w-[250px] sm:w-full rounded-[8px] border-[1px] border-[#E4E4E7] p-[7px] flex justify-between items-center relative"
-            onClick={() => setShowTokens(true)}
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleTokensModal();
+            }}
+            ref={tokenModalRef}
           >
             <span className="font-normal leading-[14.52px] text-[12px] text-[#707070]">
               Select Tokens
@@ -171,107 +434,30 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
               border-[1px] border-[#E4E4E7] ${
                 showTokens ? "flex" : "hidden"
               } flex-col z-[999]`}
-              ref={tokenModalRef}
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
             >
-              <button className="flex gap-[8px] items-center">
-                <Image
-                  src="/images/btc.svg"
-                  alt="token icon"
-                  width={20}
-                  height={20}
-                />
-                <span className="font-medium text-[11px] leading-[20px] text-black">
-                  Bitcoin (BTC)
-                </span>
-              </button>
-              <button className="flex gap-[8px] items-center">
-                <Image
-                  src="/images/eth.svg"
-                  alt="token icon"
-                  width={20}
-                  height={20}
-                />
-                <span className="font-medium text-[11px] leading-[20px] text-black">
-                  Ethereum (ETH)
-                </span>
-              </button>
-              <button className="flex gap-[8px] items-center">
-                <Image
-                  src="/images/usdt.svg"
-                  alt="token icon"
-                  width={20}
-                  height={20}
-                />
-                <span className="font-medium text-[11px] leading-[20px] text-black">
-                  Tether (USDT)
-                </span>
-              </button>
-              <button className="flex gap-[8px] items-center">
-                <Image
-                  src="/images/bnb.svg"
-                  alt="token icon"
-                  width={20}
-                  height={20}
-                />
-                <span className="font-medium text-[11px] leading-[20px] text-black">
-                  BNB (BNB)
-                </span>
-              </button>
-              <button className="flex gap-[8px] items-center">
-                <Image
-                  src="/images/solana.svg"
-                  alt="token icon"
-                  width={20}
-                  height={20}
-                />
-                <span className="font-medium text-[11px] leading-[20px] text-black">
-                  Solana (SOL)
-                </span>
-              </button>
-              <button className="flex gap-[8px] items-center">
-                <Image
-                  src="/images/usdc.svg"
-                  alt="token icon"
-                  width={20}
-                  height={20}
-                />
-                <span className="font-medium text-[11px] leading-[20px] text-black">
-                  USDC (USDC)
-                </span>
-              </button>
-              <button className="flex gap-[8px] items-center">
-                <Image
-                  src="/images/dai.svg"
-                  alt="token icon"
-                  width={20}
-                  height={20}
-                />
-                <span className="font-medium text-[11px] leading-[20px] text-black">
-                  Dai (DAI)
-                </span>
-              </button>
-              <button className="flex gap-[8px] items-center">
-                <Image
-                  src="/images/green-coin.svg"
-                  alt="token icon"
-                  width={20}
-                  height={20}
-                />
-                <span className="font-medium text-[11px] leading-[20px] text-black">
-                  GHO (GHO)
-                </span>
-              </button>
-              <button className="flex gap-[8px] items-center">
-                <Image
-                  src="/images/bw-coin.svg"
-                  alt="token icon"
-                  width={20}
-                  height={20}
-                />
-                <span className="font-medium text-[11px] leading-[20px] text-black">
-                  Bonsai (BONSAI)
-                </span>
-              </button>
+              {tokens.map((token, index) => (
+                <button
+                  className={`flex gap-[8px] items-center rounded-[6px] ${
+                    selectedTokens?.includes(index)
+                      ? "border-[1px] border-black"
+                      : ""
+                  }`}
+                  onClick={() => onCLickToken(index)}
+                >
+                  <Image
+                    src={token.image}
+                    alt="token icon"
+                    width={20}
+                    height={20}
+                  />
+                  <span className="font-medium text-[11px] leading-[20px] text-black">
+                    {token.text}
+                  </span>
+                </button>
+              ))}
             </div>
           </button>
         </div>
@@ -279,83 +465,60 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
           Select Tags
         </span>
         <div className="flex sm:flex-col sm:gap-[10px] justify-between sm:justify-start mb-[24px]">
-          {[1, 2, 3].map((id) => (
+          {[1, 2, 3].map((id, buttonIndex) => (
             <button
               key={id}
               className="rounded-[8px] border-[1px] border-[#E4E4E7] px-[9px] py-[10px] flex justify-between items-center w-[200px] relative"
               onClick={() => handleTagClick(id)}
+              ref={(el) => (tagModalRefs.current[id] = el)}
             >
-              <span className="font-normal leading-[14.52px] text-[12px] text-[#707070]">
-                Add Tag
-              </span>
-              <Image
-                src="/images/plus.svg"
-                alt="drop-down icon"
-                width={12}
-                height={12}
-              />
+              {tags[buttonIndex] === "" ? (
+                <>
+                  <span className="font-normal leading-[14.52px] text-[12px] text-[#707070]">
+                    Add Tag
+                  </span>
+                  <Image
+                    src="/images/plus.svg"
+                    alt="drop-down icon"
+                    width={12}
+                    height={12}
+                  />
+                </>
+              ) : (
+                <span className="font-normal leading-[14.52px] text-[12px] text-[#707070]">
+                  {tags[buttonIndex]}
+                </span>
+              )}
               <div
                 className={`find-work-message-section w-[200px] bg-[#FFFFFF] rounded-[8px] p-[20px] sm:items-center gap-[3px] absolute top-[-381px] sm:top-[-478px] left-0
               border-[1px] border-[#E4E4E7] ${
                 selectedTag === id ? "flex" : "hidden"
               } flex-col z-[999]`}
-                ref={(el) => (tagModalRefs.current[id] = el)}
+                onClick={(e) => e.stopPropagation()}
               >
-                <MyButton
-                  buttonText="Blockchain Development"
-                  buttonType="dropdown"
-                  buttonStyles="bg-[#FFC2C2] mb-[8px] sm:font-bold sm:text-[10px] sm:leading-[11px] sm:w-full"
-                ></MyButton>
-                <MyButton
-                  buttonText="Programming & Development"
-                  buttonType="dropdown"
-                  buttonStyles="bg-[#FFD8C2] mb-[8px] sm:font-bold sm:text-[10px] sm:leading-[11px] sm:w-full"
-                ></MyButton>
-                <MyButton
-                  buttonText="Design"
-                  buttonType="dropdown"
-                  buttonStyles="bg-[#FFF2C2] mb-[8px] w-[150px] sm:w-full"
-                ></MyButton>
-                <MyButton
-                  buttonText="Marketing"
-                  buttonType="dropdown"
-                  buttonStyles="bg-[#EFFFC2] mb-[8px] sm:w-full"
-                ></MyButton>
-                <MyButton
-                  buttonText="Admin Support"
-                  buttonType="dropdown"
-                  buttonStyles="bg-[#C2FFC5] mb-[8px] sm:w-full"
-                ></MyButton>
-                <MyButton
-                  buttonText="Customer Service"
-                  buttonType="dropdown"
-                  buttonStyles="bg-[#C2FFFF] mb-[8px] sm:w-full"
-                ></MyButton>
-                <MyButton
-                  buttonText="Security & Auditing"
-                  buttonType="dropdown"
-                  buttonStyles="bg-[#C2CCFF] mb-[8px] sm:w-full"
-                ></MyButton>
-                <MyButton
-                  buttonText="Consulting & Advisory"
-                  buttonType="dropdown"
-                  buttonStyles="bg-[#D9C2FF] mb-[8px] sm:w-full"
-                ></MyButton>
-                <MyButton
-                  buttonText="Community Building"
-                  buttonType="dropdown"
-                  buttonStyles="bg-[#FAC2FF] mb-[8px] sm:w-full"
-                ></MyButton>
-                <MyButton
-                  buttonText="Other"
-                  buttonType="dropdown"
-                  buttonStyles="bg-[#E4E4E7] mb-[0px] sm:w-full"
-                ></MyButton>
+                {categories.map((button, index) => (
+                  <MyButton
+                    key={index}
+                    buttonText={button.buttonText}
+                    buttonType="dropdown"
+                    buttonStyles={`${button.buttonStyles} ${
+                      selectedCategories?.includes(index)
+                        ? "border-[1px] border-black"
+                        : ""
+                    }`}
+                    action={() => {
+                      onCLickCategory(index, buttonIndex);
+                    }}
+                  />
+                ))}
               </div>
             </button>
           ))}
         </div>
-        <button className="mx-auto w-fit py-[8px] px-[23px] tx-[14px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px]">
+        <button
+          className="mx-auto w-fit py-[8px] px-[23px] tx-[14px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px]"
+          onClick={handlePost}
+        >
           Post
         </button>
       </div>

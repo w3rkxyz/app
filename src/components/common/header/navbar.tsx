@@ -49,6 +49,7 @@ const Navbar = () => {
         setLoginForm(false);
         if (session?.type == SessionType.WithProfile) {
           setProfile(session.profile);
+          console.log("Profile: ", session.profile);
         }
       }
     }

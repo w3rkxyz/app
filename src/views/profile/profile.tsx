@@ -5,19 +5,43 @@ import Link from "next/link";
 import Image from "next/image";
 import JobCard from "@/components/JobCard/JobCard";
 import ProfileModal from "./profileModal";
-import { useSession, SessionType } from "@lens-protocol/react-web";
+import {
+  useSession,
+  SessionType,
+  usePublications,
+  profileId,
+  ProfileId,
+  appId,
+} from "@lens-protocol/react-web";
+import ViewJobModal from "../view-job-modal/view-job-modal";
+import Skeleton from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
 
 const Profile = () => {
+  const [profileId, setProfileId] = useState<ProfileId[]>();
+  const [data, setData] = useState<any[]>([]);
+  const { data: session, loading: sessionLoading } = useSession();
+  const { data: publications } = usePublications({
+    where: {
+      from: profileId,
+      metadata: {
+        publishedOn: [appId(process.env.NEXT_PUBLIC_APP_ID as string)],
+      },
+    },
+  });
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
+  const [cardType, setCardType] = useState("job");
+  const [selectedPublication, setSelectedPublication] = useState<any>();
 
   // const { data: profile, loading } = useProfile({
   //       forHandle: "lens/primal",
   //     });
-  const { data: session, loading: sessionLoading } = useSession();
   const [userData, setUserData] = useState<any>({
     handle: "@lenshandle.lens",
+    cover: "",
     picture: "/images/paco-square.svg",
     following: 100,
     followers: 75,
@@ -41,7 +65,12 @@ const Profile = () => {
     setIsServiceModalOpen(false);
   };
 
-  const handleOpenCardModal = () => {
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
+
+  const handleOpenCardModal = (publication?: any) => {
+    if (publication) setSelectedPublication(publication);
     setIsModalOpen(true);
   };
 
@@ -49,10 +78,15 @@ const Profile = () => {
     console.log("Session updated");
     if (session?.type === SessionType.WithProfile) {
       const profile = session.profile;
+      setProfileId([profile.id]);
       const handle = {
         handle: profile?.handle?.localName
           ? `${profile?.handle?.localName}.${profile?.handle?.namespace}`
           : "@lenshandle.lens",
+        cover:
+          profile?.metadata?.coverPicture?.__typename == "ImageSet"
+            ? session.profile?.metadata?.coverPicture?.raw?.uri
+            : "",
         picture:
           session.profile?.metadata &&
           session.profile?.metadata?.picture?.__typename == "ImageSet"
@@ -62,15 +96,24 @@ const Profile = () => {
         followers: profile ? profile.stats.followers : 75,
         about: profile?.metadata?.bio ? profile.metadata.bio : userData.about,
       };
-      console.log("Bio: ", profile?.metadata?.bio);
       setUserData(handle);
     }
   }, [session?.type]);
 
+  useEffect(() => {
+    if (publications) {
+      setData(publications);
+      setLoading(false);
+    }
+  }, [publications]);
+
   return (
     <div className="px-[156px] sm:px-[16px] pt-[110px] sm:pt-[122px] sm:w-full mb-[40px]">
       <div className="absolute w-full mx-0 left-0 top-156px sm:top-[79px] px-[156px] sm:px-[16px] -z-40">
-        <div className="bg-[#E4E4E7] w-full h-[196px] sm:h-[110px] rounded-[16px] relative"></div>
+        <div
+          className="bg-[#E4E4E7] w-full h-[196px] sm:h-[110px] rounded-[16px] relative"
+          style={{ backgroundImage: `url(${userData.cover})` }}
+        ></div>
       </div>
       <div className="flex sm:flex-col sm:w-full gap-[24px] pt-[116px] sm:pt-[26px] px-[32px] sm:px-[0px]">
         <div className=" max-w-[320px] min-w-[320px] sm:w-full">
@@ -201,38 +244,94 @@ const Profile = () => {
             </div>
           </div>
           <div className="border-[1px] border-[#E4E4E7] rounded-[16px] p-[16px] flex flex-col gap-[16px] sm:mb-[14px]">
-            <JobCard
-              userAvatar="/images/head-2.svg"
-              username="adam.lens"
-              jobName="Post Title"
-              jobIcon="/images/bag.svg"
-              onCardClick={handleOpenCardModal}
-              type="service"
-            />
-            <JobCard
-              userAvatar="/images/head-2.svg"
-              username="adam.lens"
-              jobName="Post Title"
-              jobIcon="/images/bag.svg"
-              onCardClick={handleOpenCardModal}
-              type="job"
-            />
+            {loading ? (
+              <>
+                <Skeleton
+                  className="h-[208px] rounded-[16px] sm:h-[340px]"
+                  baseColor="#E4E4E7"
+                  borderRadius={"12px"}
+                />
+                <Skeleton
+                  className="h-[208px] rounded-[16px] sm:h-[340px]"
+                  baseColor="#E4E4E7"
+                  borderRadius={"12px"}
+                />
+              </>
+            ) : publications && publications.length > 0 ? (
+              data.map((publication) => {
+                if (publication.__typename === "Post") {
+                  var attributes: any = {};
+                  publication.metadata.attributes?.map((attribute: any) => {
+                    attributes[attribute.key] = attribute.value;
+                  });
+
+                  return (
+                    <JobCard
+                      userAvatar="/images/head-2.svg"
+                      username="adam.lens"
+                      jobName="Post Title"
+                      jobIcon="/images/bag.svg"
+                      onCardClick={() => handleOpenCardModal(publication)}
+                      setType={setCardType}
+                      type={
+                        attributes["post type"]
+                          ? attributes["post type"]
+                          : "job"
+                      }
+                      publication={publication}
+                    />
+                  );
+                }
+              })
+            ) : (
+              <>
+                <JobCard
+                  userAvatar="/images/head-2.svg"
+                  username="adam.lens"
+                  jobName="Post Title"
+                  jobIcon="/images/bag.svg"
+                  onCardClick={handleOpenCardModal}
+                  setType={setCardType}
+                  type="service"
+                />
+                <JobCard
+                  userAvatar="/images/head-2.svg"
+                  username="adam.lens"
+                  jobName="Post Title"
+                  jobIcon="/images/bag.svg"
+                  onCardClick={handleOpenCardModal}
+                  setType={setCardType}
+                  type="job"
+                />
+              </>
+            )}
           </div>
         </div>
       </div>
       {isJobModalOpen && (
-        <div className="fixed inset-0 z-[99991] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center sm:items-end">
+        <div className="fixed inset-0 z-[999] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center sm:items-end">
           <div className="w-full flex justify-center sm:just align-middle sm:align-bottom">
             <ProfileModal type="job" handleCloseModal={handleCloseJobModal} />
           </div>
         </div>
       )}
       {isServiceModalOpen && (
-        <div className="fixed inset-0 z-[99991] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center sm:items-end">
+        <div className="fixed inset-0 z-[999] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center sm:items-end">
           <div className="w-full flex justify-center sm:just align-middle sm:align-bottom">
             <ProfileModal
               type="service"
               handleCloseModal={handleCloseServiceModal}
+            />
+          </div>
+        </div>
+      )}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[99991] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center sm:items-end cursor-auto">
+          <div className="w-full flex justify-center sm:just align-middle sm:align-bottom">
+            <ViewJobModal
+              handleCloseModal={handleCloseModal}
+              type={cardType}
+              publication={selectedPublication}
             />
           </div>
         </div>

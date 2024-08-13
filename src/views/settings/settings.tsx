@@ -2,25 +2,187 @@
 
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
+import { uploadFileToIPFS, uploadJsonToIPFS } from "@/utils/uploadToIPFS";
+import {
+  useSetProfileMetadata,
+  useSession,
+  SessionType,
+} from "@lens-protocol/react-web";
+import { MetadataAttributeType, profile } from "@lens-protocol/metadata";
+import { toast } from "react-hot-toast";
 
 const Settings = () => {
+  const { execute: update, error, loading } = useSetProfileMetadata();
+  const { data: session, loading: sessionLoading } = useSession();
   const [backgroundImage, setBackgroundImage] = useState<any>(null);
   const [photo, setPhoto] = useState<any>(null);
+  const [formState, setFormState] = useState({
+    name: "",
+    picture: "",
+    cover: "",
+    jobTitle: "",
+    bio: "",
+    X: "",
+    github: "",
+    linkedin: "",
+    website: "",
+    location: "",
+  });
 
-  const handleCoverUpload = (event: any) => {
+  useEffect(() => {
+    console.log("running this");
+    if (
+      session?.type === SessionType.WithProfile &&
+      session.profile?.metadata
+    ) {
+      const profile = session.profile;
+
+      var attributes: any = {};
+      session.profile.metadata.attributes?.map((attribute) => {
+        attributes[attribute.key] = attribute.value;
+      });
+
+      const handle = {
+        name: session.profile?.metadata?.displayName
+          ? session.profile.metadata.displayName
+          : "",
+        picture:
+          session.profile.metadata.picture?.__typename == "ImageSet"
+            ? session.profile?.metadata?.picture?.raw?.uri
+            : "",
+        cover:
+          session.profile.metadata.coverPicture?.__typename == "ImageSet"
+            ? session.profile?.metadata?.coverPicture?.raw?.uri
+            : "",
+        jobTitle: attributes["job title"] ? attributes["job title"] : "",
+        bio: session.profile?.metadata?.bio ? session.profile.metadata.bio : "",
+        X: attributes.X ? attributes.X : "",
+        github: attributes.github ? attributes.github : "",
+        linkedin: attributes.linkedin ? attributes.linkedin : "",
+        website: attributes.website ? attributes.website : "",
+        location: attributes.location ? attributes.location : "",
+      };
+      setBackgroundImage(handle.cover);
+      setPhoto(handle.picture);
+      setFormState(handle);
+    }
+  }, [session?.type]);
+
+  // Generic change handler for all inputs
+  const handleChange = (e: any) => {
+    const { name, value } = e.target;
+    setFormState((prevState) => ({
+      ...prevState,
+      [name]: value,
+    }));
+  };
+
+  const handleCoverUpload = async (event: any) => {
     const file = event.target.files[0];
+    const cover = event.target.files;
     if (file) {
       const imageUrl = URL.createObjectURL(file);
       setBackgroundImage(imageUrl);
+      const coverLink = await uploadFileToIPFS(cover);
+      setFormState((prevState) => ({
+        ...prevState,
+        ["cover"]: coverLink,
+      }));
     }
   };
 
-  const handlePhotoUpload = (event: any) => {
+  const handlePhotoUpload = async (event: any) => {
     const file = event.target.files[0];
+    const pic = event.target.files;
     if (file) {
       const imageUrl = URL.createObjectURL(file);
       setPhoto(imageUrl);
+      const pictureLink = await uploadFileToIPFS(pic);
+      setFormState((prevState) => ({
+        ...prevState,
+        ["picture"]: pictureLink,
+      }));
     }
+  };
+
+  const handleSubmit = async () => {
+    // console.log(formState)
+
+    const attributesMap: {
+      key: string;
+      value: string;
+      type: MetadataAttributeType.STRING;
+    }[] = [
+      {
+        key: "location",
+        value: formState.location,
+        type: MetadataAttributeType.STRING,
+      },
+      {
+        key: "website",
+        value: formState.website,
+        type: MetadataAttributeType.STRING,
+      },
+      {
+        key: "job title",
+        value: formState.jobTitle,
+        type: MetadataAttributeType.STRING,
+      },
+      {
+        key: "X",
+        value: formState.X,
+        type: MetadataAttributeType.STRING,
+      },
+      {
+        key: "linkedin",
+        value: formState.linkedin,
+        type: MetadataAttributeType.STRING,
+      },
+      {
+        key: "github",
+        value: formState.github,
+        type: MetadataAttributeType.STRING,
+      },
+    ];
+
+    const attributes = attributesMap.filter(
+      (attribute: {
+        key: string;
+        value: string;
+        type: MetadataAttributeType.STRING;
+      }) => attribute.value !== ""
+    );
+
+    console.log(attributes);
+
+    const metadata = profile({
+      name: formState.name !== "" ? formState.name : undefined,
+      bio: formState.bio !== "" ? formState.bio : undefined,
+      picture: formState.picture !== "" ? formState.picture : undefined,
+      coverPicture: formState.cover !== "" ? formState.cover : undefined,
+      attributes: attributes.length !== 0 ? attributes : undefined,
+    });
+
+    const metadataURI = await uploadJsonToIPFS(metadata);
+
+    const result = await update({
+      metadataURI,
+    });
+
+    if (result.isFailure()) {
+      toast.error(result.error.message);
+      return;
+    }
+
+    const completion = await result.value.waitForCompletion();
+
+    if (completion.isFailure()) {
+      toast.error(completion.error.message);
+      return;
+    }
+
+    toast.success("Profile updated");
+    console.log("Profile updated");
   };
 
   return (
@@ -82,6 +244,9 @@ const Settings = () => {
           <input
             className="form-input rounded-[12px] p-[11px] border-[1px] border-[#E4E4E7] sm:w-full"
             placeholder="Add your name"
+            name="name"
+            onChange={handleChange}
+            value={formState.name}
           />
         </div>
         <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
@@ -91,6 +256,9 @@ const Settings = () => {
           <input
             className="form-input rounded-[12px] p-[11px] border-[1px] border-[#E4E4E7] sm:w-full"
             placeholder="Add your job title"
+            name="jobTitle"
+            onChange={handleChange}
+            value={formState.jobTitle}
           />
         </div>
         <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px]">
@@ -100,6 +268,9 @@ const Settings = () => {
           <textarea
             className="form-input rounded-[12px] p-[11px] h-[160px] border-[1px] border-[#E4E4E7] resize-none sm:w-full"
             placeholder="Add your bio"
+            name="bio"
+            onChange={handleChange}
+            value={formState.bio}
           />
         </div>
         <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
@@ -109,6 +280,9 @@ const Settings = () => {
           <input
             className="form-input rounded-[12px] p-[11px] border-[1px] border-[#E4E4E7] sm:w-full"
             placeholder="Link to profile"
+            name="X"
+            onChange={handleChange}
+            value={formState.X}
           />
         </div>
         <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
@@ -118,6 +292,9 @@ const Settings = () => {
           <input
             className="form-input rounded-[12px] p-[11px] border-[1px] border-[#E4E4E7] sm:w-full"
             placeholder="Link to profile"
+            name="github"
+            onChange={handleChange}
+            value={formState.github}
           />
         </div>
         <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
@@ -127,6 +304,9 @@ const Settings = () => {
           <input
             className="form-input rounded-[12px] p-[11px] border-[1px] border-[#E4E4E7] sm:w-full"
             placeholder="Link to profile"
+            name="linkedin"
+            onChange={handleChange}
+            value={formState.linkedin}
           />
         </div>
         <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
@@ -136,6 +316,9 @@ const Settings = () => {
           <input
             className="form-input rounded-[12px] p-[11px] border-[1px] border-[#E4E4E7] sm:w-full"
             placeholder="Website URL"
+            name="website"
+            onChange={handleChange}
+            value={formState.website}
           />
         </div>
         <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
@@ -145,9 +328,15 @@ const Settings = () => {
           <input
             className="form-input rounded-[12px] p-[11px] border-[1px] border-[#E4E4E7] sm:w-full"
             placeholder="Enter Location"
+            name="location"
+            onChange={handleChange}
+            value={formState.location}
           />
         </div>
-        <button className="mx-auto w-fit py-[4px] px-[24px] tx-[14px] leading-[24px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[36px]">
+        <button
+          className="mx-auto w-fit py-[4px] px-[24px] tx-[14px] leading-[24px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[36px]"
+          onClick={handleSubmit}
+        >
           Save
         </button>
       </div>

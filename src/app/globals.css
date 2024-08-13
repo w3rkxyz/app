@@ -221,6 +221,10 @@
     padding-left: 12px;
     cursor: pointer;
   }
+
+  .react-hot-toast {
+    z-index: 9999999;
+  }
 }
 
 @layer utilities {
@@ -529,5 +533,26 @@
 
   .button-shadow {
     box-shadow: 24px -20px 56px 0px #0000000d;
+  }
+
+  .user-search-box {
+    width: calc(100% - 32px);
+  }
+
+  .circle-div {
+    width: 23px;
+    height: 23px;
+    border-radius: 100%;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    overflow: auto;
+    overflow-y: scroll;
   }
 }
