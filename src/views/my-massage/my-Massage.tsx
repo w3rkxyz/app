@@ -428,6 +428,7 @@ const MyMessageOpenChat = () => {
                             profiles[index]?.metadata?.picture?.__typename ===
                               "ImageSet"
                               ? profiles[index]?.metadata &&
+                                // @ts-ignore
                                 profiles[index]?.metadata?.picture?.raw?.uri
                               : "/images/paco-square.svg"
                           }
