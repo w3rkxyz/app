@@ -54,7 +54,7 @@ const MobileProfileDropdown = ({
         <div className="flex flex-col justify-center gap-[6px] py-[2px]">
           <span className="bold-h2">Display Name</span>
           <span className="bold-h2-subtext">
-            {handle ? `@${handle.localName}.${handle.namespace}` : "@0xPaco"}
+            {handle ? `@${handle.localName}` : "@0xPaco"}
           </span>
         </div>
       </div>

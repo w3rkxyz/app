@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { AnyPublication, Post } from "@lens-protocol/react-web";
+import getLensProfileData from "@/utils/getLensProfile";
 
 const tagColors: any = {
   "Blockchain Development": "#FFC2C2",
@@ -54,6 +55,11 @@ const JobCard = ({
     });
   }
 
+  var profileData;
+  if (data) {
+    profileData = getLensProfileData(data?.by);
+  }
+
   return (
     <div
       className="bg-[white] hover:bg-[#F0F0F0] border-[1px] border-[#E4E4E7] rounded-[12px] p-[16px] cursor-pointer w-full"
@@ -66,10 +72,8 @@ const JobCard = ({
         <div className="flex gap-[15px]">
           <Image
             src={
-              data &&
-              data.by.metadata &&
-              data.by.metadata?.picture?.__typename == "ImageSet"
-                ? data.by.metadata?.picture?.raw?.uri
+              profileData && profileData?.picture !== ""
+                ? profileData?.picture
                 : type === "job"
                 ? "/images/werk.svg"
                 : "/images/paco-square.svg"
@@ -81,7 +85,9 @@ const JobCard = ({
           />
           <div className="flex flex-col gap-[5px] pt-[5px]">
             <span className="text-[14px] leading-[16.94px] font-semibold">
-              {data ? data.by.metadata?.displayName : "Display Name"}
+              {profileData && profileData?.displayName !== ""
+                ? profileData.displayName
+                : "Display Name"}
             </span>
             <span className="text-[14px] leading-[16.94px] font-semibold">
               {data && data.metadata.__typename === "ArticleMetadataV3"

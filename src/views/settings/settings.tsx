@@ -7,9 +7,11 @@ import {
   useSetProfileMetadata,
   useSession,
   SessionType,
+  Profile,
 } from "@lens-protocol/react-web";
 import { MetadataAttributeType, profile } from "@lens-protocol/metadata";
 import { toast } from "react-hot-toast";
+import getLensProfileData from "@/utils/getLensProfile";
 
 const Settings = () => {
   const { execute: update, error, loading } = useSetProfileMetadata();
@@ -36,36 +38,35 @@ const Settings = () => {
       session.profile?.metadata
     ) {
       const profile = session.profile;
-
-      var attributes: any = {};
-      session.profile.metadata.attributes?.map((attribute) => {
-        attributes[attribute.key] = attribute.value;
-      });
+      const profileData = getLensProfileData(profile);
 
       const handle = {
-        name: session.profile?.metadata?.displayName
-          ? session.profile.metadata.displayName
+        name: profileData.displayName,
+        picture: profileData.picture,
+        cover: profileData.coverPicture,
+        jobTitle: profileData.attributes["job title"]
+          ? profileData.attributes["job title"]
           : "",
-        picture:
-          session.profile.metadata.picture?.__typename == "ImageSet"
-            ? session.profile?.metadata?.picture?.raw?.uri
-            : "",
-        cover:
-          session.profile.metadata.coverPicture?.__typename == "ImageSet"
-            ? session.profile?.metadata?.coverPicture?.raw?.uri
-            : "",
-        jobTitle: attributes["job title"] ? attributes["job title"] : "",
-        bio: session.profile?.metadata?.bio ? session.profile.metadata.bio : "",
-        X: attributes.X ? attributes.X : "",
-        github: attributes.github ? attributes.github : "",
-        linkedin: attributes.linkedin ? attributes.linkedin : "",
-        website: attributes.website ? attributes.website : "",
-        location: attributes.location ? attributes.location : "",
+        bio: profileData.bio,
+        X: profileData.attributes.X ? profileData.attributes.X : "",
+        github: profileData.attributes.github
+          ? profileData.attributes.github
+          : "",
+        linkedin: profileData.attributes.linkedin
+          ? profileData.attributes.linkedin
+          : "",
+        website: profileData.attributes.website
+          ? profileData.attributes.website
+          : "",
+        location: profileData.attributes.location
+          ? profileData.attributes.location
+          : "",
       };
       setBackgroundImage(handle.cover);
       setPhoto(handle.picture);
       setFormState(handle);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.type]);
 
   // Generic change handler for all inputs

@@ -3,6 +3,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import Image from "next/image";
 import { Post } from "@lens-protocol/react-web";
+import getLensProfileData from "@/utils/getLensProfile";
 
 type Props = {
   handleCloseModal?: () => void;
@@ -70,6 +71,11 @@ const ViewJobModal = ({
     });
   }
 
+  var profileData;
+  if (data) {
+    profileData = getLensProfileData(data?.by);
+  }
+
   useEffect(() => {
     setShowMobile(true);
 
@@ -124,13 +130,11 @@ const ViewJobModal = ({
           <div className="flex gap-[16px]">
             <Image
               src={
-                data &&
-                data.by.metadata &&
-                data.by.metadata?.picture?.__typename == "ImageSet"
-                  ? data.by.metadata?.picture?.raw?.uri
+                profileData && profileData?.picture !== ""
+                  ? profileData?.picture
                   : type === "job"
-                  ? "werk.svg"
-                  : "paco-square.svg"
+                  ? "/images/werk.svg"
+                  : "/images/paco-square.svg"
               }
               alt="w3rk logo"
               className="sm:w-[60px] sm:h-[60px]"
@@ -139,7 +143,9 @@ const ViewJobModal = ({
             />
             <div className="flex flex-col gap-[5px] pt-[5px]">
               <span className="text-[16px] sm:text-[14px] leading-[16.94px] font-semibold">
-                {data ? data.by.metadata?.displayName : "Display Name"}
+                {profileData && profileData?.displayName !== ""
+                  ? profileData.displayName
+                  : "Display Name"}
               </span>
               <span className="text-[16px] sm:text-[14px] leading-[16.94px] font-semibold">
                 {data && data.metadata.__typename === "ArticleMetadataV3"

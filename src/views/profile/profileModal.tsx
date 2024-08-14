@@ -440,6 +440,7 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
             >
               {tokens.map((token, index) => (
                 <button
+                  key={index}
                   className={`flex gap-[8px] items-center rounded-[6px] ${
                     selectedTokens?.includes(index)
                       ? "border-[1px] border-black"

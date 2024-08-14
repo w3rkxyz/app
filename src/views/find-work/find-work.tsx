@@ -107,6 +107,7 @@ const FindWork = () => {
         if (publications) setData(publications);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchResults]);
 
   return (
@@ -231,6 +232,7 @@ const FindWork = () => {
 
                   return (
                     <JobCard
+                      key={index}
                       userAvatar="/images/head-2.svg"
                       username="adam.lens"
                       jobName="Post Title"

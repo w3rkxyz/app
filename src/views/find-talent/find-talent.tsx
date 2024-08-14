@@ -121,6 +121,7 @@ const FindTalent = () => {
         if (publications) setData(publications);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchResults]);
 
   return (
@@ -198,7 +199,7 @@ const FindTalent = () => {
                 />
               </>
             ) : publications && publications.length > 0 ? (
-              data.map((publication) => {
+              data.map((publication, index) => {
                 if (publication.__typename === "Post") {
                   var attributes: any = {};
                   publication.metadata.attributes?.map((attribute: any) => {
@@ -207,6 +208,7 @@ const FindTalent = () => {
 
                   return (
                     <JobCard
+                      key={index}
                       userAvatar="/images/head-2.svg"
                       username="adam.lens"
                       jobName="Post Title"

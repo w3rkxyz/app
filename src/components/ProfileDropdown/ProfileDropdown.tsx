@@ -38,7 +38,7 @@ const ProfileDropdown = ({
     <div className="profile-dropdown-section drop-down">
       {/* <div className="custom-container"></div> */}
       <div className="pl-[12px] drop-down-text py-[9px] bg-white border-b-[1px] border-b-[#E4E4E7] bg-[transparent] font-semibold">
-        {handle ? `@${handle.localName}.${handle.namespace}` : "@user.lens"}
+        {handle ? `@${handle.localName}` : "@user"}
       </div>
       <div className="flex flex-col gap-[8px] pt-[10px] pb-[5px] pr-[15px] bg-white border-b-[1px] border-b-[#E4E4E7]">
         <Link href="/profile">

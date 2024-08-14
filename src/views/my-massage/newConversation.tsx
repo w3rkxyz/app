@@ -8,6 +8,7 @@ import {
   Profile,
 } from "@lens-protocol/react-web";
 import { Oval } from "react-loader-spinner";
+import getLensProfileData from "@/utils/getLensProfile";
 
 type Props = {
   handleCloseModal?: () => void;
@@ -25,7 +26,16 @@ const NewConversation = ({
   const { data, error, loading } = useSearchProfiles({
     query: searchText,
   });
-  const [profiles, setProfiles] = useState<Profile[]>();
+  const [profiles, setProfiles] = useState<
+    {
+      picture: string;
+      coverPicture: string;
+      displayName: string;
+      handle: string;
+      bio: string;
+      attributes: any;
+    }[]
+  >();
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -51,7 +61,23 @@ const NewConversation = ({
 
   useEffect(() => {
     if (data) {
-      setProfiles(data);
+      var temp: {
+        picture: string;
+        coverPicture: string;
+        displayName: string;
+        handle: string;
+        bio: string;
+        attributes: any;
+      }[] = [];
+
+      https: data.map((profile) => {
+        var profileData = getLensProfileData(profile);
+        if (profileData.handle !== "") {
+          temp.push(profileData);
+        }
+      });
+
+      setProfiles(temp);
     }
   }, [data]);
 
@@ -93,26 +119,26 @@ const NewConversation = ({
                 <div className="circle-div relative">
                   <Image
                     src={
-                      profile?.metadata &&
-                      profile?.metadata?.picture?.__typename == "ImageSet"
-                        ? profile.metadata.picture.raw.uri
+                      profile.picture !== ""
+                        ? profile.picture
                         : "/images/paco-square.svg"
                     }
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src =
+                        "/images/paco-square.svg";
+                    }}
                     layout="fill"
                     className="circle-div relative"
                     alt="user icon"
                   />
                 </div>
                 <span className="text-[14px] text-black mt-[1px]">
-                  {profile?.metadata?.displayName
-                    ? profile.metadata?.displayName
-                    : `${profile?.handle?.localName}`}
+                  {profile.displayName !== ""
+                    ? profile.displayName
+                    : `Display Name`}
                 </span>
                 <span className="text-[13px] text-[#c1c0c0] mt-[1px]">
-                  @
-                  {profile?.handle?.localName
-                    ? `${profile?.handle?.localName}.${profile?.handle?.namespace}`
-                    : "@lenshandle.lens"}
+                  {profile.handle !== "" ? profile.handle : "@lenshandle"}
                 </span>
               </div>
             );

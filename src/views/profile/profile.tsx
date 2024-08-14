@@ -16,6 +16,7 @@ import {
 import ViewJobModal from "../view-job-modal/view-job-modal";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
+import getLensProfileData from "@/utils/getLensProfile";
 
 const Profile = () => {
   const [profileId, setProfileId] = useState<ProfileId[]>();
@@ -47,6 +48,11 @@ const Profile = () => {
     followers: 75,
     about:
       "bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla",
+    location: "Location",
+    website: "user website url",
+    X: "",
+    github: "",
+    linkedin: "",
   });
 
   const handleOpenJobModal = () => {
@@ -79,25 +85,36 @@ const Profile = () => {
     if (session?.type === SessionType.WithProfile) {
       const profile = session.profile;
       setProfileId([profile.id]);
+
+      const profileData = getLensProfileData(profile);
+
       const handle = {
-        handle: profile?.handle?.localName
-          ? `${profile?.handle?.localName}.${profile?.handle?.namespace}`
-          : "@lenshandle.lens",
-        cover:
-          profile?.metadata?.coverPicture?.__typename == "ImageSet"
-            ? session.profile?.metadata?.coverPicture?.raw?.uri
-            : "",
+        handle: profileData.displayName,
+        cover: profileData.coverPicture,
         picture:
-          session.profile?.metadata &&
-          session.profile?.metadata?.picture?.__typename == "ImageSet"
-            ? session.profile?.metadata?.picture?.raw?.uri
+          profileData.picture !== ""
+            ? profileData.picture
             : "/images/paco-square.svg",
         following: profile ? profile.stats.following : 100,
         followers: profile ? profile.stats.followers : 75,
-        about: profile?.metadata?.bio ? profile.metadata.bio : userData.about,
+        about: profileData.bio ? profileData.bio : userData.about,
+        website: profileData.attributes.website
+          ? profileData.attributes.website
+          : "user website url",
+        location: profileData.attributes.location
+          ? profileData.attributes.location
+          : "Location",
+        X: profileData.attributes.X ? profileData.attributes.X : "",
+        github: profileData.attributes.github
+          ? profileData.attributes.github
+          : "",
+        linkedin: profileData.attributes.linkedin
+          ? profileData.attributes.linkedin
+          : "",
       };
       setUserData(handle);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.type]);
 
   useEffect(() => {
@@ -167,24 +184,57 @@ const Profile = () => {
           </Link>
           <hr className="bg-[#E4E4E7] h-[1px] mb-[16px]" />
           <div className="flex gap-[12px] mb-[19px]">
-            <Image
-              src="/images/twitter-social.svg"
-              alt="user icon"
-              width={24}
-              height={24}
-            />
-            <Image
-              src="/images/github-social.svg"
-              alt="user icon"
-              width={24}
-              height={24}
-            />
-            <Image
-              src="/images/linkedin-social.svg"
-              alt="user icon"
-              width={24}
-              height={24}
-            />
+            {userData.X !== "" ? (
+              <a target="_blank" href={userData.X}>
+                <Image
+                  src="/images/twitter-social.svg"
+                  alt="user icon"
+                  width={24}
+                  height={24}
+                />
+              </a>
+            ) : (
+              <Image
+                src="/images/twitter-social.svg"
+                alt="user icon"
+                width={24}
+                height={24}
+              />
+            )}
+            {userData.github !== "" ? (
+              <a target="_blank" href={userData.github}>
+                <Image
+                  src="/images/github-social.svg"
+                  alt="user icon"
+                  width={24}
+                  height={24}
+                />
+              </a>
+            ) : (
+              <Image
+                src="/images/github-social.svg"
+                alt="user icon"
+                width={24}
+                height={24}
+              />
+            )}
+            {userData.linkedin !== "" ? (
+              <a target="_blank" href={userData.linkedin}>
+                <Image
+                  src="/images/linkedin-social.svg"
+                  alt="user icon"
+                  width={24}
+                  height={24}
+                />
+              </a>
+            ) : (
+              <Image
+                src="/images/linkedin-social.svg"
+                alt="user icon"
+                width={24}
+                height={24}
+              />
+            )}
           </div>
           <div className="flex flex-col gap-[16px] mb-[20px] sm:mb-[0px]">
             <div className="flex gap-[11.6px] items-center">
@@ -195,7 +245,7 @@ const Profile = () => {
                 height={24}
               />
               <span className="leading-[16.94px] text-[14px] font-medium text-[black]">
-                user website url
+                {userData.website}
               </span>
             </div>
             <div className="flex gap-[14.2px] items-center pl-[3.2px]">
@@ -206,7 +256,7 @@ const Profile = () => {
                 height={24}
               />
               <span className="leading-[16.94px] text-[14px] font-medium text-[black]">
-                Location
+                {userData.location}
               </span>
             </div>
             <div className="flex gap-[12.7px] items-center">
@@ -258,7 +308,7 @@ const Profile = () => {
                 />
               </>
             ) : publications && publications.length > 0 ? (
-              data.map((publication) => {
+              data.map((publication, index) => {
                 if (publication.__typename === "Post") {
                   var attributes: any = {};
                   publication.metadata.attributes?.map((attribute: any) => {
@@ -267,6 +317,7 @@ const Profile = () => {
 
                   return (
                     <JobCard
+                      key={index}
                       userAvatar="/images/head-2.svg"
                       username="adam.lens"
                       jobName="Post Title"

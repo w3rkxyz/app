@@ -1,6 +1,10 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import Link from "next/link";
+import { useSession } from "@lens-protocol/react-web";
+
 export const Connect = () => {
+  const { data: session, loading: sessionLoading } = useSession();
+
   return (
     <ConnectButton.Custom>
       {({
@@ -18,7 +22,7 @@ export const Connect = () => {
         return (
           <>
             {(() => {
-              if (connected) {
+              if (connected && !sessionLoading) {
                 return (
                   <Link href="/other-user-follow">
                     <button type="button" className="button-primary mx-auto">

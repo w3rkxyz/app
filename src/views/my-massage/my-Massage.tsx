@@ -19,6 +19,7 @@ import {
 import toast from "react-hot-toast"; // Get the keys using a valid Signer. Save them somewhere secure.
 import { useEthersSigner } from "@/utils/getSigner";
 import moment from "moment";
+import getLensProfileData from "@/utils/getLensProfile";
 
 // interface Message {
 //   id: number;
@@ -110,6 +111,16 @@ const MyMessageOpenChat = () => {
       profileIds: chatUserIds,
     },
   });
+  const [profilesData, setProfilesData] = useState<
+    {
+      picture: string;
+      coverPicture: string;
+      displayName: string;
+      handle: string;
+      bio: string;
+      attributes: any;
+    }[]
+  >([]);
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Conversation<string | undefined>[]>(
     []
@@ -367,8 +378,24 @@ const MyMessageOpenChat = () => {
   };
 
   useEffect(() => {
+    console.log("Started running");
     if (profiles) {
-      console.log(profiles);
+      var temp: {
+        picture: string;
+        coverPicture: string;
+        displayName: string;
+        handle: string;
+        bio: string;
+        attributes: any;
+      }[] = [];
+      profiles.map((profile) => {
+        console.log("Profile: ", profile);
+        var data = getLensProfileData(profile);
+        console.log("Data: ", data);
+        temp.push(data);
+      });
+      console.log("Temo: ", temp);
+      setProfilesData(temp);
     }
   }, [profiles]);
 
@@ -409,7 +436,7 @@ const MyMessageOpenChat = () => {
                 showMessagesMobile ? "sm:flex" : "sm:hidden"
               } flex-col gap-[5px] mt-[8px]`}
             >
-              {messages.map((message, index) => {
+              {profilesData.map((message, index) => {
                 return (
                   <div
                     key={index}
@@ -425,13 +452,15 @@ const MyMessageOpenChat = () => {
                         <Image
                           src={
                             profiles &&
-                            profiles[index]?.metadata?.picture?.__typename ===
-                              "ImageSet"
-                              ? profiles[index]?.metadata &&
-                                // @ts-ignore
-                                profiles[index]?.metadata?.picture?.raw?.uri
+                            profilesData[index] &&
+                            profilesData[index].picture !== ""
+                              ? profilesData[index].picture
                               : "/images/paco-square.svg"
                           }
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src =
+                              "/images/paco-square.svg";
+                          }}
                           className="rounded-[8px]"
                           alt="paco pic"
                           width={40}
@@ -439,14 +468,18 @@ const MyMessageOpenChat = () => {
                         />
                         <div className="flex flex-col gap-[5px] sm:gap-[1px] pt-[5px]">
                           <span className="text-[14px] leading-[16.94px] font-medium">
-                            {profiles && profiles[index]?.metadata?.displayName
-                              ? profiles[index]?.metadata?.displayName
+                            {profiles &&
+                            profilesData[index] &&
+                            profilesData[index].displayName !== ""
+                              ? profilesData[index].displayName
                               : "Display Name"}
                           </span>
                           <span className="text-[14px] leading-[16.94px] font-medium text-[#707070]">
-                            {profiles && profiles[index]?.handle?.localName
-                              ? `${profiles[index]?.handle?.localName}.${profiles[index]?.handle?.namespace}`
-                              : "@lenshandle.lens"}
+                            {profiles &&
+                            profilesData[index] &&
+                            profilesData[index].handle !== ""
+                              ? profilesData[index].handle
+                              : "@lenshandle"}
                           </span>
                         </div>
                       </div>
@@ -612,22 +645,22 @@ const MyMessageOpenChat = () => {
                 <div className="flex flex-col gap-[2px] pt-[5px]">
                   <span className="text-[14px] leading-[16.94px] font-medium">
                     {profiles &&
-                    profiles[selectedConversation]?.metadata?.displayName
-                      ? profiles[selectedConversation]?.metadata?.displayName
+                    profilesData[selectedConversation].displayName !== ""
+                      ? profilesData[selectedConversation].displayName
                       : "Display Name"}
                   </span>
                   <span className="text-[14px] leading-[16.94px] font-medium text-[#707070]">
                     {profiles &&
-                    profiles[selectedConversation]?.handle?.localName
-                      ? `${profiles[selectedConversation]?.handle?.localName}.${profiles[selectedConversation]?.handle?.namespace}`
-                      : "@lenshandle.lens"}
+                    profilesData[selectedConversation].handle !== ""
+                      ? profilesData[selectedConversation].handle
+                      : "@lenshandle"}
                   </span>
                 </div>
               </div>
             </div>
             <hr className="bg-[#E4E4E7] h-[1px] mb-[0px]" />
             <div
-              className="flex-1 flex flex-col sm:justify-start scrollbar-hide"
+              className="flex-1 flex flex-col justify-end sm:justify-start scrollbar-hide pt-[10px]"
               id="scrollableDiv"
             >
               <span className="text-[12px] leading-[12.1px] font-medium self-center mb-[15px] sm:mt-[15px]">
@@ -705,7 +738,7 @@ const MyMessageOpenChat = () => {
         )}
       </div>
       {isNewConversationModalOpen && (
-        <div className="fixed inset-0 z-[1000] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center">
+        <div className="fixed h-screen w-screen top-0 left-0 inset-0 z-[10000] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center">
           <div className="w-full flex justify-center align-middle">
             <NewConversation
               handleCloseModal={handleCloseNewConversationModal}
