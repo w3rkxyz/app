@@ -117,7 +117,7 @@ const NewConversation = ({
                 onClick={() => handleStartConversation(profile)}
               >
                 <div className="circle-div relative">
-                  <Image
+                  <img
                     src={
                       profile.picture !== ""
                         ? profile.picture
@@ -127,7 +127,6 @@ const NewConversation = ({
                       (e.target as HTMLImageElement).src =
                         "/images/paco-square.svg";
                     }}
-                    layout="fill"
                     className="circle-div relative"
                     alt="user icon"
                   />
