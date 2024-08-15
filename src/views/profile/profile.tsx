@@ -53,6 +53,7 @@ const Profile = () => {
     X: "",
     github: "",
     linkedin: "",
+    jobTitle: "Job Title",
   });
 
   const handleOpenJobModal = () => {
@@ -96,6 +97,9 @@ const Profile = () => {
             ? profileData.picture
             : "/images/paco-square.svg",
         following: profile ? profile.stats.following : 100,
+        jobTitle: profileData.attributes["job title"]
+          ? profileData.attributes["job title"]
+          : "Job Title",
         followers: profile ? profile.stats.followers : 75,
         about: profileData.bio ? profileData.bio : userData.about,
         website: profileData.attributes.website
@@ -149,7 +153,7 @@ const Profile = () => {
             {userData.handle}
           </span>
           <h3 className="leading-[19px] text-[16px] font-semibold mt-[10px] mb-[12px] sm:mt-[6px]">
-            Job Title
+            {userData.jobTitle}
           </h3>
           <div className="flex gap-[4px] leading-[16.94px] text-[14px] font-medium">
             <span>About me</span>
