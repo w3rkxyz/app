@@ -10,6 +10,9 @@ const nextConfig = {
     });
     return config;
   },
+  experimental: {
+    serverComponentsExternalPackages: ["@xmtp/user-preferences-bindings-wasm"],
+  },
 };
 
 export default nextConfig;
