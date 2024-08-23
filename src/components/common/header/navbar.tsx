@@ -7,14 +7,17 @@ import { Connect } from "./connectButton";
 import { useAccount } from "wagmi";
 import { LoginForm } from "./loginForm";
 import { useSession, SessionType, Profile } from "@lens-protocol/react-web";
+import { useSelector, useDispatch } from "react-redux";
+import { displayLoginModal, setLensProfile } from "@/redux/app";
 
 const Navbar = () => {
+  const { loginModal, user: profile } = useSelector((state: any) => state.app);
+  const dispatch = useDispatch();
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNavbar, setShowNavbar] = useState(true);
   const { isConnected, address } = useAccount();
-  const [loginForm, setLoginForm] = useState(false);
   const { data: session, loading: sessionLoading } = useSession();
-  const [profile, setProfile] = useState<Profile>();
+  // const [profile, setProfile] = useState<Profile>();
 
   const closeMobileMenu = () => {
     setMobileMenuOpen(false);
@@ -44,12 +47,11 @@ const Navbar = () => {
   useEffect(() => {
     if (isConnected) {
       if (!session?.authenticated && !sessionLoading) {
-        setLoginForm(true);
+        dispatch(displayLoginModal({ display: true }));
       } else {
-        setLoginForm(false);
+        dispatch(displayLoginModal({ display: false }));
         if (session?.type == SessionType.WithProfile) {
-          setProfile(session.profile);
-          console.log("Profile: ", session.profile);
+          dispatch(setLensProfile({ profile: session.profile }));
         }
       }
     }
@@ -59,7 +61,7 @@ const Navbar = () => {
   return (
     <>
       {isConnected && profile ? (
-        <SecondNav profile={profile} setProfile={setProfile} />
+        <SecondNav />
       ) : (
         <header className="header-section h-[60px] px-[156px] sm:px-[16px] absolute w-full top-0 left-0 bg-white border-b-[1px] border-b-[#EEEEEE] z-[999]">
           <div className="custom-container">
@@ -86,13 +88,7 @@ const Navbar = () => {
       )}
 
       {/* Choose Account Modal */}
-      {loginForm && address && (
-        <LoginForm
-          owner={address}
-          setProfile={setProfile}
-          onClose={() => setLoginForm(false)}
-        />
-      )}
+      {/* {loginModal && address && <LoginForm owner={address} />} */}
     </>
   );
 };

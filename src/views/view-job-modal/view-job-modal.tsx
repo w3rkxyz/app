@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useEffect, useState } from "react";
+import Link from "next/link";
 import Image from "next/image";
 import { Post } from "@lens-protocol/react-web";
 import getLensProfileData from "@/utils/getLensProfile";
@@ -51,7 +52,7 @@ const ViewJobModal = ({
   const [showMobile, setShowMobile] = useState(false);
 
   const data =
-    publication && publication.metadata.__typename === "ArticleMetadataV3"
+    publication && publication.metadata.__typename === "TextOnlyMetadataV3"
       ? publication
       : undefined;
 
@@ -65,7 +66,7 @@ const ViewJobModal = ({
         tokens = splitTokens(attribute.value);
       }
       console.log(tokens);
-      if (data && data.metadata.__typename === "ArticleMetadataV3") {
+      if (data && data.metadata.__typename === "TextOnlyMetadataV3") {
         console.log("Content: ", data?.metadata?.content);
       }
     });
@@ -128,19 +129,29 @@ const ViewJobModal = ({
       <div className="bg-[white] rounded-[12px] sm:rounded-none p-[16px] min-h-[589px] w-[750px] sm:w-full flex flex-col">
         <div className="flex justify-between align-top mb-[18px]">
           <div className="flex gap-[16px]">
-            <Image
-              src={
-                profileData && profileData?.picture !== ""
-                  ? profileData?.picture
-                  : type === "job"
-                  ? "/images/werk.svg"
-                  : "/images/paco-square.svg"
-              }
-              alt="w3rk logo"
-              className="sm:w-[60px] sm:h-[60px]"
-              width={64}
-              height={64}
-            />
+            {profileData ? (
+              <Link href={`/other-user-follow/${profileData?.userLink}`}>
+                <Image
+                  src={profileData.picture}
+                  alt="w3rk logo"
+                  className="sm:w-[60px] sm:h-[60px]"
+                  width={64}
+                  height={64}
+                />
+              </Link>
+            ) : (
+              <Image
+                src={
+                  type === "job"
+                    ? "/images/werk.svg"
+                    : "/images/paco-square.svg"
+                }
+                alt="w3rk logo"
+                className="sm:w-[60px] sm:h-[60px]"
+                width={64}
+                height={64}
+              />
+            )}
             <div className="flex flex-col gap-[5px] pt-[5px]">
               <span className="text-[16px] sm:text-[14px] leading-[16.94px] font-semibold">
                 {profileData && profileData?.displayName !== ""
@@ -148,9 +159,7 @@ const ViewJobModal = ({
                   : "Display Name"}
               </span>
               <span className="text-[16px] sm:text-[14px] leading-[16.94px] font-semibold">
-                {data && data.metadata.__typename === "ArticleMetadataV3"
-                  ? data.metadata.title
-                  : "Job Title"}
+                {attributes["title"] ? attributes["title"] : "Job Title"}
               </span>
               <span className="text-[#707070] text-[14px] sm:text-[12px] leading-[14.52px] font-semibold">
                 {attributes["payement type"]
@@ -184,13 +193,13 @@ const ViewJobModal = ({
           )}
         </div>
         <p className="leading-[16.94px] text-[18px] sm:text-[16px] font-semibold mb-[16px]">
-          {data && data.metadata.__typename === "ArticleMetadataV3"
-            ? data.metadata.title
+          {attributes["title"]
+            ? attributes["title"]
             : "Website Updates - Full Stack Developer"}
         </p>
-        {data && data.metadata.__typename === "ArticleMetadataV3" ? (
+        {attributes["content"] ? (
           <div className="width-full rounded-[12px] leading-[19.52px] min-h-[312px] sm:leading-[16.52px] font-normal text-[16px] sm:text-[12px] border-[1px] border-[#E4E4E7] p-[13px] pb-[90px] sm:p-[9px] sm:pb-[10px] mb-[18px] whitespace-pre-wrap">
-            {data.metadata.content}
+            {attributes["content"]}
           </div>
         ) : type === "job" ? (
           <div className="width-full rounded-[12px] leading-[19.52px] sm:leading-[16.52px] font-normal text-[16px] sm:text-[12px] border-[1px] border-[#E4E4E7] p-[13px] pb-[90px] sm:p-[9px] sm:pb-[10px] mb-[18px]">

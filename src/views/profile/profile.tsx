@@ -27,6 +27,9 @@ const Profile = () => {
       from: profileId,
       metadata: {
         publishedOn: [appId(process.env.NEXT_PUBLIC_APP_ID as string)],
+        tags: {
+          all: ["w3rk"],
+        },
       },
     },
   });
@@ -119,7 +122,7 @@ const Profile = () => {
       setUserData(handle);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.type]);
+  }, [session?.type, session?.authenticated]);
 
   useEffect(() => {
     if (publications) {
@@ -339,26 +342,18 @@ const Profile = () => {
                 }
               })
             ) : (
-              <>
-                <JobCard
-                  userAvatar="/images/head-2.svg"
-                  username="adam.lens"
-                  jobName="Post Title"
-                  jobIcon="/images/bag.svg"
-                  onCardClick={handleOpenCardModal}
-                  setType={setCardType}
-                  type="service"
+              <div className="h-[460px] w-full flex flex-col gap-[11px] justify-center items-center">
+                <Image
+                  src="/images/case-grey.svg"
+                  alt="job post icon"
+                  color="black"
+                  width={24}
+                  height={21}
                 />
-                <JobCard
-                  userAvatar="/images/head-2.svg"
-                  username="adam.lens"
-                  jobName="Post Title"
-                  jobIcon="/images/bag.svg"
-                  onCardClick={handleOpenCardModal}
-                  setType={setCardType}
-                  type="job"
-                />
-              </>
+                <span className="leading-[16.94px] max-w-[280px] text-center text-[16px] font-semibold text-[#707070]">
+                  Make your first job/service post
+                </span>
+              </div>
             )}
           </div>
         </div>

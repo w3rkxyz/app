@@ -20,6 +20,7 @@ import toast from "react-hot-toast"; // Get the keys using a valid Signer. Save 
 import { useEthersSigner } from "@/utils/getSigner";
 import moment from "moment";
 import getLensProfileData from "@/utils/getLensProfile";
+import Link from "next/link";
 
 // interface Message {
 //   id: number;
@@ -119,6 +120,8 @@ const MyMessageOpenChat = () => {
       handle: string;
       bio: string;
       attributes: any;
+      id: any;
+      userLink: any;
     }[]
   >([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -141,8 +144,7 @@ const MyMessageOpenChat = () => {
     []
   );
   const [latestMessage, setLatestMessage] = useState<string[]>([]);
-  const [unactivatedUserProfile, setUnactivatedUserProfile] =
-    useState<Profile>();
+  const [unactivatedUserProfile, setUnactivatedUserProfile] = useState<any>();
 
   const handleIncomingMessages = async (client: Client) => {
     for await (const message of await client.conversations.streamAllMessages()) {
@@ -153,7 +155,10 @@ const MyMessageOpenChat = () => {
       var recentMessage: string[] = [];
       for (let i = 0; i < conversations.length; i++) {
         const conversation = conversations[i];
-        if (session?.type === SessionType.WithProfile) {
+        if (
+          session?.type === SessionType.WithProfile &&
+          conversation.context?.conversationId
+        ) {
           if (
             isConversationParticipant(
               session.profile.id,
@@ -195,7 +200,7 @@ const MyMessageOpenChat = () => {
   const createXMTPClient = async () => {
     if (signer) {
       setConnectingXMTP(true);
-      const client = await Client.create(signer, { env: "dev" });
+      const client = await Client.create(signer, { env: "production" });
 
       console.log("reached here 1");
       handleIncomingMessages(client);
@@ -209,7 +214,10 @@ const MyMessageOpenChat = () => {
       var recentMessage: string[] = [];
       for (let i = 0; i < conversations.length; i++) {
         const conversation = conversations[i];
-        if (session?.type === SessionType.WithProfile) {
+        if (
+          session?.type === SessionType.WithProfile &&
+          conversation.context?.conversationId
+        ) {
           if (
             isConversationParticipant(
               session.profile.id,
@@ -254,7 +262,10 @@ const MyMessageOpenChat = () => {
         var recentMessage: string[] = [];
         for (let i = 0; i < conversations.length; i++) {
           const conversation = conversations[i];
-          if (session?.type === SessionType.WithProfile) {
+          if (
+            session?.type === SessionType.WithProfile &&
+            conversation.context?.conversationId
+          ) {
             if (
               isConversationParticipant(
                 session.profile.id,
@@ -347,7 +358,9 @@ const MyMessageOpenChat = () => {
 
   const handleNewConversation = async (profile: Profile) => {
     if (xmtp && profile.handle && session?.type === SessionType.WithProfile) {
+      console.log("Opened conversation: ", profile);
       const isOnNetwork = await xmtp.canMessage(profile.handle?.ownedBy);
+      console.log("on Network: ", isOnNetwork);
       if (isOnNetwork) {
         const conversationId = buildConversationId(
           session.profile.id,
@@ -370,7 +383,7 @@ const MyMessageOpenChat = () => {
         });
         console.log("Created conversation: ", conversation);
       } else {
-        setUnactivatedUserProfile(profile);
+        setUnactivatedUserProfile(getLensProfileData(profile));
         setSelectedConversation(10000);
       }
     }
@@ -387,6 +400,8 @@ const MyMessageOpenChat = () => {
         handle: string;
         bio: string;
         attributes: any;
+        id: any;
+        userLink: any;
       }[] = [];
       profiles.map((profile) => {
         console.log("Profile: ", profile);
@@ -554,21 +569,17 @@ const MyMessageOpenChat = () => {
               />
               <div className="flex gap-[10px]">
                 <Image
-                  src={"/images/paco.svg"}
+                  src={unactivatedUserProfile.picture}
                   alt="paco pic"
                   width={43}
                   height={43}
                 />
                 <div className="flex flex-col gap-[2px] pt-[5px]">
                   <span className="text-[14px] leading-[16.94px] font-medium">
-                    {unactivatedUserProfile?.metadata?.displayName
-                      ? unactivatedUserProfile?.metadata?.displayName
-                      : unactivatedUserProfile?.handle?.localName}
+                    {unactivatedUserProfile.displayName}
                   </span>
                   <span className="text-[14px] leading-[16.94px] font-medium text-[#707070]">
-                    {unactivatedUserProfile?.handle?.localName
-                      ? `${unactivatedUserProfile?.handle?.localName}.${unactivatedUserProfile?.handle?.namespace}`
-                      : "@lenshandle.lens"}
+                    {unactivatedUserProfile.handle}
                   </span>
                 </div>
               </div>
@@ -636,12 +647,16 @@ const MyMessageOpenChat = () => {
                 onClick={() => setSelectedConversation(null)}
               />
               <div className="flex gap-[10px]">
-                <Image
-                  src={"/images/paco.svg"}
-                  alt="paco pic"
-                  width={43}
-                  height={43}
-                />
+                <Link
+                  href={`/other-user-follow/${profilesData[selectedConversation].userLink}`}
+                >
+                  <Image
+                    src={profilesData[selectedConversation].picture}
+                    alt="paco pic"
+                    width={43}
+                    height={43}
+                  />
+                </Link>
                 <div className="flex flex-col gap-[2px] pt-[5px]">
                   <span className="text-[14px] leading-[16.94px] font-medium">
                     {profiles &&

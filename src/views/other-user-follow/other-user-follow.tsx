@@ -23,13 +23,14 @@ import { useParams } from "next/navigation";
 // export const dynamic = "force-dynamic";
 
 const OtherUserFollow = () => {
-  // const params = useParams();
-  // const { name } = params;
+  const params = useParams();
+  const { id } = params;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [profileId, setProfileId] = useState<ProfileId[]>();
   const [data, setData] = useState<any[]>([]);
+  console.log(id);
   const { data: profile } = useProfile({
-    forHandle: `lens/olu25`,
+    forHandle: `lens/${id}`,
   });
   const { data: session } = useSession();
   const { data: publications } = usePublications({
@@ -37,6 +38,9 @@ const OtherUserFollow = () => {
       from: profileId,
       metadata: {
         publishedOn: [appId(process.env.NEXT_PUBLIC_APP_ID as string)],
+        tags: {
+          all: ["w3rk"],
+        },
       },
     },
   });
@@ -103,8 +107,10 @@ const OtherUserFollow = () => {
     console.log("Session updated");
     if (profile) {
       setProfileId([profile.id]);
+      console.log("Profile: ", profile);
 
       const profileData = getLensProfileData(profile);
+      console.log(profileData);
 
       const handle = {
         handle: profileData.displayName,

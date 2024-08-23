@@ -2,17 +2,19 @@ import { profileId, useLogin, useProfiles } from "@lens-protocol/react-web";
 import { toast } from "react-hot-toast";
 import style from "./form.module.css";
 import { formatProfileIdentifier } from "../../../utils/formatProfileIdentifier";
-import { useEffect } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { setLensProfile, displayLoginModal } from "@/redux/app";
 
 export function LoginForm({
   owner,
-  setProfile,
-  onClose,
-}: {
+}: // setProfile,
+// onClose,
+{
   owner: string;
-  setProfile?: any;
-  onClose: () => void;
+  // setProfile?: any;
+  // onClose: () => void;
 }) {
+  const dispatch = useDispatch();
   const { execute: login, loading: isLoginPending } = useLogin();
   const { data: profiles, loading: loadingProfiles } = useProfiles({
     where: {
@@ -43,8 +45,11 @@ export function LoginForm({
       profiles?.map((profile: any) => {
         if (profile.id === id) {
           localStorage.setItem("activeHandle", profile.handle?.fullHandle);
-          setProfile(profile);
-          onClose();
+          // setProfile(profile);
+          // onClose();
+
+          dispatch(setLensProfile({ profile: profile }));
+          dispatch(displayLoginModal({ display: false }));
         }
       });
     }
@@ -56,7 +61,9 @@ export function LoginForm({
       <div
         className={style.form}
         style={{
-          position: "absolute",
+          position: "fixed",
+          left: 0,
+          top: 0,
           width: "100vw",
           height: "100vh",
           zIndex: 2000000000000000,
@@ -105,28 +112,9 @@ export function LoginForm({
 
   // Shows list of available profiles associated with the connected wallet
   return (
-    <div
-      className={style.form}
-      style={{
-        position: "absolute",
-        width: "100vw",
-        height: "100vh",
-        zIndex: 2000000000000000,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: "rgba(128, 128, 128, 0.5)",
-      }}
-    >
-      <form
-        onSubmit={onSubmit}
-        style={{
-          backgroundColor: "white",
-          padding: "30px",
-          borderRadius: "5px",
-        }}
-      >
-        <fieldset style={{ gap: "20px" }}>
+    <div className="fixed w-screen h-screen top-0 left-0 z-[9999999] flex items-center justify-center bg-[#80808080]">
+      <form onSubmit={onSubmit} className="bg-white p-[30px] rounded-[5px]">
+        <fieldset className="flex flex-col gap-[20px]">
           <legend>Which Profile you want to log-in with?</legend>
 
           {profiles?.map((profile, idx) => (

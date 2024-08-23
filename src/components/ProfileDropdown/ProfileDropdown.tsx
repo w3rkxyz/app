@@ -6,18 +6,13 @@ import React, { useState } from "react";
 import { HandleInfo, useLogout } from "@lens-protocol/react-web";
 import { LoginForm } from "../common/header/loginForm";
 import { useAccount, useDisconnect } from "wagmi";
+import { useDispatch } from "react-redux";
+import { displayLoginModal } from "@/redux/app";
 
-const ProfileDropdown = ({
-  handle,
-  setProfile,
-}: {
-  handle?: HandleInfo;
-  setProfile: any;
-}) => {
+const ProfileDropdown = ({ handle }: { handle?: HandleInfo }) => {
   const { execute: logout, loading } = useLogout();
-  const { isConnected, address } = useAccount();
+  const dispatch = useDispatch();
   const { disconnect } = useDisconnect();
-  const [showLoginForm, setShowLoginForm] = useState(false);
 
   const handleLogOut = async () => {
     if (handle) {
@@ -29,7 +24,7 @@ const ProfileDropdown = ({
 
   const handleSwitchProfile = () => {
     if (handle) {
-      setShowLoginForm(true);
+      dispatch(displayLoginModal({ display: true }));
       logout();
     }
   };
@@ -82,13 +77,6 @@ const ProfileDropdown = ({
         ></Image>
         <span className="drop-down-text">Log Out</span>
       </div>
-      {showLoginForm && (
-        <LoginForm
-          owner={address as string}
-          setProfile={setProfile}
-          onClose={() => setShowLoginForm(false)}
-        />
-      )}
     </div>
   );
 };

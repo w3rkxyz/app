@@ -34,6 +34,8 @@ const NewConversation = ({
       handle: string;
       bio: string;
       attributes: any;
+      id: any;
+      profile: Profile;
     }[]
   >();
 
@@ -68,12 +70,14 @@ const NewConversation = ({
         handle: string;
         bio: string;
         attributes: any;
+        id: any;
+        profile: Profile;
       }[] = [];
 
-      https: data.map((profile) => {
+      data.map((profile: Profile) => {
         var profileData = getLensProfileData(profile);
         if (profileData.handle !== "") {
-          temp.push(profileData);
+          temp.push({ ...profileData, profile: profile });
         }
       });
 
@@ -109,25 +113,22 @@ const NewConversation = ({
           className={`user-search-box mt-[0px] flex flex-col gap-[5px] absolute top-[105px] left-[16px] rounded-[10px] border-[1px] border-[#E4E4E7] bg-white py-[10px]`}
           onClick={(e) => e.stopPropagation()}
         >
-          {profiles.map((profile, index) => {
+          {profiles.slice(0, 7).map((profile, index) => {
             return (
               <div
                 className="text-[14px] hover:bg-[#f1f1f1] w-full gap-[8px] flex items-center cursor-pointer px-[10px] py-[8px]"
                 key={index}
-                onClick={() => handleStartConversation(profile)}
+                onClick={() => handleStartConversation(profile.profile)}
               >
                 <div className="circle-div relative">
                   <img
-                    src={
-                      profile.picture !== ""
-                        ? profile.picture
-                        : "/images/paco-square.svg"
-                    }
+                    src={profile.picture}
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src =
-                        "/images/paco-square.svg";
+                      (
+                        e.target as HTMLImageElement
+                      ).src = `https://api.hey.xyz/avatar?id=${profile.id}`;
                     }}
-                    className="circle-div relative"
+                    className="circle-div relative bg-gray-200 dark:border-gray-700"
                     alt="user icon"
                   />
                 </div>

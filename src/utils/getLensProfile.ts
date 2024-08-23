@@ -4,18 +4,22 @@ const getLensProfileData = (profile: Profile) => {
   var picture = "";
   var displayName = "";
   var handle = "";
+  var userLink = "";
   var coverPicture = "";
   var bio = "";
   var attributes: any = {};
 
   if (profile?.metadata) {
     // picture
-    if (profile.metadata.picture?.__typename == "NftImage") {
-      picture = profile.metadata.picture.image.raw.uri
-        ? profile.metadata.picture.image.raw.uri
-        : "";
+    if (
+      profile.metadata.picture?.__typename == "NftImage" &&
+      profile.metadata.picture.image.raw.uri
+    ) {
+      picture = profile.metadata.picture.image.raw.uri;
     } else if (profile.metadata.picture?.__typename == "ImageSet") {
       picture = profile.metadata.picture.raw.uri;
+    } else {
+      picture = `https://api.hey.xyz/avatar?id=${profile.id}`;
     }
 
     // cover picture
@@ -36,6 +40,9 @@ const getLensProfileData = (profile: Profile) => {
     //  handle
     handle = profile.handle ? `@${profile.handle.localName}` : "";
 
+    //userLink
+    userLink = profile.handle ? `${profile.handle.localName}` : "";
+
     // bio
     (bio = profile.metadata.bio ? profile.metadata.bio : ""),
       // attributes
@@ -43,11 +50,17 @@ const getLensProfileData = (profile: Profile) => {
         attributes[attribute.key] = attribute.value;
       });
   } else {
+    //picture
+    picture = `https://api.hey.xyz/avatar?id=${profile.id}`;
+
     // display Name
     displayName = profile.handle ? profile.handle.localName : "";
 
     //  handle
     handle = profile.handle ? `@${profile.handle.localName}` : "";
+
+    //userLink
+    userLink = profile.handle ? `${profile.handle.localName}` : "";
   }
 
   return {
@@ -57,6 +70,8 @@ const getLensProfileData = (profile: Profile) => {
     handle,
     bio,
     attributes,
+    id: profile.id,
+    userLink,
   };
 };
 

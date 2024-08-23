@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { AnyPublication, Post } from "@lens-protocol/react-web";
 import getLensProfileData from "@/utils/getLensProfile";
 
@@ -44,7 +45,7 @@ const JobCard = ({
   publication,
 }: CardProps) => {
   const data =
-    publication && publication.metadata.__typename === "ArticleMetadataV3"
+    publication && publication.metadata.__typename === "TextOnlyMetadataV3"
       ? publication
       : undefined;
 
@@ -58,6 +59,7 @@ const JobCard = ({
   var profileData;
   if (data) {
     profileData = getLensProfileData(data?.by);
+    console.log("Profile: ", profileData);
   }
 
   return (
@@ -70,19 +72,28 @@ const JobCard = ({
     >
       <div className="flex justify-between align-top mb-[10px]">
         <div className="flex gap-[15px]">
-          <Image
-            src={
-              profileData && profileData?.picture !== ""
-                ? profileData?.picture
-                : type === "job"
-                ? "/images/werk.svg"
-                : "/images/paco-square.svg"
-            }
-            alt="w3rk logo"
-            className="rounded-[8px]"
-            width={60}
-            height={60}
-          />
+          {profileData ? (
+            <Link href={`/other-user-follow/${profileData?.userLink}`}>
+              <Image
+                src={profileData.picture}
+                alt="w3rk logo"
+                className="rounded-[8px]"
+                width={60}
+                height={60}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </Link>
+          ) : (
+            <Image
+              src={
+                type === "job" ? "/images/werk.svg" : "/images/paco-square.svg"
+              }
+              alt="w3rk logo"
+              className="rounded-[8px]"
+              width={60}
+              height={60}
+            />
+          )}
           <div className="flex flex-col gap-[5px] pt-[5px]">
             <span className="text-[14px] leading-[16.94px] font-semibold">
               {profileData && profileData?.displayName !== ""
@@ -90,9 +101,7 @@ const JobCard = ({
                 : "Display Name"}
             </span>
             <span className="text-[14px] leading-[16.94px] font-semibold">
-              {data && data.metadata.__typename === "ArticleMetadataV3"
-                ? data.metadata.title
-                : "Job Title"}
+              {attributes["title"] ? attributes["title"] : "Job Title"}
             </span>
             <span className="text-[#707070] text-[12px] leading-[14.52px] font-semibold">
               {attributes["payement type"]
@@ -126,23 +135,21 @@ const JobCard = ({
         )}
       </div>
       <span className="leading-[16.94px] sm:leading-[1.94px] text-[14px] font-semibold mb-[4px] sm:mb-[8px]">
-        {data && data.metadata.__typename === "ArticleMetadataV3"
-          ? data.metadata.title
-          : "Post Title"}
+        {attributes["title"] ? attributes["title"] : "Post Title"}
       </span>
       <p
         className={`line-clamp-6 leading-[15.52px] text-[13px] sm:text-[13px] font-normal mb-[12px] sm:mb-[17px] w-full laptop-x:text-[14px] ${
           data ? "whitespace-pre-wrap" : ""
         }`}
       >
-        {data && data.metadata.__typename === "ArticleMetadataV3"
-          ? data.metadata.content
+        {attributes["content"]
+          ? attributes["content"]
           : `User information can go here along with service offered information,
-                total character limit will have to be decided bc we don’t wanna run over
-                the limit. User information can go here along with service offered
-                information, total character limit will have to be decided bc we don’t
-                wanna run over the limit. User information can go here along... service
-                offered information, total character limit will have to be`}
+total character limit will have to be decided bc we don’t wanna run over
+the limit. User information can go here along with service offered
+information, total character limit will have to be decided bc we don’t
+wanna run over the limit. User information can go here along... service
+offered information, total character limit will have to be`}
       </p>
       <div className="flex sm:flex-col gap-[15px] sm:gap-[10px]">
         <button

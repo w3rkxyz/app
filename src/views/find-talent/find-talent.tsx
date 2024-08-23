@@ -51,6 +51,18 @@ const buttons = [
   { buttonText: "Other", buttonStyles: "bg-[#E4E4E7] mb-[8px] sm:w-full" },
 ];
 
+function selectedCategoriesText(selected: number[]) {
+  var array: string[] = [];
+  selected.map((item) => {
+    array.push(buttons[item].buttonText);
+  });
+  return array;
+}
+
+function filterbyTags(array1: string[], array2: string[]) {
+  return array2.every((item) => array1.includes(item));
+}
+
 const FindTalent = () => {
   const [categoriesMobile, setCategoriesMobile] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
@@ -62,7 +74,7 @@ const FindTalent = () => {
       metadata: {
         publishedOn: [appId(process.env.NEXT_PUBLIC_APP_ID as string)],
         tags: {
-          oneOf: ["service"],
+          all: ["w3rk", "service"],
         },
       },
     },
@@ -74,7 +86,7 @@ const FindTalent = () => {
       metadata: {
         publishedOn: [appId(process.env.NEXT_PUBLIC_APP_ID as string)],
         tags: {
-          oneOf: ["service"],
+          all: ["w3rk", "service"],
         },
       },
     },
@@ -200,7 +212,13 @@ const FindTalent = () => {
               </>
             ) : publications && publications.length > 0 ? (
               data.map((publication, index) => {
-                if (publication.__typename === "Post") {
+                if (
+                  publication.__typename === "Post" &&
+                  filterbyTags(
+                    publication.metadata.tags,
+                    selectedCategoriesText(selectedCategories)
+                  )
+                ) {
                   var attributes: any = {};
                   publication.metadata.attributes?.map((attribute: any) => {
                     attributes[attribute.key] = attribute.value;

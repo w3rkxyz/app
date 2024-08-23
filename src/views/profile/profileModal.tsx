@@ -242,13 +242,17 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
 
   const handlePost = async () => {
     var updatedTags = tags.filter((item) => item !== "");
-    updatedTags = [...updatedTags, type];
+    updatedTags = [...updatedTags, type, "w3rk"];
     if (canSubmitPost()) {
-      const metadata = article({
-        title: title,
-        content: description,
-        tags: updatedTags,
+      const publicContent = `\\*\\* ${
+        type === "job" ? "Job Posting" : "Service Listing"
+      } \\*\\*\n\nTitle: ${title}\n\nDescription: ${description}\n\nPay: ${
+        payementType === "fixed" ? `$${fixedPrice}` : `$${hourlyRate}/hr`
+      }`;
+      const heyMetadata = textOnly({
+        content: publicContent,
         appId: process.env.NEXT_PUBLIC_APP_ID,
+        tags: updatedTags,
         attributes: [
           {
             key: "paid in",
@@ -270,36 +274,17 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
             value: type,
             type: MetadataAttributeType.STRING,
           },
+          {
+            key: "title",
+            value: title,
+            type: MetadataAttributeType.STRING,
+          },
+          {
+            key: "content",
+            value: description,
+            type: MetadataAttributeType.STRING,
+          },
         ],
-      });
-
-      const metadataURI = await uploadJsonToIPFS(metadata);
-
-      const result = await execute({
-        metadata: metadataURI,
-      });
-
-      if (result.isFailure()) {
-        toast.error(result.error.message);
-        return;
-      }
-
-      const completion = await result.value.waitForCompletion();
-
-      if (completion.isFailure()) {
-        toast.error(completion.error.message);
-        return;
-      }
-
-      const publicContent = `\\*\\* ${
-        type === "job" ? "Job Posting" : "Service Listing"
-      } \\*\\*\n\nTitle: ${title}\n\nDescription: ${description}\n\nPay: ${
-        payementType === "fixed" ? `$${fixedPrice}` : `$${hourlyRate}/hr`
-      }`;
-      const heyMetadata = textOnly({
-        content: publicContent,
-        appId: process.env.NEXT_PUBLIC_GLOBAL_APP_ID,
-        tags: updatedTags,
       });
 
       const heyMetadataURI = await uploadJsonToIPFS(heyMetadata);

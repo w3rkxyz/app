@@ -17,6 +17,7 @@
     "@lens-protocol/wagmi": "^4.1.4",
     "@lighthouse-web3/sdk": "^0.3.7",
     "@rainbow-me/rainbowkit": "^2.0.6",
+    "@reduxjs/toolkit": "^2.2.7",
     "@tanstack/react-query": "^5.35.1",
     "@xmtp/user-preferences-bindings-wasm": "^0.3.5",
     "@xmtp/xmtp-js": "^12.1.0",
@@ -31,6 +32,7 @@
     "react-hot-toast": "^2.4.1",
     "react-loader-spinner": "^6.1.6",
     "react-loading-skeleton": "^3.4.0",
+    "react-redux": "^9.1.2",
     "viem": "^2.10.1",
     "wagmi": "^2.8.1"
   },
