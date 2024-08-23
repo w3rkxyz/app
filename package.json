@@ -24,6 +24,7 @@
     "copy-webpack-plugin": "^12.0.2",
     "encoding": "^0.1.13",
     "ethers": "^6.13.2",
+    "micromatch": "^4.0.8",
     "moment": "^2.30.1",
     "next": "^14.2.5",
     "pino-pretty": "^11.0.0",
