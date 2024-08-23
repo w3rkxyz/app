@@ -12,20 +12,7 @@ const ConditionalNav = () => {
   const isHomePage = homePages.includes(pathName);
   const { data: session, loading: sessionLoading } = useSession();
 
-  return (
-    <>
-      {isHomePage ? (
-        <Navbar />
-      ) : (
-        <SecondNav
-          setProfile={() => {}}
-          profile={
-            session?.type === SessionType.WithProfile ? session.profile : null
-          }
-        />
-      )}
-    </>
-  );
+  return <>{isHomePage ? <Navbar /> : <SecondNav />}</>;
 };
 
 export default ConditionalNav;
