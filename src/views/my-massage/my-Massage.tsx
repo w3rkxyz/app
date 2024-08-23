@@ -655,6 +655,7 @@ const MyMessageOpenChat = () => {
                     alt="paco pic"
                     width={43}
                     height={43}
+                    className="rounded-[8px]"
                   />
                 </Link>
                 <div className="flex flex-col gap-[2px] pt-[5px]">
