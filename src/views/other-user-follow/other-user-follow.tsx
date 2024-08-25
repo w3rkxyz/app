@@ -144,6 +144,12 @@ const OtherUserFollow = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
 
+  const handleImageError = () => {
+    var data = { ...userData };
+    data.picture = "/images/paco-square.svg";
+    setUserData(data);
+  };
+
   useEffect(() => {
     if (publications) {
       setData(publications);
@@ -167,6 +173,7 @@ const OtherUserFollow = () => {
               layout="fill"
               className="rounded-[20px] sm:rounded-[12px]"
               alt="user icon"
+              onError={handleImageError}
             />
           </div>
           <h3 className="leading-[19px] text-[16px] font-semibold mb-[0px] sm:mb-[0px]">
