@@ -18,17 +18,17 @@ import ViewJobModal from "../view-job-modal/view-job-modal";
 import getLensProfileData from "@/utils/getLensProfile";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
-import { useParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 // export const dynamic = "force-dynamic";
 
 const OtherUserFollow = () => {
-  const params = useParams();
-  const { id } = params;
+  const searchParams = useSearchParams();
+  const id = searchParams.get("handle");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [profileId, setProfileId] = useState<ProfileId[]>();
   const [data, setData] = useState<any[]>([]);
-  console.log(id);
+  console.log("userID: ", id);
   const { data: profile } = useProfile({
     forHandle: `lens/${id}`,
   });

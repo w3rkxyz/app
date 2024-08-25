@@ -648,7 +648,7 @@ const MyMessageOpenChat = () => {
               />
               <div className="flex gap-[10px]">
                 <Link
-                  href={`/other-user-follow/${profilesData[selectedConversation].userLink}`}
+                  href={`/other-user-follow/?handle=${profilesData[selectedConversation].userLink}`}
                 >
                   <Image
                     src={profilesData[selectedConversation].picture}

@@ -73,7 +73,7 @@ const JobCard = ({
       <div className="flex justify-between align-top mb-[10px]">
         <div className="flex gap-[15px]">
           {profileData ? (
-            <Link href={`/other-user-follow/${profileData?.userLink}`}>
+            <Link href={`/other-user-follow/?handle=${profileData?.userLink}`}>
               <Image
                 src={profileData.picture}
                 alt="w3rk logo"

@@ -130,7 +130,9 @@ const ViewJobModal = ({
         <div className="flex justify-between align-top mb-[18px]">
           <div className="flex gap-[16px]">
             {profileData ? (
-              <Link href={`/other-user-follow/${profileData?.userLink}`}>
+              <Link
+                href={`/other-user-follow/?handle=${profileData?.userLink}`}
+              >
                 <Image
                   src={profileData.picture}
                   alt="w3rk logo"
