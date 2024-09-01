@@ -515,19 +515,18 @@ const MyMessageOpenChat = () => {
                       >
                         <div className="flex justify-between align-top mb-[6px]">
                           <div className="flex gap-[10px]">
-                            <img
+                            <Image
                               src={conversation.user.picture}
                               onError={(e) => {
-                                (e.target as HTMLImageElement).src =
-                                  "/images/paco.svg";
+                                (
+                                  e.target as HTMLImageElement
+                                ).src = `https://api.hey.xyz/avatar?id=${conversation.user.id}`;
                               }}
                               className="rounded-[8px]"
                               alt="paco pic"
                               width={40}
                               height={40}
                             />
-                            {/* <Image 
-                        /> */}
                             <div className="flex flex-col gap-[5px] sm:gap-[1px] pt-[5px]">
                               <span className="text-[14px] leading-[16.94px] font-medium">
                                 {conversation.user.displayName}
@@ -693,6 +692,11 @@ const MyMessageOpenChat = () => {
                 >
                   <Image
                     src={conversations[selectedConversation].user.picture}
+                    onError={(e) => {
+                      (
+                        e.target as HTMLImageElement
+                      ).src = `https://api.hey.xyz/avatar?id=${conversations[selectedConversation].user.id}`;
+                    }}
                     alt="paco pic"
                     width={43}
                     height={43}

@@ -110,7 +110,7 @@ const NewConversation = ({
       />
       {profiles && profiles.length > 0 && searchText !== "" ? (
         <div
-          className={`user-search-box mt-[0px] flex flex-col gap-[5px] absolute top-[105px] left-[16px] rounded-[10px] border-[1px] border-[#E4E4E7] bg-white py-[10px]`}
+          className={`user-search-box-modal mt-[0px] flex flex-col gap-[5px] absolute top-[105px] left-[16px] rounded-[10px] border-[1px] border-[#E4E4E7] bg-white py-[10px]`}
           onClick={(e) => e.stopPropagation()}
         >
           {profiles.slice(0, 7).map((profile, index) => {
@@ -120,14 +120,15 @@ const NewConversation = ({
                 key={index}
                 onClick={() => handleStartConversation(profile.profile)}
               >
-                <div className="circle-div relative">
-                  <img
+                <div className="circle-div relative bg-gray-200 dark:border-gray-700">
+                  <Image
                     src={profile.picture}
                     onError={(e) => {
                       (
                         e.target as HTMLImageElement
                       ).src = `https://api.hey.xyz/avatar?id=${profile.id}`;
                     }}
+                    fill
                     className="circle-div relative bg-gray-200 dark:border-gray-700"
                     alt="user icon"
                   />

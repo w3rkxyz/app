@@ -117,6 +117,7 @@ const FindWork = () => {
       console.log("Publications: ", publications);
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [publications]);
 
   useEffect(() => {

@@ -201,14 +201,15 @@ const SecondNav = ({}: // profile,
                               className="text-[14px] hover:bg-[#f1f1f1] w-full gap-[8px] flex items-center cursor-pointer px-[10px] py-[8px]"
                               key={index}
                             >
-                              <div className="circle-div relative">
-                                <img
+                              <div className="circle-div relative bg-gray-200 dark:border-gray-700">
+                                <Image
                                   src={profile.picture}
                                   onError={(e) => {
                                     (
                                       e.target as HTMLImageElement
                                     ).src = `https://api.hey.xyz/avatar?id=${profile.id}`;
                                   }}
+                                  fill
                                   className="circle-div relative bg-gray-200 dark:border-gray-700"
                                   alt="user icon"
                                 />
