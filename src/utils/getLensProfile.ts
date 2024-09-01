@@ -1,5 +1,29 @@
 import { Profile } from "@lens-protocol/react-web";
 
+function convertIpfsLink(link: string) {
+  const ipfsPrefix = "ipfs://";
+  const gatewayPrefix = "https://gateway.pinata.cloud/ipfs/";
+
+  if (link.startsWith(ipfsPrefix)) {
+    const cid = link.slice(ipfsPrefix.length);
+    return gatewayPrefix + cid;
+  }
+
+  // Return the original link if it doesn't start with ipfs://
+  return link;
+}
+
+export interface UserProfile {
+  picture: string;
+  coverPicture: string;
+  displayName: string;
+  handle: string;
+  bio: string;
+  attributes: string;
+  id: string;
+  userLink: string;
+}
+
 const getLensProfileData = (profile: Profile) => {
   var picture = "";
   var displayName = "";
@@ -15,9 +39,9 @@ const getLensProfileData = (profile: Profile) => {
       profile.metadata.picture?.__typename == "NftImage" &&
       profile.metadata.picture.image.raw.uri
     ) {
-      picture = profile.metadata.picture.image.raw.uri;
+      picture = convertIpfsLink(profile.metadata.picture.image.raw.uri);
     } else if (profile.metadata.picture?.__typename == "ImageSet") {
-      picture = profile.metadata.picture.raw.uri;
+      picture = convertIpfsLink(profile.metadata.picture.raw.uri);
     } else {
       picture = `https://api.hey.xyz/avatar?id=${profile.id}`;
     }

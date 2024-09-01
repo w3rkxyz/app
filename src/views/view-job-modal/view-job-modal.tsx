@@ -5,6 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { Post } from "@lens-protocol/react-web";
 import getLensProfileData from "@/utils/getLensProfile";
+import { useAccount } from "wagmi";
+import { useHidePublication } from "@lens-protocol/react-web";
 
 type Props = {
   handleCloseModal?: () => void;
@@ -48,6 +50,8 @@ const ViewJobModal = ({
   type,
   publication,
 }: Props) => {
+  const { execute: hide, loading } = useHidePublication();
+  const { address } = useAccount();
   const myDivRef = useRef<HTMLDivElement>(null);
   const [showMobile, setShowMobile] = useState(false);
 
@@ -76,6 +80,13 @@ const ViewJobModal = ({
   if (data) {
     profileData = getLensProfileData(data?.by);
   }
+
+  const handleDelete = async () => {
+    if (publication) {
+      await hide({ publication });
+      handleCloseModal?.();
+    }
+  };
 
   useEffect(() => {
     setShowMobile(true);
@@ -173,7 +184,7 @@ const ViewJobModal = ({
             </div>
           </div>
           {type === "job" ? (
-            <button className="flex align-middle items-center gap-[5px] text-[white] leading-[12.1px] text-[14px] font-semibold py-[5.4px] px-[17px] bg-[#C6AAFF] rounded-[4px] h-fit">
+            <button className="flex align-middle items-center gap-[5px] text-[white] leading-[12.1px] text-[14px] font-semibold py-[5.4px] px-[17px] bg-[#C6AAFF] rounded-[4px] h-fit cursor-default">
               <span>Job</span>
               <Image
                 src="/images/case.svg"
@@ -183,7 +194,7 @@ const ViewJobModal = ({
               />
             </button>
           ) : (
-            <button className="flex align-middle items-center gap-[5px] text-[white] leading-[12.1px] text-[14px] font-semibold py-[5.4px] px-[17px] bg-[#351A6B] rounded-[4px] h-fit">
+            <button className="flex align-middle items-center gap-[5px] text-[white] leading-[12.1px] text-[14px] font-semibold py-[5.4px] px-[17px] bg-[#351A6B] rounded-[4px] h-fit cursor-default">
               <span>Service</span>
               <Image
                 src="/images/service.svg"
@@ -253,7 +264,7 @@ const ViewJobModal = ({
             💎 UI/UX: Mobile Design
           </div>
         )}
-        <div className="flex gap-[16px] sm:gap-[10px] items-center mb-[20px] sm:mb-[14px]">
+        <div className="flex gap-[10px] sm:gap-[8px] items-center mb-[20px] sm:mb-[14px]">
           <span className="text-[17px] sm:text-[16px] font-medium font-secondary  tracking-[-1%] text-[#000000] sm:hidden">
             Paid in:
           </span>
@@ -261,19 +272,17 @@ const ViewJobModal = ({
             Accepts:
           </span>
           {data ? (
-            <ul className="socials-widgets gap-[5px] flex items-center">
+            <ul className="socials-widgets gap-[0px] flex items-center">
               {tokens.map((token: string, index: number) => {
                 return (
-                  <li className="socials-widgets-items" key={index}>
-                    <a href="/">
-                      <Image
-                        className={`w-[34px] h-[34px] sm:w-[24px] sm:h-[24px] p-1 rounded-full`}
-                        src={tokenImages[token]}
-                        alt="socials icons images"
-                        width={34}
-                        height={34}
-                      />
-                    </a>
+                  <li className="socials-widgets-items px-0 mx-0" key={index}>
+                    <Image
+                      className={`w-[34px] h-[34px] sm:w-[24px] sm:h-[24px] py-1 px-0 rounded-full`}
+                      src={tokenImages[token]}
+                      alt="socials icons images"
+                      width={30}
+                      height={34}
+                    />
                   </li>
                 );
               })}
@@ -382,38 +391,43 @@ const ViewJobModal = ({
             </ul>
           )}
         </div>
-        <div className="flex gap-[18px] sm:flex-col sm:gap-[10px] justify-between sm:justify-start mb-[24px]">
-          <button
-            className={`${
-              data?.metadata.tags
-                ? `bg-[${tagColors[data?.metadata.tags[0]]}]`
-                : "bg-[#E4E4E7]"
-            } rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] flex-1 sm:px-[70px] sm:w-fit`}
-          >
-            {data?.metadata.tags ? data?.metadata.tags[0] : "Tag Name"}
-          </button>
-          <button
-            className={`${
-              data?.metadata.tags
-                ? `bg-[${tagColors[data?.metadata.tags[1]]}]`
-                : "bg-[#E4E4E7]"
-            } rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] flex-1 sm:px-[70px] sm:w-fit`}
-          >
-            {data?.metadata.tags ? data?.metadata.tags[1] : "Tag Name"}
-          </button>
-          <button
-            className={`${
-              data?.metadata.tags
-                ? `bg-[${tagColors[data?.metadata.tags[2]]}]`
-                : "bg-[#E4E4E7]"
-            } rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] flex-1 sm:px-[70px] sm:w-fit`}
-          >
-            {data?.metadata.tags ? data?.metadata.tags[2] : "Tag Name"}
-          </button>
+        <div className="flex gap-[18px] sm:flex-col sm:gap-[10px] sm:justify-start mb-[24px]">
+          {data?.metadata.tags?.slice(0, 3).map((tag, index) => {
+            if (tag !== "w3rk" && tag !== "job" && tag !== "service") {
+              return (
+                <button
+                  key={index}
+                  className={`${
+                    data?.metadata.tags
+                      ? `bg-[${tagColors[data?.metadata.tags[index]]}]`
+                      : "bg-[#E4E4E7]"
+                  } rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] w-[225px] sm:px-[70px] sm:w-fit cursor-default`}
+                >
+                  {data?.metadata.tags
+                    ? data?.metadata.tags[index]
+                    : "Tag Name"}
+                </button>
+              );
+            }
+          })}
         </div>
-        <button className="mx-auto w-fit py-[9px] px-[26px] tx-[18px] Sm:py-[8px] sm:px-[23px] tx-[14px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[9px] sm:rounded-[8px] font-semibold mb-[8px]">
-          Contact
-        </button>
+        {address && address === publication?.by.handle?.ownedBy ? (
+          <button
+            className="mx-auto w-fit py-[9px] px-[26px] tx-[18px] Sm:py-[8px] sm:px-[23px] tx-[14px] leading-[14.5px] text-white bg-[#FF5757] hover:bg-[#511515] rounded-[9px] sm:rounded-[8px] font-semibold mb-[8px]"
+            onClick={handleDelete}
+          >
+            Delete
+          </button>
+        ) : (
+          <Link
+            href={`/messages?handle=${publication?.by.handle?.localName}`}
+            className="mx-auto "
+          >
+            <button className="w-fit py-[9px] px-[26px] tx-[18px] Sm:py-[8px] sm:px-[23px] tx-[14px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[9px] sm:rounded-[8px] font-semibold mb-[8px]">
+              Contact
+            </button>
+          </Link>
+        )}
       </div>
     </div>
   );

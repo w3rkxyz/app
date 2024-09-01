@@ -536,7 +536,7 @@
   }
 
   .user-search-box {
-    width: calc(100% - 32px);
+    width: calc(100%);
   }
 
   .circle-div {

@@ -251,7 +251,7 @@ const Settings = () => {
           />
         </div>
         <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
-          <span className="leading-[14.52px] text-[14px] font-medium text-[#FF4B4B]">
+          <span className="leading-[14.52px] text-[14px] font-medium text-[black]">
             Job Title
           </span>
           <input
@@ -263,9 +263,12 @@ const Settings = () => {
           />
         </div>
         <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px]">
-          <span className="leading-[14.52px] text-[14px] font-medium text-[black]">
-            Bio
-          </span>
+          <div className="flex gap-[4px] items-center align-middle leading-[16.94px] text-[14px] font-medium">
+            <span className="leading-[14.52px] text-[14px] font-medium text-[black]">
+              Bio
+            </span>
+            <span className="text-[#F71919]">max. 260 characters</span>
+          </div>
           <textarea
             className="form-input rounded-[12px] p-[11px] h-[160px] border-[1px] border-[#E4E4E7] resize-none sm:w-full"
             placeholder="Add your bio"
@@ -287,7 +290,7 @@ const Settings = () => {
           />
         </div>
         <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
-          <span className="leading-[14.52px] text-[14px] font-medium text-[#FF4B4B]">
+          <span className="leading-[14.52px] text-[14px] font-medium text-[black]">
             Github
           </span>
           <input
@@ -299,7 +302,7 @@ const Settings = () => {
           />
         </div>
         <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
-          <span className="leading-[14.52px] text-[14px] font-medium text-[#FF4B4B]">
+          <span className="leading-[14.52px] text-[14px] font-medium text-[black]">
             Linkedin
           </span>
           <input

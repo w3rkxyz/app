@@ -199,7 +199,7 @@ const FindWork = () => {
 
         <div className="tags-section w-full flex sm:justify-center sm:flex-col md:flex-col md:items-start gap-[32px] mt-[30px] sm:mt-[16px]">
           <div
-            className="find-work-message-section w-[250px] flex-shrink-0 h-fit sm:h-auto md:h-auto sm:my-0 sm:py-0 bg-[#FFFFFF] sm:bg-transparent md:bg-transparent rounded-[20px] sm:rounded-[0px] p-[29px] sm:w-full sm:items-center gap-2 sm:whitespace-nowrap md:w-full md:flex md:items-center md:whitespace-nowrap overflow-x-auto sm:ml-[-20px]
+            className="find-work-message-section w-[270px] flex-shrink-0 h-fit sm:h-auto md:h-auto sm:my-0 sm:py-0 bg-[#FFFFFF] sm:bg-transparent md:bg-transparent rounded-[20px] sm:rounded-[0px] p-[29px] sm:w-full sm:items-center gap-2 sm:whitespace-nowrap md:w-full md:flex md:items-center md:whitespace-nowrap overflow-x-auto sm:ml-[-20px]
             border-[1px] border-[#E4E4E7] sm:hidden"
           >
             <h4 className="text-[20px] font-semibold font-secondary leading-[20px] tracking-[-1%] text-center pb-[24px] sm:pb-[10px] md:pb-[10px]">

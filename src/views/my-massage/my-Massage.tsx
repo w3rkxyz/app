@@ -14,22 +14,38 @@ import {
   useSession,
   SessionType,
   useProfiles,
+  useProfile,
   profileId,
+  Session,
 } from "@lens-protocol/react-web";
 import toast from "react-hot-toast"; // Get the keys using a valid Signer. Save them somewhere secure.
 import { useEthersSigner } from "@/utils/getSigner";
 import moment from "moment";
-import getLensProfileData from "@/utils/getLensProfile";
+import getLensProfileData, { UserProfile } from "@/utils/getLensProfile";
 import Link from "next/link";
-
-// interface Message {
-//   id: number;
-//   sender: string;
-//   text: string;
-//   time: string;
-// }
+import { loadKeys, storeKeys } from "@/utils/xmtpHelpers";
+import { useAccount } from "wagmi";
+import { useSearchParams } from "next/navigation";
+import ConversationSkeleton from "@/components/reusable/ConversationSkeleton";
 
 const PREFIX = "lens.dev/dm";
+
+interface ConversationProp {
+  user: UserProfile;
+  conversation: Conversation;
+  lastMessage: string;
+  lastMessageTime: string | Date;
+}
+
+interface TempConversatioData {
+  conversation: Conversation;
+  lastMessage: string;
+  lastMessageTime: string | Date;
+}
+
+interface StringIndexedObject {
+  [key: string]: TempConversatioData;
+}
 
 const buildConversationId = (profileIdA: string, profileIdB: string) => {
   const profileIdAParsed = parseInt(profileIdA, 16);
@@ -39,59 +55,6 @@ const buildConversationId = (profileIdA: string, profileIdB: string) => {
     ? `${PREFIX}/${profileIdA}-${profileIdB}`
     : `${PREFIX}/${profileIdB}-${profileIdA}`;
 };
-
-// const placeholderMessages: Message[][] = [
-//   [
-//     {
-//       id: 1,
-//       sender: "me",
-//       time: "11:20am",
-//       text: "Hey! You’re really cool would like to connect asap!",
-//     },
-//     {
-//       id: 2,
-//       sender: "tom",
-//       time: "11:25am",
-//       text: `Hey! Really cool to see your service listing.
-// Would be great to connect and better understand your skill-sets...
-// When would you be available for a call?`,
-//     },
-//   ],
-//   [
-//     {
-//       id: 3,
-//       sender: "me",
-//       time: "12:20am",
-//       text: "How are you man!",
-//     },
-//     {
-//       id: 4,
-//       sender: "dan",
-//       time: "1:25am",
-//       text: `Doing great! What's up?`,
-//     },
-//   ],
-//   [
-//     {
-//       id: 5,
-//       sender: "me",
-//       time: "6:20am",
-//       text: "Good morning, we need to talk.",
-//     },
-//     {
-//       id: 6,
-//       sender: "emmanuel",
-//       time: "11:25am",
-//       text: `Hey...`,
-//     },
-//     {
-//       id: 7,
-//       sender: "emmanuel",
-//       time: "11:25am",
-//       text: `about what?`,
-//     },
-//   ],
-// ];
 
 function getOtherId(id: string, url: string): string {
   const ids = url.split("/").pop()?.split("-") || [];
@@ -103,15 +66,36 @@ function isConversationParticipant(id: string, url: string): boolean {
   return ids.includes(id);
 }
 
+const sortMessages = (messages: ConversationProp[]): ConversationProp[] => {
+  return messages.sort((a, b) => {
+    if (a.lastMessageTime === "") return 1; // Move empty to the end
+    if (b.lastMessageTime === "") return -1; // Move empty to the end
+    return (
+      new Date(b.lastMessageTime).getTime() -
+      new Date(a.lastMessageTime).getTime()
+    ); // Sort by most recent
+  });
+};
+
 const MyMessageOpenChat = () => {
+  const searchParams = useSearchParams();
+  const handle = searchParams.get("handle");
+  const { address } = useAccount();
+  let keys = loadKeys(address as string);
+  const [showSkeleleton, setShowSkeleton] = useState(keys !== undefined);
+  const [messagesEnabled, setMessagesEnabled] = useState(keys !== undefined);
   const { data: session, loading: sessionLoading } = useSession();
   const signer = useEthersSigner();
   const [chatUserIds, setChatUserIds] = useState<ProfileId[]>([]);
+  const { data: profile, loading: profileLoading } = useProfile({
+    forHandle: `lens/${handle}`,
+  });
   const { data: profiles } = useProfiles({
     where: {
       profileIds: chatUserIds,
     },
   });
+  const [loading, setLoading] = useState(false);
   const [profilesData, setProfilesData] = useState<
     {
       picture: string;
@@ -129,12 +113,13 @@ const MyMessageOpenChat = () => {
     []
   );
   const [inputMessage, setInputMessage] = useState("");
-  const [messagesEnabled, setMessagesEnabled] = useState(false);
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] =
     useState(false);
   const [selectedConversation, setSelectedConversation] = useState<
     number | null
   >(null);
+  const [activeConversationUserHandle, setActiveConversationUserHandle] =
+    useState<string>("");
   const [connectingXMTP, setConnectingXMTP] = useState(false);
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
   const [showMessagesMobile, setShowMessagesMobile] = useState(false);
@@ -145,50 +130,126 @@ const MyMessageOpenChat = () => {
   );
   const [latestMessage, setLatestMessage] = useState<string[]>([]);
   const [unactivatedUserProfile, setUnactivatedUserProfile] = useState<any>();
+  const [conversationData, setConversationData] =
+    useState<StringIndexedObject>();
+  const [conversations, setConversations] = useState<ConversationProp[] | []>(
+    []
+  );
+  const [contactProfile, setContactProfile] = useState<UserProfile | null>(
+    null
+  );
+  // const [conversationUpdateState, setConversationUpdateState] = useState(false);
+  // const clientOptions = { env: "production" };
 
-  const handleIncomingMessages = async (client: Client) => {
-    for await (const message of await client.conversations.streamAllMessages()) {
-      const conversations = await client.conversations.list();
-      var conversationsFilteredById: Conversation<string | undefined>[] = [];
-      var ids: ProfileId[] = [];
-      var dates: (Date | string)[] = [];
-      var recentMessage: string[] = [];
-      for (let i = 0; i < conversations.length; i++) {
-        const conversation = conversations[i];
-        if (
-          session?.type === SessionType.WithProfile &&
-          conversation.context?.conversationId
-        ) {
-          if (
-            isConversationParticipant(
-              session.profile.id,
-              conversation.context?.conversationId as string
-            )
-          ) {
-            conversationsFilteredById.push(conversation);
-            const otherUserID = getOtherId(
-              session.profile.id,
-              conversation.context?.conversationId as string
-            );
-            ids.push(profileId(otherUserID));
-            const lastMessage = await conversation.messages();
-            dates.push(
-              lastMessage && lastMessage.length > 0
-                ? lastMessage[lastMessage.length - 1].sent
-                : ""
-            );
-            recentMessage.push(
-              lastMessage && lastMessage.length > 0
-                ? (lastMessage[lastMessage.length - 1].content as string)
-                : ""
-            );
+  useEffect(() => {
+    let keys = loadKeys(address as string);
+    const initXMTP = async () => {
+      if (address) {
+        if (keys) {
+          const client = await Client.create(null, {
+            env: "production",
+            privateKeyOverride: keys,
+          });
+          setXmtp(client);
+          handleIncomingMessages(client);
+
+          if (session?.type === SessionType.WithProfile) {
+            processConversations(client, session);
+          }
+
+          const stream = await client.conversations.stream();
+          for await (const conversation of stream) {
+            console.log("This ran!");
+            const conversations = await client.conversations.list();
+            if (session?.type === SessionType.WithProfile) {
+              processConversations(client, session);
+            }
+            setSelectedConversation(conversations.length - 1);
           }
         }
       }
-      setLatestMessage(recentMessage);
-      setChatUserIds(ids);
-      setConversationDates(dates);
-      setMessages(conversationsFilteredById);
+    };
+    initXMTP();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [address]);
+
+  useEffect(() => {
+    console.log("Session updated");
+    if (profile) {
+      const profileData = getLensProfileData(profile);
+      setContactProfile(profileData);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile]);
+
+  const processConversations = async (client: Client, session: Session) => {
+    const conversations = await client.conversations.list();
+    var conversationsFilteredById: Conversation<string | undefined>[] = [];
+    var ids: ProfileId[] = [];
+    var dates: (Date | string)[] = [];
+    var recentMessage: string[] = [];
+    var dataById: StringIndexedObject = {};
+
+    console.log("Started running");
+
+    for (let i = 0; i < conversations.length; i++) {
+      const conversation = conversations[i];
+      if (
+        session?.type === SessionType.WithProfile &&
+        conversation.context?.conversationId
+      ) {
+        if (
+          isConversationParticipant(
+            session.profile.id,
+            conversation.context?.conversationId as string
+          )
+        ) {
+          conversationsFilteredById.push(conversation);
+          const otherUserID = getOtherId(
+            session.profile.id,
+            conversation.context?.conversationId as string
+          );
+          ids.push(profileId(otherUserID));
+          const lastMessage = await conversation.messages();
+          dates.push(
+            lastMessage && lastMessage.length > 0
+              ? lastMessage[lastMessage.length - 1].sent
+              : ""
+          );
+          recentMessage.push(
+            lastMessage && lastMessage.length > 0
+              ? (lastMessage[lastMessage.length - 1].content as string)
+              : ""
+          );
+          dataById[otherUserID] = {
+            lastMessageTime:
+              lastMessage && lastMessage.length > 0
+                ? lastMessage[lastMessage.length - 1].sent
+                : "",
+            lastMessage:
+              lastMessage && lastMessage.length > 0
+                ? (lastMessage[lastMessage.length - 1].content as string)
+                : "",
+            conversation: conversation,
+          };
+        }
+      }
+    }
+    setMessages(conversationsFilteredById);
+    setChatUserIds(ids);
+    setConversationDates(dates);
+    setLatestMessage(recentMessage);
+    setConversationData(dataById);
+    setShowSkeleton(false);
+    setMessagesEnabled(true);
+    // if (messagesEnabled) setConversationUpdateState(!conversationUpdateState);
+  };
+
+  const handleIncomingMessages = async (client: Client) => {
+    for await (const message of await client.conversations.streamAllMessages()) {
+      if (session?.type === SessionType.WithProfile) {
+        processConversations(client, session);
+      }
 
       const scrollableDiv = document.getElementById("scrollableDiv");
       const bottomMarker = document.getElementById("bottomMarker");
@@ -200,113 +261,72 @@ const MyMessageOpenChat = () => {
   const createXMTPClient = async () => {
     if (signer) {
       setConnectingXMTP(true);
-      const client = await Client.create(signer, { env: "production" });
+      let keys = loadKeys(address as string);
+      if (!keys) {
+        keys = await Client.getKeys(signer, {
+          env: "production",
+          skipContactPublishing: true,
+          persistConversations: false,
+        });
+        storeKeys(address as string, keys);
+      }
+      const client = await Client.create(null, {
+        env: "production",
+        privateKeyOverride: keys,
+      });
 
       console.log("reached here 1");
       handleIncomingMessages(client);
       console.log("reached here 2");
 
       setXmtp(client);
-      const conversations = await client.conversations.list();
-      var conversationsFilteredById: Conversation<string | undefined>[] = [];
-      var ids: ProfileId[] = [];
-      var dates: (Date | string)[] = [];
-      var recentMessage: string[] = [];
-      for (let i = 0; i < conversations.length; i++) {
-        const conversation = conversations[i];
-        if (
-          session?.type === SessionType.WithProfile &&
-          conversation.context?.conversationId
-        ) {
-          if (
-            isConversationParticipant(
-              session.profile.id,
-              conversation.context?.conversationId as string
-            )
-          ) {
-            conversationsFilteredById.push(conversation);
-            const otherUserID = getOtherId(
-              session.profile.id,
-              conversation.context?.conversationId as string
-            );
-            ids.push(profileId(otherUserID));
-            const lastMessage = await conversation.messages();
-            dates.push(
-              lastMessage && lastMessage.length > 0
-                ? lastMessage[lastMessage.length - 1].sent
-                : ""
-            );
-            recentMessage.push(
-              lastMessage && lastMessage.length > 0
-                ? (lastMessage[lastMessage.length - 1].content as string)
-                : ""
-            );
-            console.log(`Last Message ${i}: `, lastMessage);
-          }
-        }
+      if (session?.type === SessionType.WithProfile) {
+        processConversations(client, session);
       }
-      setMessages(conversationsFilteredById);
-      setChatUserIds(ids);
-      setConversationDates(dates);
-      setLatestMessage(recentMessage);
-      setMessagesEnabled(true);
-      setConnectingXMTP(false);
 
       const stream = await client.conversations.stream();
       for await (const conversation of stream) {
         console.log("This ran!");
         const conversations = await client.conversations.list();
-        var conversationsFilteredById: Conversation<string | undefined>[] = [];
-        var ids: ProfileId[] = [];
-        var dates: (Date | string)[] = [];
-        var recentMessage: string[] = [];
-        for (let i = 0; i < conversations.length; i++) {
-          const conversation = conversations[i];
-          if (
-            session?.type === SessionType.WithProfile &&
-            conversation.context?.conversationId
-          ) {
-            if (
-              isConversationParticipant(
-                session.profile.id,
-                conversation.context?.conversationId as string
-              )
-            ) {
-              conversationsFilteredById.push(conversation);
-              const otherUserID = getOtherId(
-                session.profile.id,
-                conversation.context?.conversationId as string
-              );
-              ids.push(profileId(otherUserID));
-              const lastMessage = await conversation.messages();
-              dates.push(
-                lastMessage && lastMessage.length > 0
-                  ? lastMessage[lastMessage.length - 1].sent
-                  : ""
-              );
-              recentMessage.push(
-                lastMessage && lastMessage.length > 0
-                  ? (lastMessage[lastMessage.length - 1].content as string)
-                  : ""
-              );
-            }
-          }
+        if (session?.type === SessionType.WithProfile) {
+          processConversations(client, session);
         }
-        setLatestMessage(recentMessage);
-        setChatUserIds(ids);
-        setConversationDates(dates);
-        setMessages(conversationsFilteredById);
         setSelectedConversation(conversations.length - 1);
       }
     }
   };
 
-  const openConversation = async (index: number) => {
-    const conversationMessages = await messages[index].messages();
+  const updateMessages = async () => {
+    if (xmtp) {
+      if (session?.type === SessionType.WithProfile) {
+        processConversations(xmtp, session);
+      }
+    }
+  };
+
+  // const openConversation = async (index: number) => {
+  //   const conversationMessages = await messages[index].messages();
+  //   setActiveMessages(conversationMessages);
+  //   setSelectedConversation(index);
+
+  //   for await (const message of await messages[index].streamMessages()) {
+  //     setActiveMessages((prevMessages) => {
+  //       const updatedMessages = [...prevMessages, message];
+  //       return updatedMessages;
+  //     });
+  //   }
+  // };
+
+  const openConversation = async (
+    conversation: ConversationProp,
+    index: number
+  ) => {
+    const conversationMessages = await conversation.conversation.messages();
     setActiveMessages(conversationMessages);
     setSelectedConversation(index);
+    setActiveConversationUserHandle(conversation.user.handle);
 
-    for await (const message of await messages[index].streamMessages()) {
+    for await (const message of await conversation.conversation.streamMessages()) {
       setActiveMessages((prevMessages) => {
         const updatedMessages = [...prevMessages, message];
         return updatedMessages;
@@ -340,10 +360,8 @@ const MyMessageOpenChat = () => {
   }, [isContractModalOpen]);
 
   const handleSendMessage = () => {
-    console.log("Sending a message");
     if (inputMessage.trim() !== "" && selectedConversation !== null) {
-      console.log("got here");
-      messages[selectedConversation].send(inputMessage, {
+      conversations[selectedConversation].conversation.send(inputMessage, {
         timestamp: new Date(),
       });
       setInputMessage("");
@@ -391,7 +409,7 @@ const MyMessageOpenChat = () => {
   };
 
   useEffect(() => {
-    console.log("Started running");
+    console.log("Profiles useEffect ran");
     if (profiles) {
       var temp: {
         picture: string;
@@ -403,16 +421,44 @@ const MyMessageOpenChat = () => {
         id: any;
         userLink: any;
       }[] = [];
+      var allConversations: ConversationProp[] = [];
       profiles.map((profile) => {
-        console.log("Profile: ", profile);
         var data = getLensProfileData(profile);
-        console.log("Data: ", data);
         temp.push(data);
+        if (conversationData) {
+          var conversation: ConversationProp = {
+            user: data,
+            conversation: conversationData[profile.id].conversation,
+            lastMessage: conversationData[profile.id].lastMessage,
+            lastMessageTime: conversationData[profile.id].lastMessageTime,
+          };
+          allConversations.push(conversation);
+        }
       });
-      console.log("Temo: ", temp);
+      const sortedConversations = sortMessages(allConversations);
+      console.log("Sorted: ", sortedConversations);
       setProfilesData(temp);
+      setConversations(sortedConversations);
+      if (!messagesEnabled) {
+        setMessagesEnabled(true);
+        setConnectingXMTP(false);
+      }
+      if (contactProfile !== null) {
+        for (let index = 0; index < sortedConversations.length; index++) {
+          const conversation = sortedConversations[index];
+          if (conversation.user.userLink === contactProfile.userLink) {
+            openConversation(conversation, index);
+            return;
+          }
+        }
+
+        if (profile) {
+          handleNewConversation(profile);
+        }
+      }
     }
-  }, [profiles]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profiles, conversationDates]);
 
   useEffect(() => {
     const scrollableDiv = document.getElementById("scrollableDiv");
@@ -451,65 +497,60 @@ const MyMessageOpenChat = () => {
                 showMessagesMobile ? "sm:flex" : "sm:hidden"
               } flex-col gap-[5px] mt-[8px]`}
             >
-              {profilesData.map((message, index) => {
-                return (
-                  <div
-                    key={index}
-                    className={`p-[8px] w-full ${
-                      selectedConversation === index
-                        ? "bg-[#E4E4E7]"
-                        : "bg-[#FAFAFA]"
-                    } rounded-[8px] cursor-pointer`}
-                    onClick={() => openConversation(index)}
-                  >
-                    <div className="flex justify-between align-top mb-[6px]">
-                      <div className="flex gap-[10px]">
-                        <img
-                          src={
-                            profiles &&
-                            profilesData[index] &&
-                            profilesData[index].picture !== ""
-                              ? profilesData[index].picture
-                              : "/images/paco.svg"
-                          }
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src =
-                              "/images/paco.svg";
-                          }}
-                          className="rounded-[8px]"
-                          alt="paco pic"
-                          width={40}
-                          height={40}
-                        />
-                        <div className="flex flex-col gap-[5px] sm:gap-[1px] pt-[5px]">
-                          <span className="text-[14px] leading-[16.94px] font-medium">
-                            {profiles &&
-                            profilesData[index] &&
-                            profilesData[index].displayName !== ""
-                              ? profilesData[index].displayName
-                              : "Display Name"}
-                          </span>
-                          <span className="text-[14px] leading-[16.94px] font-medium text-[#707070]">
-                            {profiles &&
-                            profilesData[index] &&
-                            profilesData[index].handle !== ""
-                              ? profilesData[index].handle
-                              : "@lenshandle"}
+              {showSkeleleton
+                ? [0, 1, 2, 3, 4, 5].map((item) => {
+                    return <ConversationSkeleton key={item} />;
+                  })
+                : conversations.length > 0 &&
+                  conversations.map((conversation, index) => {
+                    return (
+                      <div
+                        key={index}
+                        className={`p-[8px] w-full ${
+                          selectedConversation === index
+                            ? "bg-[#E4E4E7]"
+                            : "bg-[#FAFAFA]"
+                        } rounded-[8px] cursor-pointer`}
+                        onClick={() => openConversation(conversation, index)}
+                      >
+                        <div className="flex justify-between align-top mb-[6px]">
+                          <div className="flex gap-[10px]">
+                            <img
+                              src={conversation.user.picture}
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src =
+                                  "/images/paco.svg";
+                              }}
+                              className="rounded-[8px]"
+                              alt="paco pic"
+                              width={40}
+                              height={40}
+                            />
+                            {/* <Image 
+                        /> */}
+                            <div className="flex flex-col gap-[5px] sm:gap-[1px] pt-[5px]">
+                              <span className="text-[14px] leading-[16.94px] font-medium">
+                                {conversation.user.displayName}
+                              </span>
+                              <span className="text-[14px] leading-[16.94px] font-medium text-[#707070]">
+                                {conversation.user.handle}
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-[#707070] leading-[12.1px] text-[12px] font-semibold">
+                            {conversationDates[index] !== ""
+                              ? moment(conversation.lastMessageTime).format(
+                                  "h:mmA"
+                                )
+                              : ""}
                           </span>
                         </div>
+                        <p className="line-clamp-1 text-[11px] sm:text-[10px] text-[#000000] leading-[12px] font-medium">
+                          {conversation.lastMessage}
+                        </p>
                       </div>
-                      <span className="text-[#707070] leading-[12.1px] text-[12px] font-semibold">
-                        {conversationDates[index] !== ""
-                          ? moment(conversationDates[index]).format("h:mmA")
-                          : ""}
-                      </span>
-                    </div>
-                    <p className="line-clamp-1 text-[11px] sm:text-[10px] text-[#000000] leading-[12px] font-medium">
-                      {latestMessage[index]}
-                    </p>
-                  </div>
-                );
-              })}
+                    );
+                  })}
             </div>
             <div className="flex items-center justify-center h-full">
               <div className="hidden sm:flex flex-col gap-[11px] justify-center items-center">
@@ -648,10 +689,10 @@ const MyMessageOpenChat = () => {
               />
               <div className="flex gap-[10px]">
                 <Link
-                  href={`/other-user-follow/?handle=${profilesData[selectedConversation].userLink}`}
+                  href={`/other-user-follow/?handle=${conversations[selectedConversation].user.userLink}`}
                 >
                   <Image
-                    src={profilesData[selectedConversation].picture}
+                    src={conversations[selectedConversation].user.picture}
                     alt="paco pic"
                     width={43}
                     height={43}
@@ -660,16 +701,10 @@ const MyMessageOpenChat = () => {
                 </Link>
                 <div className="flex flex-col gap-[2px] pt-[5px]">
                   <span className="text-[14px] leading-[16.94px] font-medium">
-                    {profiles &&
-                    profilesData[selectedConversation].displayName !== ""
-                      ? profilesData[selectedConversation].displayName
-                      : "Display Name"}
+                    {conversations[selectedConversation].user.displayName}
                   </span>
                   <span className="text-[14px] leading-[16.94px] font-medium text-[#707070]">
-                    {profiles &&
-                    profilesData[selectedConversation].handle !== ""
-                      ? profilesData[selectedConversation].handle
-                      : "@lenshandle"}
+                    {conversations[selectedConversation].user.handle}
                   </span>
                 </div>
               </div>

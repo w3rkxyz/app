@@ -65,6 +65,19 @@ const categories = [
   },
 ];
 
+const tagColors: any = {
+  "Blockchain Development": "#FFC2C2",
+  "Programming & Development": "#FFD8C2",
+  Design: "#FFF2C2",
+  Marketing: "#EFFFC2",
+  "Admin Support": "#C2FFC5",
+  "Customer Service": "#C2FFFF",
+  "Security & Auditing": "#C2CCFF",
+  "Consulting & Advisory": "#D9C2FF",
+  "Community Building": "#FAC2FF",
+  Other: "#E4E4E7",
+};
+
 const tokens = [
   { text: "Bitcoin (BTC)", image: "/images/btc.svg" },
   { text: "Ethereum (ETH)", image: "/images/eth.svg" },
@@ -393,7 +406,7 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
             />
           </div>
         </div>
-        <div className="w-[100px] sm:w-full mb-[16px]">
+        <div className="w-[110px] sm:w-full mb-[16px]">
           <span className="leading-[14.52px] text-[14px] font-medium text-[black]">
             {type === "job" ? "Paid In" : "Tokens Accepted"}
           </span>
@@ -405,9 +418,25 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
             }}
             ref={tokenModalRef}
           >
-            <span className="font-normal leading-[14.52px] text-[12px] text-[#707070]">
-              Select Tokens
-            </span>
+            {selectedTokens.length > 0 ? (
+              <span className="flex gap-[3px]">
+                {selectedTokens.map((tokenIndex) => {
+                  return (
+                    <Image
+                      src={tokens[tokenIndex].image}
+                      alt="token icon"
+                      width={20}
+                      height={20}
+                      key={tokenIndex}
+                    />
+                  );
+                })}
+              </span>
+            ) : (
+              <span className="font-normal leading-[14.52px] text-[12px] text-[#707070]">
+                Select Tokens
+              </span>
+            )}
             <Image
               src="/images/drop-down.svg"
               alt="drop-down icon"
@@ -451,14 +480,14 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
           Select Tags
         </span>
         <div className="flex sm:flex-col sm:gap-[10px] justify-between sm:justify-start mb-[24px]">
-          {[1, 2, 3].map((id, buttonIndex) => (
-            <button
-              key={id}
-              className="rounded-[8px] border-[1px] border-[#E4E4E7] px-[9px] py-[10px] flex justify-between items-center w-[200px] relative"
-              onClick={() => handleTagClick(id)}
-              ref={(el) => (tagModalRefs.current[id] = el)}
-            >
-              {tags[buttonIndex] === "" ? (
+          {[1, 2, 3].map((id, buttonIndex) =>
+            tags[buttonIndex] === "" ? (
+              <button
+                key={id}
+                className="rounded-[8px] border-[1px] border-[#E4E4E7] px-[9px] py-[10px] flex justify-between items-center w-[200px] relative"
+                onClick={() => handleTagClick(id)}
+                ref={(el) => (tagModalRefs.current[id] = el)}
+              >
                 <>
                   <span className="font-normal leading-[14.52px] text-[12px] text-[#707070]">
                     Add Tag
@@ -470,36 +499,67 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
                     height={12}
                   />
                 </>
-              ) : (
-                <span className="font-normal leading-[14.52px] text-[12px] text-[#707070]">
+                <div
+                  className={`find-work-message-section w-[200px] bg-[#FFFFFF] rounded-[8px] p-[20px] sm:items-center gap-[3px] absolute top-[-381px] sm:top-[-478px] left-0
+            border-[1px] border-[#E4E4E7] ${
+              selectedTag === id ? "flex" : "hidden"
+            } flex-col z-[999]`}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {categories.map((button, index) => (
+                    <MyButton
+                      key={index}
+                      buttonText={button.buttonText}
+                      buttonType="dropdown"
+                      buttonStyles={`${button.buttonStyles} ${
+                        selectedCategories?.includes(index)
+                          ? "border-[1px] border-black"
+                          : ""
+                      }`}
+                      action={() => {
+                        onCLickCategory(index, buttonIndex);
+                      }}
+                    />
+                  ))}
+                </div>
+              </button>
+            ) : (
+              <>
+                <button
+                  className={`${`bg-[${
+                    tagColors[tags[buttonIndex]]
+                  }]`} rounded-[8px] text-[12px] font-semibold w-[200px] px-[9px] py-[10px] flex justify-center items-center relative`}
+                  onClick={() => handleTagClick(id)}
+                  ref={(el) => (tagModalRefs.current[id] = el)}
+                >
                   {tags[buttonIndex]}
-                </span>
-              )}
-              <div
-                className={`find-work-message-section w-[200px] bg-[#FFFFFF] rounded-[8px] p-[20px] sm:items-center gap-[3px] absolute top-[-381px] sm:top-[-478px] left-0
+                  <div
+                    className={`find-work-message-section w-[200px] bg-[#FFFFFF] rounded-[8px] p-[20px] sm:items-center gap-[3px] absolute top-[-381px] sm:top-[-478px] left-0
               border-[1px] border-[#E4E4E7] ${
                 selectedTag === id ? "flex" : "hidden"
               } flex-col z-[999]`}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {categories.map((button, index) => (
-                  <MyButton
-                    key={index}
-                    buttonText={button.buttonText}
-                    buttonType="dropdown"
-                    buttonStyles={`${button.buttonStyles} ${
-                      selectedCategories?.includes(index)
-                        ? "border-[1px] border-black"
-                        : ""
-                    }`}
-                    action={() => {
-                      onCLickCategory(index, buttonIndex);
-                    }}
-                  />
-                ))}
-              </div>
-            </button>
-          ))}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {categories.map((button, index) => (
+                      <MyButton
+                        key={index}
+                        buttonText={button.buttonText}
+                        buttonType="dropdown"
+                        buttonStyles={`${button.buttonStyles} ${
+                          selectedCategories?.includes(index)
+                            ? "border-[1px] border-black"
+                            : ""
+                        }`}
+                        action={() => {
+                          onCLickCategory(index, buttonIndex);
+                        }}
+                      />
+                    ))}
+                  </div>
+                </button>
+              </>
+            )
+          )}
         </div>
         <button
           className="mx-auto w-fit py-[8px] px-[23px] tx-[14px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px]"

@@ -8,6 +8,7 @@ import { LoginForm } from "../common/header/loginForm";
 import { useAccount, useDisconnect } from "wagmi";
 import { useDispatch } from "react-redux";
 import { displayLoginModal } from "@/redux/app";
+import { wipeKeys } from "@/utils/xmtpHelpers";
 
 const ProfileDropdown = ({ handle }: { handle?: HandleInfo }) => {
   const { execute: logout, loading } = useLogout();
@@ -16,8 +17,10 @@ const ProfileDropdown = ({ handle }: { handle?: HandleInfo }) => {
 
   const handleLogOut = async () => {
     if (handle) {
+      console.log(handle.ownedBy);
       await logout();
       disconnect();
+      wipeKeys(handle.ownedBy);
       window.location.href = "/";
     }
   };
@@ -26,6 +29,7 @@ const ProfileDropdown = ({ handle }: { handle?: HandleInfo }) => {
     if (handle) {
       dispatch(displayLoginModal({ display: true }));
       logout();
+      wipeKeys(handle.ownedBy);
     }
   };
 

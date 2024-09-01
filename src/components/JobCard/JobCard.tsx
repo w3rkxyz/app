@@ -59,7 +59,6 @@ const JobCard = ({
   var profileData;
   if (data) {
     profileData = getLensProfileData(data?.by);
-    console.log("Profile: ", profileData);
   }
 
   return (
@@ -152,33 +151,22 @@ wanna run over the limit. User information can go here along... service
 offered information, total character limit will have to be`}
       </p>
       <div className="flex sm:flex-col gap-[15px] sm:gap-[10px]">
-        <button
-          className={`${
-            data?.metadata.tags
-              ? `bg-[${tagColors[data?.metadata.tags[0]]}]`
-              : "bg-[#E4E4E7]"
-          } rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] px-[70px] sm:px-0 sm:w-[190px] sm:flex sm:justify-center`}
-        >
-          {data?.metadata.tags ? data?.metadata.tags[0] : "Tag Name"}
-        </button>
-        <button
-          className={`${
-            data?.metadata.tags
-              ? `bg-[${tagColors[data?.metadata.tags[1]]}]`
-              : "bg-[#E4E4E7]"
-          } rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] px-[70px] sm:px-0 sm:w-[190px] sm:flex sm:justify-center`}
-        >
-          {data?.metadata.tags ? data?.metadata.tags[1] : "Tag Name"}
-        </button>
-        <button
-          className={`${
-            data?.metadata.tags
-              ? `bg-[${tagColors[data?.metadata.tags[2]]}]`
-              : "bg-[#E4E4E7]"
-          } rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] px-[70px] sm:px-0 sm:w-[190px] sm:flex sm:justify-center`}
-        >
-          {data?.metadata.tags ? data?.metadata.tags[2] : "Tag Name"}
-        </button>
+        {data?.metadata.tags?.slice(0, 3).map((tag, index) => {
+          if (tag !== "w3rk" && tag !== "job" && tag !== "service") {
+            return (
+              <button
+                key={index}
+                className={`${
+                  data?.metadata.tags
+                    ? `bg-[${tagColors[data?.metadata.tags[index]]}]`
+                    : "bg-[#E4E4E7]"
+                } rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] w-[200px] sm:px-0 sm:w-[190px] sm:flex sm:justify-center min-w-[200px]`}
+              >
+                {data?.metadata.tags ? data?.metadata.tags[index] : "Tag Name"}
+              </button>
+            );
+          }
+        })}
       </div>
     </div>
   );

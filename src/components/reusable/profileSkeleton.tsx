@@ -30,21 +30,21 @@ const ProfileSkeleton = () => {
             <Skeleton
               className="w-full h-[19px]"
               baseColor="#E4E4E7"
-              borderRadius={"12px"}
+              borderRadius={"5px"}
             />
           </h3>
           <span className="text-[#707070] leading-[16.94px] text-[14px] font-medium mb-[12px] sm:mb-[20px]">
             <Skeleton
               className="w-full h-[16.94px]"
               baseColor="#E4E4E7"
-              borderRadius={"12px"}
+              borderRadius={"5px"}
             />
           </span>
           <h3 className="leading-[19px] text-[16px] font-semibold mt-[10px] mb-[12px] sm:mt-[6px]">
             <Skeleton
               className="w-full h-[19px]"
               baseColor="#E4E4E7"
-              borderRadius={"12px"}
+              borderRadius={"5px"}
             />
           </h3>
           <div className="flex gap-[4px] leading-[16.94px] text-[14px] font-medium">
@@ -55,7 +55,7 @@ const ProfileSkeleton = () => {
             <Skeleton
               className="w-full h-[50px]"
               baseColor="#E4E4E7"
-              borderRadius={"12px"}
+              borderRadius={"5px"}
             />
           </p>
 
@@ -64,7 +64,7 @@ const ProfileSkeleton = () => {
               <Skeleton
                 className="w-full h-[16.94px]"
                 baseColor="#E4E4E7"
-                borderRadius={"12px"}
+                borderRadius={"5px"}
               />
               <span className="leading-[16.94px] text-[14px] font-medium text-[#707070]">
                 Following
@@ -74,7 +74,7 @@ const ProfileSkeleton = () => {
               <Skeleton
                 className="w-full h-[16.94px]"
                 baseColor="#E4E4E7"
-                borderRadius={"12px"}
+                borderRadius={"5px"}
               />
               <span className="leading-[16.94px] text-[14px] font-medium text-[#707070]">
                 Followers
@@ -121,9 +121,10 @@ const ProfileSkeleton = () => {
                 height={24}
               />
               <Skeleton
-                className="w-full h-[16.94px]"
+                className="h-full"
+                width={"200px"}
                 baseColor="#E4E4E7"
-                borderRadius={"12px"}
+                borderRadius={"4px"}
               />
             </div>
             <div className="flex gap-[14.2px] items-center pl-[3.2px]">
@@ -134,9 +135,10 @@ const ProfileSkeleton = () => {
                 height={24}
               />
               <Skeleton
-                className="w-full h-[16.94px]"
+                className="h-full"
+                width={"200px"}
                 baseColor="#E4E4E7"
-                borderRadius={"12px"}
+                borderRadius={"4px"}
               />
             </div>
             <div className="flex gap-[12.7px] items-center">
@@ -147,9 +149,10 @@ const ProfileSkeleton = () => {
                 height={15.3}
               />
               <Skeleton
-                className="w-full h-[16.94px]"
+                className="h-full"
+                width={"200px"}
                 baseColor="#E4E4E7"
-                borderRadius={"12px"}
+                borderRadius={"4px"}
               />
             </div>
           </div>

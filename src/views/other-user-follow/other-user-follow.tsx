@@ -19,6 +19,7 @@ import getLensProfileData from "@/utils/getLensProfile";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import { useSearchParams } from "next/navigation";
+import ProfileSkeleton from "@/components/reusable/profileSkeleton";
 
 // export const dynamic = "force-dynamic";
 
@@ -29,7 +30,7 @@ const OtherUserFollow = () => {
   const [profileId, setProfileId] = useState<ProfileId[]>();
   const [data, setData] = useState<any[]>([]);
   console.log("userID: ", id);
-  const { data: profile } = useProfile({
+  const { data: profile, loading: profileLoading } = useProfile({
     forHandle: `lens/${id}`,
   });
   const { data: session } = useSession();
@@ -119,11 +120,11 @@ const OtherUserFollow = () => {
           profileData.picture !== ""
             ? profileData.picture
             : "/images/paco-square.svg",
-        following: profile ? profile.stats.following : 100,
+        following: profile ? profile.stats.following.toLocaleString() : 100,
         jobTitle: profileData.attributes["job title"]
           ? profileData.attributes["job title"]
           : "Job Title",
-        followers: profile ? profile.stats.followers : 75,
+        followers: profile ? profile.stats.followers.toLocaleString() : 75,
         about: profileData.bio ? profileData.bio : userData.about,
         website: profileData.attributes.website
           ? profileData.attributes.website
@@ -157,7 +158,9 @@ const OtherUserFollow = () => {
     }
   }, [publications]);
 
-  return (
+  return profileLoading ? (
+    <ProfileSkeleton />
+  ) : (
     <div className="px-[156px] sm:px-[16px] pt-[110px] sm:pt-[122px] sm:w-full mb-[40px]">
       <div className="absolute w-full mx-0 left-0 top-156px sm:top-[79px] px-[156px] sm:px-[16px] -z-40">
         <div
@@ -325,7 +328,7 @@ const OtherUserFollow = () => {
               Posts
             </button>
           </div>
-          <div className="border-[1px] border-[#E4E4E7] rounded-[16px] p-[16px] flex flex-col gap-[16px] sm:mb-[14px]">
+          <div className="border-[1px] border-[#E4E4E7] rounded-[16px] p-[16px] flex flex-col gap-[16px] sm:mb-[14px] min-h-[430px]">
             {loading ? (
               <>
                 <Skeleton
@@ -367,26 +370,18 @@ const OtherUserFollow = () => {
                 }
               })
             ) : (
-              <>
-                <JobCard
-                  userAvatar="/images/head-2.svg"
-                  username="adam.lens"
-                  jobName="Post Title"
-                  jobIcon="/images/bag.svg"
-                  onCardClick={handleOpenCardModal}
-                  setType={setCardType}
-                  type="service"
+              <div className="h-[460px] w-full flex flex-col gap-[11px] justify-center items-center">
+                <Image
+                  src="/images/case-grey.svg"
+                  alt="job post icon"
+                  color="black"
+                  width={24}
+                  height={21}
                 />
-                <JobCard
-                  userAvatar="/images/head-2.svg"
-                  username="adam.lens"
-                  jobName="Post Title"
-                  jobIcon="/images/bag.svg"
-                  onCardClick={handleOpenCardModal}
-                  setType={setCardType}
-                  type="job"
-                />
-              </>
+                <span className="leading-[16.94px] max-w-[280px] text-center text-[16px] font-semibold text-[#707070]">
+                  User has no job/service posts yet
+                </span>
+              </div>
             )}
           </div>
         </div>
