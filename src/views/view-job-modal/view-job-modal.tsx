@@ -69,10 +69,6 @@ const ViewJobModal = ({
       if (attribute.key === "paid in") {
         tokens = splitTokens(attribute.value);
       }
-      console.log(tokens);
-      if (data && data.metadata.__typename === "TextOnlyMetadataV3") {
-        console.log("Content: ", data?.metadata?.content);
-      }
     });
   }
 

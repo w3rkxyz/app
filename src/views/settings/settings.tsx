@@ -48,7 +48,7 @@ const Settings = () => {
           ? profileData.attributes["job title"]
           : "",
         bio: profileData.bio,
-        X: profileData.attributes.X ? profileData.attributes.X : "",
+        X: profileData.attributes.x ? profileData.attributes.x : "",
         github: profileData.attributes.github
           ? profileData.attributes.github
           : "",
@@ -130,7 +130,7 @@ const Settings = () => {
         type: MetadataAttributeType.STRING,
       },
       {
-        key: "X",
+        key: "x",
         value: formState.X,
         type: MetadataAttributeType.STRING,
       },

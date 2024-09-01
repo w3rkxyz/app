@@ -54,7 +54,11 @@ const FindWork = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [data, setData] = useState<any[]>([]);
-  const { data: publications } = usePublications({
+  const {
+    data: publications,
+    hasMore,
+    loading: publicationsLoading,
+  } = usePublications({
     where: {
       metadata: {
         publishedOn: [appId(process.env.NEXT_PUBLIC_APP_ID as string)],
@@ -104,8 +108,12 @@ const FindWork = () => {
   };
 
   useEffect(() => {
+    console.log("There was an update");
+    console.log(hasMore);
     if (publications) {
-      setData(publications);
+      setData(
+        publications.filter((publication) => publication.isHidden === false)
+      );
       console.log("Publications: ", publications);
       setLoading(false);
     }
@@ -122,6 +130,10 @@ const FindWork = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchResults]);
+
+  useEffect(() => {
+    console.log("Test");
+  }, []);
 
   return (
     <div className="find-work-section pt-[82px] md:pt-[120px] sm:pt-[60px] mb-[99px] sm:mb-10">

@@ -118,7 +118,7 @@ const Profile = () => {
         location: profileData.attributes.location
           ? profileData.attributes.location
           : "",
-        X: profileData.attributes.X ? profileData.attributes.X : "",
+        X: profileData.attributes.x ? profileData.attributes.x : "",
         github: profileData.attributes.github
           ? profileData.attributes.github
           : "",
@@ -126,6 +126,7 @@ const Profile = () => {
           ? profileData.attributes.linkedin
           : "",
       };
+      console.log("Handle: ", handle);
       setUserData(handle);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -133,7 +134,9 @@ const Profile = () => {
 
   useEffect(() => {
     if (publications) {
-      setData(publications);
+      setData(
+        publications.filter((publication) => publication.isHidden === false)
+      );
       setLoading(false);
     }
   }, [publications]);
@@ -293,7 +296,7 @@ const Profile = () => {
               </button>
             </div>
           </div>
-          <div className="border-[1px] border-[#E4E4E7] rounded-[16px] p-[16px] flex flex-col gap-[16px] sm:mb-[14px]">
+          <div className="border-[1px] border-[#E4E4E7] rounded-[16px] p-[16px] flex flex-col gap-[16px] sm:mb-[14px] min-h-[430px]">
             {loading ? (
               <>
                 <Skeleton
@@ -307,7 +310,7 @@ const Profile = () => {
                   borderRadius={"12px"}
                 />
               </>
-            ) : publications && publications.length > 0 ? (
+            ) : publications && data.length > 0 ? (
               data.map((publication, index) => {
                 if (publication.__typename === "Post") {
                   var attributes: any = {};

@@ -132,7 +132,7 @@ const OtherUserFollow = () => {
         location: profileData.attributes.location
           ? profileData.attributes.location
           : "Location",
-        X: profileData.attributes.X ? profileData.attributes.X : "",
+        X: profileData.attributes.x ? profileData.attributes.x : "",
         github: profileData.attributes.github
           ? profileData.attributes.github
           : "",
