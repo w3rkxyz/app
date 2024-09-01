@@ -35,7 +35,8 @@
     "react-loading-skeleton": "^3.4.0",
     "react-redux": "^9.1.2",
     "viem": "^2.10.1",
-    "wagmi": "^2.8.1"
+    "wagmi": "^2.8.1",
+    "webpack": "^5.94.0"
   },
   "author": "zakir",
   "devDependencies": {
