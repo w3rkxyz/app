@@ -88,11 +88,15 @@ const FindWork = () => {
   };
 
   const handleCloseModal = () => {
+    // document.documentElement.style.paddingRight = "";
     setIsModalOpen(false);
   };
 
   const handleOpenModal = (publication?: any) => {
     if (publication) setSelectedPublication(publication);
+    const scrollbarWidth =
+      window.innerWidth - document.documentElement.clientWidth;
+    // document.documentElement.style.paddingRight = `${scrollbarWidth}px`;
     setIsModalOpen(true);
   };
 
@@ -137,7 +141,7 @@ const FindWork = () => {
   }, []);
 
   return (
-    <div className="find-work-section pt-[82px] md:pt-[120px] sm:pt-[60px] mb-[99px] sm:mb-10">
+    <div className="find-work-section pt-[82px] md:pt-[120px] sm:pt-[60px] mb-[20px]">
       <div className="custom-container">
         <div className="flex sm:flex-col md:flex-col justify-between items-center mt-[30px]  sm:items-start sm:gap-[16px] relative">
           <h2 className="section-title text-center sm:text-start text-[32px] sm:text-[20px] font-semibold font-secondary leading-[20px] tracking-[-4%]">
@@ -210,12 +214,12 @@ const FindWork = () => {
           </div>
         </div>
 
-        <div className="tags-section w-full flex sm:justify-center sm:flex-col md:flex-col md:items-start gap-[32px] mt-[30px] sm:mt-[16px]">
+        <div className="tags-section w-full flex sm:justify-center sm:flex-col md:flex-col md:items-start gap-[45px] mt-[50px] sm:mt-[16px]">
           <div
-            className="find-work-message-section w-[270px] flex-shrink-0 h-fit sm:h-auto md:h-auto sm:my-0 sm:py-0 bg-[#FFFFFF] sm:bg-transparent md:bg-transparent rounded-[20px] sm:rounded-[0px] p-[29px] sm:w-full sm:items-center gap-2 sm:whitespace-nowrap md:w-full md:flex md:items-center md:whitespace-nowrap overflow-x-auto sm:ml-[-20px]
+            className="find-work-message-section w-[300px] flex-shrink-0 h-fit sm:h-auto md:h-auto sm:my-0 sm:py-0 bg-[#FFFFFF] sm:bg-transparent md:bg-transparent rounded-[20px] sm:rounded-[0px] p-[29px] pt-[32px] sm:w-full sm:items-center gap-2 sm:whitespace-nowrap md:w-full md:flex md:items-center md:whitespace-nowrap overflow-x-auto sm:ml-[-20px]
             border-[1px] border-[#E4E4E7] sm:hidden"
           >
-            <h4 className="text-[20px] font-semibold font-secondary leading-[20px] tracking-[-1%] text-center pb-[24px] sm:pb-[10px] md:pb-[10px]">
+            <h4 className="text-[20px] font-semibold font-secondary leading-[20px] tracking-[-1%] text-center pb-[34px] sm:pb-[10px] md:pb-[10px]">
               Categories
             </h4>
 
@@ -316,7 +320,7 @@ const FindWork = () => {
         </div>
       </div>
       {isModalOpen && (
-        <div className="fixed inset-0 z-[99991] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center sm:items-end cursor-auto">
+        <div className="fixed h-screen w-screen overflow-hidden inset-0 z-[99991] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center sm:items-end cursor-auto">
           <div className="w-full flex justify-center sm:just align-middle sm:align-bottom">
             <ViewJobModal
               handleCloseModal={handleCloseModal}

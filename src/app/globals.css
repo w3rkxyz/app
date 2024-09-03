@@ -36,6 +36,7 @@
   html {
     scroll-behavior: smooth;
     font-family: "Inter", sans-serif;
+    padding-left: calc(100vw - 100%);
   }
 
   input,
@@ -56,8 +57,6 @@
     background-color: #fafafa;
     font-family: "Inter", sans-serif;
     box-sizing: border-box;
-    overflow: hidden;
-    overflow-y: scroll;
     font-weight: 500;
   }
 
@@ -154,7 +153,7 @@
 
 @layer components {
   .navbar-nav .navbar-nav-items a {
-    @apply font-primary text-[15px] font-medium leading-[16.94px] text-center;
+    @apply font-primary text-[15px] font-normal leading-[16.94px] text-center;
   }
 
   .nav-center {

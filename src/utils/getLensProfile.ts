@@ -78,7 +78,7 @@ const getLensProfileData = (profile: Profile) => {
     picture = `https://api.hey.xyz/avatar?id=${profile.id}`;
 
     // display Name
-    displayName = profile.handle ? profile.handle.localName : "";
+    displayName = "";
 
     //  handle
     handle = profile.handle ? `@${profile.handle.localName}` : "";

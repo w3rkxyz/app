@@ -62,7 +62,7 @@ const Profile = () => {
     X: "",
     github: "",
     linkedin: "",
-    jobTitle: "Job Title",
+    jobTitle: "",
   });
 
   const handleOpenJobModal = () => {
@@ -109,7 +109,7 @@ const Profile = () => {
         following: profile ? profile.stats.following : 100,
         jobTitle: profileData.attributes["job title"]
           ? profileData.attributes["job title"]
-          : "Job Title",
+          : "",
         followers: profile ? profile.stats.followers : 75,
         about: profileData.bio ? profileData.bio : userData.about,
         website: profileData.attributes.website
@@ -161,17 +161,21 @@ const Profile = () => {
               alt="user icon"
             />
           </div>
-          <h3 className="leading-[19px] text-[16px] font-semibold mb-[0px] sm:mb-[0px]">
-            {userData.displayName}
-          </h3>
+          {userData.displayName !== "" && (
+            <h3 className="leading-[19px] text-[16px] font-medium mb-[0px] sm:mb-[0px]">
+              {userData.displayName}
+            </h3>
+          )}
           <span className="text-[#707070] leading-[16.94px] text-[14px] font-medium sm:mb-[20px]">
             {userData.handle}
           </span>
-          <h3 className="leading-[19px] text-[16px] font-semibold mt-[10px] mb-[12px] sm:mt-[6px]">
-            {userData.jobTitle}
-          </h3>
+          {userData.jobTitle !== "" && (
+            <h3 className="leading-[19px] text-[16px] font-medium mt-[10px] mb-[12px] sm:mt-[6px]">
+              {userData.jobTitle}
+            </h3>
+          )}
           <div className="flex gap-[4px] leading-[16.94px] text-[14px] font-medium">
-            <span>About me</span>
+            <span>About Me</span>
           </div>
           <p className="leading-[16.94px] text-[14px] font-medium text-[#707070] mb-[16px]">
             {userData.about}
@@ -278,7 +282,7 @@ const Profile = () => {
         <hr className="bg-[#E4E4E7] h-[1px] mb-[0px] hidden sm:block" />
         <div className="pt-[96px] sm:pt-[0px] flex-1">
           <div className="flex sm:flex-col sm:gap-[16px] justify-between sm:justify-start mb-[16px] align-middle">
-            <button className="leading-[19.36px] text-[16px] font-semibold text-[black] px-[10px] py-[7px] bg-[#E4E4E7] rounded-[8px] sm:w-fit">
+            <button className="leading-[19.36px] text-[16px] font-medium text-[black] px-[10px] py-[7px] bg-[#E4E4E7] rounded-[8px] sm:w-fit">
               Posts
             </button>
             <div className="flex gap-[12px] sm:gap-[15px] sm:justify-between">
@@ -296,7 +300,11 @@ const Profile = () => {
               </button>
             </div>
           </div>
-          <div className="border-[1px] border-[#E4E4E7] rounded-[16px] p-[16px] flex flex-col gap-[16px] sm:mb-[14px] min-h-[430px]">
+          <div
+            className={`border-[1px] border-[#E4E4E7] rounded-[16px] p-[16px] flex flex-col gap-[16px] sm:mb-[14px] ${
+              publications && data.length > 0 ? "" : "min-h-[430px]"
+            }`}
+          >
             {loading ? (
               <>
                 <Skeleton

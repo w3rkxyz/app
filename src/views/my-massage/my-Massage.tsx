@@ -47,6 +47,36 @@ interface StringIndexedObject {
   [key: string]: TempConversatioData;
 }
 
+function groupMessagesByWhatsAppDate(messages: DecodedMessage<any>[]) {
+  const groupedMessages: { date: string; messages: { sent: Date }[] }[] = [];
+
+  messages.forEach((message) => {
+    const now = moment().startOf("day");
+    const inputDate = moment(message.sent).startOf("day");
+    let dateKey: string;
+
+    if (now.isSame(inputDate, "day")) {
+      dateKey = "Today";
+    } else if (now.diff(inputDate, "days") < 7) {
+      dateKey = inputDate.format("dddd");
+    } else {
+      dateKey = inputDate.format("MMM D");
+    }
+
+    const existingGroup = groupedMessages.find(
+      (group) => group.date === dateKey
+    );
+
+    if (existingGroup) {
+      existingGroup.messages.push(message);
+    } else {
+      groupedMessages.push({ date: dateKey, messages: [message] });
+    }
+  });
+
+  return groupedMessages;
+}
+
 const buildConversationId = (profileIdA: string, profileIdB: string) => {
   const profileIdAParsed = parseInt(profileIdA, 16);
   const profileIdBParsed = parseInt(profileIdB, 16);
@@ -124,7 +154,7 @@ const MyMessageOpenChat = () => {
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
   const [showMessagesMobile, setShowMessagesMobile] = useState(false);
   const [xmtp, setXmtp] = useState<Client>();
-  const [activeMessages, setActiveMessages] = useState<DecodedMessage[]>([]);
+  const [activeMessages, setActiveMessages] = useState<any[]>([]);
   const [conversationDates, setConversationDates] = useState<(Date | string)[]>(
     []
   );
@@ -322,15 +352,17 @@ const MyMessageOpenChat = () => {
     index: number
   ) => {
     const conversationMessages = await conversation.conversation.messages();
-    setActiveMessages(conversationMessages);
+    setActiveMessages(groupMessagesByWhatsAppDate(conversationMessages));
     setSelectedConversation(index);
     setActiveConversationUserHandle(conversation.user.handle);
 
     for await (const message of await conversation.conversation.streamMessages()) {
-      setActiveMessages((prevMessages) => {
-        const updatedMessages = [...prevMessages, message];
-        return updatedMessages;
-      });
+      const conversationMessages = await conversation.conversation.messages();
+      setActiveMessages(groupMessagesByWhatsAppDate(conversationMessages));
+      // setActiveMessages((prevMessages) => {
+      //   const updatedMessages = [...prevMessages, message];
+      //   return updatedMessages;
+      // });
     }
   };
 
@@ -439,6 +471,11 @@ const MyMessageOpenChat = () => {
       console.log("Sorted: ", sortedConversations);
       setProfilesData(temp);
       setConversations(sortedConversations);
+      sortedConversations.map((conversation, index) => {
+        if (conversation.user.handle === activeConversationUserHandle) {
+          setSelectedConversation(index);
+        }
+      });
       if (!messagesEnabled) {
         setMessagesEnabled(true);
         setConnectingXMTP(false);
@@ -718,26 +755,34 @@ const MyMessageOpenChat = () => {
               className="flex-1 flex flex-col justify-end sm:justify-start scrollbar-hide pt-[10px]"
               id="scrollableDiv"
             >
-              <span className="text-[12px] leading-[12.1px] font-medium self-center mb-[15px] sm:mt-[15px]">
-                Today
-              </span>
-              {activeMessages.map((message: DecodedMessage, index) => {
+              {activeMessages.map((messages, index: number) => {
                 return (
-                  <div
-                    key={index}
-                    className={`rounded-[8px] whitespace-pre-wrap min-w-[200px] sm:min-w-[150px] max-w-[450px] text-[12px] laptop-x:max-w-[350px] sm:max-w-[262px] laptop-x:text-[14px] mb-[12px] relative font-normal leading-[20px] p-[11px] py-[9px] 
+                  <>
+                    <span className="text-[12px] leading-[12.1px] font-medium self-center mb-[15px] sm:mt-[15px]">
+                      {messages.date}
+                    </span>
+                    {messages.messages.map(
+                      (message: DecodedMessage, index: number) => {
+                        return (
+                          <div
+                            key={index}
+                            className={`rounded-[8px] whitespace-pre-wrap min-w-[200px] sm:min-w-[150px] max-w-[450px] text-[12px] laptop-x:max-w-[350px] sm:max-w-[262px] laptop-x:text-[14px] mb-[12px] relative font-normal leading-[20px] p-[11px] py-[9px] 
                       pr-[48px] sm:px-[8px] sm:pr-[9px] sm:pb-[23px] ${
                         session?.type === SessionType.WithProfile &&
                         message.senderAddress === session.address
                           ? "self-end bg-[#C6AAFF] text-white"
                           : "self-start bg-[#F4F4F5]"
                       } `}
-                  >
-                    {message.content}
-                    <span className="absolute right-[6px] bottom-[0px] text-[10px]">
-                      {moment(message.sent).format("h:mmA")}
-                    </span>
-                  </div>
+                          >
+                            {message.content}
+                            <span className="absolute right-[6px] bottom-[0px] text-[10px]">
+                              {moment(message.sent).format("h:mmA")}
+                            </span>
+                          </div>
+                        );
+                      }
+                    )}
+                  </>
                 );
               })}
               <div id="bottomMarker"></div>

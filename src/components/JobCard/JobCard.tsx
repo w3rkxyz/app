@@ -72,14 +72,17 @@ const JobCard = ({
       <div className="flex justify-between align-top mb-[10px]">
         <div className="flex gap-[15px]">
           {profileData ? (
-            <Link href={`/other-user-follow/?handle=${profileData?.userLink}`}>
+            <Link
+              href={`/other-user-follow?handle=${profileData?.userLink}`}
+              onClick={(e) => e.stopPropagation()}
+              className="p-0 m-0 h-[60px] w-[60px]"
+            >
               <Image
                 src={profileData.picture}
                 alt="w3rk logo"
-                className="rounded-[8px]"
+                className="rounded-[8px] h-[60px] w-[60px] p-0"
                 width={60}
                 height={60}
-                onClick={(e) => e.stopPropagation()}
               />
             </Link>
           ) : (

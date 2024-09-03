@@ -123,9 +123,6 @@ const HomeBanner = () => {
           </div>
         </div>
       </div>
-      <div className="w-full absolute bottom-0 left-0 sm:mb-[10px]">
-        <Footer />
-      </div>
     </div>
   );
 };

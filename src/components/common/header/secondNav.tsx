@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import Notifications from "@/components/Notifications/Notifications";
@@ -12,17 +12,24 @@ import { useAccount } from "wagmi";
 import {
   useSearchProfiles,
   LimitType,
+  SessionType,
   Profile,
+  useSession,
+  Session,
 } from "@lens-protocol/react-web";
 import { Oval } from "react-loader-spinner";
-import getLensProfileData from "@/utils/getLensProfile";
+import getLensProfileData, { UserProfile } from "@/utils/getLensProfile";
 
-const SecondNav = ({}: // profile,
-{}) => {
-  const { loginModal, user: profile } = useSelector((state: any) => state.app);
+const SecondNav = ({ session }: { session: Session }) => {
+  // const { loginModal, user: profile } = useSelector((state: any) => state.app);
+  const myDivRef = useRef<HTMLDivElement>(null);
   const { address } = useAccount();
+  const [profile, setProfile] = useState<Profile>();
+  // const { data: session, loading: sessionLoading } = useSession();
+  const [profileData, setProfileData] = useState<UserProfile>();
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showSearchResults, setShowSearchResults] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const path = usePathname();
   const [searchText, setSearchText] = useState("");
@@ -64,6 +71,24 @@ const SecondNav = ({}: // profile,
       document.removeEventListener("click", handleClickOutsideModal);
     };
   }, [showNotifications]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        myDivRef.current &&
+        !myDivRef.current.contains(event.target as Node)
+      ) {
+        setShowSearchResults(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const openProfileDropdown = () => {
     setShowProfileDropdown(true);
@@ -116,14 +141,25 @@ const SecondNav = ({}: // profile,
     }
   }, [data]);
 
+  useEffect(() => {
+    if (session?.type === SessionType.WithProfile) {
+      const profile = session.profile;
+
+      const profileData = getLensProfileData(profile);
+      setProfile(profile);
+      setProfileData(profileData);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.type, session?.authenticated]);
+
   return (
     <>
-      <header className="header-section h-[60px] px-[156px] sm:px-[16px] absolute w-full top-0 left-0 bg-white border-b-[1px] border-b-[#EEEEEE] z-[999]">
+      <header className="header-section h-[60px] px-[156px] sm:px-[16px] absolute w-screen top-0 left-0 bg-white border-b-[1px] border-b-[#EEEEEE] z-[999]">
         <div className="custom-container">
           <div className="header-wrapper">
             <nav className="navbar-nav-main h-[60px] flex items-center gap-3 justify-between w-full relative">
               <div className="header-brand-box sm:flex sm:items-center">
-                <a href="/">
+                <Link href="/">
                   <Image
                     src="/images/brand-logo.svg"
                     className="relative h-[80px] w-[80px] translate-y-[5px]"
@@ -131,7 +167,7 @@ const SecondNav = ({}: // profile,
                     height={80}
                     alt="company brand logo"
                   ></Image>
-                </a>
+                </Link>
               </div>
               <div className="navbar-right-cont nav-center flex items-center absolute h-full w-fit">
                 <ul className="navbar-nav flex items-center sm:hidden ml-auto gap-[7px]">
@@ -158,7 +194,10 @@ const SecondNav = ({}: // profile,
 
               {/* Right Items */}
               <div className="flex items-center gap-[18px] sm:hidden">
-                <div className="flex justify-start items-center w-[240px] bg-white border-[1px] border-[#E4E4E7] rounded-[12px] pl-[8px] relative">
+                <div
+                  className="flex justify-start items-center w-[240px] bg-white border-[1px] border-[#E4E4E7] rounded-[12px] pl-[8px] relative"
+                  ref={myDivRef}
+                >
                   <>
                     <Image
                       className="cursor-pointer"
@@ -170,7 +209,10 @@ const SecondNav = ({}: // profile,
                     <input
                       className="search-input rounded-[12px] p-[11px] pl-[3px]"
                       placeholder="Search..."
-                      onChange={(e) => setSearchText(e.target.value)}
+                      onChange={(e) => {
+                        setShowSearchResults(true);
+                        setSearchText(e.target.value);
+                      }}
                       value={searchText}
                     />
                   </>
@@ -186,7 +228,10 @@ const SecondNav = ({}: // profile,
                       height={20}
                     />
                   </button>
-                  {profiles && profiles.length > 0 && searchText !== "" ? (
+                  {profiles &&
+                  profiles.length > 0 &&
+                  searchText !== "" &&
+                  showSearchResults ? (
                     <div
                       className={`user-search-box mt-[0px] flex flex-col gap-[5px] absolute z-[9999] left-0 top-[47px] rounded-[10px] border-[1px] border-[#E4E4E7] bg-white py-[10px]`}
                       onClick={(e) => e.stopPropagation()}
@@ -229,9 +274,9 @@ const SecondNav = ({}: // profile,
                         );
                       })}
                     </div>
-                  ) : loading && searchText !== "" ? (
+                  ) : loading && searchText !== "" && showSearchResults ? (
                     <div
-                      className={`user-search-box mt-[0px] flex flex-col absolute top-[47px] left-[16px] rounded-[10px] border-[1px] border-[#E4E4E7] bg-white py-[20px] align-middle items-center`}
+                      className={`user-search-box mt-[0px] flex flex-col absolute top-[47px] left-0 rounded-[10px] border-[1px] border-[#E4E4E7] bg-white py-[10px] align-middle items-center`}
                       onClick={(e) => e.stopPropagation()}
                     >
                       <Oval
@@ -277,11 +322,15 @@ const SecondNav = ({}: // profile,
                     <div className="w-[34px] h-[34px] sm:w-[34px] sm:h-[34px] relative">
                       <Image
                         src={
-                          profile?.metadata &&
-                          profile?.metadata?.picture?.raw?.uri
-                            ? profile.metadata.picture.raw.uri
+                          profileData
+                            ? profileData.picture
                             : "/images/paco-square.svg"
                         }
+                        onError={(e) => {
+                          (
+                            e.target as HTMLImageElement
+                          ).src = `https://api.hey.xyz/avatar?id=${profileData?.id}`;
+                        }}
                         layout="fill"
                         className="rounded-[8px] sm:rounded-[8.16px] relative mt-[2px]"
                         alt="user icon"
@@ -320,9 +369,7 @@ const SecondNav = ({}: // profile,
               menuOpen={isMobileMenuOpen}
               closeMenu={handleMobileMenuToggle}
               profilePic={
-                profile?.metadata && profile?.metadata?.picture?.raw?.uri
-                  ? profile.metadata.picture.raw.uri
-                  : "/images/paco.svg"
+                profileData ? profileData.picture : "/images/paco-square.svg"
               }
             />
           </div>

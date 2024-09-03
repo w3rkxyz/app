@@ -43,49 +43,34 @@ const Navbar = () => {
     setShowNavbar(false);
   };
 
-  // Checks if the user is authenticated on Lens and stores their profile or displays the login modal
-  useEffect(() => {
-    if (isConnected) {
-      if (!session?.authenticated && !sessionLoading) {
-        dispatch(displayLoginModal({ display: true }));
-      } else {
-        dispatch(displayLoginModal({ display: false }));
-        if (session?.type == SessionType.WithProfile) {
-          dispatch(setLensProfile({ profile: session.profile }));
-        }
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isConnected, session?.authenticated]);
-
   return (
     <>
-      {isConnected && profile ? (
+      {/* {isConnected && profile ? (
         <SecondNav />
-      ) : (
-        <header className="header-section h-[60px] px-[156px] sm:px-[16px] absolute w-full top-0 left-0 bg-white border-b-[1px] border-b-[#EEEEEE] z-[999]">
-          <div className="custom-container">
-            <div className="header-wrapper">
-              <nav className="navbar-nav-main flex items-center gap-3 justify-between h-[60px] w-full">
-                <div className="header-brand-box sm:flex sm:items-center">
-                  <a href="/">
-                    <Image
-                      src="/images/brand-logo.svg"
-                      className="relative h-[80px] w-[80px] translate-y-[5px]"
-                      width={80}
-                      height={80}
-                      alt="company brand logo"
-                    ></Image>
-                  </a>
-                </div>
-                <div className="navbar-right-cont">
-                  <Connect />
-                </div>
-              </nav>
-            </div>
+      ) : ( */}
+      <header className="header-section h-[60px] px-[156px] sm:px-[16px] absolute w-screen top-0 left-0 bg-white border-b-[1px] border-b-[#EEEEEE] z-[999]">
+        <div className="custom-container">
+          <div className="header-wrapper">
+            <nav className="navbar-nav-main flex items-center gap-3 justify-between h-[60px] w-full">
+              <div className="header-brand-box sm:flex sm:items-center">
+                <a href="/">
+                  <Image
+                    src="/images/brand-logo.svg"
+                    className="relative h-[80px] w-[80px] translate-y-[5px]"
+                    width={80}
+                    height={80}
+                    alt="company brand logo"
+                  ></Image>
+                </a>
+              </div>
+              <div className="navbar-right-cont">
+                <Connect />
+              </div>
+            </nav>
           </div>
-        </header>
-      )}
+        </div>
+      </header>
+      {/* )} */}
 
       {/* Choose Account Modal */}
       {/* {loginModal && address && <LoginForm owner={address} />} */}

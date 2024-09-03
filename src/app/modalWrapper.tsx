@@ -13,9 +13,9 @@ export default function ModalWrapper({
   const { address } = useAccount();
 
   return (
-    <>
+    <div className="flex flex-col min-h-screen">
       {children}
       {loginModal && address && <LoginForm owner={address} />}
-    </>
+    </div>
   );
 }

@@ -139,11 +139,12 @@ const ViewJobModal = ({
             {profileData ? (
               <Link
                 href={`/other-user-follow/?handle=${profileData?.userLink}`}
+                className="sm:w-[60px] sm:h-[60px] w-[64px] h-[64px]"
               >
                 <Image
                   src={profileData.picture}
                   alt="w3rk logo"
-                  className="sm:w-[60px] sm:h-[60px]"
+                  className="sm:w-[60px] sm:h-[60px] w-[64px] h-[64px] rounded-[8px]"
                   width={64}
                   height={64}
                 />
