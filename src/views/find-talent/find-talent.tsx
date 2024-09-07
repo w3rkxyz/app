@@ -2,7 +2,7 @@
 
 import SearchInput from "@/components/reusable/SearchInput/SearchInput";
 
-import JobCard from "@/components/JobCard/JobCard";
+import JobCard from "@/components/Cards/JobCard";
 import MyButton from "@/components/reusable/Button/Button";
 import { MouseEventHandler, useEffect, useState } from "react";
 import ViewJobModal from "../view-job-modal/view-job-modal";
@@ -172,9 +172,9 @@ const FindTalent = () => {
           </div>
         </div>
 
-        <div className="tags-section w-full flex sm:justify-center sm:flex-col md:flex-col justify-center md:items-start gap-[45px] mt-[50px] sm:mt-[16px]">
+        <div className="tags-section w-full flex sm:justify-center sm:flex-col md:flex-col justify-center md:items-start gap-[35px] mt-[50px] sm:mt-[16px]">
           <div
-            className="find-work-message-section w-[300px] flex-shrink-0 h-fit sm:h-auto md:h-auto sm:my-0 sm:py-0 bg-[#FFFFFF] sm:bg-transparent md:bg-transparent rounded-[20px] sm:rounded-[0px] p-[29px] pt-[32px] sm:w-full sm:items-center gap-2 sm:whitespace-nowrap md:w-full md:flex md:items-center md:whitespace-nowrap overflow-x-auto sm:ml-[-20px]
+            className="find-work-message-section w-fit flex flex-col px-[24px] flex-shrink-0 h-fit sm:h-auto md:h-auto sm:my-0 sm:py-0 bg-[#FFFFFF] sm:bg-transparent md:bg-transparent rounded-[20px] p-[29px] pt-[32px]
             border-[1px] border-[#E4E4E7] sm:hidden"
           >
             <h4 className="text-[20px] font-semibold font-secondary leading-[20px] tracking-[-1%] text-center pb-[34px] sm:pb-[10px] md:pb-[10px]">
@@ -182,17 +182,17 @@ const FindTalent = () => {
             </h4>
 
             {buttons.map((button, index) => (
-              <MyButton
+              <button
                 key={index}
-                buttonText={button.buttonText}
-                buttonType="secondary"
-                buttonStyles={`${button.buttonStyles} ${
+                className={`${button.buttonStyles} ${
                   selectedCategories?.includes(index)
                     ? "border-[1px] border-black"
                     : ""
-                }`}
-                action={() => onCLickCategory(index)}
-              />
+                } rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] w-[200px] sm:px-0 sm:w-[190px] sm:flex sm:justify-center min-w-[200px]`}
+                onClick={() => onCLickCategory(index)}
+              >
+                {button.buttonText}
+              </button>
             ))}
           </div>
 

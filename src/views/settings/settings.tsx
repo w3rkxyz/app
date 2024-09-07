@@ -12,12 +12,14 @@ import {
 import { MetadataAttributeType, profile } from "@lens-protocol/metadata";
 import { toast } from "react-hot-toast";
 import getLensProfileData from "@/utils/getLensProfile";
+import { Oval } from "react-loader-spinner";
 
 const Settings = () => {
   const { execute: update, error, loading } = useSetProfileMetadata();
   const { data: session, loading: sessionLoading } = useSession();
   const [backgroundImage, setBackgroundImage] = useState<any>(null);
   const [photo, setPhoto] = useState<any>(null);
+  const [savingData, setSavingData] = useState(false);
   const [formState, setFormState] = useState({
     name: "",
     picture: "",
@@ -69,6 +71,12 @@ const Settings = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.type]);
 
+  const linkPrepend: { [key: string]: string } = {
+    X: "https://x.com/",
+    github: "https://github.com/",
+    linkedin: "https://linkedin.com/",
+  };
+
   // Generic change handler for all inputs
   const handleChange = (e: any) => {
     const { name, value } = e.target;
@@ -107,6 +115,7 @@ const Settings = () => {
   };
 
   const handleSubmit = async () => {
+    setSavingData(true);
     // console.log(formState)
 
     const attributesMap: {
@@ -131,17 +140,23 @@ const Settings = () => {
       },
       {
         key: "x",
-        value: formState.X,
+        value: formState.X !== "" ? linkPrepend["X"] + formState.X : "",
         type: MetadataAttributeType.STRING,
       },
       {
         key: "linkedin",
-        value: formState.linkedin,
+        value:
+          formState.linkedin !== ""
+            ? linkPrepend["linkedin"] + formState.linkedin
+            : "",
         type: MetadataAttributeType.STRING,
       },
       {
         key: "github",
-        value: formState.github,
+        value:
+          formState.github !== ""
+            ? linkPrepend["github"] + formState.github
+            : "",
         type: MetadataAttributeType.STRING,
       },
     ];
@@ -183,7 +198,7 @@ const Settings = () => {
     }
 
     toast.success("Profile updated");
-    console.log("Profile updated");
+    setSavingData(false);
   };
 
   return (
@@ -281,37 +296,52 @@ const Settings = () => {
           <span className="leading-[14.52px] text-[14px] font-medium text-[black]">
             X (Twitter)
           </span>
-          <input
-            className="form-input rounded-[12px] p-[11px] border-[1px] border-[#E4E4E7] sm:w-full"
-            placeholder="Link to profile"
-            name="X"
-            onChange={handleChange}
-            value={formState.X}
-          />
+          <div className="w-full flex">
+            <div className="rounded-l-[12px] w-[142px] pl-[10px] bg-[#F2F2F2] border-[1px] border-[#E4E4E7] flex items-center text-[#707070] text-[14px] font-normal leading-[14.52px]">
+              https://x.com/
+            </div>
+            <input
+              className="link-input rounded-r-[12px] p-[11px] border-[1px] flex-1 border-[#E4E4E7] sm:w-full border-l-0"
+              placeholder="Enter X Username"
+              name="X"
+              onChange={handleChange}
+              value={formState.X}
+            />
+          </div>
         </div>
         <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
           <span className="leading-[14.52px] text-[14px] font-medium text-[black]">
             Github
           </span>
-          <input
-            className="form-input rounded-[12px] p-[11px] border-[1px] border-[#E4E4E7] sm:w-full"
-            placeholder="Link to profile"
-            name="github"
-            onChange={handleChange}
-            value={formState.github}
-          />
+          <div className="w-full flex">
+            <div className="rounded-l-[12px] w-[142px] pl-[10px] bg-[#F2F2F2] border-[1px] border-[#E4E4E7] flex items-center text-[#707070] text-[14px] font-normal leading-[14.52px]">
+              https://github.com/
+            </div>
+            <input
+              className="link-input rounded-r-[12px] p-[11px] border-[1px] flex-1 border-[#E4E4E7] sm:w-full border-l-0"
+              placeholder="Enter Github Username"
+              name="github"
+              onChange={handleChange}
+              value={formState.github}
+            />
+          </div>
         </div>
         <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
           <span className="leading-[14.52px] text-[14px] font-medium text-[black]">
             Linkedin
           </span>
-          <input
-            className="form-input rounded-[12px] p-[11px] border-[1px] border-[#E4E4E7] sm:w-full"
-            placeholder="Link to profile"
-            name="linkedin"
-            onChange={handleChange}
-            value={formState.linkedin}
-          />
+          <div className="w-full flex">
+            <div className="rounded-l-[12px] w-[142px] pl-[10px] bg-[#F2F2F2] border-[1px] border-[#E4E4E7] flex items-center text-[#707070] text-[14px] font-normal leading-[14.52px]">
+              https://linkedin.com/
+            </div>
+            <input
+              className="link-input rounded-r-[12px] p-[11px] border-[1px] flex-1 border-[#E4E4E7] sm:w-full border-l-0"
+              placeholder="Enter LinkedIn Username"
+              name="linkedin"
+              onChange={handleChange}
+              value={formState.linkedin}
+            />
+          </div>
         </div>
         <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
           <span className="leading-[14.52px] text-[14px] font-medium text-[black]">
@@ -337,12 +367,25 @@ const Settings = () => {
             value={formState.location}
           />
         </div>
-        <button
-          className="mx-auto w-fit py-[4px] px-[24px] tx-[14px] leading-[24px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[36px]"
-          onClick={handleSubmit}
-        >
-          Save
-        </button>
+        {savingData ? (
+          <Oval
+            visible={true}
+            height="32"
+            width="32"
+            color="#2D2D2D"
+            secondaryColor="#a2a2a3"
+            strokeWidth={8}
+            ariaLabel="oval-loading"
+            wrapperClass="mx-auto mb-[36px]"
+          />
+        ) : (
+          <button
+            className="mx-auto w-fit py-[4px] px-[24px] tx-[14px] leading-[24px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[36px]"
+            onClick={handleSubmit}
+          >
+            Save
+          </button>
+        )}
       </div>
     </div>
   );

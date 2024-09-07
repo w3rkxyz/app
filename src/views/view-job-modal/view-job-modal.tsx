@@ -163,15 +163,13 @@ const ViewJobModal = ({
               />
             )}
             <div className="flex flex-col gap-[5px] pt-[5px]">
-              <span className="text-[16px] sm:text-[14px] leading-[16.94px] font-semibold">
-                {profileData && profileData?.displayName !== ""
-                  ? profileData.displayName
-                  : "Display Name"}
+              <span className="text-[16px] sm:text-[14px] leading-[16.94px] font-medium">
+                {attributes["title"]}
               </span>
-              <span className="text-[16px] sm:text-[14px] leading-[16.94px] font-semibold">
-                {attributes["title"] ? attributes["title"] : "Job Title"}
+              <span className="text-[14px] leading-[16.94px] font-medium text-[#707070]">
+                w3rk
               </span>
-              <span className="text-[#707070] text-[14px] sm:text-[12px] leading-[14.52px] font-semibold">
+              <span className="text-[#707070] text-[12px] sm:text-[14px] leading-[14.52px] font-medium">
                 {attributes["payement type"]
                   ? attributes["payement type"] === "hourly"
                     ? `$${attributes["hourly"]} /hr`
@@ -208,7 +206,7 @@ const ViewJobModal = ({
             : "Website Updates - Full Stack Developer"}
         </p>
         {attributes["content"] ? (
-          <div className="width-full rounded-[12px] leading-[19.52px] min-h-[312px] sm:leading-[16.52px] font-normal text-[16px] sm:text-[12px] border-[1px] border-[#E4E4E7] p-[13px] pb-[90px] sm:p-[9px] sm:pb-[10px] mb-[18px] whitespace-pre-wrap">
+          <div className="width-full rounded-[12px] leading-[22px] min-h-[312px] sm:leading-[16.52px] font-normal text-[13px] sm:text-[12px] border-[1px] border-[#E4E4E7] p-[13px] pb-[90px] sm:p-[9px] sm:pb-[10px] mb-[18px] whitespace-pre-wrap">
             {attributes["content"]}
           </div>
         ) : type === "job" ? (

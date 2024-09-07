@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import JobCard from "@/components/JobCard/JobCard";
+import JobCard from "@/components/Cards/JobCard";
 import ProfileModal from "./profileModal";
 import {
   useSession,
@@ -55,10 +55,9 @@ const Profile = () => {
     picture: "/images/paco-square.svg",
     following: 100,
     followers: 75,
-    about:
-      "bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla",
-    location: "Location",
-    website: "user website url",
+    about: "",
+    location: "",
+    website: "",
     X: "",
     github: "",
     linkedin: "",
@@ -95,6 +94,7 @@ const Profile = () => {
     if (session?.type === SessionType.WithProfile) {
       const profile = session.profile;
       setProfileId([profile.id]);
+      console.log("Profile: ", profile);
 
       const profileData = getLensProfileData(profile);
 
@@ -153,7 +153,7 @@ const Profile = () => {
       </div>
       <div className="flex sm:flex-col sm:w-full gap-[30px] pt-[116px] sm:pt-[26px] px-[32px] sm:px-[0px]">
         <div className=" max-w-[350px] min-w-[350px] sm:w-full">
-          <div className="w-[160px] h-[160px] sm:w-[80px] sm:h-[80px] relative mb-[16px] ml-[16px]">
+          <div className="w-[160px] h-[160px] sm:w-[80px] sm:h-[80px] relative mb-[16px]">
             <Image
               src={userData.picture}
               layout="fill"
@@ -162,7 +162,7 @@ const Profile = () => {
             />
           </div>
           {userData.displayName !== "" && (
-            <h3 className="leading-[19px] text-[16px] font-medium mb-[0px] sm:mb-[0px]">
+            <h3 className="leading-[19px] text-[16px] font-medium mb-[1px] sm:mb-[0px]">
               {userData.displayName}
             </h3>
           )}
@@ -174,10 +174,11 @@ const Profile = () => {
               {userData.jobTitle}
             </h3>
           )}
-          <div className="flex gap-[4px] leading-[16.94px] text-[14px] font-medium">
-            <span>About Me</span>
-          </div>
-          <p className="leading-[16.94px] text-[14px] font-medium text-[#707070] mb-[16px]">
+          <p
+            className={`leading-[16.94px] text-[14px] font-medium text-[#707070] mb-[16px] ${
+              userData.jobTitle === "" ? "mt-[10px]" : ""
+            } `}
+          >
             {userData.about}
           </p>
 
@@ -239,7 +240,7 @@ const Profile = () => {
           </div>
           <div className="flex flex-col gap-[16px] mb-[20px] sm:mb-[0px]">
             {userData.website !== "" && (
-              <Link href={userData.website}>
+              <Link href={userData.website} target="_blank">
                 <div className="flex gap-[11.6px] items-center">
                   <Image
                     src="/images/earth.svg"

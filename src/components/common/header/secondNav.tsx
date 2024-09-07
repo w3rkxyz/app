@@ -7,7 +7,6 @@ import ProfileDropdown from "@/components/ProfileDropdown/ProfileDropdown";
 import { usePathname } from "next/navigation";
 import MobileProfileDropdown from "./mobileMenu";
 import { useSelector } from "react-redux";
-import { LoginForm } from "./loginForm";
 import { useAccount } from "wagmi";
 import {
   useSearchProfiles,

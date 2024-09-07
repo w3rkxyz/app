@@ -13,6 +13,7 @@ import {
 import { uploadJsonToIPFS } from "@/utils/uploadToIPFS";
 import toast from "react-hot-toast";
 import { useCreatePost } from "@lens-protocol/react-web";
+import { Oval } from "react-loader-spinner";
 
 type Props = {
   handleCloseModal?: () => void;
@@ -118,6 +119,7 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
   const [description, setDescription] = useState("");
   const [hourlyRate, setHourlyRate] = useState("");
   const [fixedPrice, setFixedPrice] = useState("");
+  const [savingData, setSavingData] = useState(false);
 
   const handleTagClick = (id: number) => {
     setSelectedTag(selectedTag === id ? null : id);
@@ -254,6 +256,7 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
   }, []);
 
   const handlePost = async () => {
+    setSavingData(true);
     var updatedTags = tags.filter((item) => item !== "");
     updatedTags = [...updatedTags, type, "w3rk"];
     if (canSubmitPost()) {
@@ -317,6 +320,7 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
         toast.error(heyCompletion.error.message);
         return;
       }
+      setSavingData(false);
 
       handleCloseModal?.();
       type === "job"
@@ -561,12 +565,25 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
             )
           )}
         </div>
-        <button
-          className="mx-auto w-fit py-[8px] px-[23px] tx-[14px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px]"
-          onClick={handlePost}
-        >
-          Post
-        </button>
+        {savingData ? (
+          <Oval
+            visible={true}
+            height="32"
+            width="32"
+            color="#2D2D2D"
+            secondaryColor="#a2a2a3"
+            strokeWidth={8}
+            ariaLabel="oval-loading"
+            wrapperClass="mx-auto"
+          />
+        ) : (
+          <button
+            className="mx-auto w-fit py-[8px] px-[23px] text-[14px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px]"
+            onClick={handlePost}
+          >
+            Post
+          </button>
+        )}
       </div>
     </div>
   );

@@ -118,6 +118,17 @@ const MobileProfileDropdown = ({
             <span className="drop-down-text">My Profile</span>
           </div>
         </Link>
+        <Link href="/contracts" onClick={closeMenu}>
+          <div className="drop-down-item">
+            <Image
+              src="/images/contract.svg"
+              width={22}
+              height={22}
+              alt="person icon"
+            ></Image>
+            <span className="drop-down-text">Contracts</span>
+          </div>
+        </Link>
         <Link href="/settings" onClick={closeMenu}>
           <div className="drop-down-item">
             <Image

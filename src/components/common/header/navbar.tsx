@@ -5,7 +5,6 @@ import Link from "next/link";
 import SecondNav from "./secondNav";
 import { Connect } from "./connectButton";
 import { useAccount } from "wagmi";
-import { LoginForm } from "./loginForm";
 import { useSession, SessionType, Profile } from "@lens-protocol/react-web";
 import { useSelector, useDispatch } from "react-redux";
 import { displayLoginModal, setLensProfile } from "@/redux/app";

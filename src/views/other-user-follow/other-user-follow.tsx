@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import JobCard from "@/components/JobCard/JobCard";
+import JobCard from "@/components/Cards/JobCard";
 import ProfileModal from "../profile/profileModal";
 import {
   useProfile,
@@ -32,7 +32,6 @@ const OtherUserFollow = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [profileId, setProfileId] = useState<ProfileId[]>();
   const [data, setData] = useState<any[]>([]);
-  console.log("userID: ", id);
   const { data: profile, loading: profileLoading } = useProfile({
     forHandle: `lens/${id}`,
   });
@@ -60,8 +59,8 @@ const OtherUserFollow = () => {
     followers: 75,
     about:
       "bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla",
-    location: "Location",
-    website: "user website url",
+    location: "",
+    website: "",
     X: "",
     github: "",
     linkedin: "",
@@ -111,9 +110,12 @@ const OtherUserFollow = () => {
   useEffect(() => {
     console.log("Session updated");
     if (profile) {
+      console.log("Reached here");
       setProfileId([profile.id]);
+      console.log("The Profile: ", profile);
 
       const profileData = getLensProfileData(profile);
+      console.log("Also reached here");
 
       const handle = {
         displayName: profileData.displayName,
@@ -131,10 +133,10 @@ const OtherUserFollow = () => {
         about: profileData.bio ? profileData.bio : userData.about,
         website: profileData.attributes.website
           ? profileData.attributes.website
-          : "user website url",
+          : "",
         location: profileData.attributes.location
           ? profileData.attributes.location
-          : "Location",
+          : "",
         X: profileData.attributes.x ? profileData.attributes.x : "",
         github: profileData.attributes.github
           ? profileData.attributes.github
@@ -146,7 +148,7 @@ const OtherUserFollow = () => {
       setUserData(handle);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile]);
+  }, [profileLoading]);
 
   const handleImageError = () => {
     var data = { ...userData };
@@ -173,7 +175,7 @@ const OtherUserFollow = () => {
       </div>
       <div className="flex sm:flex-col sm:w-full gap-[30px] pt-[116px] sm:pt-[26px] px-[32px] sm:px-[0px]">
         <div className="max-w-[350px] min-w-[350px] sm:w-full">
-          <div className="w-[160px] h-[160px] sm:w-[80px] sm:h-[80px] relative mb-[16px] ml-[16px]">
+          <div className="w-[160px] h-[160px] sm:w-[80px] sm:h-[80px] relative mb-[16px]">
             <Image
               src={userData.picture}
               layout="fill"
@@ -183,7 +185,7 @@ const OtherUserFollow = () => {
             />
           </div>
           {userData.displayName !== "" && (
-            <h3 className="leading-[19px] text-[16px] font-medium mb-[0px] sm:mb-[0px]">
+            <h3 className="leading-[19px] text-[16px] font-medium mb-[1px] sm:mb-[0px]">
               {userData.displayName}
             </h3>
           )}
@@ -195,10 +197,11 @@ const OtherUserFollow = () => {
               {userData.jobTitle}
             </h3>
           )}
-          <div className="flex gap-[4px] leading-[16.94px] text-[14px] font-medium">
-            <span>About Me</span>
-          </div>
-          <p className="leading-[16.94px] text-[14px] font-medium text-[#707070] mb-[16px]">
+          <p
+            className={`leading-[16.94px] text-[14px] font-medium text-[#707070] mb-[16px] ${
+              userData.jobTitle === "" ? "mt-[10px]" : ""
+            } `}
+          >
             {userData.about}
           </p>
 

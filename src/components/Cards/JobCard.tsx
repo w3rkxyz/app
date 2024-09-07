@@ -98,14 +98,12 @@ const JobCard = ({
           )}
           <div className="flex flex-col gap-[5px] pt-[5px]">
             <span className="text-[14px] leading-[16.94px] font-semibold">
-              {profileData && profileData?.displayName !== ""
-                ? profileData.displayName
-                : "Display Name"}
+              {attributes["title"]}
             </span>
-            <span className="text-[14px] leading-[16.94px] font-semibold">
-              {attributes["title"] ? attributes["title"] : "Job Title"}
+            <span className="text-[14px] leading-[16.94px] font-medium text-[#707070]">
+              w3rk
             </span>
-            <span className="text-[#707070] text-[12px] leading-[14.52px] font-semibold">
+            <span className="text-[#707070] text-[12px] leading-[14.52px] font-medium">
               {attributes["payement type"]
                 ? attributes["payement type"] === "hourly"
                   ? `$${attributes["hourly"]} /hr`
@@ -136,11 +134,8 @@ const JobCard = ({
           </button>
         )}
       </div>
-      <span className="leading-[16.94px] sm:leading-[1.94px] text-[14px] font-semibold mb-[4px] sm:mb-[8px]">
-        {attributes["title"] ? attributes["title"] : "Post Title"}
-      </span>
       <p
-        className={`line-clamp-6 leading-[15.52px] text-[13px] sm:text-[13px] font-normal mb-[12px] sm:mb-[17px] w-full laptop-x:text-[14px] ${
+        className={`line-clamp-6 leading-[22px] text-[12px] sm:text-[13px] font-normal mb-[12px] sm:mb-[17px] w-full laptop-x:text-[14px] ${
           data ? "whitespace-pre-wrap" : ""
         }`}
       >

@@ -5,24 +5,20 @@ import {
   useLogin,
   useProfiles,
   Profile,
+  useLogout,
 } from "@lens-protocol/react-web";
 import { toast } from "react-hot-toast";
 import style from "./form.module.css";
 import { formatProfileIdentifier } from "../../../utils/formatProfileIdentifier";
 import { useSelector, useDispatch } from "react-redux";
-import { setLensProfile, displayLoginModal } from "@/redux/app";
+import { setLensProfile, displaySwitchModal } from "@/redux/app";
 import { useState } from "react";
 import getLensProfileData, { UserProfile } from "@/utils/getLensProfile";
 
-export function LoginForm({
-  owner,
-}: // setProfile,
-// onClose,
-{
-  owner: string;
-}) {
+export function SwitchForm({ owner }: { owner: string }) {
   const dispatch = useDispatch();
   const { execute: login, loading: isLoginPending } = useLogin();
+  const { execute: logout, loading } = useLogout();
   const { data, loading: loadingProfiles } = useProfiles({
     where: {
       ownedBy: [owner],
@@ -44,6 +40,7 @@ export function LoginForm({
   const handleProfileClick = async (profile: string) => {
     const id = profileId(profile);
 
+    logout();
     const result = await login({
       address: owner,
       profileId: id,
@@ -63,14 +60,14 @@ export function LoginForm({
           // onClose();
 
           dispatch(setLensProfile({ profile: profile }));
-          dispatch(displayLoginModal({ display: false }));
+          dispatch(displaySwitchModal({ display: false }));
         }
       });
     }
   };
 
   const handleCloseModal = () => {
-    dispatch(displayLoginModal({ display: false }));
+    dispatch(displaySwitchModal({ display: false }));
   };
 
   useEffect(() => {
@@ -100,10 +97,10 @@ export function LoginForm({
   // Shows list of available profiles associated with the connected wallet
   return (
     <div className="fixed w-screen h-screen top-0 left-0 z-[9999999] flex items-center justify-center bg-[#80808080]">
-      <div className="w-[360px] flex flex-col rounded-[12px] border-[1px] border-[#E4E4E7] bg-white">
-        <div className="w-[360px] flex justify-between items-center px-[16px] py-[13px] border-b-[1px] border-b-[#E4E4E7] rounded-none sm:rounded-tl-[12px] sm:rounded-tr-[12px]">
+      <div className="w-[241px] flex flex-col rounded-[12px] border-[1px] border-[#E4E4E7] bg-white">
+        <div className="w-[241px] flex justify-between items-center px-[16px] py-[13px] border-b-[1px] border-b-[#E4E4E7] rounded-none sm:rounded-tl-[12px] sm:rounded-tr-[12px]">
           <span className="leading-[14.52px] text-[16px] font-medium text-[black]">
-            Login
+            Switch Profile
           </span>
           <Image
             onClick={handleCloseModal}

@@ -189,6 +189,14 @@
     width: 100%;
   }
 
+  .link-input {
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 16.94px;
+    text-align: left;
+    color: #707070;
+  }
+
   /* @media screen and (max-width: 767px) {
     .form-input {
       width: calc(100% - 40px);
@@ -253,6 +261,14 @@
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 6;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .line-clamp-11 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 11;
     overflow: hidden;
     text-overflow: ellipsis;
   }
@@ -502,6 +518,12 @@
     background-color: white;
     border-radius: 16px;
     height: calc(100vh - 160px);
+    overflow: auto;
+    overflow-y: scroll;
+  }
+
+  .horizontal-box::-webkit-scrollbar {
+    width: 3px; /* Set the width of the scrollbar */
   }
 
   @media screen and (max-width: 767px) {
@@ -509,6 +531,10 @@
       background-color: white;
       border-radius: 16px;
       height: calc(100vh - 90px);
+    }
+
+    .horizontal-box::-webkit-scrollbar {
+      width: 3px; /* Set the width of the scrollbar */
     }
   }
 

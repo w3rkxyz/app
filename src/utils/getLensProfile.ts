@@ -41,14 +41,18 @@ const getLensProfileData = (profile: Profile) => {
     ) {
       picture = convertIpfsLink(profile.metadata.picture.image.raw.uri);
     } else if (profile.metadata.picture?.__typename == "ImageSet") {
-      picture = convertIpfsLink(profile.metadata.picture.raw.uri);
+      profile.metadata.picture.optimized
+        ? (picture = convertIpfsLink(profile.metadata.picture.optimized.uri))
+        : (picture = convertIpfsLink(profile.metadata.picture.raw.uri));
     } else {
       picture = `https://api.hey.xyz/avatar?id=${profile.id}`;
     }
 
     // cover picture
     if (profile.metadata.coverPicture?.__typename == "ImageSet") {
-      coverPicture = profile?.metadata?.coverPicture?.raw?.uri
+      coverPicture = profile?.metadata?.coverPicture?.optimized
+        ? profile?.metadata?.coverPicture?.optimized.uri
+        : profile?.metadata?.coverPicture?.raw?.uri
         ? profile?.metadata?.coverPicture?.raw?.uri
         : "";
     }
@@ -78,7 +82,7 @@ const getLensProfileData = (profile: Profile) => {
     picture = `https://api.hey.xyz/avatar?id=${profile.id}`;
 
     // display Name
-    displayName = "";
+    displayName = profile.handle ? `${profile.handle.localName}` : "";
 
     //  handle
     handle = profile.handle ? `@${profile.handle.localName}` : "";

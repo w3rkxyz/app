@@ -2,9 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
-import DownloadIcon from "@/icons/DownloadIcon";
-import CreateContractModal from "../create-contract-modal/create-contract-modal";
-import OpenMessage from "./OpenMessage";
 import NewConversation from "./newConversation";
 import getCurrentTime from "@/utils/currentTime";
 import { Client, Conversation, DecodedMessage } from "@xmtp/xmtp-js";
@@ -27,8 +24,25 @@ import { loadKeys, storeKeys } from "@/utils/xmtpHelpers";
 import { useAccount } from "wagmi";
 import { useSearchParams } from "next/navigation";
 import ConversationSkeleton from "@/components/reusable/ConversationSkeleton";
+import {
+  ContentTypeAttachment,
+  AttachmentCodec,
+  RemoteAttachmentCodec,
+  ContentTypeRemoteAttachment,
+} from "@xmtp/content-type-remote-attachment";
+import { uploadFileToIPFS, uploadJsonToIPFS } from "@/utils/uploadToIPFS";
+import axios from "axios";
 
 const PREFIX = "lens.dev/dm";
+
+const isLink = (text: string): boolean => {
+  try {
+    new URL(text); // Attempt to create a URL object
+    return true; // If no error is thrown, it's a valid URL
+  } catch {
+    return false; // If an error is thrown, it's not a valid URL
+  }
+};
 
 interface ConversationProp {
   user: UserProfile;
@@ -48,7 +62,7 @@ interface StringIndexedObject {
 }
 
 function groupMessagesByWhatsAppDate(messages: DecodedMessage<any>[]) {
-  const groupedMessages: { date: string; messages: { sent: Date }[] }[] = [];
+  const groupedMessages: { date: string; messages: DecodedMessage[] }[] = [];
 
   messages.forEach((message) => {
     const now = moment().startOf("day");
@@ -168,6 +182,9 @@ const MyMessageOpenChat = () => {
   const [contactProfile, setContactProfile] = useState<UserProfile | null>(
     null
   );
+  const [isNewConversation, setIsNewConversation] = useState(false);
+  const [attachmentsLoading, setAttachmentsLoading] = useState(false);
+  const [activeAttachments, setActiveAttachments] = useState<any>({});
   // const [conversationUpdateState, setConversationUpdateState] = useState(false);
   // const clientOptions = { env: "production" };
 
@@ -180,6 +197,8 @@ const MyMessageOpenChat = () => {
             env: "production",
             privateKeyOverride: keys,
           });
+          client.registerCodec(new AttachmentCodec());
+          client.registerCodec(new RemoteAttachmentCodec());
           setXmtp(client);
           handleIncomingMessages(client);
 
@@ -192,9 +211,11 @@ const MyMessageOpenChat = () => {
             console.log("This ran!");
             const conversations = await client.conversations.list();
             if (session?.type === SessionType.WithProfile) {
-              processConversations(client, session);
+              await processConversations(client, session);
+              console.log("Finished running");
+              // setSelectedConversation(conversations.length - 1);
+              setIsNewConversation(true);
             }
-            setSelectedConversation(conversations.length - 1);
           }
         }
       }
@@ -304,6 +325,8 @@ const MyMessageOpenChat = () => {
         env: "production",
         privateKeyOverride: keys,
       });
+      client.registerCodec(new AttachmentCodec());
+      client.registerCodec(new RemoteAttachmentCodec());
 
       console.log("reached here 1");
       handleIncomingMessages(client);
@@ -316,12 +339,13 @@ const MyMessageOpenChat = () => {
 
       const stream = await client.conversations.stream();
       for await (const conversation of stream) {
-        console.log("This ran!");
+        console.log("This ran cause i started a new conversation!");
         const conversations = await client.conversations.list();
         if (session?.type === SessionType.WithProfile) {
-          processConversations(client, session);
+          await processConversations(client, session);
+          // setSelectedConversation(conversations.length - 1);
+          setIsNewConversation(true);
         }
-        setSelectedConversation(conversations.length - 1);
       }
     }
   };
@@ -353,16 +377,76 @@ const MyMessageOpenChat = () => {
   ) => {
     const conversationMessages = await conversation.conversation.messages();
     setActiveMessages(groupMessagesByWhatsAppDate(conversationMessages));
+    var attachments: {
+      [key: string]: any;
+    } = {};
+    const allPromises = groupMessagesByWhatsAppDate(conversationMessages).map(
+      (messageGroup, groupIndex) => {
+        return Promise.all(
+          messageGroup.messages.map(async (message, messageIndex) => {
+            console.log(message.content);
+            if (isLink(message.content)) {
+              try {
+                const response = await axios.get(message.content);
+                const data = response.data;
+                attachments[message.content] = data;
+              } catch (error) {
+                console.error(
+                  "Error fetching data for:",
+                  message.content,
+                  error
+                );
+              }
+            } else {
+              return message;
+            }
+          })
+        );
+      }
+    );
+
+    // Wait for all groups and all messages to finish
+    await Promise.all(allPromises);
+    setActiveAttachments(attachments);
+
     setSelectedConversation(index);
     setActiveConversationUserHandle(conversation.user.handle);
 
     for await (const message of await conversation.conversation.streamMessages()) {
       const conversationMessages = await conversation.conversation.messages();
+      setAttachmentsLoading(true);
       setActiveMessages(groupMessagesByWhatsAppDate(conversationMessages));
-      // setActiveMessages((prevMessages) => {
-      //   const updatedMessages = [...prevMessages, message];
-      //   return updatedMessages;
-      // });
+      var attachments: {
+        [key: string]: any;
+      } = {};
+      const allPromises = groupMessagesByWhatsAppDate(conversationMessages).map(
+        (messageGroup, groupIndex) => {
+          return Promise.all(
+            messageGroup.messages.map(async (message, messageIndex) => {
+              console.log(message.content);
+              if (isLink(message.content)) {
+                try {
+                  const response = await axios.get(message.content);
+                  const data = response.data;
+                  attachments[message.content] = data;
+                } catch (error) {
+                  console.error(
+                    "Error fetching data for:",
+                    message.content,
+                    error
+                  );
+                }
+              } else {
+                return message;
+              }
+            })
+          );
+        }
+      );
+
+      // Wait for all groups and all messages to finish
+      await Promise.all(allPromises);
+      setActiveAttachments(attachments);
     }
   };
 
@@ -423,15 +507,14 @@ const MyMessageOpenChat = () => {
             metadata: {},
           }
         );
-        messages.map((message, index) => {
+        conversations.map((message, index) => {
           if (
             conversation.context?.conversationId ===
-            message.context?.conversationId
+            message.conversation.context?.conversationId
           ) {
-            setSelectedConversation(index);
+            openConversation(message, index);
           }
         });
-        console.log("Created conversation: ", conversation);
       } else {
         setUnactivatedUserProfile(getLensProfileData(profile));
         setSelectedConversation(10000);
@@ -461,21 +544,30 @@ const MyMessageOpenChat = () => {
           var conversation: ConversationProp = {
             user: data,
             conversation: conversationData[profile.id].conversation,
-            lastMessage: conversationData[profile.id].lastMessage,
+            lastMessage: isLink(conversationData[profile.id].lastMessage)
+              ? "attachement"
+              : conversationData[profile.id].lastMessage,
             lastMessageTime: conversationData[profile.id].lastMessageTime,
           };
           allConversations.push(conversation);
         }
       });
       const sortedConversations = sortMessages(allConversations);
-      console.log("Sorted: ", sortedConversations);
       setProfilesData(temp);
-      setConversations(sortedConversations);
-      sortedConversations.map((conversation, index) => {
-        if (conversation.user.handle === activeConversationUserHandle) {
-          setSelectedConversation(index);
-        }
-      });
+      if (isNewConversation) {
+        const lastConvo = sortedConversations.pop();
+        sortedConversations.unshift(lastConvo as ConversationProp);
+        setConversations(sortedConversations);
+        if (sortedConversations[0]) openConversation(sortedConversations[0], 0);
+        setIsNewConversation(false);
+      } else {
+        setConversations(sortedConversations);
+        sortedConversations.map((conversation, index) => {
+          if (conversation.user.handle === activeConversationUserHandle) {
+            openConversation(conversation, index);
+          }
+        });
+      }
       if (!messagesEnabled) {
         setMessagesEnabled(true);
         setConnectingXMTP(false);
@@ -503,6 +595,49 @@ const MyMessageOpenChat = () => {
 
     bottomMarker?.scrollIntoView({ behavior: "instant" });
   }, [selectedConversation]);
+
+  const getFileCategory = (mimeType: string): string => {
+    if (mimeType.startsWith("image/")) {
+      return "img"; // Images
+    } else if (mimeType.startsWith("video/")) {
+      return "vid"; // Videos
+    } else {
+      return "doc"; // Everything else
+    }
+  };
+
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ): Promise<void> => {
+    const file = event.target.files?.[0]; // Get the uploaded file
+    const attachment = event.target.files;
+
+    if (!file) {
+      console.error("No file selected.");
+      return;
+    }
+
+    const attachmentLink = await uploadFileToIPFS(attachment);
+
+    const attachmentData = {
+      name: file?.name,
+      type: getFileCategory(file?.type),
+      link: attachmentLink,
+    };
+
+    const attachmentUrl = await uploadJsonToIPFS(attachmentData);
+
+    if (selectedConversation !== null) {
+      conversations[selectedConversation].conversation.send(attachmentUrl, {
+        timestamp: new Date(),
+      });
+    }
+  };
+
+  useEffect(() => {
+    console.log("there was an update");
+    console.log("Active Attachments: ", activeAttachments);
+  }, [activeAttachments]);
 
   return (
     <div className="h-screen w-screen overflow-hidden pt-[107px] sm:pt-[75px] px-[156px] sm:px-[16px] flex gap-[5px] mb-[0px] absolute top-0 left-0 z-[998]">
@@ -574,7 +709,7 @@ const MyMessageOpenChat = () => {
                             </div>
                           </div>
                           <span className="text-[#707070] leading-[12.1px] text-[12px] font-semibold">
-                            {conversationDates[index] !== ""
+                            {conversation.lastMessageTime !== ""
                               ? moment(conversation.lastMessageTime).format(
                                   "h:mmA"
                                 )
@@ -763,7 +898,7 @@ const MyMessageOpenChat = () => {
                     </span>
                     {messages.messages.map(
                       (message: DecodedMessage, index: number) => {
-                        return (
+                        return !isLink(message.content) ? (
                           <div
                             key={index}
                             className={`rounded-[8px] whitespace-pre-wrap min-w-[200px] sm:min-w-[150px] max-w-[450px] text-[12px] laptop-x:max-w-[350px] sm:max-w-[262px] laptop-x:text-[14px] mb-[12px] relative font-normal leading-[20px] p-[11px] py-[9px] 
@@ -775,6 +910,49 @@ const MyMessageOpenChat = () => {
                       } `}
                           >
                             {message.content}
+                            <span className="absolute right-[6px] bottom-[0px] text-[10px]">
+                              {moment(message.sent).format("h:mmA")}
+                            </span>
+                          </div>
+                        ) : activeAttachments[message.content] ? (
+                          <a
+                            target="_blank"
+                            href={activeAttachments[message.content].link}
+                            download={activeAttachments[message.content].name}
+                            className={`rounded-[8px] whitespace-pre-wrap min-w-[200px] sm:min-w-[150px] max-w-[450px] text-[12px] laptop-x:max-w-[350px] sm:max-w-[262px] laptop-x:text-[14px] mb-[12px] relative font-normal leading-[20px] p-[11px] py-[9px] 
+                      pr-[48px] sm:px-[8px] sm:pr-[9px] sm:pb-[23px] flex items-center bg-[#E4E4E7] ${
+                        session?.type === SessionType.WithProfile &&
+                        message.senderAddress === session.address
+                          ? "self-end"
+                          : "self-start"
+                      } `}
+                          >
+                            <Image
+                              src="/images/add-photo.svg"
+                              className={`sm:w-[20px] sm:h-[20px] mr-[10px]`}
+                              alt="user icon"
+                              width={24}
+                              height={24}
+                            />
+                            <span>
+                              {activeAttachments[message.content].name}
+                            </span>
+                            <span className="absolute right-[6px] bottom-[0px] text-[10px]">
+                              {moment(message.sent).format("h:mmA")}
+                            </span>
+                          </a>
+                        ) : (
+                          <div
+                            key={index}
+                            className={`rounded-[8px] whitespace-pre-wrap min-w-[200px] sm:min-w-[150px] max-w-[450px] text-[12px] laptop-x:max-w-[350px] sm:max-w-[262px] laptop-x:text-[14px] mb-[12px] relative font-normal leading-[20px] p-[11px] py-[9px] 
+                      pr-[48px] sm:px-[8px] sm:pr-[9px] sm:pb-[23px] flex items-center bg-[#E4E4E7] ${
+                        session?.type === SessionType.WithProfile &&
+                        message.senderAddress === session.address
+                          ? "self-end"
+                          : "self-start"
+                      } `}
+                          >
+                            <span>Loading...</span>
                             <span className="absolute right-[6px] bottom-[0px] text-[10px]">
                               {moment(message.sent).format("h:mmA")}
                             </span>
@@ -796,14 +974,24 @@ const MyMessageOpenChat = () => {
                 onKeyDown={handleKeyDown}
                 value={inputMessage}
               />
-              <button className="rounded-[8px] bg-[#F4F4F5] p-[9px] h-fit">
+              <label
+                htmlFor="file_upload"
+                className="rounded-[8px] bg-[#F4F4F5] p-[9px] h-fit inline-flex items-center cursor-pointer"
+              >
                 <Image
                   src={"/images/share.svg"}
                   alt="paco pic"
                   width={24}
                   height={24}
                 />
-              </button>
+                <input
+                  id="file_upload"
+                  type="file"
+                  name="file_upload"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                />
+              </label>
               <button
                 className="px-[18px] sm:px-[10px] py-[10px] bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] flex w-fit gap-[7px] h-fit items-center"
                 onClick={handleSendMessage}

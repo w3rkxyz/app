@@ -3,6 +3,7 @@ import { Profile } from "@lens-protocol/react-web";
 
 const initialState = {
   loginModal: false,
+  switchModal: false,
   user: undefined,
 };
 
@@ -25,6 +26,9 @@ export const appSlice = createSlice({
     displayLoginModal: (state: any, action: Display) => {
       state.loginModal = action.payload.display;
     },
+    displaySwitchModal: (state: any, action: Display) => {
+      state.switchModal = action.payload.display;
+    },
     setLensProfile: (state: any, action: SetProfile) => {
       state.user = action.payload.profile;
     },
@@ -32,6 +36,7 @@ export const appSlice = createSlice({
 });
 
 // Action creators are generated for each case reducer function
-export const { displayLoginModal, setLensProfile } = appSlice.actions;
+export const { displayLoginModal, displaySwitchModal, setLensProfile } =
+  appSlice.actions;
 
 export default appSlice.reducer;

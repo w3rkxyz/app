@@ -4,10 +4,9 @@ import Link from "next/link";
 import Image from "next/image";
 import React, { useState } from "react";
 import { HandleInfo, useLogout } from "@lens-protocol/react-web";
-import { LoginForm } from "../common/header/loginForm";
 import { useAccount, useDisconnect } from "wagmi";
 import { useDispatch } from "react-redux";
-import { displayLoginModal } from "@/redux/app";
+import { displayLoginModal, displaySwitchModal } from "@/redux/app";
 import { wipeKeys } from "@/utils/xmtpHelpers";
 
 const ProfileDropdown = ({ handle }: { handle?: HandleInfo }) => {
@@ -27,8 +26,7 @@ const ProfileDropdown = ({ handle }: { handle?: HandleInfo }) => {
 
   const handleSwitchProfile = () => {
     if (handle) {
-      dispatch(displayLoginModal({ display: true }));
-      logout();
+      dispatch(displaySwitchModal({ display: true }));
       wipeKeys(handle.ownedBy);
     }
   };
@@ -49,6 +47,17 @@ const ProfileDropdown = ({ handle }: { handle?: HandleInfo }) => {
               alt="person icon"
             ></Image>
             <span className="drop-down-text">My Profile</span>
+          </div>
+        </Link>
+        <Link href="/contracts">
+          <div className="drop-down-item">
+            <Image
+              src="/images/contract.svg"
+              width={22}
+              height={22}
+              alt="person icon"
+            ></Image>
+            <span className="drop-down-text">My Contracts</span>
           </div>
         </Link>
         <Link href="/settings">
