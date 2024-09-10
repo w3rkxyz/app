@@ -24,7 +24,7 @@ export const Connect = () => {
             {(() => {
               if (connected && !sessionLoading) {
                 return (
-                  <Link href="/other-user-follow/?handle=olu25">
+                  <Link href="/profile">
                     <button type="button" className="button-primary mx-auto">
                       Get Started
                     </button>

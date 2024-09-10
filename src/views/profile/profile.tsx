@@ -366,7 +366,11 @@ const Profile = () => {
       {isJobModalOpen && (
         <div className="fixed inset-0 z-[999] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center sm:items-end">
           <div className="w-full flex justify-center sm:just align-middle sm:align-bottom">
-            <ProfileModal type="job" handleCloseModal={handleCloseJobModal} />
+            <ProfileModal
+              type="job"
+              handleCloseModal={handleCloseJobModal}
+              handle={userData.handle}
+            />
           </div>
         </div>
       )}
@@ -376,6 +380,7 @@ const Profile = () => {
             <ProfileModal
               type="service"
               handleCloseModal={handleCloseServiceModal}
+              handle={userData.handle}
             />
           </div>
         </div>

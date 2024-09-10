@@ -19,7 +19,12 @@ type Props = {
   handleCloseModal?: () => void;
   type: string;
   closeJobCardModal?: () => void;
+  handle: string;
 };
+
+function removeAtSymbol(text: string) {
+  return text.startsWith("@") ? text.slice(1) : text;
+}
 
 const categories = [
   {
@@ -101,7 +106,12 @@ function getTokenNamesByIndexes(indexes: number[]): string {
     .join(", "); // Filter out any empty strings just in case
 }
 
-const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
+const ProfileModal = ({
+  handleCloseModal,
+  closeJobCardModal,
+  type,
+  handle,
+}: Props) => {
   const { execute, loading, error } = useCreatePost();
   const myDivRef = useRef<HTMLDivElement>(null);
   const tagModalRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -260,11 +270,15 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type }: Props) => {
     var updatedTags = tags.filter((item) => item !== "");
     updatedTags = [...updatedTags, type, "w3rk"];
     if (canSubmitPost()) {
-      const publicContent = `\\*\\* ${
-        type === "job" ? "Job Posting" : "Service Listing"
-      } \\*\\*\n\nTitle: ${title}\n\nDescription: ${description}\n\nPay: ${
-        payementType === "fixed" ? `$${fixedPrice}` : `$${hourlyRate}/hr`
-      }`;
+      const publicContent = `${
+        type === "job" ? "📢 Job Opportunity!" : "🛠 Ready for work!"
+      } \n\n${
+        type === "job"
+          ? `Just posted a job on @w3rkxyz for a ${title}`
+          : `Just listed my services on @w3rkxyz as a ${title}`
+      }\n\nFor more details please visit www.w3rk.xyz/${removeAtSymbol(
+        handle
+      )}`;
       const heyMetadata = textOnly({
         content: publicContent,
         appId: process.env.NEXT_PUBLIC_APP_ID,

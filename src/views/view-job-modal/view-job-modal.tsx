@@ -167,7 +167,7 @@ const ViewJobModal = ({
                 {attributes["title"]}
               </span>
               <span className="text-[14px] leading-[16.94px] font-medium text-[#707070]">
-                w3rk
+                {profileData ? profileData.displayName : "w3rk"}
               </span>
               <span className="text-[#707070] text-[12px] sm:text-[14px] leading-[14.52px] font-medium">
                 {attributes["payement type"]
@@ -200,11 +200,6 @@ const ViewJobModal = ({
             </button>
           )}
         </div>
-        <p className="leading-[16.94px] text-[18px] sm:text-[16px] font-semibold mb-[16px]">
-          {attributes["title"]
-            ? attributes["title"]
-            : "Website Updates - Full Stack Developer"}
-        </p>
         {attributes["content"] ? (
           <div className="width-full rounded-[12px] leading-[22px] min-h-[312px] sm:leading-[16.52px] font-normal text-[13px] sm:text-[12px] border-[1px] border-[#E4E4E7] p-[13px] pb-[90px] sm:p-[9px] sm:pb-[10px] mb-[18px] whitespace-pre-wrap">
             {attributes["content"]}

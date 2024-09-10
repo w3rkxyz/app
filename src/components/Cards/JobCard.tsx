@@ -101,7 +101,7 @@ const JobCard = ({
               {attributes["title"]}
             </span>
             <span className="text-[14px] leading-[16.94px] font-medium text-[#707070]">
-              w3rk
+              {profileData ? profileData.displayName : "w3rk"}
             </span>
             <span className="text-[#707070] text-[12px] leading-[14.52px] font-medium">
               {attributes["payement type"]
@@ -141,12 +141,9 @@ const JobCard = ({
       >
         {attributes["content"]
           ? attributes["content"]
-          : `User information can go here along with service offered information,
-total character limit will have to be decided bc we don’t wanna run over
-the limit. User information can go here along with service offered
-information, total character limit will have to be decided bc we don’t
-wanna run over the limit. User information can go here along... service
-offered information, total character limit will have to be`}
+          : `User information can go here along with service offered information, total character limit will have to be decided bc
+           we don’t wanna run over the limit. User infoormation can go here along with service offered information, total
+            character limit will have to be decided bc we don’t wanna run over the limit. User infoormation can go here along... `}
       </p>
       <div className="flex sm:flex-col gap-[15px] sm:gap-[10px]">
         {data?.metadata.tags?.slice(0, 3).map((tag, index) => {
