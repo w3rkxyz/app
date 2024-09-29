@@ -1,6 +1,6 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import Link from "next/link";
-import { useSession } from "@lens-protocol/react-web";
+import { SessionType, useSession } from "@lens-protocol/react-web";
 
 export const Connect = () => {
   const { data: session, loading: sessionLoading } = useSession();
@@ -22,9 +22,13 @@ export const Connect = () => {
         return (
           <>
             {(() => {
-              if (connected && !sessionLoading) {
+              if (
+                connected &&
+                !sessionLoading &&
+                session?.type === SessionType.WithProfile
+              ) {
                 return (
-                  <Link href="/profile">
+                  <Link href={`/u/${session.profile.handle?.localName}`}>
                     <button type="button" className="button-primary mx-auto">
                       Get Started
                     </button>

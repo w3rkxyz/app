@@ -5,7 +5,7 @@ import Image from "next/image";
 
 const Notifications = () => {
   return (
-    <div className="px-[320px] sm:px-[16px] pt-[120px] sm:pt-[90px]">
+    <div className="px-[320px] lg:px-[220px] md:px-[160px] tablet-notifications:px-[100px] sm:px-[16px] pt-[120px] sm:pt-[90px]">
       <button className="rounded-[8px] bg-[#E4E4E7] text-black px-[16px] py-[7px] sm:px-[14px] sm:py-[4px] text-[14px] w-fit h-fit cursor-pointer mb-[9px]">
         All Notifications
       </button>

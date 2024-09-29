@@ -38,7 +38,7 @@ const ProfileDropdown = ({ handle }: { handle?: HandleInfo }) => {
         {handle ? `@${handle.localName}` : "@user"}
       </div>
       <div className="flex flex-col gap-[8px] pt-[10px] pb-[5px] pr-[15px] bg-white border-b-[1px] border-b-[#E4E4E7]">
-        <Link href="/profile">
+        <Link href={`/u/${handle?.localName}`}>
           <div className="drop-down-item">
             <Image
               src="/images/user.svg"

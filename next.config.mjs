@@ -14,6 +14,7 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ["@xmtp/user-preferences-bindings-wasm"],
   },
+  transpilePackages: ["@lens-protocol"],
 };
 
 export default nextConfig;

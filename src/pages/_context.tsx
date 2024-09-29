@@ -35,7 +35,7 @@ const lensConfig: LensConfig = {
 };
 
 // Rainbow kit and Lens Context wrapper
-export function ContextProvider({ children }: { children: ReactNode }) {
+export default function ContextProvider({ children }: { children: ReactNode }) {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>

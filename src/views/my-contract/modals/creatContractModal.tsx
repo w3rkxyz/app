@@ -4,10 +4,16 @@ import React, { useRef, useEffect, useState } from "react";
 import Image from "next/image";
 import MyButton from "@/components/reusable/Button/Button";
 import { useAccount } from "wagmi";
+import type { contractDetails } from "@/types/types";
+import DatePicker from "react-datepicker";
+
+import "react-datepicker/dist/react-datepicker.css";
 
 type Props = {
   handleCloseModal?: () => void;
   setCreationStage: any;
+  setContractDetails: any;
+  contractDetails: contractDetails;
 };
 
 const tokens = [
@@ -22,13 +28,31 @@ const tokens = [
   // { text: "Bonsai (BONSAI)", image: "/images/bw-coin.svg" },
 ];
 
-const CreateContractModal = ({ handleCloseModal, setCreationStage }: Props) => {
+const CreateContractModal = ({
+  handleCloseModal,
+  setCreationStage,
+  setContractDetails,
+  contractDetails,
+}: Props) => {
   const { address } = useAccount();
   const myDivRef = useRef<HTMLDivElement>(null);
   const tokenModalRef = useRef<HTMLButtonElement>(null);
   const [showMobile, setShowMobile] = useState(false);
   const [showTokens, setShowTokens] = useState(false);
   const [selectedTokens, setSelectedTokens] = useState<number[]>([]);
+  const [title, setTitle] = useState(contractDetails.title);
+  const [description, setDescription] = useState(contractDetails.description);
+  const [clientAddress, setClientAddress] = useState(
+    contractDetails.clientAddress
+  );
+  const [freelancerAddress, setFreelancerAddress] = useState(
+    contractDetails.freelancerAddress
+  );
+  const [paymentAmount, setPaymentAmount] = useState(
+    contractDetails.paymentAmount
+  );
+  const [dueDate, setDueDate] = useState(contractDetails.dueDate);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const toggleTokensModal = () => {
     setShowTokens(!showTokens);
@@ -74,6 +98,30 @@ const CreateContractModal = ({ handleCloseModal, setCreationStage }: Props) => {
     };
   }, []);
 
+  const toggleDatePicker = () => {
+    setShowDatePicker(!showDatePicker);
+  };
+
+  const handlePickDate = (date: Date | null) => {
+    if (date !== null) {
+      setDueDate(date);
+    }
+    toggleDatePicker();
+  };
+
+  const handleSubmit = () => {
+    const details: contractDetails = {
+      title,
+      description,
+      clientAddress: address as string,
+      freelancerAddress,
+      paymentAmount,
+      dueDate,
+    };
+    setContractDetails(details);
+    setCreationStage(2);
+  };
+
   return (
     <div
       className={`view-job-modal-section sm:w-full rounded-[12px] px-[16px] sm:rounded-none sm:rounded-tl-[12px]  sm:rounded-tr-[12px] bg-white nav-space sm:absolute sm:mobile-modal 
@@ -110,6 +158,8 @@ const CreateContractModal = ({ handleCloseModal, setCreationStage }: Props) => {
           <input
             className="form-input rounded-[12px] p-[11px] border-[1px] border-[#E4E4E7] sm:w-full"
             placeholder="Title your contract.."
+            onChange={(e) => setTitle(e.target.value)}
+            value={title}
           />
         </div>
         <div className="flex flex-col gap-[4px] sm:gap-[6px] mb-[16px]">
@@ -119,6 +169,8 @@ const CreateContractModal = ({ handleCloseModal, setCreationStage }: Props) => {
           <textarea
             className="form-input rounded-[12px] p-[11px] h-[160px] border-[1px] border-[#E4E4E7] resize-none sm:w-full"
             placeholder="Type a description.."
+            onChange={(e) => setDescription(e.target.value)}
+            value={description}
           />
         </div>
         <div className="flex sm:flex-col gap-[16px] mb-[16px]">
@@ -144,6 +196,8 @@ const CreateContractModal = ({ handleCloseModal, setCreationStage }: Props) => {
               className={`form-input rounded-[8px] px-[11px] py-[7px] border-[1px] border-[#E4E4E7]`}
               placeholder="Freelancer wallet address"
               type="text"
+              onChange={(e) => setFreelancerAddress(e.target.value)}
+              value={freelancerAddress}
             />
           </div>
         </div>
@@ -156,8 +210,10 @@ const CreateContractModal = ({ handleCloseModal, setCreationStage }: Props) => {
             </span>
             <input
               className="form-input rounded-[8px] px-[11px] py-[7px] border-[1px] border-[#E4E4E7]"
-              value={address}
+              value={paymentAmount}
               placeholder="Fixed amount price in USD"
+              type="number"
+              onChange={(e) => setPaymentAmount(Number(e.target.value))}
             />
           </div>
           <div className="flex-1">
@@ -240,10 +296,17 @@ const CreateContractModal = ({ handleCloseModal, setCreationStage }: Props) => {
             >
               Due Date
             </span>
-            <button className="w-full sm:w-full rounded-[8px] border-[1px] border-[#E4E4E7] p-[7px] flex justify-between items-center relative">
-              <span className="font-normal leading-[14.52px] text-[12px] text-[#707070]">
-                Select Date
-              </span>
+            <button
+              className="w-full sm:w-full rounded-[8px] border-[1px] border-[#E4E4E7] p-[7px] flex justify-between items-center relative"
+              onClick={() => setShowDatePicker(true)}
+            >
+              <DatePicker
+                selected={dueDate}
+                onSelect={(date) => handlePickDate(date)}
+                className="font-normal leading-[14.52px] text-[14px] text-[#707070]"
+                open={showDatePicker}
+                onClickOutside={() => setShowDatePicker(false)}
+              />
               <Image
                 src="/images/calender.svg"
                 alt="drop-down icon"
@@ -256,7 +319,7 @@ const CreateContractModal = ({ handleCloseModal, setCreationStage }: Props) => {
 
         <button
           className="mx-auto w-fit flex gap-[5px] py-[10px] px-[23px] tx-[14px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px]"
-          onClick={() => setCreationStage(2)}
+          onClick={handleSubmit}
         >
           Next
           <Image

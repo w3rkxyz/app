@@ -14,27 +14,46 @@ import {
   appId,
 } from "@lens-protocol/react-web";
 import { toast } from "react-hot-toast";
-import ViewJobModal from "../view-job-modal/view-job-modal";
+import ViewJobModal from "../../views/view-job-modal/view-job-modal";
 import getLensProfileData from "@/utils/getLensProfile";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import { useSearchParams } from "next/navigation";
 import ProfileSkeleton from "@/components/reusable/profileSkeleton";
+import { useRouter } from "next/router";
+import ProfileModal from "@/views/profile/profileModal";
 
 function getDomain(url: string) {
   return url.replace(/https?:\/\//, "").replace(/\/$/, "");
 }
 
-const OtherUserFollow = () => {
-  const searchParams = useSearchParams();
-  const id = searchParams.get("handle");
+// export async function getServerSideProps(context: any) {
+//   // const { id } = context.params;
+//   // const post = await fetchPostData(id); // Replace with your data fetching logic
+
+//   // return {
+//   //   props: { post },
+//   // };
+//   console.log("Context: ", context);
+//   return {
+//     props: { isThere: true },
+//   };
+// }
+
+export default function Profile() {
+  const router = useRouter();
+  const { handle: userId } = router.query;
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isJobModalOpen, setIsJobModalOpen] = useState(false);
+  const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
   const [profileId, setProfileId] = useState<ProfileId[]>();
+  const [isMyProfile, setIsMyProfile] = useState(false);
   const [data, setData] = useState<any[]>([]);
   const { data: profile, loading: profileLoading } = useProfile({
-    forHandle: `lens/${id}`,
+    forHandle: `lens/${userId}`,
   });
-  const { data: session } = useSession();
+  const [dataLoading, setDataLoading] = useState(true);
+  const { data: session, loading: sessionLoading } = useSession();
   const { data: publications } = usePublications({
     where: {
       from: profileId,
@@ -66,6 +85,23 @@ const OtherUserFollow = () => {
     jobTitle: "",
   });
   const [selectedPublication, setSelectedPublication] = useState<any>();
+
+  const handleOpenJobModal = () => {
+    setIsJobModalOpen(true);
+  };
+
+  const handleOpenServiceModal = () => {
+    setIsServiceModalOpen(true);
+  };
+
+  const handleCloseJobModal = () => {
+    setIsJobModalOpen(false);
+  };
+
+  const handleCloseServiceModal = () => {
+    setIsServiceModalOpen(false);
+  };
+
   const handleCloseModal = () => {
     setIsModalOpen(false);
   };
@@ -108,7 +144,7 @@ const OtherUserFollow = () => {
 
   useEffect(() => {
     console.log("Session updated");
-    if (profile) {
+    if (profile && session) {
       console.log("Reached here");
       setProfileId([profile.id]);
       console.log("The Profile: ", profile);
@@ -145,9 +181,18 @@ const OtherUserFollow = () => {
           : "",
       };
       setUserData(handle);
+
+      if (
+        session?.type === SessionType.WithProfile &&
+        session.profile.handle?.fullHandle === profile.handle?.fullHandle
+      ) {
+        console.log("This ran na?");
+        setIsMyProfile(true);
+      }
+      setDataLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profileLoading]);
+  }, [profileLoading, sessionLoading]);
 
   const handleImageError = () => {
     var data = { ...userData };
@@ -162,19 +207,19 @@ const OtherUserFollow = () => {
     }
   }, [publications]);
 
-  return profileLoading ? (
+  return dataLoading ? (
     <ProfileSkeleton />
   ) : (
-    <div className="px-[156px] sm:px-[16px] pt-[110px] sm:pt-[122px] sm:w-full mb-[40px]">
-      <div className="absolute w-full mx-0 left-0 top-156px sm:top-[79px] px-[156px] sm:px-[16px] -z-40">
+    <div className="px-[156px] profile-md:px-[80px] profile-sm:px-[20px] sm:px-[16px] pt-[110px] sm:pt-[122px] sm:w-full mb-[40px]">
+      <div className="absolute w-full mx-0 left-0 top-156px sm:top-[79px] px-[156px] profile-sm:px-[20px] profile-md:px-[80px] sm:px-[16px] -z-40">
         <div
           className="bg-[#E4E4E7] w-full h-[196px] sm:h-[110px] rounded-[16px] relative"
           style={{ backgroundImage: `url(${userData.cover})` }}
         ></div>
       </div>
-      <div className="flex sm:flex-col sm:w-full gap-[30px] pt-[116px] sm:pt-[26px] px-[32px] sm:px-[0px]">
+      <div className="flex lg:flex-col lg:w-full gap-[30px] pt-[116px] sm:pt-[26px] px-[32px] sm:px-[0px]">
         <div className="max-w-[350px] min-w-[350px] sm:w-full">
-          <div className="w-[160px] h-[160px] sm:w-[80px] sm:h-[80px] relative mb-[16px]">
+          <div className="w-[160px] h-[160px] sm:w-[80px] sm:h-[80px] relative mb-[16px] sm:ml-[16px]">
             <Image
               src={userData.picture}
               layout="fill"
@@ -222,23 +267,31 @@ const OtherUserFollow = () => {
               </span>
             </div>
           </div>
-          <div className="flex gap-[16px] mb-[16px]">
-            {profile?.operations.isFollowedByMe.value ? (
-              <button className="rounded-[8px] bg-[#351A6B] text-white px-[16px] py-[6px] text-[14px] leading-[24px]">
-                Following
+          {isMyProfile ? (
+            <Link href={"/settings"}>
+              <button className="rounded-[8px] bg-[#E4E4E7] text-black px-[16px] py-[7px] mb-[16px] text-[14px]">
+                Edit Profile
               </button>
-            ) : (
-              <button
-                className="rounded-[8px] bg-[#C6AAFF] hover:bg-[#351A6B] text-white px-[16px] py-[6px] text-[14px] leading-[24px]"
-                onClick={handleFollow}
-              >
-                Follow
+            </Link>
+          ) : (
+            <div className="flex gap-[16px] mb-[16px]">
+              {profile?.operations.isFollowedByMe.value ? (
+                <button className="rounded-[8px] bg-[#351A6B] text-white px-[16px] py-[6px] text-[14px] leading-[24px]">
+                  Following
+                </button>
+              ) : (
+                <button
+                  className="rounded-[8px] bg-[#C6AAFF] hover:bg-[#351A6B] text-white px-[16px] py-[6px] text-[14px] leading-[24px]"
+                  onClick={handleFollow}
+                >
+                  Follow
+                </button>
+              )}
+              <button className="rounded-[8px] bg-[#E4E4E7] text-black px-[16px] py-[6px] text-[14px] leading-[24px]">
+                Message
               </button>
-            )}
-            <button className="rounded-[8px] bg-[#E4E4E7] text-black px-[16px] py-[6px] text-[14px] leading-[24px]">
-              Message
-            </button>
-          </div>
+            </div>
+          )}
           <hr className="bg-[#E4E4E7] h-[1px] mb-[16px]" />
           <div className="flex gap-[12px] mb-[19px]">
             {userData.X !== "" && (
@@ -314,12 +367,28 @@ const OtherUserFollow = () => {
             </div>
           </div>
         </div>
-        <hr className="bg-[#E4E4E7] h-[1px] mb-[0px] hidden sm:block" />
-        <div className="pt-[96px] sm:pt-[0px] flex-1">
+        <hr className="bg-[#E4E4E7] h-[1px] mb-[0px] hidden lg:block" />
+        <div className="pt-[96px] lg:pt-[0px] flex-1">
           <div className="flex sm:flex-col sm:gap-[16px] justify-between sm:justify-start mb-[16px] align-middle">
             <button className="leading-[19.36px] text-[16px] font-medium text-[black] px-[10px] py-[7px] bg-[#E4E4E7] rounded-[8px] sm:w-fit">
               Posts
             </button>
+            {isMyProfile && (
+              <div className="flex gap-[12px] sm:gap-[15px] sm:justify-between">
+                <button
+                  className="rounded-[8px] bg-[#C6AAFF] text-white px-[16px] py-[7px] text-[14px] sm:flex-1"
+                  onClick={handleOpenJobModal}
+                >
+                  Post A Job
+                </button>
+                <button
+                  className="rounded-[8px] bg-[#351A6B] text-white px-[16px] py-[7px] text-[14px] sm:flex-1"
+                  onClick={handleOpenServiceModal}
+                >
+                  List A Service
+                </button>
+              </div>
+            )}
           </div>
           <div
             className={`border-[1px] border-[#E4E4E7] rounded-[16px] p-[16px] flex flex-col gap-[16px] sm:mb-[14px] ${
@@ -383,6 +452,28 @@ const OtherUserFollow = () => {
           </div>
         </div>
       </div>
+      {isJobModalOpen && (
+        <div className="fixed inset-0 z-[999] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center sm:items-end">
+          <div className="w-full flex justify-center sm:just align-middle sm:align-bottom">
+            <ProfileModal
+              type="job"
+              handleCloseModal={handleCloseJobModal}
+              handle={userData.handle}
+            />
+          </div>
+        </div>
+      )}
+      {isServiceModalOpen && (
+        <div className="fixed inset-0 z-[999] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center sm:items-end">
+          <div className="w-full flex justify-center sm:just align-middle sm:align-bottom">
+            <ProfileModal
+              type="service"
+              handleCloseModal={handleCloseServiceModal}
+              handle={userData.handle}
+            />
+          </div>
+        </div>
+      )}
       {isModalOpen && (
         <div className="fixed inset-0 z-[99991] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center sm:items-end cursor-auto">
           <div className="w-full flex justify-center sm:just align-middle sm:align-bottom">
@@ -396,6 +487,4 @@ const OtherUserFollow = () => {
       )}
     </div>
   );
-};
-
-export default OtherUserFollow;
+}

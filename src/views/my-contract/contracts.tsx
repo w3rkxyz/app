@@ -11,6 +11,7 @@ import ViewContractModal from "./modals/viewContractModal";
 import InProgressContractModal from "./modals/inProgressContractModal";
 import AwaitingApprovalContractModal from "./modals/awaitingApprovalContractModal";
 import CompletedContractModal from "./modals/CompletedContractModal";
+import type { contractDetails } from "@/types/types";
 
 const contractTypes = [
   "Proposals",
@@ -28,6 +29,16 @@ const Contracts = () => {
   const [showTypesMobile, setShowTypesMobile] = useState(false);
   const [type, setType] = useState("Proposals");
   const [creationStage, setCreationStage] = useState(1);
+  const [newContractDetails, setNewContractDetails] = useState<contractDetails>(
+    {
+      title: "",
+      description: "",
+      clientAddress: "",
+      freelancerAddress: "",
+      paymentAmount: 0,
+      dueDate: new Date(),
+    }
+  );
 
   const handleOpenModal = (type: string) => {
     setType(type);
@@ -35,12 +46,12 @@ const Contracts = () => {
   };
 
   return (
-    <div className="find-work-section pt-[82px] md:pt-[120px] sm:pt-[60px] mb-[20px]">
+    <div className="find-work-section pt-[82px] md:pt-[110px] sm:pt-[60px] mb-[20px]">
       <div className="custom-container">
-        <div className="tags-section w-full flex sm:justify-center sm:flex-col md:flex-col md:items-start gap-[45px] mt-[50px] sm:mt-[16px]">
+        <div className="tags-section w-full flex md:justify-center md:flex-col gap-[45px] mt-[50px] md:mt-[0px] sm:mt-[16px]">
           <div
-            className="find-work-message-section w-[300px] flex-shrink-0 h-fit sm:h-auto md:h-auto sm:my-0 sm:py-0 bg-[#FFFFFF] sm:bg-transparent md:bg-transparent rounded-[20px] sm:rounded-[0px] p-[16px] sm:w-full sm:items-center gap-2 sm:whitespace-nowrap md:w-full md:flex md:items-center md:whitespace-nowrap overflow-x-auto sm:ml-[-20px]
-            border-[1px] border-[#E4E4E7] sm:hidden"
+            className="find-work-message-section w-[300px] flex-shrink-0 h-fit sm:h-auto md:h-auto sm:my-0 sm:py-0 bg-[#FFFFFF] sm:bg-transparent md:bg-transparent rounded-[20px] sm:rounded-[0px] p-[16px] sm:w-full sm:items-center gap-2 sm:whitespace-nowrap md:w-full md:items-center md:whitespace-nowrap overflow-x-auto sm:ml-[-20px]
+            border-[1px] border-[#E4E4E7] md:hidden"
           >
             <h4 className="text-[20px] font-semibold font-secondary leading-[20px] tracking-[-1%] text-center pb-[17px] sm:pb-[10px] md:pb-[10px]">
               Contracts
@@ -69,14 +80,14 @@ const Contracts = () => {
               Create New Contract
             </button>
           </div>
-          <div className="hidden sm:flex w-full flex-col relative">
+          <div className="hidden md:flex w-full md:items-center flex-col relative">
             <button
-              className={`w-full py-[12px] flex items-center justify-center leading-[14.52px] text-[14px] text-white font-semibold bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] mb-[14px]`}
+              className={`w-full py-[12px] flex items-center justify-center leading-[14.52px] text-[14px] text-white font-semibold bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] mb-[14px] md:max-w-[600px]`}
             >
               Create New Contract
             </button>
             <button
-              className="w-full rounded-[12px] border-[1px] border-[#E4E4E7] px-[14px] py-[10px] flex justify-between items-center relative"
+              className="w-full rounded-[12px] border-[1px] border-[#E4E4E7] px-[14px] py-[10px] flex justify-between items-center relative md:max-w-[600px]"
               onClick={() => setShowTypesMobile(!showTypesMobile)}
             >
               <span className="font-medium leading-[16.94px] text-[14px] text-black">
@@ -142,12 +153,15 @@ const Contracts = () => {
               <CreateContractModal
                 handleCloseModal={() => setIsModalOpen(false)}
                 setCreationStage={setCreationStage}
+                setContractDetails={setNewContractDetails}
+                contractDetails={newContractDetails}
               />
             )}
             {type === "Proposals" && creationStage === 2 && (
               <ReviewContractModal
                 handleCloseModal={() => setIsModalOpen(false)}
                 setCreationStage={setCreationStage}
+                contractDetails={newContractDetails}
               />
             )}
             {type === "In-Progress" && (
