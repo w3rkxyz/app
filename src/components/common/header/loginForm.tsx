@@ -1,32 +1,48 @@
-import { profileId, useLogin, useProfiles } from "@lens-protocol/react-web";
+import Image from "next/image";
+import { useEffect } from "react";
+import {
+  profileId,
+  useLogin,
+  useProfiles,
+  Profile,
+} from "@lens-protocol/react-web";
 import { toast } from "react-hot-toast";
 import style from "./form.module.css";
 import { formatProfileIdentifier } from "../../../utils/formatProfileIdentifier";
-import { useEffect } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { setLensProfile, displayLoginModal } from "@/redux/app";
+import { useState } from "react";
+import getLensProfileData, { UserProfile } from "@/utils/getLensProfile";
 
 export function LoginForm({
   owner,
-  setProfile,
-  onClose,
-}: {
+}: // setProfile,
+// onClose,
+{
   owner: string;
-  setProfile?: any;
-  onClose: () => void;
 }) {
+  const dispatch = useDispatch();
   const { execute: login, loading: isLoginPending } = useLogin();
-  const { data: profiles, loading: loadingProfiles } = useProfiles({
+  const { data, loading: loadingProfiles } = useProfiles({
     where: {
       ownedBy: [owner],
     },
   });
+  const [profiles, setProfiles] = useState<
+    {
+      picture: string;
+      coverPicture: string;
+      displayName: string;
+      handle: string;
+      bio: string;
+      attributes: any;
+      id: any;
+      profile: Profile;
+    }[]
+  >();
 
-  const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    const form = event.currentTarget;
-    const formData = new FormData(form);
-
-    const id = profileId(formData.get("id") as string);
+  const handleProfileClick = async (profile: string) => {
+    const id = profileId(profile);
 
     const result = await login({
       address: owner,
@@ -40,121 +56,102 @@ export function LoginForm({
         )}`
       );
 
-      profiles?.map((profile) => {
+      profiles?.map((profile: any) => {
         if (profile.id === id) {
-          setProfile(profile);
-          onClose();
+          localStorage.setItem("activeHandle", profile.handle?.fullHandle);
+          // setProfile(profile);
+          // onClose();
+
+          dispatch(setLensProfile({ profile: profile }));
+          dispatch(displayLoginModal({ display: false }));
         }
       });
     }
   };
 
-  // While Loading Profiles
-  if (loadingProfiles) {
-    return (
-      <div
-        className={style.form}
-        style={{
-          position: "absolute",
-          width: "100vw",
-          height: "100vh",
-          zIndex: 2,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: "rgba(128, 128, 128, 0.5)",
-        }}
-      >
-        {" "}
-        <p
-          style={{
-            backgroundColor: "white",
-            padding: "15px 60px",
-            borderRadius: "5px",
-          }}
-        >
-          Loading...
-        </p>
-      </div>
-    );
-  }
+  const handleCloseModal = () => {
+    dispatch(displayLoginModal({ display: false }));
+  };
 
-  // If there are no Profiles associated with the connected wallet
-  if (profiles?.length === 0) {
-    return (
-      <div
-        className={style.form}
-        style={{
-          position: "absolute",
-          width: "100vw",
-          height: "100vh",
-          zIndex: 2,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: "rgba(128, 128, 128, 0.5)",
-        }}
-      >
-        {" "}
-        <p
-          style={{
-            backgroundColor: "white",
-            padding: "15px 60px",
-            borderRadius: "5px",
-          }}
-        >
-          No profiles on this wallet.
-        </p>{" "}
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (data) {
+      var temp: {
+        picture: string;
+        coverPicture: string;
+        displayName: string;
+        handle: string;
+        bio: string;
+        attributes: any;
+        id: any;
+        profile: Profile;
+      }[] = [];
+
+      data.map((profile: Profile) => {
+        var profileData = getLensProfileData(profile);
+        if (profileData.handle !== "") {
+          temp.push({ ...profileData, profile: profile });
+        }
+      });
+
+      setProfiles(temp);
+    }
+  }, [data]);
 
   // Shows list of available profiles associated with the connected wallet
   return (
-    <div
-      className={style.form}
-      style={{
-        position: "absolute",
-        width: "100vw",
-        height: "100vh",
-        zIndex: 2,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: "rgba(128, 128, 128, 0.5)",
-      }}
-    >
-      <form
-        onSubmit={onSubmit}
-        style={{
-          backgroundColor: "white",
-          padding: "30px",
-          borderRadius: "5px",
-        }}
-      >
-        <fieldset style={{ gap: "20px" }}>
-          <legend>Which Profile you want to log-in with?</legend>
-
-          {profiles?.map((profile, idx) => (
-            <label key={profile.id}>
-              <input
-                disabled={isLoginPending}
-                type="radio"
-                defaultChecked={idx === 0}
-                name="id"
-                value={profile.id}
-              />
-              {formatProfileIdentifier(profile)}
-            </label>
-          ))}
-
-          <div>
-            <button disabled={isLoginPending} type="submit">
-              Continue
-            </button>
-          </div>
-        </fieldset>
-      </form>
+    <div className="fixed w-screen h-screen top-0 left-0 z-[9999999] flex items-center justify-center bg-[#80808080]">
+      <div className="w-[360px] flex flex-col rounded-[12px] border-[1px] border-[#E4E4E7] bg-white">
+        <div className="w-[360px] flex justify-between items-center px-[16px] py-[13px] border-b-[1px] border-b-[#E4E4E7] rounded-none sm:rounded-tl-[12px] sm:rounded-tr-[12px]">
+          <span className="leading-[14.52px] text-[16px] font-medium text-[black]">
+            Login
+          </span>
+          <Image
+            onClick={handleCloseModal}
+            className="cursor-pointer"
+            src="/images/Close.svg"
+            alt="close icon"
+            width={20}
+            height={20}
+          />
+        </div>
+        <div className="p-[16px] pt-[12px] flex flex-col">
+          {loadingProfiles ? (
+            <span className="text-[14px] leading-[14.52px] font-medium mb-[4px]">
+              Loading...
+            </span>
+          ) : profiles?.length === 0 ? (
+            <span className="text-[14px] leading-[14.52px] font-medium mb-[4px]">
+              No Lens Handle Found
+            </span>
+          ) : (
+            <>
+              <span className="text-[14px] leading-[14.52px] font-medium mb-[4px]">
+                Please sign the message.
+              </span>
+              {profiles?.map((profile, index) => {
+                return (
+                  <div
+                    key={index}
+                    className="flex gap-[12px] items-center mt-[8px] cursor-pointer"
+                    onClick={() => handleProfileClick(profile.id)}
+                  >
+                    <Image
+                      src={profile.picture}
+                      alt="profile pic"
+                      height={40}
+                      width={40}
+                      className="w-[40px] h-[40px] rounded-[8px] border-[1px] border-[#E4E4E7]"
+                    />
+                    <span className="text-[14px] leading-[14.52px] font-medium">
+                      {profile.handle}
+                    </span>
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

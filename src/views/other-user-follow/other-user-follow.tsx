@@ -1,69 +1,83 @@
 "use client";
 
+import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import JobCard from "@/components/Cards/JobCard";
 import {
   useProfile,
   useFollow,
   useSession,
-  Profile,
   SessionType,
-  TriStateValue,
+  usePublications,
+  ProfileId,
+  appId,
 } from "@lens-protocol/react-web";
-import React, { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
-import JobCard from "@/components/JobCard/JobCard";
-import Image from "next/image";
 import ViewJobModal from "../view-job-modal/view-job-modal";
-import ViewListingModal from "../view-listing-modal/view-listing-modal";
-import Link from "next/link";
+import getLensProfileData from "@/utils/getLensProfile";
+import Skeleton from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
+import { useSearchParams } from "next/navigation";
+import ProfileSkeleton from "@/components/reusable/profileSkeleton";
+
+function getDomain(url: string) {
+  return url.replace(/https?:\/\//, "").replace(/\/$/, "");
+}
 
 const OtherUserFollow = () => {
-  const [selectedJobName, setSelectedJobName] = useState("");
-  const [isJobCardOpen, setIsJobCardOpen] = useState(false);
-  const { data: profile, loading } = useProfile({
-    forHandle: "lens/primal",
+  const searchParams = useSearchParams();
+  const id = searchParams.get("handle");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [profileId, setProfileId] = useState<ProfileId[]>();
+  const [data, setData] = useState<any[]>([]);
+  const { data: profile, loading: profileLoading } = useProfile({
+    forHandle: `lens/${id}`,
   });
-  const { data: session, loading: sessionLoading } = useSession();
+  const { data: session } = useSession();
+  const { data: publications } = usePublications({
+    where: {
+      from: profileId,
+      metadata: {
+        publishedOn: [appId(process.env.NEXT_PUBLIC_APP_ID as string)],
+        tags: {
+          all: ["w3rk"],
+        },
+      },
+    },
+  });
   const { execute: follow, loading: followLoading } = useFollow();
+  const [cardType, setCardType] = useState("job");
+  const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState<any>({
-    handle: "adam.lens",
-    picture: "/images/head.svg",
+    displayName: "",
+    handle: "@lenshandle.lens",
+    cover: "",
+    picture: "/images/paco-square.svg",
     following: 100,
     followers: 75,
     about:
       "bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla",
+    location: "",
+    website: "",
+    X: "",
+    github: "",
+    linkedin: "",
+    jobTitle: "",
   });
-
-  const handleJobCardOpen = (jobName: string) => {
-    setIsJobCardOpen(true);
-    setSelectedJobName(jobName);
-  };
-  const handleJobCardClose = () => {
-    setIsJobCardOpen(false);
+  const [selectedPublication, setSelectedPublication] = useState<any>();
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
   };
 
-  useEffect(() => {
-    const handleClickOutsideModal = (event: MouseEvent) => {
-      if (
-        isJobCardOpen &&
-        (event.target as HTMLElement).closest(".modal-content") === null
-      ) {
-        handleJobCardClose();
-      }
-    };
-
-    document.addEventListener("click", handleClickOutsideModal);
-
-    return () => {
-      document.removeEventListener("click", handleClickOutsideModal);
-    };
-  }, [isJobCardOpen]);
-
-  useEffect(() => {}, [profile]);
-
+  const handleOpenCardModal = (publication?: any) => {
+    if (publication) setSelectedPublication(publication);
+    setIsModalOpen(true);
+  };
   const handleFollow = async () => {
     if (profile) {
       if (profile.operations.canFollow === "NO") {
-        toast.error("Must navigate here from homepage");
+        toast.error("Can't follow if directly routed to user profile");
         return null;
       }
 
@@ -92,386 +106,294 @@ const OtherUserFollow = () => {
     }
   };
 
-  return (
-    <div className="other-user-follow-section pt-[105px] pb-10">
-      <div className="custom-container">
-        <div className="tags-section flex sm:flex-col justify-center items-center md:items-start gap-[25px] mt-7">
-          <div>
-            <div className="sm:hidden">
-              <div className="w-[250px] h-[744px] flex-shrink-0 sm:w-full sm:h-auto bg-[#FFFFFF] rounded-[20px] py-[26px] px-[25px]">
-                <div className="flex justify-center items-center">
-                  <div className="w-[120px] h-[110px] bg-[#FFFFFF]/70 flex justify-center items-center rounded-[16px]">
-                    <div>
-                      <Image
-                        src={
-                          profile?.metadata?.picture?.__typename == "ImageSet"
-                            ? profile?.metadata?.picture?.raw?.uri
-                            : "/images/head.svg"
-                        }
-                        alt="head image"
-                        className="w-[65px] h-[65px] mb-2 "
-                        width={65}
-                        height={65}
-                      />
-                      <p className="text-[14px] font-semibold font-secondary leading-[20px] tracking-[-1%] ">
-                        {profile?.handle?.localName
-                          ? `${profile?.handle?.localName}.${profile?.handle?.namespace}`
-                          : "adam.lens"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+  useEffect(() => {
+    console.log("Session updated");
+    if (profile) {
+      console.log("Reached here");
+      setProfileId([profile.id]);
+      console.log("The Profile: ", profile);
 
-                <div>
-                  <p className="text-[14px] font-semibold mt-5 mb-3 text-center font-secondary leading-[20px] tracking-[-1%] text-[#000000]">
-                    Job Title
-                  </p>
-                  <div className="flex justify-around items-center">
-                    <div>
-                      <p className="text-[14px] font-semibold text-center font-secondary leading-[20px] tracking-[-1%] text-[#000000]">
-                        Following
-                      </p>
-                      <p className="text-[14px] font-semibold font-secondary leading-[20px] tracking-[-1%] text-[#000000]/50">
-                        {profile ? profile.stats.following : 100}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[14px] font-semibold text-center font-secondary leading-[20px] tracking-[-1%] text-[#000000]">
-                        Followers
-                      </p>
-                      <p className="text-[14px] font-semibold font-secondary leading-[20px] tracking-[-1%] text-[#000000]/50">
-                        {profile ? profile.stats.followers : 75}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+      const profileData = getLensProfileData(profile);
+      console.log("Also reached here");
 
-                <div className="flex items-center justify-center gap-[5px] my-[22px]">
-                  {/* <Link href="/other-user-following"> */}
-                  {profile?.operations.isFollowedByMe.value ? (
-                    <button className="w-[34px] h-[34px] rounded-[10px] bg-[#A274FF80] hover:bg-[#120037] duration-300 text-white font-semibold font-secondary text-[14px] leading-[20px] tracking-[-1%] flex justify-center items-center gap-[9px] ">
-                      <Image
-                        src="/images/man-icon.svg"
-                        alt="man icon"
-                        width={19}
-                        height={19}
-                      />{" "}
-                    </button>
-                  ) : (
-                    <button
-                      className="w-[93px] h-[34px] rounded-[10px] bg-[#A274FF80] hover:bg-[#120037] duration-300 text-white font-semibold font-secondary text-[14px] leading-[20px] tracking-[-1%] flex justify-center items-center gap-[9px] "
-                      onClick={handleFollow}
-                      title={
-                        profile?.operations.canFollow === TriStateValue.Yes
-                          ? "Click to follow"
-                          : "Unfollow request not finalized yet"
-                      }
-                    >
-                      <Image
-                        src="/images/man-icon.svg"
-                        alt="man icon"
-                        width={19}
-                        height={19}
-                      />{" "}
-                      Follow
-                    </button>
-                  )}
-                  {/* </Link> */}
-                  <button className="w-[93px] h-[34px] rounded-[10px] bg-white text-[#000000] font-semibold font-secondary text-[14px] leading-[20px] tracking-[-1%] hover:bg-[#120037] duration-300 hover:text-white">
-                    <Link href="/my-message">Message</Link>
-                  </button>
-                </div>
+      const handle = {
+        displayName: profileData.displayName,
+        handle: profileData.handle,
+        cover: profileData.coverPicture,
+        picture:
+          profileData.picture !== ""
+            ? profileData.picture
+            : "/images/paco-square.svg",
+        following: profile ? profile.stats.following.toLocaleString() : 100,
+        jobTitle: profileData.attributes["job title"]
+          ? profileData.attributes["job title"]
+          : "",
+        followers: profile ? profile.stats.followers.toLocaleString() : 75,
+        about: profileData.bio ? profileData.bio : userData.about,
+        website: profileData.attributes.website
+          ? profileData.attributes.website
+          : "",
+        location: profileData.attributes.location
+          ? profileData.attributes.location
+          : "",
+        X: profileData.attributes.x ? profileData.attributes.x : "",
+        github: profileData.attributes.github
+          ? profileData.attributes.github
+          : "",
+        linkedin: profileData.attributes.linkedin
+          ? profileData.attributes.linkedin
+          : "",
+      };
+      setUserData(handle);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileLoading]);
 
-                <div>
-                  <p className="text-[14px] font-semibold font-secondary leading-[20px] tracking-[-1%] text-[#000000]">
-                    About Me
-                  </p>
-                  <p className="text-[14px] font-semibold  font-secondary leading-[20px] tracking-[-1%] text-[#000000]/50">
-                    {profile?.metadata?.bio
-                      ? profile.metadata.bio
-                      : userData.about}
-                  </p>
-                </div>
+  const handleImageError = () => {
+    var data = { ...userData };
+    data.picture = "/images/paco-square.svg";
+    setUserData(data);
+  };
 
-                <div className="mt-3">
-                  <p className="text-[14px] font-semibold font-secondary leading-[20px] tracking-[-1%] text-[#000000]">
-                    Skills
-                  </p>
-                  <p className="text-[14px] font-semibold  font-secondary leading-[20px] tracking-[-1%] text-[#000000]/50">
-                    [skill]
-                  </p>
-                  <p className="text-[14px] font-semibold  font-secondary leading-[20px] tracking-[-1%] text-[#000000]/50">
-                    [skill]
-                  </p>
-                  <p className="text-[14px] font-semibold  font-secondary leading-[20px] tracking-[-1%] text-[#000000]/50">
-                    [skill]
-                  </p>
-                </div>
+  useEffect(() => {
+    if (publications) {
+      setData(publications);
+      setLoading(false);
+    }
+  }, [publications]);
 
-                <div className="mt-3">
-                  <p className="text-[14px] font-semibold font-secondary leading-[20px] tracking-[-1%] text-[#000000]">
-                    Links
-                  </p>
-                  <ul className="socials-widgets gap-[10px] flex mt-1">
-                    <li className="socials-widgets-items">
-                      <a href="/">
-                        <Image
-                          className="w-[14.13px]  h-[13.18px]"
-                          src="/images/twitter-fo.svg"
-                          alt="socials icons images"
-                          width={14.13}
-                          height={13.18}
-                        />
-                      </a>
-                    </li>
-                  </ul>
-                </div>
+  return profileLoading ? (
+    <ProfileSkeleton />
+  ) : (
+    <div className="px-[156px] sm:px-[16px] pt-[110px] sm:pt-[122px] sm:w-full mb-[40px]">
+      <div className="absolute w-full mx-0 left-0 top-156px sm:top-[79px] px-[156px] sm:px-[16px] -z-40">
+        <div
+          className="bg-[#E4E4E7] w-full h-[196px] sm:h-[110px] rounded-[16px] relative"
+          style={{ backgroundImage: `url(${userData.cover})` }}
+        ></div>
+      </div>
+      <div className="flex sm:flex-col sm:w-full gap-[30px] pt-[116px] sm:pt-[26px] px-[32px] sm:px-[0px]">
+        <div className="max-w-[350px] min-w-[350px] sm:w-full">
+          <div className="w-[160px] h-[160px] sm:w-[80px] sm:h-[80px] relative mb-[16px]">
+            <Image
+              src={userData.picture}
+              layout="fill"
+              className="rounded-[20px] sm:rounded-[12px]"
+              alt="user icon"
+              onError={handleImageError}
+            />
+          </div>
+          {userData.displayName !== "" && (
+            <h3 className="leading-[19px] text-[16px] font-medium mb-[1px] sm:mb-[0px]">
+              {userData.displayName}
+            </h3>
+          )}
+          <span className="text-[#707070] leading-[16.94px] text-[14px] font-medium mb-[12px] sm:mb-[20px]">
+            {userData.handle}
+          </span>
+          {userData.jobTitle !== "" && (
+            <h3 className="leading-[19px] text-[16px] font-medium mt-[10px] mb-[12px] sm:mt-[6px]">
+              {userData.jobTitle}
+            </h3>
+          )}
+          <p
+            className={`leading-[16.94px] text-[14px] font-medium text-[#707070] mb-[16px] ${
+              userData.jobTitle === "" ? "mt-[10px]" : ""
+            } `}
+          >
+            {userData.about}
+          </p>
 
-                <div className="mt-3">
-                  <p className="text-[14px] font-semibold font-secondary leading-[20px] tracking-[-1%] text-[#000000]">
-                    Accepted Tokens
-                  </p>
-                  <ul className="socials-widgets gap-[5px] flex mt-1">
-                    <li className="socials-widgets-items">
-                      <a href="/">
-                        <Image
-                          className="w-[28px] h-[28px] bg-[#F7931A] p-1 rounded-full"
-                          src="/images/token-1.svg"
-                          alt="socials icons images"
-                          width={28}
-                          height={28}
-                        />
-                      </a>
-                    </li>
-                    <li className="socials-widgets-items">
-                      <a href="/">
-                        <Image
-                          className="w-[28px]  h-[28px]"
-                          src="/images/token2.svg"
-                          alt="socials icons images"
-                          width={28}
-                          height={28}
-                        />
-                      </a>
-                    </li>
-                    <li className="socials-widgets-items">
-                      <a href="/">
-                        <Image
-                          className="w-[28px]  h-[28px]"
-                          src="/images/token3.svg"
-                          alt="socials icons images"
-                          width={28}
-                          height={28}
-                        />
-                      </a>
-                    </li>
-                  </ul>
-                </div>
-              </div>
+          <div className="flex gap-[13px] mb-[16px]">
+            <div className="flex flex-col">
+              <span className="leading-[16.94px] text-[14px] font-medium text-[black]">
+                {userData.following}
+              </span>
+              <span className="leading-[16.94px] text-[14px] font-medium text-[#707070]">
+                Following
+              </span>
             </div>
-
-            {/* small screen sidebar */}
-            <div className="hidden sm:block">
-              <div className="w-full h-auto rounded-[20px] py-[16px] bg-[#FFFFFF] p-5 ">
-                <div className="flex gap-5">
-                  <div className="flex justify-center items-center">
-                    <div className="w-[120px] h-[110px] bg-[#FFFFFF]/70 flex justify-center items-center rounded-[16px]  left-avatar-shadow">
-                      <div>
-                        <Image
-                          src={
-                            profile?.metadata?.picture?.__typename == "ImageSet"
-                              ? profile?.metadata?.picture?.raw?.uri
-                              : "/images/head.svg"
-                          }
-                          alt="head image"
-                          className="w-[65px] h-[65px] mb-2 "
-                          width={65}
-                          height={65}
-                        />
-                        <p className="text-[14px] font-bold font-secondary text-center leading-[17.6px] ml-[-5px]">
-                          {profile?.handle?.localName
-                            ? `${profile?.handle?.localName}.${profile?.handle?.namespace}`
-                            : "adam.lens"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="text-[14px] font-semibold mb-2  font-secondary leading-[20px] tracking-[-1%] text-[#000000]">
-                      Job Title
-                    </p>
-                    <div className="flex flex-wrap gap-4 items-center">
-                      <div>
-                        <p className="text-[10px] font-semibold text-center font-secondary leading-[10px] tracking-[-1%] text-[#000000] mb-1">
-                          Following
-                        </p>
-                        <p className="text-[10px] font-semibold font-secondary leading-[12px] tracking-[-1%] text-[#000000]/50">
-                          {profile ? profile.stats.following : 100}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold text-center font-secondary leading-[10px] tracking-[-1%] text-[#000000] mb-1">
-                          Followers
-                        </p>
-                        <p className="text-[10px] font-semibold font-secondary leading-[12px] tracking-[-1%] text-[#000000]/50">
-                          {profile ? profile.stats.followers : 75}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold font-secondary leading-[10px] tracking-[-1%] text-[#000000] mb-1">
-                          Links
-                        </p>
-                        <ul className="socials-widgets gap-[10px] flex mt-1">
-                          <li className="socials-widgets-items">
-                            <a href="/">
-                              <Image
-                                className="w-[14.13px]  h-[13.18px]"
-                                src="/images/twitter-fo.svg"
-                                alt="socials icons images"
-                                width={14.13}
-                                height={13.18}
-                              />
-                            </a>
-                          </li>
-                        </ul>
-                      </div>
-                      <div className="">
-                        <p className="text-[14px] font-semibold font-secondary leading-[20px] tracking-[-1%] text-[#000000]">
-                          Accepted Tokens
-                        </p>
-                        <ul className="socials-widgets gap-[5px] flex mt-1">
-                          <li className="socials-widgets-items">
-                            <a href="/">
-                              <Image
-                                className="w-[28px] h-[28px] bg-[#F7931A] p-1 rounded-full"
-                                src="/images/token-1.svg"
-                                alt="socials icons images"
-                                width={28}
-                                height={28}
-                              />
-                            </a>
-                          </li>
-                          <li className="socials-widgets-items">
-                            <a href="/">
-                              <Image
-                                className="w-[28px]  h-[28px]"
-                                src="/images/token2.svg"
-                                alt="socials icons images"
-                                width={28}
-                                height={28}
-                              />
-                            </a>
-                          </li>
-                          <li className="socials-widgets-items">
-                            <a href="/">
-                              <Image
-                                className="w-[28px]  h-[28px]"
-                                src="/images/token3.svg"
-                                alt="socials icons images"
-                                width={28}
-                                height={28}
-                              />
-                            </a>
-                          </li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-center gap-[5px] my-[22px]">
-                  <button className="w-[93px] h-[34px] rounded-[10px] bg-[#A274FF80] text-white font-semibold font-secondary text-[14px] leading-[20px] tracking-[-1%] flex justify-center items-center gap-[9px] ">
-                    <Image
-                      src="/images/man-icon.svg"
-                      alt="man icon"
-                      width={19}
-                      height={19}
-                    />{" "}
-                    Follow
-                  </button>
-                  <button className="w-[93px] h-[34px] rounded-[10px] bg-white text-[#000000] font-semibold font-secondary text-[14px] leading-[20px] tracking-[-1%] ">
-                    Message
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="mt-3">
-                    <p className="text-[12px] font-semibold font-secondary leading-[20px] tracking-[-1%] text-[#000000]">
-                      About Me
-                    </p>
-                    <p className="text-[10px] font-semibold  font-secondary leading-[16px] tracking-[-1%] text-[#000000]/50">
-                      {profile?.metadata?.bio
-                        ? profile.metadata.bio
-                        : userData.about}
-                    </p>
-                  </div>
-
-                  <div className="mt-3">
-                    <p className="text-[12px] font-semibold font-secondary leading-[20px] tracking-[-1%] text-[#000000]">
-                      Skills
-                    </p>
-                    <p className="text-[10px] font-semibold  font-secondary leading-[16px] tracking-[-1%] text-[#000000]/50">
-                      [skill]
-                    </p>
-                    <p className="text-[10px] font-semibold  font-secondary leading-[16px] tracking-[-1%] text-[#000000]/50">
-                      [skill]
-                    </p>
-                    <p className="text-[10px] font-semibold  font-secondary leading-[16px] tracking-[-1%] text-[#000000]/50">
-                      [skill]
-                    </p>
-                  </div>
-                </div>
-              </div>
+            <div className="flex flex-col">
+              <span className="leading-[16.94px] text-[14px] font-medium text-[black]">
+                {userData.followers}
+              </span>
+              <span className="leading-[16.94px] text-[14px] font-medium text-[#707070]">
+                Followers
+              </span>
             </div>
           </div>
-
-          <div className="w-full">
-            <JobCard
-              jobName="Job Name"
-              jobIcon="/images/man.svg"
-              cardStyles={"!flex !justify-evenly !items-center"}
-              onCardClick={() => handleJobCardOpen("Job Name")}
-            />
-            <JobCard
-              jobName="Service Name"
-              jobIcon="/images/man.svg"
-              cardStyles={"!flex !justify-evenly !items-center"}
-              onCardClick={() => handleJobCardOpen("Service Name")}
-            />
-            <JobCard
-              jobName="Job Name"
-              jobIcon="/images/man.svg"
-              cardStyles={"!flex !justify-evenly !items-center"}
-              onCardClick={() => handleJobCardOpen("Job Name")}
-            />
-            <JobCard
-              jobName="Service Name"
-              jobIcon="/images/man.svg"
-              cardStyles={"!flex !justify-evenly !items-center"}
-              onCardClick={() => handleJobCardOpen("Service Name")}
-            />
-            <JobCard
-              jobName="Job Name"
-              jobIcon="/images/man.svg"
-              cardStyles={"!flex !justify-evenly !items-center"}
-              onCardClick={() => handleJobCardOpen("Job Name")}
-            />
-
-            {isJobCardOpen && (
-              <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center">
-                <div className="w-full">
-                  {selectedJobName === "Service Name" ? (
-                    <ViewListingModal closeJobCardModal={handleJobCardClose} />
-                  ) : selectedJobName === "Job Name" ? (
-                    <ViewJobModal closeJobCardModal={handleJobCardClose} />
-                  ) : null}
+          <div className="flex gap-[16px] mb-[16px]">
+            {profile?.operations.isFollowedByMe.value ? (
+              <button className="rounded-[8px] bg-[#351A6B] text-white px-[16px] py-[6px] text-[14px] leading-[24px]">
+                Following
+              </button>
+            ) : (
+              <button
+                className="rounded-[8px] bg-[#C6AAFF] hover:bg-[#351A6B] text-white px-[16px] py-[6px] text-[14px] leading-[24px]"
+                onClick={handleFollow}
+              >
+                Follow
+              </button>
+            )}
+            <button className="rounded-[8px] bg-[#E4E4E7] text-black px-[16px] py-[6px] text-[14px] leading-[24px]">
+              Message
+            </button>
+          </div>
+          <hr className="bg-[#E4E4E7] h-[1px] mb-[16px]" />
+          <div className="flex gap-[12px] mb-[19px]">
+            {userData.X !== "" && (
+              <a target="_blank" href={userData.X}>
+                <Image
+                  src="/images/twitter-social.svg"
+                  alt="user icon"
+                  width={24}
+                  height={24}
+                />
+              </a>
+            )}
+            {userData.github !== "" && (
+              <a target="_blank" href={userData.github}>
+                <Image
+                  src="/images/github-social.svg"
+                  alt="user icon"
+                  width={24}
+                  height={24}
+                />
+              </a>
+            )}
+            {userData.linkedin !== "" && (
+              <a target="_blank" href={userData.linkedin}>
+                <Image
+                  src="/images/linkedin-social.svg"
+                  alt="user icon"
+                  width={24}
+                  height={24}
+                />
+              </a>
+            )}
+          </div>
+          <div className="flex flex-col gap-[16px] mb-[20px] sm:mb-[0px]">
+            {userData.website !== "" && (
+              <Link href={userData.website} target="_blank">
+                <div className="flex gap-[11.6px] items-center">
+                  <Image
+                    src="/images/earth.svg"
+                    alt="earth icon"
+                    width={24}
+                    height={24}
+                  />
+                  <span className="leading-[16.94px] text-[14px] font-medium text-[black]">
+                    {getDomain(userData.website)}
+                  </span>
                 </div>
+              </Link>
+            )}
+            {userData.location !== "" && (
+              <div className="flex gap-[14.2px] items-center pl-[3.2px]">
+                <Image
+                  src="/images/location.svg"
+                  alt="earth icon"
+                  width={18.33}
+                  height={24}
+                />
+                <span className="leading-[16.94px] text-[14px] font-medium text-[black]">
+                  {userData.location}
+                </span>
+              </div>
+            )}
+            <div className="flex gap-[12.7px] items-center">
+              <Image
+                src="/images/w.svg"
+                alt="earth icon"
+                width={24}
+                height={15.3}
+              />
+              <span className="leading-[16.94px] text-[14px] font-medium text-[black]">
+                23,694
+              </span>
+            </div>
+          </div>
+        </div>
+        <hr className="bg-[#E4E4E7] h-[1px] mb-[0px] hidden sm:block" />
+        <div className="pt-[96px] sm:pt-[0px] flex-1">
+          <div className="flex sm:flex-col sm:gap-[16px] justify-between sm:justify-start mb-[16px] align-middle">
+            <button className="leading-[19.36px] text-[16px] font-medium text-[black] px-[10px] py-[7px] bg-[#E4E4E7] rounded-[8px] sm:w-fit">
+              Posts
+            </button>
+          </div>
+          <div
+            className={`border-[1px] border-[#E4E4E7] rounded-[16px] p-[16px] flex flex-col gap-[16px] sm:mb-[14px] ${
+              publications && data.length > 0 ? "" : "min-h-[430px]"
+            }`}
+          >
+            {loading ? (
+              <>
+                <Skeleton
+                  className="h-[208px] rounded-[16px] sm:h-[340px]"
+                  baseColor="#E4E4E7"
+                  borderRadius={"12px"}
+                />
+                <Skeleton
+                  className="h-[208px] rounded-[16px] sm:h-[340px]"
+                  baseColor="#E4E4E7"
+                  borderRadius={"12px"}
+                />
+              </>
+            ) : publications && data.length > 0 ? (
+              data.map((publication, index) => {
+                if (publication.__typename === "Post") {
+                  var attributes: any = {};
+                  publication.metadata.attributes?.map((attribute: any) => {
+                    attributes[attribute.key] = attribute.value;
+                  });
+
+                  return (
+                    <JobCard
+                      key={index}
+                      userAvatar="/images/head-2.svg"
+                      username="adam.lens"
+                      jobName="Post Title"
+                      jobIcon="/images/bag.svg"
+                      onCardClick={() => handleOpenCardModal(publication)}
+                      setType={setCardType}
+                      type={
+                        attributes["post type"]
+                          ? attributes["post type"]
+                          : "job"
+                      }
+                      publication={publication}
+                    />
+                  );
+                }
+              })
+            ) : (
+              <div className="h-[460px] w-full flex flex-col gap-[11px] justify-center items-center">
+                <Image
+                  src="/images/case-grey.svg"
+                  alt="job post icon"
+                  color="black"
+                  width={24}
+                  height={21}
+                />
+                <span className="leading-[16.94px] max-w-[280px] text-center text-[16px] font-semibold text-[#707070]">
+                  User has no job/service posts yet
+                </span>
               </div>
             )}
           </div>
         </div>
       </div>
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[99991] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center sm:items-end cursor-auto">
+          <div className="w-full flex justify-center sm:just align-middle sm:align-bottom">
+            <ViewJobModal
+              handleCloseModal={handleCloseModal}
+              type={cardType}
+              publication={selectedPublication}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

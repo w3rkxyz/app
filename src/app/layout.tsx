@@ -8,6 +8,8 @@ import ConditionalNav from "@/components/common/header/conditionalNav";
 import "@rainbow-me/rainbowkit/styles.css";
 import { ContextProvider } from "./context";
 import { Toaster } from "react-hot-toast";
+import ClientProvider from "./clientProvider";
+import ModalWrapper from "./modalWrapper";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -24,13 +26,17 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <ContextProvider>
-          <ConditionalNav />
-          <main className="main-w3rk-content-wrapper">
-            {children} <Toaster />
-          </main>
-          <Footer />
-        </ContextProvider>
+        <ClientProvider>
+          <ContextProvider>
+            <ModalWrapper>
+              <ConditionalNav />
+              <main className="main-w3rk-content-wrapper">
+                {children} <Toaster />
+              </main>
+              <Footer />
+            </ModalWrapper>
+          </ContextProvider>
+        </ClientProvider>
       </body>
     </html>
   );

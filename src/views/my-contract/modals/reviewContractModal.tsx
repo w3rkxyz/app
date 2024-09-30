@@ -1,0 +1,186 @@
+"use client";
+
+import React, { useRef, useEffect, useState } from "react";
+import Image from "next/image";
+import MyButton from "@/components/reusable/Button/Button";
+import { useAccount } from "wagmi";
+
+type Props = {
+  handleCloseModal?: () => void;
+  setCreationStage: any;
+};
+
+const tokens = [
+  { text: "Bitcoin (BTC)", image: "/images/btc.svg" },
+  { text: "Ethereum (ETH)", image: "/images/eth.svg" },
+  { text: "Tether (USDT)", image: "/images/usdt.svg" },
+  { text: "BNB (BNB)", image: "/images/bnb.svg" },
+  { text: "Solana (SOL)", image: "/images/solana.svg" },
+  { text: "USDC (USDC)", image: "/images/usdc.svg" },
+  { text: "Dai (DAI)", image: "/images/dai.svg" },
+  { text: "GHO (GHO)", image: "/images/green-coin.svg" },
+  // { text: "Bonsai (BONSAI)", image: "/images/bw-coin.svg" },
+];
+
+const ReviewContractModal = ({ handleCloseModal, setCreationStage }: Props) => {
+  const { address } = useAccount();
+  const myDivRef = useRef<HTMLDivElement>(null);
+  const tagModalRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const tokenModalRef = useRef<HTMLButtonElement>(null);
+  const [showMobile, setShowMobile] = useState(false);
+  const [showTokens, setShowTokens] = useState(false);
+  const [selectedTokens, setSelectedTokens] = useState<number[]>([]);
+
+  const toggleTokensModal = () => {
+    setShowTokens(!showTokens);
+  };
+
+  const onCLickToken = (index: number) => {
+    if (selectedTokens.includes(index)) {
+      const updated = selectedTokens.filter((item) => item !== index);
+      setSelectedTokens(updated);
+    } else {
+      var current = [...selectedTokens];
+      current.push(index);
+      setSelectedTokens(current);
+    }
+  };
+
+  useEffect(() => {
+    setShowMobile(true);
+
+    function handleClickOutside(event: any) {
+      if (
+        myDivRef.current &&
+        !myDivRef.current.contains(event.target as Node)
+      ) {
+        if (handleCloseModal) {
+          handleCloseModal();
+        }
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    document.body.style.overflowY = "hidden";
+    return () => {
+      document.body.style.overflowY = "auto";
+    };
+  }, []);
+
+  return (
+    <div
+      className={`view-job-modal-section sm:w-full rounded-[12px] px-[16px] sm:rounded-none sm:rounded-tl-[12px]  sm:rounded-tr-[12px] bg-white sm:absolute sm:mobile-modal 
+      ${showMobile ? "open-modal" : ""} h-fit`}
+      ref={myDivRef}
+    >
+      <div className="w-[667px] sm:w-full flex justify-between items-center py-[13px] border-b-[1px] border-b-[#E4E4E7] rounded-none sm:rounded-tl-[12px] sm:rounded-tr-[12px]">
+        <span className="leading-[14.52px] text-[14px] font-semibold text-[black]">
+          Review & Submit
+        </span>
+        <Image
+          onClick={handleCloseModal}
+          className="cursor-pointer"
+          src="/images/Close.svg"
+          alt="close icon"
+          width={20}
+          height={20}
+        />
+      </div>
+      <div className="bg-[white] rounded-[12px] sm:rounded-none py-[16px] sm:w-full max-w-[664px] flex flex-col">
+        <div className="flex flex-col gap-[8px] sm:gap-[6px] mb-[16px] sm:w-full">
+          <span className="leading-[14.52px] text-[14px] font-semibold text-[black]">
+            Step 2/2
+          </span>
+          <div className="w-full relative flex items-center justify-center">
+            <div className="bg-[#351A6B] w-full h-[4px] rounded-[3px] absolute left-0"></div>
+            {/* <div className="bg-[#351A6B] w-[16px] h-[16px] rounded-[16px] absolute"></div> */}
+          </div>
+        </div>
+        <h3 className="text-[16px] leading-[19.36px] font-semibold mb-[6px]">
+          Website Updates - Full Stack Developer
+        </h3>
+        <p className="line-clamp-4 sm:line-clamp-6 text-[12px] leading-[20px] font-normal">
+          User information can go here along with service offered information,
+          total character limit will have to be decided bc we don’t wanna run
+          over the limit. User infoormation can go here along with service
+          offered information, total character limit will have to be decided bc
+          we don’t wanna run over the limit. User infoormation can go here
+          along... service offered information, total character limit will have
+          to be
+        </p>
+        <hr className="w-full bg-[#D9D9D9] my-[16px]" />
+        <div className="flex flex-col gap-[6px]">
+          <span className="text-[14px] leading-[16.94px] font-medium">
+            Client Wallet Address
+          </span>
+          <span className="text-[12px] leading-[14.52px] font-normal">
+            Client Wallet Address
+          </span>
+        </div>
+        <hr className="w-full bg-[#D9D9D9] my-[16px]" />
+        <div className="flex flex-col gap-[6px]">
+          <span className="text-[14px] leading-[16.94px] font-medium">
+            Freelancer Wallet Address
+          </span>
+          <span className="text-[12px] leading-[14.52px] font-normal">
+            Freelancer Wallet Address
+          </span>
+        </div>
+        <hr className="w-full bg-[#D9D9D9] my-[16px]" />
+        <div className="flex flex-col gap-[6px]">
+          <span className="text-[14px] leading-[16.94px] font-medium">
+            Payment Amount
+          </span>
+          <span className="text-[12px] leading-[14.52px] font-normal">
+            $100.00
+          </span>
+        </div>
+        <hr className="w-full bg-[#D9D9D9] my-[16px]" />
+        <div className="flex flex-col gap-[6px]">
+          <span className="text-[14px] leading-[16.94px] font-medium">
+            Due Date
+          </span>
+          <span className="text-[12px] leading-[14.52px] font-normal">
+            21 March 2024
+          </span>
+        </div>
+        <hr className="w-full bg-[#D9D9D9] my-[16px]" />
+        <div className="flex flex-col gap-[6px] mb-[60px] sm:mb-[16px]">
+          <span className="text-[14px] leading-[16.94px] font-medium">
+            Payment Schedule
+          </span>
+          <span className="text-[14px] leading-[16.94px] font-medium text-[#009951]">
+            Payment is released upon project completion
+          </span>
+        </div>
+        <div className="relative flex sm:justify-between w-full">
+          <button
+            className="w-fit flex gap-[5px] py-[10px] px-[24px] tx-[14px] leading-[14.5px] text-black bg-[#E4E4E7] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px] absolute top-0 sm:relative"
+            onClick={() => setCreationStage(1)}
+          >
+            <Image
+              src={"/images/backArrow.svg"}
+              alt="paco pic"
+              width={14}
+              height={14}
+            />
+            Back
+          </button>
+          <button className="mx-auto sm:mx-0 w-fit py-[10px] px-[25px] sm:px-[58.5px] tx-[14px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px]">
+            Submit Proposal
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ReviewContractModal;

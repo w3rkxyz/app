@@ -1,5 +1,10 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import Link from "next/link";
+import { useSession } from "@lens-protocol/react-web";
+
 export const Connect = () => {
+  const { data: session, loading: sessionLoading } = useSession();
+
   return (
     <ConnectButton.Custom>
       {({
@@ -17,18 +22,15 @@ export const Connect = () => {
         return (
           <>
             {(() => {
-              if (!connected) {
+              if (connected && !sessionLoading) {
                 return (
-                  <button
-                    onClick={openConnectModal}
-                    type="button"
-                    className="button-primary ml-auto"
-                  >
-                    Connect Wallet
-                  </button>
+                  <Link href="/profile">
+                    <button type="button" className="button-primary mx-auto">
+                      Get Started
+                    </button>
+                  </Link>
                 );
-              }
-              if (chain?.unsupported) {
+              } else if (chain?.unsupported) {
                 return (
                   <button
                     onClick={openChainModal}
@@ -36,6 +38,16 @@ export const Connect = () => {
                     className="button-primary ml-auto"
                   >
                     Wrong network
+                  </button>
+                );
+              } else {
+                return (
+                  <button
+                    onClick={openConnectModal}
+                    type="button"
+                    className="button-primary ml-auto"
+                  >
+                    Connect Wallet
                   </button>
                 );
               }
