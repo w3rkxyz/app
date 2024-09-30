@@ -121,11 +121,10 @@ const sortMessages = (messages: ConversationProp[]): ConversationProp[] => {
   });
 };
 
-const MyMessageOpenChat = () => {
+const MyMessageOpenChat = ({ keys }: { keys: any }) => {
   const searchParams = useSearchParams();
   const handle = searchParams.get("handle");
   const { address } = useAccount();
-  let keys = loadKeys(address as string);
   const [showSkeleleton, setShowSkeleton] = useState(keys !== undefined);
   const [messagesEnabled, setMessagesEnabled] = useState(keys !== undefined);
   const { data: session, loading: sessionLoading } = useSession();
@@ -139,7 +138,7 @@ const MyMessageOpenChat = () => {
       profileIds: chatUserIds,
     },
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [profilesData, setProfilesData] = useState<
     {
       picture: string;
