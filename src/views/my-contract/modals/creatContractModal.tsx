@@ -4,8 +4,9 @@ import React, { useRef, useEffect, useState } from "react";
 import Image from "next/image";
 import MyButton from "@/components/reusable/Button/Button";
 import { useAccount } from "wagmi";
-import type { contractDetails } from "@/types/types";
+import type { activeContractDetails, contractDetails } from "@/types/types";
 import DatePicker from "react-datepicker";
+import { SessionType, useSession, Profile } from "@lens-protocol/react-web";
 
 import "react-datepicker/dist/react-datepicker.css";
 
@@ -14,6 +15,7 @@ type Props = {
   setCreationStage: any;
   setContractDetails: any;
   contractDetails: contractDetails;
+  freelancer?: Profile;
 };
 
 const tokens = [
@@ -33,8 +35,10 @@ const CreateContractModal = ({
   setCreationStage,
   setContractDetails,
   contractDetails,
+  freelancer,
 }: Props) => {
   const { address } = useAccount();
+  const { data: session, loading } = useSession();
   const myDivRef = useRef<HTMLDivElement>(null);
   const tokenModalRef = useRef<HTMLButtonElement>(null);
   const [showMobile, setShowMobile] = useState(false);
@@ -110,16 +114,21 @@ const CreateContractModal = ({
   };
 
   const handleSubmit = () => {
-    const details: contractDetails = {
-      title,
-      description,
-      clientAddress: address as string,
-      freelancerAddress,
-      paymentAmount,
-      dueDate,
-    };
-    setContractDetails(details);
-    setCreationStage(2);
+    if (session && session.type === SessionType.WithProfile && freelancer) {
+      const details: activeContractDetails = {
+        title,
+        description,
+        clientAddress: address as string,
+        freelancerAddress: freelancerAddress,
+        paymentAmount,
+        dueDate,
+        state: "proposal",
+        freelancerHandle: freelancer.id,
+        clientHandle: session.profile.id,
+      };
+      setContractDetails(details);
+      setCreationStage(2);
+    }
   };
 
   return (
@@ -197,7 +206,10 @@ const CreateContractModal = ({
               placeholder="Freelancer wallet address"
               type="text"
               onChange={(e) => setFreelancerAddress(e.target.value)}
-              value={freelancerAddress}
+              value={
+                freelancer ? freelancer.ownedBy.address : freelancerAddress
+              }
+              disabled={freelancer !== undefined}
             />
           </div>
         </div>

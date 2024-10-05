@@ -4,15 +4,70 @@ import React, { useRef, useEffect, useState } from "react";
 import Image from "next/image";
 import MyButton from "@/components/reusable/Button/Button";
 import { useAccount } from "wagmi";
+import { activeContractDetails, contractDetails } from "@/types/types";
+import { useProfile } from "@lens-protocol/react-web";
+import getLensProfileData, { UserProfile } from "@/utils/getLensProfile";
+import Skeleton from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
+import Link from "next/link";
+import { request_payement, release_payement } from "@/api";
+import { useDispatch } from "react-redux";
+import { openAlert, closeAlert, openLoader } from "@/redux/alerts";
+import DatePicker from "react-datepicker";
+
+import "react-datepicker/dist/react-datepicker.css";
 
 type Props = {
   handleCloseModal?: () => void;
+  contractDetails: activeContractDetails;
 };
 
-const InProgressContractModal = ({ handleCloseModal }: Props) => {
+function formatDate(dateString: Date) {
+  const date = new Date(dateString);
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "2-digit",
+  });
+}
+
+function daysUntil(targetDateString: Date) {
+  const targetDate = new Date(targetDateString);
+  const now = new Date();
+  const differenceInMilliseconds = targetDate.getTime() - now.getTime();
+
+  if (differenceInMilliseconds <= 0) {
+    return "Due";
+  }
+
+  const daysLeft = Math.ceil(differenceInMilliseconds / (1000 * 60 * 60 * 24));
+  return `${daysLeft} Days Remaining`;
+}
+
+const InProgressContractModal = ({
+  handleCloseModal,
+  contractDetails,
+}: Props) => {
+  const { address } = useAccount();
+  const dispatch = useDispatch();
   const myDivRef = useRef<HTMLDivElement>(null);
+  const [newDueDate, setNewDueDate] = useState(contractDetails.dueDate);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [showMobile, setShowMobile] = useState(false);
-  const [showClientView, setShowClientView] = useState(false);
+  const [showClientView, setShowClientView] = useState(
+    (address as string) === contractDetails.clientAddress
+  );
+  const [userData, setUserData] = useState<UserProfile>();
+  const { data: profile, loading: profileLoading } = useProfile({
+    forProfileId: showClientView
+      ? contractDetails.freelancerHandle
+      : contractDetails.clientHandle,
+  });
+  // const { data: profile, loading: profileLoading } = useProfile({
+  //   forHandle: "@adam_",
+  // });
+  const [loadingUser, setLoadingUser] = useState(true);
+  const [showNewDatePicker, setShowNewDatePicker] = useState(false);
 
   useEffect(() => {
     setShowMobile(true);
@@ -35,6 +90,88 @@ const InProgressContractModal = ({ handleCloseModal }: Props) => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const toggleDatePicker = () => {
+    setShowDatePicker(!showDatePicker);
+  };
+
+  const handlePickDate = (date: Date | null) => {
+    if (date !== null) {
+      setNewDueDate(date);
+    }
+    toggleDatePicker();
+  };
+
+  const handleRequest = async () => {
+    if (contractDetails.id !== undefined) {
+      const hash = await request_payement(contractDetails.id, dispatch);
+      if (hash !== undefined) {
+        dispatch(
+          openAlert({
+            displayAlert: true,
+            data: {
+              id: 1,
+              variant: "Successful",
+              classname: "text-black",
+              title: "Submission Successful",
+              tag1: "Payement request sent",
+              tag2: "View on etherscan",
+              hash: hash,
+            },
+          })
+        );
+        setTimeout(() => {
+          dispatch(closeAlert());
+        }, 10000);
+        handleCloseModal?.();
+      }
+    }
+  };
+
+  const handleRelease = async () => {
+    if (
+      contractDetails.escrowId !== undefined &&
+      contractDetails.id !== undefined
+    ) {
+      dispatch(
+        openLoader({
+          displaytransactionLoader: true,
+          text: "Releasing Payement",
+        })
+      );
+
+      const hash = await release_payement(
+        contractDetails.id,
+        contractDetails,
+        dispatch
+      );
+      dispatch(
+        openAlert({
+          displayAlert: true,
+          data: {
+            id: 1,
+            variant: "Successful",
+            classname: "text-black",
+            title: "Submission Successful",
+            tag1: "Payement release",
+            tag2: "contract completed",
+          },
+        })
+      );
+      setTimeout(() => {
+        dispatch(closeAlert());
+      }, 10000);
+      handleCloseModal?.();
+    }
+  };
+
+  useEffect(() => {
+    if (profile) {
+      const profileData = getLensProfileData(profile);
+      setUserData(profileData);
+      setLoadingUser(false);
+    }
+  }, [profileLoading]);
 
   useEffect(() => {
     document.body.style.overflowY = "hidden";
@@ -64,48 +201,56 @@ const InProgressContractModal = ({ handleCloseModal }: Props) => {
         />
       </div>
       <div className="bg-[white] rounded-[12px] sm:rounded-none py-[16px] sm:w-full max-w-[664px] flex flex-col">
-        <div className="flex sm:flex-col justify-between gap-[8px] sm:gap-[16px] w-full">
-          <div className="flex gap-[6px] items-center">
-            <Image
-              alt="jane cooper"
-              src={"images/jane.svg"}
-              height={46}
-              width={46}
-              className="rounded-[8px] w-[46px] h-[46px]"
-              onClick={() => setShowClientView(!showClientView)}
-            />
-            <div className="flex flex-col gap-[0px]">
-              <span className="text-[14px] leading-[16.94px] font-semibold">
-                Jane Cooper
-              </span>
-              <span className="text-[14px] leading-[20px] font-normal text-[#5A5A5A]">
-                janecooper@gmail.com
-              </span>
+        {!loadingUser && userData ? (
+          <div className="flex sm:flex-col justify-between gap-[8px] sm:gap-[16px] w-full">
+            <div className="flex gap-[6px] items-center">
+              <Image
+                src={userData.picture}
+                onError={(e) => {
+                  (
+                    e.target as HTMLImageElement
+                  ).src = `https://api.hey.xyz/avatar?id=${userData.id}`;
+                }}
+                alt="paco pic"
+                width={46}
+                height={46}
+                className="rounded-[8px] w-[46px] h-[46px]"
+              />
+              <div className="flex flex-col gap-[0px]">
+                <span className="text-[14px] leading-[16.94px] font-semibold">
+                  {userData.displayName}
+                </span>
+                <span className="text-[14px] leading-[20px] font-normal text-[#5A5A5A]">
+                  {userData.handle}
+                </span>
+              </div>
             </div>
+            <Link href={`/messages?handle=${userData.userLink}`}>
+              <button className="w-fit h-fit py-[10px] px-[24px] text-[14px] leading-[16.94px] text-black bg-[#E4E4E7] hover:bg-[#351A6B] rounded-[8px] font-semibold">
+                Message
+              </button>
+            </Link>
           </div>
-          <button className="w-fit sm:w-full h-fit py-[10px] px-[24px] sm:px-[0px] text-[14px] leading-[16.94px] text-black bg-[#E4E4E7] hover:bg-[#351A6B] rounded-[8px] font-semibold">
-            Message
-          </button>
-        </div>
+        ) : (
+          <Skeleton
+            className="w-full h-[80px]"
+            baseColor="#E4E4E7"
+            borderRadius={"12px"}
+          />
+        )}
         <div className="w-full flex sm:flex-col bg-[#351A6B] rounded-[6px] sm:gap-[6px] justify-between my-[16px] p-[14px]">
           <span className="text-[14px] leading-[16.94px] text-white font-semibold">
-            Deadline: 21 March 2024
+            Deadline: {formatDate(contractDetails.dueDate)}
           </span>
           <span className="text-[14px] leading-[16.94px] text-white font-normal">
-            5 Days Remaining{" "}
+            {daysUntil(contractDetails.dueDate)}
           </span>
         </div>
         <h3 className="text-[16px] leading-[19.36px] font-semibold mb-[6px]">
-          Website Updates - Full Stack Developer
+          {contractDetails.title}
         </h3>
         <p className="line-clamp-4 sm:line-clamp-6 text-[12px] leading-[20px] font-normal">
-          User information can go here along with service offered information,
-          total character limit will have to be decided bc we don’t wanna run
-          over the limit. User infoormation can go here along with service
-          offered information, total character limit will have to be decided bc
-          we don’t wanna run over the limit. User infoormation can go here
-          along... service offered information, total character limit will have
-          to be
+          {contractDetails.description}
         </p>
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
         {showClientView ? (
@@ -115,7 +260,7 @@ const InProgressContractModal = ({ handleCloseModal }: Props) => {
                 Your Wallet Address
               </span>
               <span className="text-[12px] leading-[14.52px] font-normal">
-                Your Wallet Address
+                {contractDetails.clientAddress}
               </span>
             </div>
             <hr className="w-full bg-[#D9D9D9] my-[16px]" />
@@ -124,7 +269,7 @@ const InProgressContractModal = ({ handleCloseModal }: Props) => {
                 Freelancer Wallet Address
               </span>
               <span className="text-[12px] leading-[14.52px] font-normal">
-                Freelancer Wallet Address
+                {contractDetails.freelancerAddress}
               </span>
             </div>
           </>
@@ -135,7 +280,7 @@ const InProgressContractModal = ({ handleCloseModal }: Props) => {
                 Client Wallet Address
               </span>
               <span className="text-[12px] leading-[14.52px] font-normal">
-                Client Wallet Address
+                {contractDetails.clientAddress}
               </span>
             </div>
             <hr className="w-full bg-[#D9D9D9] my-[16px]" />
@@ -144,7 +289,7 @@ const InProgressContractModal = ({ handleCloseModal }: Props) => {
                 Your Wallet Address
               </span>
               <span className="text-[12px] leading-[14.52px] font-normal">
-                Your Wallet Address
+                {contractDetails.freelancerAddress}
               </span>
             </div>
           </>
@@ -155,23 +300,58 @@ const InProgressContractModal = ({ handleCloseModal }: Props) => {
             Payment Amount
           </span>
           <span className="text-[12px] leading-[14.52px] font-normal">
-            $100.00
+            ${contractDetails.paymentAmount}
           </span>
         </div>
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
-        <div className="flex flex-col gap-[6px]">
-          <span className="text-[14px] leading-[16.94px] font-medium">
-            Due Date
-          </span>
-          <span className="text-[12px] leading-[14.52px] font-normal">
-            21 March 2024
-          </span>
+        <div className="flex sm:flex-col w-full justify-between sm:justify-start sm:gap-[6px]">
+          <div className="flex flex-col gap-[6px]">
+            <span className="text-[14px] leading-[16.94px] font-medium">
+              Due Date
+            </span>
+            <span className="text-[12px] leading-[14.52px] font-normal">
+              {formatDate(contractDetails.dueDate)}
+            </span>
+          </div>
+          {showNewDatePicker && (
+            <div className="w-1/2 sm:w-full">
+              <span
+                className={`leading-[14.52px] text-[14px] font-mediumtext-[black]`}
+              >
+                New Due Date
+              </span>
+              <button
+                className="w-full sm:w-full rounded-[8px] border-[1px] border-[#E4E4E7] p-[7px] flex justify-between items-center relative"
+                onClick={() => setShowDatePicker(true)}
+              >
+                <DatePicker
+                  selected={newDueDate}
+                  onSelect={(date) => handlePickDate(date)}
+                  className="font-normal leading-[14.52px] text-[14px] text-[#707070]"
+                  open={showDatePicker}
+                  onClickOutside={() => setShowDatePicker(false)}
+                />
+                <Image
+                  src="/images/calender.svg"
+                  alt="drop-down icon"
+                  width={20}
+                  height={20}
+                />
+              </button>
+            </div>
+          )}
         </div>
         <div className="relative flex sm:flex-col w-full justify-center sm:items-center gap-[16px] sm:gap-[6px] mt-[40px] sm:mt-[16px]">
-          <button className="w-fit h-fit py-[10px] px-[23px] sm:px-[0px] sm:w-full text-[14px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px]">
+          <button
+            className="w-fit h-fit py-[10px] px-[23px] sm:px-[0px] sm:w-full text-[14px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px]"
+            onClick={() => setShowNewDatePicker(!showNewDatePicker)}
+          >
             Request Extension
           </button>
-          <button className="w-fit h-fit py-[10px] px-[23px] sm:px-[0px] sm:w-full text-[14px] leading-[14.5px] text-white bg-[#351A6B] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px]">
+          <button
+            className="w-fit h-fit py-[10px] px-[23px] sm:px-[0px] sm:w-full text-[14px] leading-[14.5px] text-white bg-[#351A6B] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px]"
+            onClick={showClientView ? handleRelease : handleRequest}
+          >
             {showClientView ? "Release Payment" : "Request Payment"}
           </button>
           <button className="w-fit h-fit py-[10px] px-[23px] sm:px-[0px] sm:w-full text-[14px] leading-[14.5px] text-black bg-[#E4E4E7] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px]">

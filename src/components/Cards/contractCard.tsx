@@ -5,19 +5,28 @@ import Image from "next/image";
 import Link from "next/link";
 import { AnyPublication, Post } from "@lens-protocol/react-web";
 import getLensProfileData from "@/utils/getLensProfile";
+import type { contractDetails } from "@/types/types";
 
 interface CardProps {
-  userAvatar?: string;
-  username?: string;
-  jobName?: string;
-  jobIcon?: string;
-  cardStyles?: string;
   type: string;
-  onClick?: () => void;
   onCardClick?: () => void;
-  setType?: any;
-  handlePostJobOpen?: () => void;
-  publication?: Post;
+  contractDetails: contractDetails;
+}
+
+function daysUntil(targetDateString: Date) {
+  const targetDate = new Date(targetDateString);
+  const now = new Date();
+  console.log(targetDate);
+  const differenceInMilliseconds = targetDate.getTime() - now.getTime();
+
+  if (differenceInMilliseconds <= 0) {
+    return "Due";
+  }
+
+  console.log(differenceInMilliseconds);
+  const daysLeft = Math.ceil(differenceInMilliseconds / (1000 * 60 * 60 * 24));
+  console.log(daysLeft);
+  return `${daysLeft} Days Remaining`;
 }
 
 type ContractTypeDetail = {
@@ -33,34 +42,34 @@ type ContractTypes = {
 
 // Create the object with the defined types
 const contractTypes: ContractTypes = {
-  Proposals: {
+  proposal: {
     text: "New Proposal",
     buttonColor: "bg-[#C6AAFF]",
     textColor: "text-[#FFFFFF]",
   },
-  "In-Progress": {
+  inProgress: {
     text: "5 Days Remaining",
     buttonColor: "bg-[#351A6B]",
     textColor: "text-[#FFFFFF]",
   },
-  "Awaiting Approval": {
+  awaitingApproval: {
     text: "Awaiting Approval",
     buttonColor: "bg-[#E4E4E7]",
     textColor: "text-[#1E1E1E]",
   },
-  "Open Disputes": {
+  openDisputes: {
     text: "Open Dispute",
     buttonColor: "bg-[#F4B731]",
     textColor: "text-[#FFFFFF]",
   },
-  Completed: {
+  completed: {
     text: "Completed",
     buttonColor: "bg-[#14AE5C]",
     textColor: "text-[#FFFFFF]",
   },
 };
 
-const ContractCard = ({ onCardClick, type }: CardProps) => {
+const ContractCard = ({ onCardClick, contractDetails }: CardProps) => {
   return (
     <div
       className="bg-[white] hover:bg-[#F0F0F0] border-[1px] border-[#E4E4E7] rounded-[12px] p-[16px] cursor-pointer w-full"
@@ -79,10 +88,10 @@ const ContractCard = ({ onCardClick, type }: CardProps) => {
           />
           <div className="flex flex-col gap-[4px]">
             <span className="text-[16px] leading-[19.36px] font-medium">
-              Website Updates - Full Stack Developer
+              {contractDetails.title}
             </span>
             <span className="text-[14px] leading-[16.94px] font-medium text-[#14AE5C]">
-              $0.00
+              ${contractDetails.paymentAmount}
             </span>
             <span className="text-[#707070] text-[12px] leading-[14.52px] font-medium">
               Other Users Display Name
@@ -90,19 +99,19 @@ const ContractCard = ({ onCardClick, type }: CardProps) => {
           </div>
         </div>
         <div
-          className={`py-[8px] px-[16px] flex items-center justify-center leading-[14.52px] text-[12px] ${contractTypes[type].textColor} ${contractTypes[type].buttonColor} font-semibold rounded-[8px] h-fit w-fit cursor-default sm:mt-[12px]`}
+          className={`py-[8px] px-[16px] flex items-center justify-center leading-[14.52px] text-[12px] ${
+            contractTypes[contractDetails.state].textColor
+          } ${
+            contractTypes[contractDetails.state].buttonColor
+          } font-semibold rounded-[8px] h-fit w-fit cursor-default sm:mt-[12px]`}
         >
-          {contractTypes[type].text}
+          {contractDetails.state === "inProgress"
+            ? daysUntil(contractDetails.dueDate)
+            : contractTypes[contractDetails.state].text}
         </div>
       </div>
       <p className="mt-[16px] w-full line-clamp-4 sm:line-clamp-11 leading-[22px] text-[13px] text-[#5A5A5A] font-normal">
-        Contract information can go here, total character limit will have to be
-        decided bc we don’t wanna run over the limit. Contract information can
-        go here, total character limit will have to be decided bc we don’t wanna
-        run over the limit. Contract information can go here along... service
-        offered information, total character limit will have to be service
-        offered information, total character limit will have to be service
-        offered information, total character limit will have to be...
+        {contractDetails.description}
       </p>
     </div>
   );

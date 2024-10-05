@@ -32,25 +32,19 @@ function TransactionLoader({ variant, classname, text }: AlertProps) {
       break;
   }
   return (
-    <div className="bg-dark-800 rounded overflow-hidden dark:bg-white">
-      <div
-        className={`flex items-center py-2 pr-6 pl-10 gap-4  dark:bg-light-800 ${
-          classname || ""
-        } ${color}`}
-      >
-        <span className="font-medium flex-grow alert-title">
+    <div className="bg-white rounded overflow-hidden border-[1px] border-[#E4E4E7]">
+      <div className={`flex items-center py-2 pr-6 pl-10 gap-4 bg-[#C6AAFF]`}>
+        <span className="font-medium flex-grow alert-title text-white">
           Transaction in progress
         </span>
       </div>
-      <div className="flex items-center gap-3 dark:box-border pr-20 pl-10 pt-3 pb-2">
-        <span className="mb-1 alert-content text-[#FAFAFA] dark:text-[#000]">
-          {text}
-        </span>
+      <div className="flex items-center gap-3 pr-20 pl-10 pt-3 pb-2">
+        <span className="mb-1 alert-content text-black">{text}</span>
         <ThreeDots
           visible={true}
           height="10"
           width="50"
-          color="#4fa94d"
+          color="#C6AAFF"
           radius="9"
           ariaLabel="three-dots-loading"
           wrapperStyle={{}}

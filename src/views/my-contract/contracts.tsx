@@ -11,7 +11,13 @@ import ViewContractModal from "./modals/viewContractModal";
 import InProgressContractModal from "./modals/inProgressContractModal";
 import AwaitingApprovalContractModal from "./modals/awaitingApprovalContractModal";
 import CompletedContractModal from "./modals/CompletedContractModal";
-import type { contractDetails } from "@/types/types";
+import type { activeContractDetails, contractDetails } from "@/types/types";
+import { get_all_contracts, getContract, contractInstance } from "@/api";
+import { useAccount } from "wagmi";
+import Skeleton from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
+import { useSearchParams } from "next/navigation";
+import { useProfile } from "@lens-protocol/react-web";
 
 const contractTypes = [
   "Proposals",
@@ -22,13 +28,25 @@ const contractTypes = [
 ];
 
 const Contracts = () => {
+  const searchParams = useSearchParams();
+  const freelancer = searchParams.get("freelancer");
+  const { data: profile, loading: loadingProfile } = useProfile({
+    forHandle: `lens/${freelancer as string}`,
+  });
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<number | null>(
     null
   );
+  const { address } = useAccount();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [contracts, setContracts] = useState<activeContractDetails[]>([]);
+  const [loadingContracts, setLoadingContracts] = useState(true);
   const [showTypesMobile, setShowTypesMobile] = useState(false);
   const [type, setType] = useState("Proposals");
+  const [showCreateContractModal, setShowCreateContractModal] = useState(false);
   const [creationStage, setCreationStage] = useState(1);
+  const [selectedContract, setSelectedContract] = useState<
+    activeContractDetails | undefined
+  >();
   const [newContractDetails, setNewContractDetails] = useState<contractDetails>(
     {
       title: "",
@@ -37,13 +55,39 @@ const Contracts = () => {
       freelancerAddress: "",
       paymentAmount: 0,
       dueDate: new Date(),
+      state: "",
     }
   );
 
-  const handleOpenModal = (type: string) => {
-    setType(type);
+  const handleOpenModal = (contract: activeContractDetails) => {
+    setType(contract.state);
+    setSelectedContract(contract);
     setIsModalOpen(true);
   };
+
+  const getData = async () => {
+    if (address) {
+      const contracts = await get_all_contracts(address);
+      setContracts(contracts);
+      setLoadingContracts(false);
+    }
+  };
+
+  useEffect(() => {
+    getData();
+    // contractInstance.on("*", (client, freelancer) => {
+    //   if (client === address || freelancer === address) {
+    //     getData();
+    //   }
+    // });
+  }, [address]);
+
+  useEffect(() => {
+    if (profile) {
+      console.log("Theres a profile");
+      setShowCreateContractModal(true);
+    }
+  }, [profile]);
 
   return (
     <div className="find-work-section pt-[82px] md:pt-[110px] sm:pt-[60px] mb-[20px]">
@@ -76,6 +120,7 @@ const Contracts = () => {
             </div>
             <button
               className={`w-full py-[12px] flex items-center justify-center leading-[14.52px] text-[12px] text-white font-semibold bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px]`}
+              // onClick={() => setShowCreateContractModal(true)}
             >
               Create New Contract
             </button>
@@ -83,6 +128,7 @@ const Contracts = () => {
           <div className="hidden md:flex w-full md:items-center flex-col relative">
             <button
               className={`w-full py-[12px] flex items-center justify-center leading-[14.52px] text-[14px] text-white font-semibold bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] mb-[14px] md:max-w-[600px]`}
+              // onClick={() => setShowCreateContractModal(true)}
             >
               Create New Contract
             </button>
@@ -109,7 +155,7 @@ const Contracts = () => {
                   <div className="w-full flex flex-col gap-[8px]">
                     {contractTypes.map((type: string, index: number) => {
                       return (
-                        <button
+                        <div
                           key={index}
                           className={`w-full py-[12px] flex items-center justify-center leading-[14.52px] text-[12px] font-semibold border-[1px] rounded-[8px] ${
                             selectedTypeFilter === index
@@ -119,7 +165,7 @@ const Contracts = () => {
                           onClick={() => setSelectedTypeFilter(index)}
                         >
                           {type}
-                        </button>
+                        </div>
                       );
                     })}
                   </div>
@@ -129,7 +175,7 @@ const Contracts = () => {
           </div>
 
           <div className="border-[1px] border-[#E4E4E7] rounded-[16px] p-[16px] flex flex-1 flex-col gap-[16px]">
-            {contractTypes.map((type: string, index: number) => {
+            {/* {contractTypes.map((type: string, index: number) => {
               return (
                 <ContractCard
                   key={index}
@@ -137,46 +183,100 @@ const Contracts = () => {
                   onCardClick={() => handleOpenModal(type)}
                 />
               );
-            })}
+            })} */}
+            {loadingContracts ? (
+              <>
+                <Skeleton
+                  className="h-[208px] w-full rounded-[16px] sm:h-[340px]"
+                  baseColor="#E4E4E7"
+                  borderRadius={"12px"}
+                />
+                <Skeleton
+                  className="h-[208px] w-full rounded-[16px] sm:h-[340px]"
+                  baseColor="#E4E4E7"
+                  borderRadius={"12px"}
+                />
+                <Skeleton
+                  className="h-[208px] w-full rounded-[16px] sm:h-[340px]"
+                  baseColor="#E4E4E7"
+                  borderRadius={"12px"}
+                />
+              </>
+            ) : contracts.length > 0 ? (
+              contracts.map((contract, index) => {
+                return (
+                  <ContractCard
+                    key={index}
+                    type={type}
+                    contractDetails={contract}
+                    onCardClick={() => handleOpenModal(contract)}
+                  />
+                );
+              })
+            ) : (
+              <div className="h-[460px] w-full flex flex-col gap-[11px] justify-center items-center">
+                <Image
+                  src="/images/case-grey.svg"
+                  alt="job post icon"
+                  color="black"
+                  width={24}
+                  height={21}
+                />
+                <span className="leading-[16.94px] max-w-[280px] text-center text-[16px] font-semibold text-[#707070]">
+                  User has no job/service posts yet
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
-      {isModalOpen && (
+      {showCreateContractModal && (
         <div className="fixed h-screen w-screen overflow-hidden inset-0 z-[99991] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center sm:items-end cursor-auto">
           <div className="w-full flex justify-center sm:just align-middle sm:align-bottom">
-            {type === "Completed" && (
-              <CompletedContractModal
-                handleCloseModal={() => setIsModalOpen(false)}
-              />
-            )}
-            {type === "Proposals" && creationStage === 1 && (
+            {creationStage === 1 && (
               <CreateContractModal
-                handleCloseModal={() => setIsModalOpen(false)}
+                handleCloseModal={() => setShowCreateContractModal(false)}
                 setCreationStage={setCreationStage}
                 setContractDetails={setNewContractDetails}
                 contractDetails={newContractDetails}
+                freelancer={profile}
               />
             )}
-            {type === "Proposals" && creationStage === 2 && (
+            {creationStage === 2 && (
               <ReviewContractModal
-                handleCloseModal={() => setIsModalOpen(false)}
+                handleCloseModal={() => setShowCreateContractModal(false)}
                 setCreationStage={setCreationStage}
                 contractDetails={newContractDetails}
               />
             )}
-            {type === "In-Progress" && (
+          </div>
+        </div>
+      )}
+      {isModalOpen && selectedContract && (
+        <div className="fixed h-screen w-screen overflow-hidden inset-0 z-[99991] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center sm:items-end cursor-auto">
+          <div className="w-full flex justify-center sm:just align-middle sm:align-bottom">
+            {type === "completed" && (
+              <CompletedContractModal
+                handleCloseModal={() => setIsModalOpen(false)}
+                contractDetails={selectedContract}
+              />
+            )}
+            {type === "inProgress" && (
               <InProgressContractModal
                 handleCloseModal={() => setIsModalOpen(false)}
+                contractDetails={selectedContract}
               />
             )}
-            {type === "Awaiting Approval" && (
+            {type === "awaitingApproval" && (
               <AwaitingApprovalContractModal
                 handleCloseModal={() => setIsModalOpen(false)}
+                contractDetails={selectedContract}
               />
             )}
-            {type === "Open Disputes" && (
+            {type === "proposal" && (
               <ViewContractModal
                 handleCloseModal={() => setIsModalOpen(false)}
+                contractDetails={selectedContract}
               />
             )}
           </div>

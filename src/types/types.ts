@@ -1,3 +1,5 @@
+import { ProfileId } from "@lens-protocol/react-web";
+
 interface workData {
   username: string;
   profileImage: string;
@@ -17,6 +19,21 @@ interface contractDetails {
   freelancerAddress: string;
   paymentAmount: number;
   dueDate: Date;
+  state: string;
 }
 
-export type { contractDetails, workData };
+interface activeContractDetails {
+  title: string;
+  description: string;
+  clientAddress: string;
+  freelancerAddress: string;
+  paymentAmount: number;
+  dueDate: Date;
+  state: string;
+  clientHandle: ProfileId;
+  freelancerHandle: ProfileId;
+  id?: number;
+  escrowId?: number;
+}
+
+export type { contractDetails, workData, activeContractDetails };

@@ -383,7 +383,6 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
       (messageGroup, groupIndex) => {
         return Promise.all(
           messageGroup.messages.map(async (message, messageIndex) => {
-            console.log(message.content);
             if (isLink(message.content)) {
               try {
                 const response = await axios.get(message.content);
@@ -859,31 +858,40 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
                 height={24}
                 onClick={() => setSelectedConversation(null)}
               />
-              <div className="flex gap-[10px]">
-                <Link
-                  href={`/u/${conversations[selectedConversation].user.userLink}`}
-                >
-                  <Image
-                    src={conversations[selectedConversation].user.picture}
-                    onError={(e) => {
-                      (
-                        e.target as HTMLImageElement
-                      ).src = `https://api.hey.xyz/avatar?id=${conversations[selectedConversation].user.id}`;
-                    }}
-                    alt="paco pic"
-                    width={43}
-                    height={43}
-                    className="rounded-[8px]"
-                  />
-                </Link>
-                <div className="flex flex-col gap-[2px] pt-[5px]">
-                  <span className="text-[14px] leading-[16.94px] font-medium">
-                    {conversations[selectedConversation].user.displayName}
-                  </span>
-                  <span className="text-[14px] leading-[16.94px] font-medium text-[#707070]">
-                    {conversations[selectedConversation].user.handle}
-                  </span>
+              <div className="flex w-full justify-between items-center">
+                <div className="flex gap-[10px]">
+                  <Link
+                    href={`/u/${conversations[selectedConversation].user.userLink}`}
+                  >
+                    <Image
+                      src={conversations[selectedConversation].user.picture}
+                      onError={(e) => {
+                        (
+                          e.target as HTMLImageElement
+                        ).src = `https://api.hey.xyz/avatar?id=${conversations[selectedConversation].user.id}`;
+                      }}
+                      alt="paco pic"
+                      width={43}
+                      height={43}
+                      className="rounded-[8px]"
+                    />
+                  </Link>
+                  <div className="flex flex-col gap-[2px] pt-[5px]">
+                    <span className="text-[14px] leading-[16.94px] font-medium">
+                      {conversations[selectedConversation].user.displayName}
+                    </span>
+                    <span className="text-[14px] leading-[16.94px] font-medium text-[#707070]">
+                      {conversations[selectedConversation].user.handle}
+                    </span>
+                  </div>
                 </div>
+                <Link
+                  href={`/contracts?freelancer=${conversations[selectedConversation].user.handle}`}
+                >
+                  <button className="px-[15px] py-[6px] bg-[#351A6B] hover:bg-[#2f1b57] rounded-[8px] w-fit h-fit text-[14px] leading-[20px] text-white font-medium">
+                    Create Contract
+                  </button>
+                </Link>
               </div>
             </div>
             <hr className="bg-[#E4E4E7] h-[1px] mb-[0px]" />

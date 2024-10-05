@@ -31,7 +31,7 @@ const queryClient = new QueryClient();
 // Lens Protocol config
 const lensConfig: LensConfig = {
   bindings: wagmiBindings(config),
-  environment: production,
+  environment: development,
 };
 
 // Rainbow kit and Lens Context wrapper
