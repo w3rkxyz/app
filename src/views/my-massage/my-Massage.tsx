@@ -121,11 +121,10 @@ const sortMessages = (messages: ConversationProp[]): ConversationProp[] => {
   });
 };
 
-const MyMessageOpenChat = () => {
+const MyMessageOpenChat = ({ keys }: { keys: any }) => {
   const searchParams = useSearchParams();
   const handle = searchParams.get("handle");
   const { address } = useAccount();
-  let keys = loadKeys(address as string);
   const [showSkeleleton, setShowSkeleton] = useState(keys !== undefined);
   const [messagesEnabled, setMessagesEnabled] = useState(keys !== undefined);
   const { data: session, loading: sessionLoading } = useSession();
@@ -139,7 +138,7 @@ const MyMessageOpenChat = () => {
       profileIds: chatUserIds,
     },
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [profilesData, setProfilesData] = useState<
     {
       picture: string;
@@ -166,7 +165,7 @@ const MyMessageOpenChat = () => {
     useState<string>("");
   const [connectingXMTP, setConnectingXMTP] = useState(false);
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
-  const [showMessagesMobile, setShowMessagesMobile] = useState(false);
+  const [showMessagesMobile, setShowMessagesMobile] = useState(true);
   const [xmtp, setXmtp] = useState<Client>();
   const [activeMessages, setActiveMessages] = useState<any[]>([]);
   const [conversationDates, setConversationDates] = useState<(Date | string)[]>(
@@ -640,11 +639,11 @@ const MyMessageOpenChat = () => {
   }, [activeAttachments]);
 
   return (
-    <div className="h-screen w-screen overflow-hidden pt-[107px] sm:pt-[75px] px-[156px] sm:px-[16px] flex gap-[5px] mb-[0px] absolute top-0 left-0 z-[998]">
+    <div className="h-screen w-screen overflow-hidden pt-[107px] sm:pt-[75px] px-[156px] banner-tablet:px-[80px] settings-xs:px-[30px] sm:px-[16px] flex gap-[5px] mb-[0px] absolute top-0 left-0 z-[998]">
       <div
         className={`horizontal-box px-[12px] w-[367px] sm:w-full flex ${
           selectedConversation !== null ? "sm:hidden" : "sm:flex"
-        } flex-col`}
+        } flex-col pb-[10px]`}
       >
         <div className="flex justify-between items-center py-[19px] px-[9px]">
           <span className="leading-[16.94px] font-medium text-[16px]">
@@ -723,20 +722,22 @@ const MyMessageOpenChat = () => {
                     );
                   })}
             </div>
-            <div className="flex items-center justify-center h-full">
-              <div className="hidden sm:flex flex-col gap-[11px] justify-center items-center">
-                <Image
-                  src="/images/discuss.svg"
-                  className="cursor-pointer"
-                  alt="new message"
-                  width={24}
-                  height={21}
-                />
-                <span className="leading-[16.94px] max-w-[174px] text-center font-medium text-[14px] text-black">
-                  Select a conversation to start messaging
-                </span>
+            {!showMessagesMobile && (
+              <div className="flex items-center justify-center h-full">
+                <div className="hidden sm:flex flex-col gap-[11px] justify-center items-center">
+                  <Image
+                    src="/images/discuss.svg"
+                    className="cursor-pointer"
+                    alt="new message"
+                    width={24}
+                    height={21}
+                  />
+                  <span className="leading-[16.94px] max-w-[174px] text-center font-medium text-[14px] text-black">
+                    Select a conversation to start messaging
+                  </span>
+                </div>
               </div>
-            </div>
+            )}
           </>
         ) : (
           <div className="flex items-center justify-center h-full">
@@ -860,7 +861,7 @@ const MyMessageOpenChat = () => {
               />
               <div className="flex gap-[10px]">
                 <Link
-                  href={`/other-user-follow/?handle=${conversations[selectedConversation].user.userLink}`}
+                  href={`/u/${conversations[selectedConversation].user.userLink}`}
                 >
                   <Image
                     src={conversations[selectedConversation].user.picture}
@@ -887,12 +888,17 @@ const MyMessageOpenChat = () => {
             </div>
             <hr className="bg-[#E4E4E7] h-[1px] mb-[0px]" />
             <div
-              className="flex-1 flex flex-col justify-end sm:justify-start scrollbar-hide pt-[10px]"
+              className="flex-1 flex flex-col sm:justify-start scrollbar-hide pt-[10px]"
               id="scrollableDiv"
             >
               {activeMessages.map((messages, index: number) => {
                 return (
-                  <>
+                  <div
+                    key={index}
+                    className={`${
+                      index === 0 ? "mt-auto" : ""
+                    } w-full flex flex-col h-fit`}
+                  >
                     <span className="text-[12px] leading-[12.1px] font-medium self-center mb-[15px] sm:mt-[15px]">
                       {messages.date}
                     </span>
@@ -915,7 +921,7 @@ const MyMessageOpenChat = () => {
                             </span>
                           </div>
                         ) : activeAttachments[message.content] ? (
-                          <a
+                          <Link
                             target="_blank"
                             href={activeAttachments[message.content].link}
                             download={activeAttachments[message.content].name}
@@ -940,7 +946,7 @@ const MyMessageOpenChat = () => {
                             <span className="absolute right-[6px] bottom-[0px] text-[10px]">
                               {moment(message.sent).format("h:mmA")}
                             </span>
-                          </a>
+                          </Link>
                         ) : (
                           <div
                             key={index}
@@ -960,7 +966,7 @@ const MyMessageOpenChat = () => {
                         );
                       }
                     )}
-                  </>
+                  </div>
                 );
               })}
               <div id="bottomMarker"></div>

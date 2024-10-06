@@ -2,7 +2,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import Notifications from "@/components/Notifications/Notifications";
 import ProfileDropdown from "@/components/ProfileDropdown/ProfileDropdown";
 import { usePathname } from "next/navigation";
 import MobileProfileDropdown from "./mobileMenu";
@@ -22,6 +21,7 @@ import getLensProfileData, { UserProfile } from "@/utils/getLensProfile";
 const SecondNav = ({ session }: { session: Session }) => {
   // const { loginModal, user: profile } = useSelector((state: any) => state.app);
   const myDivRef = useRef<HTMLDivElement>(null);
+  const drowdownRef = useRef<HTMLDivElement>(null);
   const { address } = useAccount();
   const [profile, setProfile] = useState<Profile>();
   // const { data: session, loading: sessionLoading } = useSession();
@@ -48,28 +48,23 @@ const SecondNav = ({ session }: { session: Session }) => {
     }[]
   >();
 
-  const openModal = () => {
-    setShowNotifications(true);
-  };
-  const closeModal = () => {
-    setShowNotifications(false);
-  };
   useEffect(() => {
-    const handleClickOutsideModal = (event: MouseEvent) => {
+    function handleClickOutside(event: MouseEvent) {
       if (
-        showNotifications &&
-        (event.target as HTMLElement).closest(".modal-content") === null
+        myDivRef.current &&
+        !myDivRef.current.contains(event.target as Node)
       ) {
-        closeModal();
+        setShowSearchResults(false);
       }
-    };
+    }
 
-    document.addEventListener("click", handleClickOutsideModal);
+    document.addEventListener("mousedown", handleClickOutside);
 
     return () => {
-      document.removeEventListener("click", handleClickOutsideModal);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showNotifications]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -90,27 +85,30 @@ const SecondNav = ({ session }: { session: Session }) => {
   }, []);
 
   const openProfileDropdown = () => {
+    console.log("It was definitely clicked");
     setShowProfileDropdown(true);
   };
+
   const closeProfileDropdown = () => {
     setShowProfileDropdown(false);
   };
+
   useEffect(() => {
     const handleClickOutsideModal = (event: MouseEvent) => {
       if (
-        showProfileDropdown &&
-        (event.target as HTMLElement).closest(".modal-content") === null
+        drowdownRef.current &&
+        !drowdownRef.current.contains(event.target as Node)
       ) {
         closeProfileDropdown();
       }
     };
 
-    document.addEventListener("click", handleClickOutsideModal);
+    document.addEventListener("mousedown", handleClickOutsideModal);
 
     return () => {
-      document.removeEventListener("click", handleClickOutsideModal);
+      document.removeEventListener("mousedown", handleClickOutsideModal);
     };
-  }, [showProfileDropdown]);
+  }, []);
 
   const handleMobileMenuToggle = () => {
     setMobileMenuOpen(!isMobileMenuOpen);
@@ -153,11 +151,11 @@ const SecondNav = ({ session }: { session: Session }) => {
 
   return (
     <>
-      <header className="header-section h-[60px] px-[156px] sm:px-[16px] absolute w-screen top-0 left-0 bg-white border-b-[1px] border-b-[#EEEEEE] z-[999]">
+      <header className="header-section h-[60px] px-[156px] nav-lg:px-[100px] lg:px-[20px] sm:px-[16px] absolute w-screen top-0 left-0 bg-white border-b-[1px] border-b-[#EEEEEE] z-[999]">
         <div className="custom-container">
           <div className="header-wrapper">
             <nav className="navbar-nav-main h-[60px] flex items-center gap-3 justify-between w-full relative">
-              <div className="header-brand-box sm:flex sm:items-center">
+              <div className="header-brand-box sm:flex sm:items-center relative z-10">
                 <Link href="/">
                   <Image
                     src="/images/brand-logo.svg"
@@ -168,10 +166,10 @@ const SecondNav = ({ session }: { session: Session }) => {
                   ></Image>
                 </Link>
               </div>
-              <div className="navbar-right-cont nav-center flex items-center absolute h-full w-fit">
-                <ul className="navbar-nav flex items-center sm:hidden ml-auto gap-[7px]">
+              <div className="navbar-right-cont nav-center flex items-center absolute md:relative md:w-fit h-full w-full left-0 top-0 z-0">
+                <ul className="navbar-nav flex items-center flex-grow-0 sm:hidden mx-auto gap-[7px]">
                   <li
-                    className={`navbar-nav-items px-[19px] py-[5px] ${
+                    className={`navbar-nav-items px-[19px] md:px-[3px] py-[5px] ${
                       path === "/find-work" ? "selected-path" : ""
                     }`}
                   >
@@ -180,7 +178,7 @@ const SecondNav = ({ session }: { session: Session }) => {
                     </Link>
                   </li>
                   <li
-                    className={`navbar-nav-items px-[19px] py-[7px] ${
+                    className={`navbar-nav-items px-[19px] md:px-[5px] py-[7px] ${
                       path === "/find-talent" ? "selected-path" : ""
                     }`}
                   >
@@ -192,9 +190,9 @@ const SecondNav = ({ session }: { session: Session }) => {
               </div>
 
               {/* Right Items */}
-              <div className="flex items-center gap-[18px] sm:hidden">
+              <div className="flex items-center gap-[18px] sm:hidden relative z-10">
                 <div
-                  className="flex justify-start items-center w-[240px] bg-white border-[1px] border-[#E4E4E7] rounded-[12px] pl-[8px] relative"
+                  className="flex justify-start items-center w-[240px] lg:w-[220px] bg-white border-[1px] border-[#E4E4E7] rounded-[12px] pl-[8px] relative"
                   ref={myDivRef}
                 >
                   <>
@@ -237,10 +235,7 @@ const SecondNav = ({ session }: { session: Session }) => {
                     >
                       {profiles.slice(0, 7).map((profile, index) => {
                         return (
-                          <Link
-                            href={`/other-user-follow?handle=${profile.handle}`}
-                            key={index}
-                          >
+                          <Link href={`/u/${profile.handle}`} key={index}>
                             <div
                               className="text-[14px] hover:bg-[#f1f1f1] w-full gap-[8px] flex items-center cursor-pointer px-[10px] py-[8px]"
                               key={index}
@@ -338,7 +333,10 @@ const SecondNav = ({ session }: { session: Session }) => {
                   </button>
 
                   {/* Dropdown */}
-                  <div className="absolute right-[0px] top-[55px] z-[9999]">
+                  <div
+                    className="absolute right-[0px] top-[55px] z-[9999]"
+                    ref={drowdownRef}
+                  >
                     {showProfileDropdown && (
                       <>
                         <ProfileDropdown

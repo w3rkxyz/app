@@ -202,8 +202,8 @@ const Settings = () => {
   };
 
   return (
-    <div className="px-[156px] sm:px-[16px] pt-[110px] sm:pt-[122px] sm:w-full">
-      <div className="absolute w-full mx-0 left-0 top-156px sm:top-[79px] px-[156px] sm:px-[16px] z-20">
+    <div className="px-[156px] profile-sm:px-[80px] lg:px-[20px] sm:px-[16px] pt-[110px] sm:pt-[122px] sm:w-full">
+      <div className="absolute w-full mx-0 left-0 top-156px sm:top-[79px] px-[156px] profile-sm:px-[80px] lg:px-[20px] sm:px-[16px] z-20">
         <div
           className="bg-white w-full h-[196px] sm:h-[110px] rounded-[16px] relative flex justify-end items-end p-[16px]"
           style={{ backgroundImage: `url(${backgroundImage})` }}
@@ -252,7 +252,7 @@ const Settings = () => {
           </label>
         </div>
       </div>
-      <div className="flex flex-col sm:w-full pt-[230px] sm:pt-[130px] px-[294px] sm:px-[0px]">
+      <div className="flex flex-col sm:w-full pt-[230px] settings-xs:pt-[290px] sm:pt-[130px] px-[294px] settings-xs:px-[180px] settings-small:px-[220px] sm:px-[0px]">
         <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
           <span className="leading-[14.52px] text-[14px] font-medium text-[black]">
             Name

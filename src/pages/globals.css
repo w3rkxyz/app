@@ -463,6 +463,16 @@
     }
   }
 
+  @media screen and (max-width: 991px) {
+    .banner-title {
+      font-size: 43px;
+      font-weight: 700;
+      line-height: 33.73px;
+      letter-spacing: -0.03em;
+      text-align: center;
+    }
+  }
+
   .profile-title {
     background-color: #c6aaff;
     color: white;
@@ -530,7 +540,7 @@
     .horizontal-box {
       background-color: white;
       border-radius: 16px;
-      height: calc(100vh - 90px);
+      height: calc(100vh - 140px);
     }
 
     .horizontal-box::-webkit-scrollbar {

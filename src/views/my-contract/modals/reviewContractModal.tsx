@@ -4,10 +4,12 @@ import React, { useRef, useEffect, useState } from "react";
 import Image from "next/image";
 import MyButton from "@/components/reusable/Button/Button";
 import { useAccount } from "wagmi";
+import type { contractDetails } from "@/types/types";
 
 type Props = {
   handleCloseModal?: () => void;
   setCreationStage: any;
+  contractDetails: contractDetails;
 };
 
 const tokens = [
@@ -22,7 +24,11 @@ const tokens = [
   // { text: "Bonsai (BONSAI)", image: "/images/bw-coin.svg" },
 ];
 
-const ReviewContractModal = ({ handleCloseModal, setCreationStage }: Props) => {
+const ReviewContractModal = ({
+  handleCloseModal,
+  setCreationStage,
+  contractDetails,
+}: Props) => {
   const { address } = useAccount();
   const myDivRef = useRef<HTMLDivElement>(null);
   const tagModalRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -105,16 +111,10 @@ const ReviewContractModal = ({ handleCloseModal, setCreationStage }: Props) => {
           </div>
         </div>
         <h3 className="text-[16px] leading-[19.36px] font-semibold mb-[6px]">
-          Website Updates - Full Stack Developer
+          {contractDetails.title}
         </h3>
         <p className="line-clamp-4 sm:line-clamp-6 text-[12px] leading-[20px] font-normal">
-          User information can go here along with service offered information,
-          total character limit will have to be decided bc we don’t wanna run
-          over the limit. User infoormation can go here along with service
-          offered information, total character limit will have to be decided bc
-          we don’t wanna run over the limit. User infoormation can go here
-          along... service offered information, total character limit will have
-          to be
+          {contractDetails.description}
         </p>
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
         <div className="flex flex-col gap-[6px]">
@@ -122,7 +122,7 @@ const ReviewContractModal = ({ handleCloseModal, setCreationStage }: Props) => {
             Client Wallet Address
           </span>
           <span className="text-[12px] leading-[14.52px] font-normal">
-            Client Wallet Address
+            {contractDetails.clientAddress}
           </span>
         </div>
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
@@ -131,7 +131,7 @@ const ReviewContractModal = ({ handleCloseModal, setCreationStage }: Props) => {
             Freelancer Wallet Address
           </span>
           <span className="text-[12px] leading-[14.52px] font-normal">
-            Freelancer Wallet Address
+            {contractDetails.freelancerAddress}
           </span>
         </div>
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
@@ -140,7 +140,7 @@ const ReviewContractModal = ({ handleCloseModal, setCreationStage }: Props) => {
             Payment Amount
           </span>
           <span className="text-[12px] leading-[14.52px] font-normal">
-            $100.00
+            ${contractDetails.paymentAmount}
           </span>
         </div>
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
@@ -149,7 +149,11 @@ const ReviewContractModal = ({ handleCloseModal, setCreationStage }: Props) => {
             Due Date
           </span>
           <span className="text-[12px] leading-[14.52px] font-normal">
-            21 March 2024
+            {contractDetails.dueDate.toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
           </span>
         </div>
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />

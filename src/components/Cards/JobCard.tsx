@@ -73,7 +73,7 @@ const JobCard = ({
         <div className="flex gap-[15px]">
           {profileData ? (
             <Link
-              href={`/other-user-follow?handle=${profileData?.userLink}`}
+              href={`/u/${profileData?.userLink}`}
               onClick={(e) => e.stopPropagation()}
               className="p-0 m-0 h-[60px] w-[60px]"
             >

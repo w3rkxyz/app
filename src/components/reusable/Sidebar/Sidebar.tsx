@@ -1,5 +1,6 @@
 "use client";
 import Image from "next/image";
+import Link from "next/link";
 import { useSession, SessionType } from "@lens-protocol/react-web";
 import { useEffect, useState } from "react";
 
@@ -116,7 +117,7 @@ const Sidebar = ({ height }: height) => {
             </p>
             <ul className="socials-widgets gap-[10px] flex mt-1">
               <li className="socials-widgets-items">
-                <a href="/">
+                <Link href="/">
                   <Image
                     className="w-[14.13px]  h-[13.18px]"
                     src="/images/twitter-fo.svg"
@@ -124,7 +125,7 @@ const Sidebar = ({ height }: height) => {
                     width={14.13}
                     height={13.18}
                   />
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -135,7 +136,7 @@ const Sidebar = ({ height }: height) => {
             </p>
             <ul className="socials-widgets gap-[5px] flex mt-1">
               <li className="socials-widgets-items">
-                <a href="/">
+                <Link href="/">
                   <Image
                     className="w-[28px] h-[28px] bg-[#F7931A] p-1 rounded-full"
                     src="/images/token-1.svg"
@@ -143,10 +144,10 @@ const Sidebar = ({ height }: height) => {
                     width={28}
                     height={28}
                   />
-                </a>
+                </Link>
               </li>
               <li className="socials-widgets-items">
-                <a href="/">
+                <Link href="/">
                   <Image
                     className="w-[28px]  h-[28px]"
                     src="/images/token2.svg"
@@ -154,10 +155,10 @@ const Sidebar = ({ height }: height) => {
                     width={28}
                     height={28}
                   />
-                </a>
+                </Link>
               </li>
               <li className="socials-widgets-items">
-                <a href="/">
+                <Link href="/">
                   <Image
                     className="w-[28px]  h-[28px]"
                     src="/images/token3.svg"
@@ -165,7 +166,7 @@ const Sidebar = ({ height }: height) => {
                     width={28}
                     height={28}
                   />
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -220,7 +221,7 @@ const Sidebar = ({ height }: height) => {
                   </p>
                   <ul className="socials-widgets gap-[10px] flex mt-1">
                     <li className="socials-widgets-items">
-                      <a href="/">
+                      <Link href="/">
                         <Image
                           className="w-[14.13px]  h-[13.18px]"
                           src="/images/twitter-fo.svg"
@@ -228,7 +229,7 @@ const Sidebar = ({ height }: height) => {
                           width={14.13}
                           height={13.18}
                         />
-                      </a>
+                      </Link>
                     </li>
                   </ul>
                 </div>
@@ -238,7 +239,7 @@ const Sidebar = ({ height }: height) => {
                   </p>
                   <ul className="socials-widgets gap-[5px] flex mt-1">
                     <li className="socials-widgets-items">
-                      <a href="/">
+                      <Link href="/">
                         <Image
                           className="w-[20px] h-[20px] bg-[#F7931A] p-1 rounded-full"
                           src="/images/token-1.svg"
@@ -246,10 +247,10 @@ const Sidebar = ({ height }: height) => {
                           width={20}
                           height={20}
                         />
-                      </a>
+                      </Link>
                     </li>
                     <li className="socials-widgets-items">
-                      <a href="/">
+                      <Link href="/">
                         <Image
                           className="w-[20px]  h-[20px]"
                           src="/images/token2.svg"
@@ -257,10 +258,10 @@ const Sidebar = ({ height }: height) => {
                           width={20}
                           height={20}
                         />
-                      </a>
+                      </Link>
                     </li>
                     <li className="socials-widgets-items">
-                      <a href="/">
+                      <Link href="/">
                         <Image
                           className="w-[20px]  h-[20px]"
                           src="/images/token3.svg"
@@ -268,7 +269,7 @@ const Sidebar = ({ height }: height) => {
                           width={20}
                           height={20}
                         />
-                      </a>
+                      </Link>
                     </li>
                   </ul>
                 </div>

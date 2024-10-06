@@ -208,34 +208,34 @@ const Profile = () => {
           <hr className="bg-[#E4E4E7] h-[1px] mb-[16px]" />
           <div className="flex gap-[12px] mb-[19px]">
             {userData.X !== "" && (
-              <a target="_blank" href={userData.X}>
+              <Link target="_blank" href={userData.X}>
                 <Image
                   src="/images/twitter-social.svg"
                   alt="user icon"
                   width={24}
                   height={24}
                 />
-              </a>
+              </Link>
             )}
             {userData.github !== "" && (
-              <a target="_blank" href={userData.github}>
+              <Link target="_blank" href={userData.github}>
                 <Image
                   src="/images/github-social.svg"
                   alt="user icon"
                   width={24}
                   height={24}
                 />
-              </a>
+              </Link>
             )}
             {userData.linkedin !== "" && (
-              <a target="_blank" href={userData.linkedin}>
+              <Link target="_blank" href={userData.linkedin}>
                 <Image
                   src="/images/linkedin-social.svg"
                   alt="user icon"
                   width={24}
                   height={24}
                 />
-              </a>
+              </Link>
             )}
           </div>
           <div className="flex flex-col gap-[16px] mb-[20px] sm:mb-[0px]">

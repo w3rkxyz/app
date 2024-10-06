@@ -138,7 +138,7 @@ const ViewJobModal = ({
           <div className="flex gap-[16px]">
             {profileData ? (
               <Link
-                href={`/other-user-follow/?handle=${profileData?.userLink}`}
+                href={`/u/${profileData?.userLink}`}
                 className="sm:w-[60px] sm:h-[60px] w-[64px] h-[64px]"
               >
                 <Image
@@ -280,7 +280,7 @@ const ViewJobModal = ({
           ) : (
             <ul className="socials-widgets gap-[5px] flex">
               <li className="socials-widgets-items">
-                <a href="/">
+                <Link href="/">
                   <Image
                     className="w-[26px] h-[26px] sm:w-[24px] sm:h-[24px] bg-[#F7931A] p-1 rounded-full"
                     src="/images/token-1.svg"
@@ -288,10 +288,10 @@ const ViewJobModal = ({
                     width={26}
                     height={26}
                   />
-                </a>
+                </Link>
               </li>
               <li className="socials-widgets-items">
-                <a href="/">
+                <Link href="/">
                   <Image
                     className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
                     src="/images/token2.svg"
@@ -299,10 +299,10 @@ const ViewJobModal = ({
                     width={26}
                     height={26}
                   />
-                </a>
+                </Link>
               </li>
               <li className="socials-widgets-items">
-                <a href="/">
+                <Link href="/">
                   <Image
                     className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
                     src="/images/token3.svg"
@@ -310,10 +310,10 @@ const ViewJobModal = ({
                     width={26}
                     height={26}
                   />
-                </a>
+                </Link>
               </li>
               <li className="socials-widgets-items">
-                <a href="/">
+                <Link href="/">
                   <Image
                     className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
                     src="/images/bnb.svg"
@@ -321,10 +321,10 @@ const ViewJobModal = ({
                     width={26}
                     height={26}
                   />
-                </a>
+                </Link>
               </li>
               <li className="socials-widgets-items">
-                <a href="/">
+                <Link href="/">
                   <Image
                     className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
                     src="/images/solana.svg"
@@ -332,10 +332,10 @@ const ViewJobModal = ({
                     width={26}
                     height={26}
                   />
-                </a>
+                </Link>
               </li>
               <li className="socials-widgets-items">
-                <a href="/">
+                <Link href="/">
                   <Image
                     className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
                     src="/images/usdt.svg"
@@ -343,10 +343,10 @@ const ViewJobModal = ({
                     width={26}
                     height={26}
                   />
-                </a>
+                </Link>
               </li>
               <li className="socials-widgets-items">
-                <a href="/">
+                <Link href="/">
                   <Image
                     className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
                     src="/images/dai.svg"
@@ -354,10 +354,10 @@ const ViewJobModal = ({
                     width={26}
                     height={26}
                   />
-                </a>
+                </Link>
               </li>
               <li className="socials-widgets-items">
-                <a href="/">
+                <Link href="/">
                   <Image
                     className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
                     src="/images/green-coin.svg"
@@ -365,10 +365,10 @@ const ViewJobModal = ({
                     width={26}
                     height={26}
                   />
-                </a>
+                </Link>
               </li>
               <li className="socials-widgets-items">
-                <a href="/">
+                <Link href="/">
                   <Image
                     className="w-[26px]  h-[26px] sm:w-[24px] sm:h-[24px]"
                     src="/images/bw-coin.svg"
@@ -376,7 +376,7 @@ const ViewJobModal = ({
                     width={26}
                     height={26}
                   />
-                </a>
+                </Link>
               </li>
             </ul>
           )}

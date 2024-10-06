@@ -1,5 +1,6 @@
 import Image from "next/image";
 import React from "react";
+import Link from "next/link";
 
 const Footer = () => {
   return (
@@ -11,7 +12,7 @@ const Footer = () => {
           </p>
           <ul className="socials-widgets ml-auto sm:ml-0 flex items-center gap-[17px] sm:gap-[11px] bg-transparent">
             <li className="socials-widgets-item cursor-pointer">
-              <a href="https://twitter.com/w3rkxyz" target="_blank">
+              <Link href="https://twitter.com/w3rkxyz" target="_blank">
                 <Image
                   src="/images/twitter-fo.svg"
                   alt="socials icons image"
@@ -19,10 +20,10 @@ const Footer = () => {
                   width={33}
                   height={33}
                 />
-              </a>
+              </Link>
             </li>
             <li className="socials-widgets-item cursor-pointer">
-              <a href="https://t.me/w3rkxyz" target="_blank">
+              <Link href="https://t.me/w3rkxyz" target="_blank">
                 <Image
                   src="/images/instagrame-fo.svg"
                   alt="socials icons image"
@@ -30,7 +31,7 @@ const Footer = () => {
                   width={33}
                   height={33}
                 />
-              </a>
+              </Link>
             </li>
           </ul>
         </div>

@@ -52,7 +52,7 @@ const Navbar = () => {
           <div className="header-wrapper">
             <nav className="navbar-nav-main flex items-center gap-3 justify-between h-[60px] w-full">
               <div className="header-brand-box sm:flex sm:items-center">
-                <a href="/">
+                <Link href="/">
                   <Image
                     src="/images/brand-logo.svg"
                     className="relative h-[80px] w-[80px] translate-y-[5px]"
@@ -60,7 +60,7 @@ const Navbar = () => {
                     height={80}
                     alt="company brand logo"
                   ></Image>
-                </a>
+                </Link>
               </div>
               <div className="navbar-right-cont">
                 <Connect />

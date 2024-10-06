@@ -107,7 +107,7 @@ const MobileProfileDropdown = ({
             <span className="drop-down-text">Messages</span>
           </div>
         </Link>
-        <Link href="/profile" onClick={closeMenu}>
+        <Link href={`/u/${handle?.localName}`} onClick={closeMenu}>
           <div className="drop-down-item">
             <Image
               src="/images/user.svg"
