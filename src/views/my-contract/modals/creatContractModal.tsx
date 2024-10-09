@@ -309,6 +309,8 @@ const CreateContractModal = ({
               Due Date
             </span>
             <button
+              type="button"
+              name="date picker"
               className="w-full sm:w-full rounded-[8px] border-[1px] border-[#E4E4E7] p-[7px] flex justify-between items-center relative"
               onClick={() => setShowDatePicker(true)}
             >

@@ -48,7 +48,11 @@ function Alert({
   }
   return (
     <div className="bg-white rounded overflow-hidden border-[1px] border-[#E4E4E7]">
-      <div className={`flex items-center py-2 pr-3 pl-5 gap-4 bg-[#C6AAFF]`}>
+      <div
+        className={`flex items-center py-2 pr-3 pl-5 gap-4 ${
+          variant === "Successful" ? "bg-[#C6AAFF]" : "bg-[red]"
+        }`}
+      >
         <Image src={`/images/${icon}.svg`} alt="" width={20} height={20} />
         <span className="font-medium flex-grow alert-title text-white">
           {title}

@@ -153,7 +153,7 @@ const InProgressContractModal = ({
             variant: "Successful",
             classname: "text-black",
             title: "Submission Successful",
-            tag1: "Payement release",
+            tag1: "Payement released",
             tag2: "contract completed",
           },
         })

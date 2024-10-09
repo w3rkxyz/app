@@ -6,13 +6,14 @@ import axios from "axios";
 import type { activeContractDetails, contractDetails } from "./types/types";
 import unicrow from "@unicrowio/sdk";
 
-const rpc_url = "https://sepolia-rollup.arbitrum.io/rpc";
+const rpc_url =
+  "https://arb-sepolia.g.alchemy.com/v2/c1QPiRYwHLQQnKKNb0wQJ-3FHE9TZWra";
 let provider = new ethers.JsonRpcProvider(rpc_url);
 
-// unicrow.config({
-//   defaultNetwork: "goerli",
-//   autoSwitchNetwork: true,
-// });
+unicrow.config({
+  defaultNetwork: unicrow.DefaultNetwork.ArbitrumSepolia,
+  autoSwitchNetwork: true,
+});
 
 let contractInstance = new ethers.Contract(
   process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as string,
@@ -30,6 +31,18 @@ function secondsUntil(targetDate: Date) {
 
 const getSigner = async () => {
   const provider = new ethers.BrowserProvider(window.ethereum);
+
+  const currentChainId = await provider
+    .getNetwork()
+    .then((network) => network.chainId);
+  console.log("chain: ", Number(currentChainId));
+
+  // Switch to Arbitrum Sepolia if not already switched
+  if (Number(currentChainId) !== 421614) {
+    window.location.href = "/";
+    await provider.send("wallet_switchEthereumChain", [{ chainId: "0x66eee" }]);
+  }
+
   const signer = await provider.getSigner();
   return signer;
 };
@@ -391,26 +404,25 @@ const release_payement = async (
   contractDetails: activeContractDetails,
   dispatch: any
 ) => {
-  // if (contractDetails.escrowId) {
-  //   dispatch(
-  //     openLoader({
-  //       displaytransactionLoader: true,
-  //       text: "Releasing Payement",
-  //     })
-  //   );
-  //   const contract = await getContract();
+  if (contractDetails.escrowId) {
+    dispatch(
+      openLoader({
+        displaytransactionLoader: true,
+        text: "Releasing Payement",
+      })
+    );
+    const contract = await getContract();
 
-  //   await unicrow.core.release(contractDetails.escrowId);
-  //   const result = await handleContractTransaction(
-  //     () => contract.request_payement(contractId),
-  //     dispatch
-  //   );
+    const result = await handleContractTransaction(
+      () => contract.release_payement(contractId),
+      dispatch
+    );
+    await unicrow.core.release(contractDetails.escrowId);
 
-  //   return result;
-  // } else {
-  //   alert("Not an active contract");
-  // }
-  alert("In Progress");
+    return result;
+  } else {
+    alert("Not an active contract");
+  }
 };
 
 export {

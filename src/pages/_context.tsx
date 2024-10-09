@@ -3,7 +3,7 @@
 import React, { ReactNode } from "react";
 import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { WagmiProvider, createConfig, http } from "wagmi";
-import { polygon, polygonAmoy } from "wagmi/chains";
+import { polygon, polygonAmoy, arbitrumSepolia } from "wagmi/chains";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import {
   LensConfig,
@@ -17,11 +17,10 @@ import { bindings as wagmiBindings } from "@lens-protocol/wagmi";
 const config = getDefaultConfig({
   appName: "w3rk",
   projectId: "d00d9905ccaf8c54cb116e944ab4d383",
-  chains: [polygonAmoy, polygon],
+  chains: [arbitrumSepolia],
   ssr: true,
   transports: {
-    [polygonAmoy.id]: http(),
-    [polygon.id]: http(),
+    [arbitrumSepolia.id]: http(),
   },
 });
 
@@ -31,7 +30,7 @@ const queryClient = new QueryClient();
 // Lens Protocol config
 const lensConfig: LensConfig = {
   bindings: wagmiBindings(config),
-  environment: development,
+  environment: production,
 };
 
 // Rainbow kit and Lens Context wrapper

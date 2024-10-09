@@ -68,18 +68,22 @@ const Contracts = () => {
   const getData = async () => {
     if (address) {
       const contracts = await get_all_contracts(address);
-      setContracts(contracts);
+      const newContracts = [...contracts];
+      setContracts(newContracts);
       setLoadingContracts(false);
     }
   };
 
   useEffect(() => {
     getData();
-    // contractInstance.on("*", (client, freelancer) => {
-    //   if (client === address || freelancer === address) {
-    //     getData();
-    //   }
-    // });
+    contractInstance.on("ContractUpdate", (client, freelancer, event) => {
+      if (client === address || freelancer === address) {
+        getData();
+        setInterval(() => {
+          getData();
+        }, 5000);
+      }
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [address]);
 
