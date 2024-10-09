@@ -85,6 +85,7 @@ const SecondNav = ({ session }: { session: Session }) => {
   }, []);
 
   const openProfileDropdown = () => {
+    console.log("It was definitely clicked");
     setShowProfileDropdown(true);
   };
 
