@@ -38,7 +38,7 @@ const ReviewContractModal = ({
   const myDivRef = useRef<HTMLDivElement>(null);
   const tagModalRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const tokenModalRef = useRef<HTMLButtonElement>(null);
-  
+
   const [showMobile, setShowMobile] = useState(false);
   const [showTokens, setShowTokens] = useState(false);
   const [selectedTokens, setSelectedTokens] = useState<number[]>([]);
@@ -66,7 +66,9 @@ const ReviewContractModal = ({
         text: "Approving Token use",
       })
     );
+    console.log("Uploading Data to IPFS");
     const escrowData = await uploadJsonToIPFS(contractDetails);
+    console.log("Data uploaded");
     const hash = await create_proposal(
       contractDetails.paymentAmount.toString(),
       contractDetails.freelancerAddress,

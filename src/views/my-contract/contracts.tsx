@@ -89,7 +89,6 @@ const Contracts = () => {
 
   useEffect(() => {
     if (profile) {
-      console.log("Theres a profile");
       setShowCreateContractModal(true);
     }
   }, [profile]);

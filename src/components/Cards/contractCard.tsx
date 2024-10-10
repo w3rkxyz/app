@@ -16,16 +16,13 @@ interface CardProps {
 function daysUntil(targetDateString: Date) {
   const targetDate = new Date(targetDateString);
   const now = new Date();
-  console.log(targetDate);
   const differenceInMilliseconds = targetDate.getTime() - now.getTime();
 
   if (differenceInMilliseconds <= 0) {
     return "Due";
   }
 
-  console.log(differenceInMilliseconds);
   const daysLeft = Math.ceil(differenceInMilliseconds / (1000 * 60 * 60 * 24));
-  console.log(daysLeft);
   return `${daysLeft} Days Remaining`;
 }
 

@@ -86,10 +86,7 @@ const ViewContractModal = ({ handleCloseModal, contractDetails }: Props) => {
   }, [profileLoading]);
 
   const handleCancle = async () => {
-    console.log("Started");
     if (contractDetails.id !== undefined) {
-      console.log("Got here");
-      console.log("Id: ", contractDetails.id);
       const hash = await cancle_proposal(contractDetails.id, dispatch);
       if (hash !== undefined) {
         dispatch(

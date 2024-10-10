@@ -119,7 +119,7 @@ const CreateContractModal = ({
         title,
         description,
         clientAddress: address as string,
-        freelancerAddress: freelancerAddress,
+        freelancerAddress: freelancer.ownedBy.address,
         paymentAmount,
         dueDate,
         state: "proposal",
@@ -277,7 +277,7 @@ const CreateContractModal = ({
                 }}
               >
                 {tokens.map((token, index) => (
-                  <button
+                  <div
                     key={index}
                     className={`flex gap-[8px] items-center rounded-[6px] ${
                       selectedTokens?.includes(index)
@@ -286,6 +286,7 @@ const CreateContractModal = ({
                     }`}
                     onClick={() => onCLickToken(index)}
                   >
+                    s
                     <Image
                       src={token.image}
                       alt="token icon"
@@ -295,7 +296,7 @@ const CreateContractModal = ({
                     <span className="font-medium text-[11px] leading-[20px] text-black">
                       {token.text}
                     </span>
-                  </button>
+                  </div>
                 ))}
               </div>
             </button>
@@ -332,6 +333,7 @@ const CreateContractModal = ({
         </div>
 
         <button
+          type="button"
           className="mx-auto w-fit flex gap-[5px] py-[10px] px-[23px] tx-[14px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px]"
           onClick={handleSubmit}
         >

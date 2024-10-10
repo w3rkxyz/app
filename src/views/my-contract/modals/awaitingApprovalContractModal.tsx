@@ -4,7 +4,7 @@ import React, { useRef, useEffect, useState } from "react";
 import Image from "next/image";
 import MyButton from "@/components/reusable/Button/Button";
 import { useAccount } from "wagmi";
-import { release_payement } from "@/api";
+import { release_payement, request_extension } from "@/api";
 import { useDispatch } from "react-redux";
 import { openAlert, closeAlert, openLoader } from "@/redux/alerts";
 import { activeContractDetails } from "@/types/types";

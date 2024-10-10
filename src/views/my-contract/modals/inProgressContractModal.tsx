@@ -10,7 +10,7 @@ import getLensProfileData, { UserProfile } from "@/utils/getLensProfile";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import Link from "next/link";
-import { request_payement, release_payement } from "@/api";
+import { request_payement, release_payement, request_extension } from "@/api";
 import { useDispatch } from "react-redux";
 import { openAlert, closeAlert, openLoader } from "@/redux/alerts";
 import DatePicker from "react-datepicker";
@@ -100,6 +100,41 @@ const InProgressContractModal = ({
       setNewDueDate(date);
     }
     toggleDatePicker();
+  };
+
+  const handleExtend = async () => {
+    if (newDueDate !== contractDetails.dueDate) {
+      if (contractDetails.id !== undefined) {
+        const hash = await request_extension(
+          contractDetails.id,
+          contractDetails,
+          newDueDate,
+          dispatch
+        );
+        if (hash !== undefined) {
+          dispatch(
+            openAlert({
+              displayAlert: true,
+              data: {
+                id: 1,
+                variant: "Successful",
+                classname: "text-black",
+                title: "Submission Successful",
+                tag1: "Extension request sent",
+                tag2: "View on etherscan",
+                hash: hash,
+              },
+            })
+          );
+          setTimeout(() => {
+            dispatch(closeAlert());
+          }, 10000);
+          handleCloseModal?.();
+        }
+      }
+    } else {
+      setShowNewDatePicker(!showNewDatePicker);
+    }
   };
 
   const handleRequest = async () => {
@@ -321,7 +356,7 @@ const InProgressContractModal = ({
               >
                 New Due Date
               </span>
-              <button
+              <div
                 className="w-full sm:w-full rounded-[8px] border-[1px] border-[#E4E4E7] p-[7px] flex justify-between items-center relative"
                 onClick={() => setShowDatePicker(true)}
               >
@@ -338,14 +373,14 @@ const InProgressContractModal = ({
                   width={20}
                   height={20}
                 />
-              </button>
+              </div>
             </div>
           )}
         </div>
         <div className="relative flex sm:flex-col w-full justify-center sm:items-center gap-[16px] sm:gap-[6px] mt-[40px] sm:mt-[16px]">
           <button
             className="w-fit h-fit py-[10px] px-[23px] sm:px-[0px] sm:w-full text-[14px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px]"
-            onClick={() => setShowNewDatePicker(!showNewDatePicker)}
+            onClick={handleExtend}
           >
             Request Extension
           </button>

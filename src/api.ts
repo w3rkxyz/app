@@ -5,6 +5,7 @@ import { openLoader, closeLoader, closeAlert, openAlert } from "./redux/alerts";
 import axios from "axios";
 import type { activeContractDetails, contractDetails } from "./types/types";
 import unicrow from "@unicrowio/sdk";
+import { uploadJsonToIPFS } from "./utils/uploadToIPFS";
 
 const rpc_url =
   "https://arb-sepolia.g.alchemy.com/v2/c1QPiRYwHLQQnKKNb0wQJ-3FHE9TZWra";
@@ -24,7 +25,6 @@ let contractInstance = new ethers.Contract(
 function secondsUntil(targetDate: Date) {
   const now = new Date();
   const dueDate = new Date(targetDate);
-  console.log("Now: ", dueDate.getTime());
   const difference = dueDate.getTime() - now.getTime();
   return Math.floor(difference / 1000);
 }
@@ -35,7 +35,6 @@ const getSigner = async () => {
   const currentChainId = await provider
     .getNetwork()
     .then((network) => network.chainId);
-  console.log("chain: ", Number(currentChainId));
 
   // Switch to Arbitrum Sepolia if not already switched
   if (Number(currentChainId) !== 421614) {
@@ -106,10 +105,8 @@ const handleTokenApproval = async (
 ): Promise<boolean> => {
   const address = await getAddress();
   const contract = await getTokenContract();
-  console.log("Address: ", address);
   const tokenBalanceString = await getTokenBalance(address);
   const tokenBalance = Number(tokenBalanceString);
-  console.log("Balance: ", tokenBalance);
 
   if (amount > tokenBalance) {
     dispatch(closeLoader());
@@ -132,16 +129,18 @@ const handleTokenApproval = async (
     return false;
   } else {
     try {
-      console.log("approving");
+      console.log("In part 1");
       const approvalTx = await contract.approve(
         approvalAddress,
         ethers.parseEther(amount.toString())
       );
-      console.log("Reached here?");
+      console.log("in part 2");
 
       await approvalTx.wait();
+      console.log("in part 3");
       return true;
     } catch (error: any) {
+      console.log("Error: ", error);
       dispatch(closeLoader());
       dispatch(
         openAlert({
@@ -180,7 +179,6 @@ const handleContractTransaction = async (
     dispatch(closeLoader());
     return createTransactionLink(tx.hash);
   } catch (error: any) {
-    console.log("The error: ", error);
     dispatch(closeLoader());
     if (error.reason === "rejected") {
       dispatch(
@@ -248,14 +246,18 @@ const create_proposal = async (
     Number(amount),
     dispatch
   );
+  console.log("Approved: ", tokensApproved);
+  console.log("Got here");
 
   if (tokensApproved) {
+    console.log("Got here 2");
     dispatch(
       openLoader({
         displaytransactionLoader: true,
         text: "Creating proposal",
       })
     );
+    console.log("Got here 3");
     const result = await handleContractTransaction(
       () =>
         contract.createProposal(
@@ -307,7 +309,6 @@ const get_all_contracts = async (user: string) => {
     }
   );
   await Promise.all(axiosContractRequests);
-  console.log("Contracts: ", contracts);
   return contracts;
 };
 
@@ -323,8 +324,6 @@ const accept_proposal = async (
     })
   );
   const contract = await getContract();
-
-  console.log(contractDetails);
 
   const contractParams = [
     contractDetails.clientAddress,
@@ -348,7 +347,6 @@ const accept_proposal = async (
 };
 
 const reject_proposal = async (proposalId: number, dispatch: any) => {
-  console.log("Id: ", proposalId);
   dispatch(
     openLoader({
       displaytransactionLoader: true,
@@ -376,6 +374,34 @@ const cancle_proposal = async (proposalId: number, dispatch: any) => {
 
   const result = await handleContractTransaction(
     () => contract.cancle_proposal(proposalId),
+    dispatch
+  );
+
+  return result;
+};
+
+const request_extension = async (
+  contractId: number,
+  contractDetails: activeContractDetails,
+  new_date: Date,
+  dispatch: any
+) => {
+  dispatch(
+    openLoader({
+      displaytransactionLoader: true,
+      text: "Requesting Extension",
+    })
+  );
+  const contract = await getContract();
+
+  const newContract = { ...contractDetails };
+  newContract.dueDate = new_date;
+  console.log("Got here 1");
+  const escrowData = await uploadJsonToIPFS(newContract);
+  console.log("Git here 2");
+
+  const result = await handleContractTransaction(
+    () => contract.update_contract_data(contractId, escrowData),
     dispatch
   );
 
@@ -431,6 +457,7 @@ export {
   accept_proposal,
   reject_proposal,
   cancle_proposal,
+  request_extension,
   request_payement,
   release_payement,
   getContract,
