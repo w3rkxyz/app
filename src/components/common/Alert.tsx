@@ -8,7 +8,7 @@ interface AlertProps {
   classname: String;
   title: String;
   tag1: string;
-  tag2: string;
+  tag2?: string;
   hash?: string;
   onClose?: () => void;
 }
@@ -47,46 +47,30 @@ function Alert({
       break;
   }
   return (
-    <div className="bg-white rounded overflow-hidden border-[1px] border-[#E4E4E7]">
-      <div
-        className={`flex items-center py-2 pr-3 pl-5 gap-4 ${
-          variant === "Successful" ? "bg-[#C6AAFF]" : "bg-[red]"
-        }`}
-      >
-        <Image src={`/images/${icon}.svg`} alt="" width={20} height={20} />
-        <span className="font-medium flex-grow alert-title text-white">
-          {title}
-        </span>
-        <span
-          onClick={() => {
-            dispatch(closeAlert());
-          }}
-          style={{ cursor: "pointer" }}
-        >
-          <Image src="/images/alert-close.svg" alt="" width={20} height={20} />
+    <div className="bg-white rounded-[12px] overflow-hidden border-[1px] border-[#E4E4E7] w-[281px]">
+      <div className="border-b-[1px] border-b-[#E4E4E7] w-full pl-[16px] py-[12px]">
+        <span className="font-medium text-[14px] text-[#707070]">
+          {variant === "Successful" ? "Action Completed" : "Action Failed"}
         </span>
       </div>
-      <div className="pt-4 pb-5 px-[60px]">
-        <p className="mb-1 alert-content text-black">{tag1}</p>
-        <div className="flex items-center gap-1.5">
-          {hash ? (
-            <a
-              href={hash}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:no-underline text-black"
-            >
-              <span className="hover:no-underline text-xl alert-sub-content">
-                {tag2}
-              </span>
-            </a>
-          ) : (
-            <span className="hover:no-underline text-xl alert-sub-content text-black">
+      <div className="pl-[16px] pr-[9px] py-[11px] w-full flex items-center">
+        <div>
+          <span className="font-medium text-[14px] text-black">{tag1}</span>
+          {tag2 && variant !== "Successful" && (
+            <span className="font-medium text-[12px] text-[#707070] mt-[7px]">
               {tag2}
             </span>
           )}
-          {/* <Image src="/images/Group 169.svg" className="material-icons" alt="" /> */}
         </div>
+        <Image
+          src={
+            variant === "Successful" ? "/images/succes.svg" : "/images/fail.svg"
+          }
+          alt="state icon"
+          width={19}
+          height={19}
+          className="ml-auto"
+        />
       </div>
     </div>
   );

@@ -149,7 +149,7 @@ const InProgressContractModal = ({
               variant: "Successful",
               classname: "text-black",
               title: "Submission Successful",
-              tag1: "Payement request sent",
+              tag1: "Payement requested",
               tag2: "View on etherscan",
               hash: hash,
             },

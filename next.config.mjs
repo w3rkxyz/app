@@ -4,6 +4,7 @@ const nextConfig = {
   trailingSlash: true,
   images: { unoptimized: true },
   webpack: (config) => {
+    config.externals.push("pino-pretty", "lokijs", "encoding");
     // tell webpack to load WASM files as an asset resource
     config.module.rules.push({
       test: /\.wasm$/,

@@ -1,5 +1,7 @@
 import { ethers } from "ethers";
 import CONTRACT from "./contracts/ContractsManager.json";
+import PROFILECONTRACT from "./contracts/ProfileCreator.json";
+import PERMISSIONCONTRACT from "./contracts/PermissionlessCreator.json";
 import TOKEN from "./contracts/Link.json";
 import { openLoader, closeLoader, closeAlert, openAlert } from "./redux/alerts";
 import axios from "axios";
@@ -46,11 +48,48 @@ const getSigner = async () => {
   return signer;
 };
 
+const getPolygonSigner = async () => {
+  const provider = new ethers.BrowserProvider(window.ethereum);
+
+  const currentChainId = await provider
+    .getNetwork()
+    .then((network) => network.chainId);
+
+  // Switch to Arbitrum Sepolia if not already switched
+  // if (Number(currentChainId) !== 421614) {
+  //   window.location.href = "/";
+  //   await provider.send("wallet_switchEthereumChain", [{ chainId: "0x66eee" }]);
+  // }
+
+  const signer = await provider.getSigner();
+  return signer;
+};
+
 const getContract = async () => {
   const signer = await getSigner();
   const contract = new ethers.Contract(
     process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as string,
     CONTRACT.abi,
+    signer
+  );
+  return contract;
+};
+
+const getProfileContract = async () => {
+  const signer = await getPolygonSigner();
+  const contract = new ethers.Contract(
+    process.env.NEXT_PUBLIC_PROFILE_CONTRACT_ADDRESS as string,
+    PROFILECONTRACT.abi,
+    signer
+  );
+  return contract;
+};
+
+const getPermissionContract = async () => {
+  const signer = await getPolygonSigner();
+  const contract = new ethers.Contract(
+    process.env.NEXT_PUBLIC_PERMISSION_CONTRACT_ADDRESS as string,
+    PERMISSIONCONTRACT.abi,
     signer
   );
   return contract;
@@ -118,8 +157,8 @@ const handleTokenApproval = async (
           variant: "Failed",
           classname: "text-black",
           title: "Transaction Failed",
-          tag1: `Insufficient balance: need ${amount} kover`,
-          tag2: "please buy tokens before proceeding",
+          tag1: `Insufficient Balance`,
+          tag2: `${amount} Tokens Required`,
         },
       })
     );
@@ -254,7 +293,7 @@ const create_proposal = async (
     dispatch(
       openLoader({
         displaytransactionLoader: true,
-        text: "Creating proposal",
+        text: "Creating Cotract proposal",
       })
     );
     console.log("Got here 3");
@@ -320,7 +359,7 @@ const accept_proposal = async (
   dispatch(
     openLoader({
       displaytransactionLoader: true,
-      text: "Accepting proposal",
+      text: "Accepting Contract proposal",
     })
   );
   const contract = await getContract();
@@ -350,7 +389,7 @@ const reject_proposal = async (proposalId: number, dispatch: any) => {
   dispatch(
     openLoader({
       displaytransactionLoader: true,
-      text: "Rejecting proposal",
+      text: "Rejecting Contract proposal",
     })
   );
   const contract = await getContract();
@@ -367,7 +406,7 @@ const cancle_proposal = async (proposalId: number, dispatch: any) => {
   dispatch(
     openLoader({
       displaytransactionLoader: true,
-      text: "Cancling proposal",
+      text: "Cancling Contract proposal",
     })
   );
   const contract = await getContract();
@@ -389,7 +428,7 @@ const request_extension = async (
   dispatch(
     openLoader({
       displaytransactionLoader: true,
-      text: "Requesting Extension",
+      text: "Requesting Contract Extension",
     })
   );
   const contract = await getContract();
@@ -451,6 +490,59 @@ const release_payement = async (
   }
 };
 
+// Profile Creator
+const create_new_profile = async (
+  handle: string,
+  address: string,
+  dispatch: any
+) => {
+  const contract = await getProfileContract();
+
+  console.log("Handle: ", handle);
+
+  const createProfileParams = {
+    to: address,
+    followModule: "0x0000000000000000000000000000000000000000",
+    followModuleInitData: "0x",
+  };
+
+  console.log("Params", createProfileParams);
+
+  const tx = await contract.create_lens_profile(createProfileParams, handle, [
+    "0x71990499e005Db4d7854eea564023AB64ca884b5",
+  ]);
+  await tx.wait();
+  console.log("Result: ", tx);
+  return "Success!";
+};
+
+const create_profile = async (
+  handle: string,
+  address: string,
+  dispatch: any
+) => {
+  const contract = await getPermissionContract();
+
+  console.log("Handle: ", handle);
+
+  const createProfileParams = {
+    to: address,
+    followModule: "0x0000000000000000000000000000000000000000",
+    followModuleInitData: "0x",
+  };
+
+  console.log("Params", createProfileParams);
+
+  const tx = await contract.createProfileWithHandle(
+    createProfileParams,
+    handle,
+    ["0x71990499e005Db4d7854eea564023AB64ca884b5"]
+  );
+  await tx.wait();
+  console.log("Result: ", tx);
+  return "Success!";
+};
+
 export {
   create_proposal,
   get_all_contracts,
@@ -461,5 +553,7 @@ export {
   request_payement,
   release_payement,
   getContract,
+  create_new_profile,
+  create_profile,
   contractInstance,
 };

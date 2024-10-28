@@ -10,6 +10,7 @@ import {
   usePublications,
   useSearchPublications,
   appId,
+  AnyPublication,
 } from "@lens-protocol/react-web";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
@@ -69,17 +70,17 @@ const FindWork = () => {
     },
   });
 
-  const { data: searchResults } = useSearchPublications({
-    query: searchText,
-    where: {
-      metadata: {
-        publishedOn: [appId(process.env.NEXT_PUBLIC_APP_ID as string)],
-        tags: {
-          all: ["w3rk", "job"],
-        },
-      },
-    },
-  });
+  // const { data: searchResults } = useSearchPublications({
+  //   query: searchText,
+  //   where: {
+  //     metadata: {
+  //       publishedOn: [appId(process.env.NEXT_PUBLIC_APP_ID as string)],
+  //       tags: {
+  //         all: ["w3rk", "job"],
+  //       },
+  //     },
+  //   },
+  // });
   const [loading, setLoading] = useState(true);
   const [selectedPublication, setSelectedPublication] = useState<any>();
 
@@ -90,6 +91,32 @@ const FindWork = () => {
   const handleCloseModal = () => {
     // document.documentElement.style.paddingRight = "";
     setIsModalOpen(false);
+  };
+
+  interface Item {
+    metadata: {
+      attributes: string[];
+    };
+  }
+
+  const searchItems = (items: AnyPublication[], searchText: string) => {
+    const filtered = items.filter((item) => {
+      if (item.__typename === "Post") {
+        const attribute4 = item.metadata.attributes?.[4].value.toLowerCase();
+        const attribute5 = item.metadata.attributes?.[5].value.toLowerCase();
+        return (
+          attribute4?.includes(searchText.toLowerCase()) ||
+          attribute5?.includes(searchText.toLowerCase())
+        );
+      }
+    });
+    setData(filtered);
+  };
+
+  const handleSearch = (searchText: string) => {
+    if (publications) {
+      const filtered = searchItems(publications, searchText);
+    }
   };
 
   const handleOpenModal = (publication?: any) => {
@@ -124,17 +151,18 @@ const FindWork = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [publications]);
 
-  useEffect(() => {
-    if (searchResults) {
-      if (searchText !== "" && searchResults.length > 0) {
-        setData(searchResults);
-        console.log("Results: ", searchResults);
-      } else {
-        if (publications) setData(publications);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchResults]);
+  // useEffect(() => {
+  //   console.log('There was an update!')
+  //   if (searchResults) {
+  //     if (searchText !== "" && searchResults.length > 0) {
+  //       setData(searchResults.filter((publication) => publication.isHidden === false));
+  //       console.log("Results: ", searchResults);
+  //     } else {
+  //       if (publications) setData(publications);
+  //     }
+  //   }
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [searchResults]);
 
   useEffect(() => {
     console.log("Test");
@@ -151,7 +179,7 @@ const FindWork = () => {
           <div className="max-w-[600px] flex-1 md:w-full relative">
             <SearchInput
               toggleCategories={toggleCategoriesMobile}
-              setSearchText={setSearchText}
+              handleSearch={handleSearch}
             />
             <div
               className={`find-work-message-section w-[206px] bg-[#FFFFFF] rounded-[8px] p-[8px] sm:items-center gap-[3px] absolute top-[100%] right-0
