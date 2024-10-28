@@ -18,14 +18,15 @@
     "@lighthouse-web3/sdk": "^0.3.7",
     "@rainbow-me/rainbowkit": "^2.0.6",
     "@reduxjs/toolkit": "^2.2.7",
-    "@tanstack/react-query": "^5.35.1",
+    "@tanstack/react-query": "^5.59.0",
+    "@unicrowio/sdk": "^1.2.0-beta.3",
     "@xmtp/content-type-remote-attachment": "^1.1.9",
     "@xmtp/user-preferences-bindings-wasm": "^0.3.5",
     "@xmtp/xmtp-js": "^12.1.0",
     "axios": "^1.7.7",
     "copy-webpack-plugin": "^12.0.2",
     "encoding": "^0.1.13",
-    "ethers": "^6.13.2",
+    "ethers": "^6.13.3",
     "micromatch": "^4.0.8",
     "moment": "^2.30.1",
     "next": "^14.2.13",
@@ -38,8 +39,8 @@
     "react-loading-skeleton": "^3.4.0",
     "react-redux": "^9.1.2",
     "send": "^0.19.0",
-    "viem": "^2.10.1",
-    "wagmi": "^2.8.1",
+    "viem": "^2.21.19",
+    "wagmi": "^2.12.17",
     "webpack": "^5.94.0"
   },
   "author": "zakir",
@@ -62,6 +63,7 @@
     "ws": "8.18.0",
     "elliptic": "6.5.7",
     "fast-xml-parser": "4.4.1",
-    "braces": "3.0.3"
+    "braces": "3.0.3",
+    "cookie": "^0.7.0"
   }
 }

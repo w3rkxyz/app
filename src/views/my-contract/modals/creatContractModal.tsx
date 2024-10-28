@@ -4,8 +4,9 @@ import React, { useRef, useEffect, useState } from "react";
 import Image from "next/image";
 import MyButton from "@/components/reusable/Button/Button";
 import { useAccount } from "wagmi";
-import type { contractDetails } from "@/types/types";
+import type { activeContractDetails, contractDetails } from "@/types/types";
 import DatePicker from "react-datepicker";
+import { SessionType, useSession, Profile } from "@lens-protocol/react-web";
 
 import "react-datepicker/dist/react-datepicker.css";
 
@@ -14,6 +15,7 @@ type Props = {
   setCreationStage: any;
   setContractDetails: any;
   contractDetails: contractDetails;
+  freelancer?: Profile;
 };
 
 const tokens = [
@@ -33,8 +35,10 @@ const CreateContractModal = ({
   setCreationStage,
   setContractDetails,
   contractDetails,
+  freelancer,
 }: Props) => {
   const { address } = useAccount();
+  const { data: session, loading } = useSession();
   const myDivRef = useRef<HTMLDivElement>(null);
   const tokenModalRef = useRef<HTMLButtonElement>(null);
   const [showMobile, setShowMobile] = useState(false);
@@ -110,16 +114,21 @@ const CreateContractModal = ({
   };
 
   const handleSubmit = () => {
-    const details: contractDetails = {
-      title,
-      description,
-      clientAddress: address as string,
-      freelancerAddress,
-      paymentAmount,
-      dueDate,
-    };
-    setContractDetails(details);
-    setCreationStage(2);
+    if (session && session.type === SessionType.WithProfile && freelancer) {
+      const details: activeContractDetails = {
+        title,
+        description,
+        clientAddress: address as string,
+        freelancerAddress: freelancer.ownedBy.address,
+        paymentAmount,
+        dueDate,
+        state: "proposal",
+        freelancerHandle: freelancer.id,
+        clientHandle: session.profile.id,
+      };
+      setContractDetails(details);
+      setCreationStage(2);
+    }
   };
 
   return (
@@ -197,7 +206,10 @@ const CreateContractModal = ({
               placeholder="Freelancer wallet address"
               type="text"
               onChange={(e) => setFreelancerAddress(e.target.value)}
-              value={freelancerAddress}
+              value={
+                freelancer ? freelancer.ownedBy.address : freelancerAddress
+              }
+              disabled={freelancer !== undefined}
             />
           </div>
         </div>
@@ -265,7 +277,7 @@ const CreateContractModal = ({
                 }}
               >
                 {tokens.map((token, index) => (
-                  <button
+                  <div
                     key={index}
                     className={`flex gap-[8px] items-center rounded-[6px] ${
                       selectedTokens?.includes(index)
@@ -274,6 +286,7 @@ const CreateContractModal = ({
                     }`}
                     onClick={() => onCLickToken(index)}
                   >
+                    s
                     <Image
                       src={token.image}
                       alt="token icon"
@@ -283,7 +296,7 @@ const CreateContractModal = ({
                     <span className="font-medium text-[11px] leading-[20px] text-black">
                       {token.text}
                     </span>
-                  </button>
+                  </div>
                 ))}
               </div>
             </button>
@@ -297,6 +310,8 @@ const CreateContractModal = ({
               Due Date
             </span>
             <button
+              type="button"
+              name="date picker"
               className="w-full sm:w-full rounded-[8px] border-[1px] border-[#E4E4E7] p-[7px] flex justify-between items-center relative"
               onClick={() => setShowDatePicker(true)}
             >
@@ -318,6 +333,7 @@ const CreateContractModal = ({
         </div>
 
         <button
+          type="button"
           className="mx-auto w-fit flex gap-[5px] py-[10px] px-[23px] tx-[14px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px]"
           onClick={handleSubmit}
         >

@@ -5,6 +5,11 @@ import Image from "next/image";
 import MyButton from "@/components/reusable/Button/Button";
 import { useAccount } from "wagmi";
 import type { contractDetails } from "@/types/types";
+import { create_proposal } from "@/api";
+import { uploadJsonToIPFS } from "@/utils/uploadToIPFS";
+import { useDispatch } from "react-redux";
+import { openAlert, closeAlert } from "@/redux/alerts";
+import { openLoader } from "@/redux/alerts";
 
 type Props = {
   handleCloseModal?: () => void;
@@ -33,9 +38,11 @@ const ReviewContractModal = ({
   const myDivRef = useRef<HTMLDivElement>(null);
   const tagModalRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const tokenModalRef = useRef<HTMLButtonElement>(null);
+
   const [showMobile, setShowMobile] = useState(false);
   const [showTokens, setShowTokens] = useState(false);
   const [selectedTokens, setSelectedTokens] = useState<number[]>([]);
+  const dispatch = useDispatch();
 
   const toggleTokensModal = () => {
     setShowTokens(!showTokens);
@@ -49,6 +56,44 @@ const ReviewContractModal = ({
       var current = [...selectedTokens];
       current.push(index);
       setSelectedTokens(current);
+    }
+  };
+
+  const handleSubmit = async () => {
+    dispatch(
+      openLoader({
+        displaytransactionLoader: true,
+        text: "Approving Token use",
+      })
+    );
+    console.log("Uploading Data to IPFS");
+    const escrowData = await uploadJsonToIPFS(contractDetails);
+    console.log("Data uploaded");
+    const hash = await create_proposal(
+      contractDetails.paymentAmount.toString(),
+      contractDetails.freelancerAddress,
+      escrowData,
+      dispatch
+    );
+    if (hash !== undefined) {
+      dispatch(
+        openAlert({
+          displayAlert: true,
+          data: {
+            id: 1,
+            variant: "Successful",
+            classname: "text-black",
+            title: "Submission Successful",
+            tag1: "Contract Proposal created",
+            tag2: "View on etherscan",
+            hash: hash,
+          },
+        })
+      );
+      setTimeout(() => {
+        dispatch(closeAlert());
+      }, 10000);
+      handleCloseModal?.();
     }
   };
 
@@ -178,7 +223,10 @@ const ReviewContractModal = ({
             />
             Back
           </button>
-          <button className="mx-auto sm:mx-0 w-fit py-[10px] px-[25px] sm:px-[58.5px] tx-[14px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px]">
+          <button
+            className="mx-auto sm:mx-0 w-fit py-[10px] px-[25px] sm:px-[58.5px] tx-[14px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px]"
+            onClick={handleSubmit}
+          >
             Submit Proposal
           </button>
         </div>
