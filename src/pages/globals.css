@@ -146,9 +146,9 @@
     margin: 0;
   }
 
-  input[type="number"] {
+  /* input[type="number"] {
     -moz-appearance: textfield;
-  }
+  } */
 }
 
 @layer components {
@@ -288,7 +288,7 @@
     line-height: 16px;
     letter-spacing: -0.03em;
     text-align: center;
-    width: 160px;
+    width: 161px;
     height: 40px;
     padding: 10px 25px;
     border-radius: 12px;

@@ -47,7 +47,7 @@ const Navbar = () => {
       {/* {isConnected && profile ? (
         <SecondNav />
       ) : ( */}
-      <header className="header-section h-[60px] px-[156px] sm:px-[16px] absolute w-screen top-0 left-0 bg-white border-b-[1px] border-b-[#EEEEEE] z-[999]">
+      <header className="header-section h-[60px] px-[156px] sm:px-[16px] absolute w-screen top-0 left-0 bg-white border-b-[1px] border-b-[#EEEEEE] z-[98]">
         <div className="custom-container">
           <div className="header-wrapper">
             <nav className="navbar-nav-main flex items-center gap-3 justify-between h-[60px] w-full">

@@ -31,6 +31,7 @@ const SecondNav = ({ session }: { session: Session }) => {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const path = usePathname();
+  console.log("Path: ", path);
   const [searchText, setSearchText] = useState("");
   const { data, error, loading } = useSearchProfiles({
     query: searchText,
@@ -170,7 +171,7 @@ const SecondNav = ({ session }: { session: Session }) => {
                 <ul className="navbar-nav flex items-center flex-grow-0 sm:hidden mx-auto gap-[7px]">
                   <li
                     className={`navbar-nav-items px-[19px] md:px-[3px] py-[5px] ${
-                      path === "/find-work" ? "selected-path" : ""
+                      path === "/find-work/" ? "selected-path" : ""
                     }`}
                   >
                     <Link href="/find-work" className="">
@@ -179,7 +180,7 @@ const SecondNav = ({ session }: { session: Session }) => {
                   </li>
                   <li
                     className={`navbar-nav-items px-[19px] md:px-[5px] py-[7px] ${
-                      path === "/find-talent" ? "selected-path" : ""
+                      path === "/find-talent/" ? "selected-path" : ""
                     }`}
                   >
                     <Link href="/find-talent" className="">

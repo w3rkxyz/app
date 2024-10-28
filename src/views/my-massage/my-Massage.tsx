@@ -211,7 +211,6 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
             const conversations = await client.conversations.list();
             if (session?.type === SessionType.WithProfile) {
               await processConversations(client, session);
-              console.log("Finished running");
               // setSelectedConversation(conversations.length - 1);
               setIsNewConversation(true);
             }
@@ -224,7 +223,6 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
   }, [address]);
 
   useEffect(() => {
-    console.log("Session updated");
     if (profile) {
       const profileData = getLensProfileData(profile);
       setContactProfile(profileData);
@@ -239,8 +237,6 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
     var dates: (Date | string)[] = [];
     var recentMessage: string[] = [];
     var dataById: StringIndexedObject = {};
-
-    console.log("Started running");
 
     for (let i = 0; i < conversations.length; i++) {
       const conversation = conversations[i];
@@ -298,13 +294,21 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
   const handleIncomingMessages = async (client: Client) => {
     for await (const message of await client.conversations.streamAllMessages()) {
       if (session?.type === SessionType.WithProfile) {
-        processConversations(client, session);
+        await processConversations(client, session);
       }
+      // console.log("This was triggered");
 
       const scrollableDiv = document.getElementById("scrollableDiv");
-      const bottomMarker = document.getElementById("bottomMarker");
+      if (scrollableDiv) {
+        scrollableDiv.scrollTop = scrollableDiv.scrollHeight;
+        // setTimeout(() => {
+        //   scrollableDiv.scrollTop = scrollableDiv.scrollHeight;
+        //   console.log("just triggered");
+        // }, 1000);
+      }
+      // const bottomMarker = document.getElementById("bottomMarker");
 
-      bottomMarker?.scrollIntoView({ behavior: "smooth" });
+      // bottomMarker?.scrollIntoView({ behavior: "smooth" });
     }
   };
 
@@ -327,9 +331,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
       client.registerCodec(new AttachmentCodec());
       client.registerCodec(new RemoteAttachmentCodec());
 
-      console.log("reached here 1");
       handleIncomingMessages(client);
-      console.log("reached here 2");
 
       setXmtp(client);
       if (session?.type === SessionType.WithProfile) {
@@ -338,7 +340,6 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
 
       const stream = await client.conversations.stream();
       for await (const conversation of stream) {
-        console.log("This ran cause i started a new conversation!");
         const conversations = await client.conversations.list();
         if (session?.type === SessionType.WithProfile) {
           await processConversations(client, session);
@@ -421,7 +422,6 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
         (messageGroup, groupIndex) => {
           return Promise.all(
             messageGroup.messages.map(async (message, messageIndex) => {
-              console.log(message.content);
               if (isLink(message.content)) {
                 try {
                   const response = await axios.get(message.content);
@@ -490,9 +490,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
 
   const handleNewConversation = async (profile: Profile) => {
     if (xmtp && profile.handle && session?.type === SessionType.WithProfile) {
-      console.log("Opened conversation: ", profile);
       const isOnNetwork = await xmtp.canMessage(profile.handle?.ownedBy);
-      console.log("on Network: ", isOnNetwork);
       if (isOnNetwork) {
         const conversationId = buildConversationId(
           session.profile.id,
@@ -522,7 +520,6 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
   };
 
   useEffect(() => {
-    console.log("Profiles useEffect ran");
     if (profiles) {
       var temp: {
         picture: string;
@@ -632,10 +629,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
     }
   };
 
-  useEffect(() => {
-    console.log("there was an update");
-    console.log("Active Attachments: ", activeAttachments);
-  }, [activeAttachments]);
+  useEffect(() => {}, [activeAttachments]);
 
   return (
     <div className="h-screen w-screen overflow-hidden pt-[107px] sm:pt-[75px] px-[156px] banner-tablet:px-[80px] settings-xs:px-[30px] sm:px-[16px] flex gap-[5px] mb-[0px] absolute top-0 left-0 z-[998]">
