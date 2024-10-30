@@ -18,6 +18,7 @@ import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import getLensProfileData from "@/utils/getLensProfile";
 import ProfileSkeleton from "@/components/reusable/profileSkeleton";
+import { get_score } from "@/api";
 
 function getDomain(url: string) {
   return url.replace(/https?:\/\//, "").replace(/\/$/, "");
@@ -27,6 +28,7 @@ const Profile = () => {
   const [profileId, setProfileId] = useState<ProfileId[]>();
   const [data, setData] = useState<any[]>([]);
   const { data: session, loading: sessionLoading } = useSession();
+  const [score, setScore] = useState(0);
   const { data: publications } = usePublications({
     where: {
       from: profileId,
@@ -95,6 +97,10 @@ const Profile = () => {
       const profile = session.profile;
       setProfileId([profile.id]);
       console.log("Profile: ", profile);
+
+      get_score(profile.ownedBy.address).then((user_score) => {
+        setScore(user_score);
+      });
 
       const profileData = getLensProfileData(profile);
 
@@ -275,7 +281,7 @@ const Profile = () => {
                 height={15.3}
               />
               <span className="leading-[16.94px] text-[14px] font-medium text-[black]">
-                23,694
+                {score}
               </span>
             </div>
           </div>

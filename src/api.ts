@@ -543,6 +543,14 @@ const create_profile = async (
   return "Success!";
 };
 
+const get_score = async (address: string) => {
+  const contract = await getContract();
+
+  const score_raw = await contract.score(address);
+  console.log("Score: ", score_raw);
+  return Number(score_raw);
+};
+
 export {
   create_proposal,
   get_all_contracts,
@@ -555,5 +563,6 @@ export {
   getContract,
   create_new_profile,
   create_profile,
+  get_score,
   contractInstance,
 };

@@ -22,6 +22,7 @@ import { useSearchParams } from "next/navigation";
 import ProfileSkeleton from "@/components/reusable/profileSkeleton";
 import { useRouter } from "next/router";
 import ProfileModal from "@/views/profile/profileModal";
+import { get_score } from "@/api";
 
 function getDomain(url: string) {
   return url.replace(/https?:\/\//, "").replace(/\/$/, "");
@@ -68,6 +69,7 @@ export default function Profile() {
   const { execute: follow, loading: followLoading } = useFollow();
   const [cardType, setCardType] = useState("job");
   const [loading, setLoading] = useState(true);
+  const [score, setScore] = useState(0);
   const [userData, setUserData] = useState<any>({
     displayName: "",
     handle: "@lenshandle.lens",
@@ -142,8 +144,7 @@ export default function Profile() {
     }
   };
 
-  useEffect(() => {
-    console.log("Session updated");
+  const getData = async () => {
     if (profile && session) {
       console.log("Reached here");
       setProfileId([profile.id]);
@@ -189,8 +190,17 @@ export default function Profile() {
         console.log("This ran na?");
         setIsMyProfile(true);
       }
+
+      console.log("Address: ", profile.ownedBy.address);
+      const user_score = await get_score(profile.ownedBy.address);
+      setScore(user_score);
       setDataLoading(false);
     }
+  };
+
+  useEffect(() => {
+    console.log("Session updated");
+    getData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileLoading, sessionLoading]);
 
@@ -362,7 +372,7 @@ export default function Profile() {
                 height={15.3}
               />
               <span className="leading-[16.94px] text-[14px] font-medium text-[black]">
-                23,694
+                {score}
               </span>
             </div>
           </div>
