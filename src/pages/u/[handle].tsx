@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -297,9 +295,14 @@ export default function Profile() {
                   Follow
                 </button>
               )}
-              <button className="rounded-[8px] bg-[#E4E4E7] text-black px-[16px] py-[6px] text-[14px] leading-[24px]">
-                Message
-              </button>
+              <Link href={`/messages?handle=${userData.handle}`}>
+                <button
+                  type="button"
+                  className="rounded-[8px] bg-[#E4E4E7] text-black px-[16px] py-[6px] text-[14px] leading-[24px]"
+                >
+                  Message
+                </button>
+              </Link>
             </div>
           )}
           <hr className="bg-[#E4E4E7] h-[1px] mb-[16px]" />

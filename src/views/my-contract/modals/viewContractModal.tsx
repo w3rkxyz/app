@@ -42,9 +42,6 @@ const ViewContractModal = ({ handleCloseModal, contractDetails }: Props) => {
       ? contractDetails.freelancerHandle
       : contractDetails.clientHandle,
   });
-  // const { data: profile, loading: profileLoading } = useProfile({
-  //   forHandle: "@adam_",
-  // });
   const [loadingUser, setLoadingUser] = useState(true);
 
   useEffect(() => {

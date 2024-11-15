@@ -18,8 +18,8 @@ type Props = {
 const tokenImages: { [key: string]: string } = {
   BTC: "/images/btc.svg",
   ETH: "/images/eth.svg",
-  USDT: "/images/usdt.svg", // Corrected to "/images/usdt.svg" if it's a duplicate
-  USDC: "images/usdc.svg",
+  USDT: "/images/usdt.svg",
+  USDC: "/images/usdc.svg",
   BNB: "/images/bnb.svg",
   SOL: "/images/solana.svg",
   DAI: "/images/dai.svg",
@@ -70,6 +70,7 @@ const ViewJobModal = ({
         tokens = splitTokens(attribute.value);
       }
     });
+    console.log("Tokens: ", tokens);
   }
 
   var profileData;

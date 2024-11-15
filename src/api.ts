@@ -9,13 +9,12 @@ import type { activeContractDetails, contractDetails } from "./types/types";
 import unicrow from "@unicrowio/sdk";
 import { uploadJsonToIPFS } from "./utils/uploadToIPFS";
 
-const rpc_url =
-  "https://arb-sepolia.g.alchemy.com/v2/c1QPiRYwHLQQnKKNb0wQJ-3FHE9TZWra";
+const rpc_url = `https://arbitrum-sepolia.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_KEY}`;
 let provider = new ethers.JsonRpcProvider(rpc_url);
 
 unicrow.config({
   defaultNetwork: unicrow.DefaultNetwork.ArbitrumSepolia,
-  autoSwitchNetwork: true,
+  // autoSwitchNetwork: true,
 });
 
 let contractInstance = new ethers.Contract(
@@ -40,7 +39,7 @@ const getSigner = async () => {
 
   // Switch to Arbitrum Sepolia if not already switched
   if (Number(currentChainId) !== 421614) {
-    window.location.href = "/";
+    // window.location.href = "/";
     await provider.send("wallet_switchEthereumChain", [{ chainId: "0x66eee" }]);
   }
 
@@ -322,9 +321,9 @@ const contractState = [
 ];
 
 const get_all_contracts = async (user: string) => {
-  const contract = await getContract();
-  const proposals = await contract.get_proposals();
-  const contracts_data = await contract.get_contracts();
+  const contract = contractInstance;
+  const proposals = await contract.get_proposals(user);
+  const contracts_data = await contract.get_contracts(user);
 
   const contracts: any = [];
 
@@ -333,6 +332,7 @@ const get_all_contracts = async (user: string) => {
 
     contracts.push({ ...response.data, state: "proposal", id: index });
   });
+
   await Promise.all(axiosRequests);
 
   const axiosContractRequests = contracts_data.map(
@@ -544,7 +544,7 @@ const create_profile = async (
 };
 
 const get_score = async (address: string) => {
-  const contract = await getContract();
+  const contract = contractInstance;
 
   const score_raw = await contract.score(address);
   console.log("Score: ", score_raw);

@@ -378,21 +378,23 @@ const InProgressContractModal = ({
           )}
         </div>
         <div className="relative flex sm:flex-col w-full justify-center sm:items-center gap-[16px] sm:gap-[6px] mt-[40px] sm:mt-[16px]">
-          <button
-            className="w-fit h-fit py-[10px] px-[23px] sm:px-[0px] sm:w-full text-[14px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px]"
-            onClick={handleExtend}
-          >
-            Request Extension
-          </button>
+          {showClientView && (
+            <button
+              className="w-fit h-fit py-[10px] px-[23px] sm:px-[0px] sm:w-full text-[14px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px]"
+              onClick={handleExtend}
+            >
+              Request Extension
+            </button>
+          )}
           <button
             className="w-fit h-fit py-[10px] px-[23px] sm:px-[0px] sm:w-full text-[14px] leading-[14.5px] text-white bg-[#351A6B] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px]"
             onClick={showClientView ? handleRelease : handleRequest}
           >
             {showClientView ? "Release Payment" : "Request Payment"}
           </button>
-          <button className="w-fit h-fit py-[10px] px-[23px] sm:px-[0px] sm:w-full text-[14px] leading-[14.5px] text-black bg-[#E4E4E7] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px]">
+          {/* <button className="w-fit h-fit py-[10px] px-[23px] sm:px-[0px] sm:w-full text-[14px] leading-[14.5px] text-black bg-[#E4E4E7] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px]">
             Open A Dispute
-          </button>
+          </button> */}
         </div>
       </div>
     </div>

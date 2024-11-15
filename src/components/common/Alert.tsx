@@ -54,7 +54,7 @@ function Alert({
         </span>
       </div>
       <div className="pl-[16px] pr-[9px] py-[11px] w-full flex items-center">
-        <div>
+        <div className="flex flex-col">
           <span className="font-medium text-[14px] text-black">{tag1}</span>
           {tag2 && variant !== "Successful" && (
             <span className="font-medium text-[12px] text-[#707070] mt-[7px]">

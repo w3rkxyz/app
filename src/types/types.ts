@@ -17,6 +17,8 @@ interface contractDetails {
   description: string;
   clientAddress: string;
   freelancerAddress: string;
+  clientHandle: ProfileId;
+  freelancerHandle: ProfileId;
   paymentAmount: number;
   dueDate: Date;
   state: string;

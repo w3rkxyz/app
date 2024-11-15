@@ -295,9 +295,9 @@ const AwaitingApprovalContractModal = ({
               </button>
             </>
           )}
-          <button className="w-fit h-fit py-[10px] px-[23px] sm:px-[0px] sm:w-full text-[14px] leading-[14.5px] text-black bg-[#E4E4E7] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px]">
+          {/* <button className="w-fit h-fit py-[10px] px-[23px] sm:px-[0px] sm:w-full text-[14px] leading-[14.5px] text-black bg-[#E4E4E7] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px]">
             Open A Dispute
-          </button>
+          </button> */}
         </div>
       </div>
     </div>

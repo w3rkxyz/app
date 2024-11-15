@@ -45,13 +45,13 @@ const config = getDefaultConfig({
 // Setup queryClient
 const queryClient = new QueryClient();
 
-const projectId = "4d31c03c17eb16d3a35b5703a02ca492";
+// const projectId = process.env.NEXT_PUBLIC_APPKIT_ID;
 
 // 2. Create a metadata object - optional
 const metadata = {
-  name: "AppKit",
-  description: "AppKit Example",
-  url: "https://example.com", // origin must match your domain & subdomain
+  name: "w3rk",
+  description: "w3rk testnet",
+  url: "https://testnet.w3rk.xyz/", // origin must match your domain & subdomain
   icons: ["https://avatars.githubusercontent.com/u/179229932"],
 };
 
@@ -61,8 +61,9 @@ const metadata = {
 // 4. Create Wagmi Adapter
 const wagmiAdapter = new WagmiAdapter({
   networks: [polygonAmoy, arbitrumSepolia, polygon],
-  projectId,
+  projectId: process.env.NEXT_PUBLIC_APPKIT_ID as string,
   ssr: true,
+
   transports: {
     [polygonAmoy.id]: http(),
     [arbitrumSepolia.id]: http(),
@@ -75,8 +76,9 @@ createAppKit({
   adapters: [wagmiAdapter],
   networks: [polygonAmoy, arbitrumSepolia, polygon],
   defaultNetwork: polygonAmoy,
-  projectId,
+  projectId: process.env.NEXT_PUBLIC_APPKIT_ID as string,
   metadata,
+  themeMode: "light",
   features: {
     email: true, // default to true
     socials: ["google"],

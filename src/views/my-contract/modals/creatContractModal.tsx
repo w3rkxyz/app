@@ -3,12 +3,21 @@
 import React, { useRef, useEffect, useState } from "react";
 import Image from "next/image";
 import MyButton from "@/components/reusable/Button/Button";
+import { isAddress } from "ethers";
 import { useAccount } from "wagmi";
 import type { activeContractDetails, contractDetails } from "@/types/types";
 import DatePicker from "react-datepicker";
-import { SessionType, useSession, Profile } from "@lens-protocol/react-web";
+import {
+  SessionType,
+  useSession,
+  Profile,
+  useLazyProfiles,
+} from "@lens-protocol/react-web";
+import getLensProfileData from "@/utils/getLensProfile";
 
 import "react-datepicker/dist/react-datepicker.css";
+import { openAlert, closeAlert } from "@/redux/alerts";
+import { useDispatch } from "react-redux";
 
 type Props = {
   handleCloseModal?: () => void;
@@ -16,6 +25,12 @@ type Props = {
   setContractDetails: any;
   contractDetails: contractDetails;
   freelancer?: Profile;
+};
+
+type SelectProfileProps = {
+  setFreelancer: any;
+  closeModal: any;
+  profiles: Profile[];
 };
 
 const tokens = [
@@ -30,6 +45,66 @@ const tokens = [
   // { text: "Bonsai (BONSAI)", image: "/images/bw-coin.svg" },
 ];
 
+const SelectProfileModal = ({
+  setFreelancer,
+  closeModal,
+  profiles,
+}: SelectProfileProps) => {
+  return (
+    <div className="fixed w-screen h-screen top-0 left-0 z-[9999999] flex items-center justify-center bg-[#80808080]">
+      <div className="w-[241px] flex flex-col rounded-[12px] border-[1px] border-[#E4E4E7] bg-white">
+        <div className="w-[241px] flex justify-between items-center px-[16px] py-[13px] border-b-[1px] border-b-[#E4E4E7] rounded-none sm:rounded-tl-[12px] sm:rounded-tr-[12px]">
+          <span className="leading-[14.52px] text-[16px] font-medium text-[black]">
+            Select Profile
+          </span>
+          {/* {profiles.length !== 0 && <Image
+            onClick={closeModal}
+            className="cursor-pointer"
+            src="/images/Close.svg"
+            alt="close icon"
+            width={20}
+            height={20}
+          />} */}
+        </div>
+        <div className="p-[16px] pt-[12px] flex flex-col">
+          {profiles?.length === 0 ? (
+            <span className="text-[14px] leading-[14.52px] font-medium mb-[4px]">
+              Address not associated with any freelancer
+            </span>
+          ) : (
+            <>
+              {profiles?.map((profile, index) => {
+                var details = getLensProfileData(profile);
+                return (
+                  <div
+                    key={index}
+                    className="flex gap-[12px] items-center mt-[8px] cursor-pointer"
+                    onClick={() => {
+                      setFreelancer(profile);
+                      closeModal();
+                    }}
+                  >
+                    <Image
+                      src={details.picture}
+                      alt="details pic"
+                      height={40}
+                      width={40}
+                      className="w-[40px] h-[40px] rounded-[8px] border-[1px] border-[#E4E4E7]"
+                    />
+                    <span className="text-[14px] leading-[14.52px] font-medium">
+                      {details.handle}
+                    </span>
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const CreateContractModal = ({
   handleCloseModal,
   setCreationStage,
@@ -38,7 +113,17 @@ const CreateContractModal = ({
   freelancer,
 }: Props) => {
   const { address } = useAccount();
+  const dispatch = useDispatch();
   const { data: session, loading } = useSession();
+  const { data: profiles, execute } = useLazyProfiles();
+  const [selectedFreelancer, setSelectedFreelancer] = useState<
+    Profile | undefined
+  >(freelancer);
+  const [showSelectModal, setShowSelectModal] = useState(false);
+  // execute({
+  //   where: {
+  //   ownedBy: []
+  // }})
   const myDivRef = useRef<HTMLDivElement>(null);
   const tokenModalRef = useRef<HTMLButtonElement>(null);
   const [showMobile, setShowMobile] = useState(false);
@@ -63,14 +148,7 @@ const CreateContractModal = ({
   };
 
   const onCLickToken = (index: number) => {
-    if (selectedTokens.includes(index)) {
-      const updated = selectedTokens.filter((item) => item !== index);
-      setSelectedTokens(updated);
-    } else {
-      var current = [...selectedTokens];
-      current.push(index);
-      setSelectedTokens(current);
-    }
+    setSelectedTokens([index]);
   };
 
   useEffect(() => {
@@ -113,21 +191,87 @@ const CreateContractModal = ({
     toggleDatePicker();
   };
 
+  const validateAddress = async () => {
+    if (isAddress(freelancerAddress)) {
+      const result = await execute({ where: { ownedBy: [freelancerAddress] } });
+      const profiles = result.unwrap();
+
+      if (profiles.length === 0) {
+        dispatch(
+          openAlert({
+            displayAlert: true,
+            data: {
+              id: 2,
+              variant: "Failed",
+              classname: "text-black",
+              title: "Transaction Failed",
+              tag1: `Address has no handle!`,
+              tag2: "please input another address",
+            },
+          })
+        );
+        setTimeout(() => {
+          dispatch(closeAlert());
+        }, 5000);
+      } else {
+        setShowSelectModal(true);
+      }
+    } else {
+      dispatch(
+        openAlert({
+          displayAlert: true,
+          data: {
+            id: 2,
+            variant: "Failed",
+            classname: "text-black",
+            title: "Transaction Failed",
+            tag1: `Invalid Address!`,
+          },
+        })
+      );
+      setTimeout(() => {
+        dispatch(closeAlert());
+      }, 5000);
+    }
+
+    // const profiles = result.value;
+  };
+
   const handleSubmit = () => {
-    if (session && session.type === SessionType.WithProfile && freelancer) {
+    if (
+      session &&
+      session.type === SessionType.WithProfile &&
+      selectedFreelancer
+    ) {
       const details: activeContractDetails = {
         title,
         description,
         clientAddress: address as string,
-        freelancerAddress: freelancer.ownedBy.address,
+        freelancerAddress: selectedFreelancer.ownedBy.address,
         paymentAmount,
         dueDate,
         state: "proposal",
-        freelancerHandle: freelancer.id,
+        freelancerHandle: selectedFreelancer.id,
         clientHandle: session.profile.id,
       };
       setContractDetails(details);
       setCreationStage(2);
+    } else {
+      dispatch(
+        openAlert({
+          displayAlert: true,
+          data: {
+            id: 2,
+            variant: "Failed",
+            classname: "text-black",
+            title: "Transaction Failed",
+            tag1: `No Freelancer Selected!`,
+          },
+        })
+      );
+      setTimeout(() => {
+        dispatch(closeAlert());
+      }, 5000);
     }
   };
 
@@ -176,6 +320,7 @@ const CreateContractModal = ({
             Description
           </span>
           <textarea
+            maxLength={1000}
             className="form-input rounded-[12px] p-[11px] h-[160px] border-[1px] border-[#E4E4E7] resize-none sm:w-full"
             placeholder="Type a description.."
             onChange={(e) => setDescription(e.target.value)}
@@ -206,6 +351,7 @@ const CreateContractModal = ({
               placeholder="Freelancer wallet address"
               type="text"
               onChange={(e) => setFreelancerAddress(e.target.value)}
+              onBlur={validateAddress}
               value={
                 freelancer ? freelancer.ownedBy.address : freelancerAddress
               }
@@ -216,25 +362,12 @@ const CreateContractModal = ({
         <div className="flex sm:flex-col gap-[16px] mb-[16px]">
           <div className="flex-1">
             <span
-              className={`leading-[14.52px] text-[14px] font-mediumtext-[black]`}
-            >
-              Payment Amount
-            </span>
-            <input
-              className="form-input rounded-[8px] px-[11px] py-[7px] border-[1px] border-[#E4E4E7]"
-              value={paymentAmount}
-              placeholder="Fixed amount price in USD"
-              type="number"
-              onChange={(e) => setPaymentAmount(Number(e.target.value))}
-            />
-          </div>
-          <div className="flex-1">
-            <span
               className={`leading-[14.52px] text-[14px] font-medium text-[black]`}
             >
               Payment Currency
             </span>
             <button
+              type="button"
               className="w-full sm:w-full rounded-[8px] border-[1px] border-[#E4E4E7] p-[7px] flex justify-between items-center relative"
               onClick={(e) => {
                 e.stopPropagation();
@@ -286,7 +419,6 @@ const CreateContractModal = ({
                     }`}
                     onClick={() => onCLickToken(index)}
                   >
-                    s
                     <Image
                       src={token.image}
                       alt="token icon"
@@ -300,6 +432,23 @@ const CreateContractModal = ({
                 ))}
               </div>
             </button>
+          </div>
+          <div className="flex-1 relative">
+            <span
+              className={`leading-[14.52px] text-[14px] font-mediumtext-[black]`}
+            >
+              Payment Amount
+            </span>
+            <input
+              className="form-input rounded-[8px] px-[11px] py-[7px] border-[1px] border-[#E4E4E7]"
+              value={paymentAmount}
+              placeholder="$Amount in USD"
+              type="number"
+              onChange={(e) => setPaymentAmount(Number(e.target.value))}
+            />
+            <span className="leading-[14.52px] text-[12px] font-normal text-[#707070] absolute left-0 top-full">
+              Amount in selected cryptocurrency
+            </span>
           </div>
         </div>
         <div className="flex w-full mb-[21px]">
@@ -346,6 +495,13 @@ const CreateContractModal = ({
           />
         </button>
       </div>
+      {showSelectModal && (
+        <SelectProfileModal
+          profiles={profiles ? profiles : []}
+          closeModal={() => setShowSelectModal(false)}
+          setFreelancer={setSelectedFreelancer}
+        />
+      )}
     </div>
   );
 };

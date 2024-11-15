@@ -31,7 +31,6 @@ const SecondNav = ({ session }: { session: Session }) => {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const path = usePathname();
-  console.log("Path: ", path);
   const [searchText, setSearchText] = useState("");
   const { data, error, loading } = useSearchProfiles({
     query: searchText,
@@ -46,6 +45,7 @@ const SecondNav = ({ session }: { session: Session }) => {
       attributes: any;
       id: any;
       profile: Profile;
+      userLink: string;
     }[]
   >();
 
@@ -86,7 +86,6 @@ const SecondNav = ({ session }: { session: Session }) => {
   }, []);
 
   const openProfileDropdown = () => {
-    console.log("It was definitely clicked");
     setShowProfileDropdown(true);
   };
 
@@ -126,6 +125,7 @@ const SecondNav = ({ session }: { session: Session }) => {
         attributes: any;
         id: any;
         profile: Profile;
+        userLink: string;
       }[] = [];
 
       data.map((profile: Profile) => {
@@ -152,7 +152,7 @@ const SecondNav = ({ session }: { session: Session }) => {
 
   return (
     <>
-      <header className="header-section h-[60px] px-[156px] nav-lg:px-[100px] lg:px-[20px] sm:px-[16px] absolute w-screen top-0 left-0 bg-white border-b-[1px] border-b-[#EEEEEE] z-[999]">
+      <header className="header-section h-[60px] px-[156px] nav-lg:px-[100px] lg:px-[20px] sm:px-[16px] absolute w-screen top-0 left-0 bg-white border-b-[1px] border-b-[#EEEEEE] z-[998]">
         <div className="custom-container">
           <div className="header-wrapper">
             <nav className="navbar-nav-main h-[60px] flex items-center gap-3 justify-between w-full relative">
@@ -236,7 +236,7 @@ const SecondNav = ({ session }: { session: Session }) => {
                     >
                       {profiles.slice(0, 7).map((profile, index) => {
                         return (
-                          <Link href={`/u/${profile.handle}`} key={index}>
+                          <Link href={`/u/${profile.userLink}`} key={index}>
                             <div
                               className="text-[14px] hover:bg-[#f1f1f1] w-full gap-[8px] flex items-center cursor-pointer px-[10px] py-[8px]"
                               key={index}

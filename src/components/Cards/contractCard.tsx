@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { AnyPublication, Post } from "@lens-protocol/react-web";
-import getLensProfileData from "@/utils/getLensProfile";
 import type { contractDetails } from "@/types/types";
+import { useAccount } from "wagmi";
+import { useProfile } from "@lens-protocol/react-web";
+import getLensProfileData, { UserProfile } from "@/utils/getLensProfile";
 
 interface CardProps {
   type: string;
@@ -67,6 +69,27 @@ const contractTypes: ContractTypes = {
 };
 
 const ContractCard = ({ onCardClick, contractDetails }: CardProps) => {
+  const { address } = useAccount();
+  const [showClientView, setShowClientView] = useState(
+    (address as string) === contractDetails.clientAddress
+  );
+  const [userData, setUserData] = useState<UserProfile>();
+  const { data: profile, loading: profileLoading } = useProfile({
+    forProfileId: showClientView
+      ? contractDetails.freelancerHandle
+      : contractDetails.clientHandle,
+  });
+  const [loadingUser, setLoadingUser] = useState(true);
+
+  useEffect(() => {
+    if (profile) {
+      const profileData = getLensProfileData(profile);
+      setUserData(profileData);
+      setLoadingUser(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileLoading]);
+
   return (
     <div
       className="bg-[white] hover:bg-[#F0F0F0] border-[1px] border-[#E4E4E7] rounded-[12px] p-[16px] cursor-pointer w-full"
@@ -76,13 +99,28 @@ const ContractCard = ({ onCardClick, contractDetails }: CardProps) => {
     >
       <div className="flex sm:flex-col justify-between sm:justify-start align-top mb-[10px]">
         <div className="flex sm:flex-col gap-[15px]">
-          <Image
-            src="/images/brand-logo.svg"
-            alt="w3rk logo"
-            className="rounded-[8px] bg-[#FAFAFA] sm:border-[1px] sm: border-[#D9D9D9]"
-            width={60}
-            height={60}
-          />
+          {!loadingUser && userData ? (
+            <Image
+              src={userData.picture}
+              onError={(e) => {
+                (
+                  e.target as HTMLImageElement
+                ).src = `https://api.hey.xyz/avatar?id=${userData.id}`;
+              }}
+              alt="paco pic"
+              width={46}
+              height={46}
+              className="rounded-[8px] w-[46px] h-[46px]"
+            />
+        ) : (
+            <Image
+              src="/images/brand-logo.svg"
+              alt="w3rk logo"
+              className="rounded-[8px] bg-[#FAFAFA] sm:border-[1px] sm: border-[#D9D9D9]"
+              width={60}
+              height={60}
+            />
+          )}
           <div className="flex flex-col gap-[4px]">
             <span className="text-[16px] leading-[19.36px] font-medium">
               {contractDetails.title}

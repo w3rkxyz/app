@@ -32,6 +32,10 @@ import {
 } from "@xmtp/content-type-remote-attachment";
 import { uploadFileToIPFS, uploadJsonToIPFS } from "@/utils/uploadToIPFS";
 import axios from "axios";
+import {
+  ContentTypeReadReceipt,
+  ReadReceiptCodec,
+} from "@xmtp/content-type-read-receipt";
 
 const PREFIX = "lens.dev/dm";
 
@@ -49,12 +53,14 @@ interface ConversationProp {
   conversation: Conversation;
   lastMessage: string;
   lastMessageTime: string | Date;
+  unreadMessages: boolean;
 }
 
 interface TempConversatioData {
   conversation: Conversation;
   lastMessage: string;
   lastMessageTime: string | Date;
+  unreadMessages: boolean;
 }
 
 interface StringIndexedObject {
@@ -198,6 +204,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
           });
           client.registerCodec(new AttachmentCodec());
           client.registerCodec(new RemoteAttachmentCodec());
+          client.registerCodec(new ReadReceiptCodec());
           setXmtp(client);
           handleIncomingMessages(client);
 
@@ -267,6 +274,19 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
               ? (lastMessage[lastMessage.length - 1].content as string)
               : ""
           );
+          var unreadMessage = false;
+          // if (
+          //   lastMessage &&
+          //   lastMessage.length > 0 &&
+          //   !lastMessage[lastMessage.length - 1].contentType.sameAs(
+          //     ContentTypeReadReceipt
+          //   ) &&
+          //   lastMessage[lastMessage.length - 1].senderAddress !==
+          //     session.address
+          // ) {
+          //   unreadMessage = true;
+          // }
+
           dataById[otherUserID] = {
             lastMessageTime:
               lastMessage && lastMessage.length > 0
@@ -277,6 +297,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
                 ? (lastMessage[lastMessage.length - 1].content as string)
                 : "",
             conversation: conversation,
+            unreadMessages: unreadMessage,
           };
         }
       }
@@ -330,6 +351,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
       });
       client.registerCodec(new AttachmentCodec());
       client.registerCodec(new RemoteAttachmentCodec());
+      client.registerCodec(new ReadReceiptCodec());
 
       handleIncomingMessages(client);
 
@@ -543,6 +565,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
               ? "attachement"
               : conversationData[profile.id].lastMessage,
             lastMessageTime: conversationData[profile.id].lastMessageTime,
+            unreadMessages: conversationData[profile.id].unreadMessages,
           };
           allConversations.push(conversation);
         }
@@ -674,7 +697,9 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
                           selectedConversation === index
                             ? "bg-[#E4E4E7]"
                             : "bg-[#FAFAFA]"
-                        } rounded-[8px] cursor-pointer`}
+                        } rounded-[8px] cursor-pointer ${
+                          conversation.unreadMessages ? "bg-[#f0f0f3]" : ""
+                        }`}
                         onClick={() => openConversation(conversation, index)}
                       >
                         <div className="flex justify-between align-top mb-[6px]">
@@ -708,7 +733,15 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
                               : ""}
                           </span>
                         </div>
-                        <p className="line-clamp-1 text-[11px] sm:text-[10px] text-[#000000] leading-[12px] font-medium">
+                        <p
+                          className={`line-clamp-1 text-[11px] sm:text-[10px] text-[#000000] leading-[12px] font-medium 
+                            ${
+                              conversation.unreadMessages
+                                ? "font-extrabold"
+                                : ""
+                            }
+                          `}
+                        >
                           {conversation.lastMessage}
                         </p>
                       </div>
@@ -1034,7 +1067,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
         )}
       </div>
       {isNewConversationModalOpen && (
-        <div className="fixed h-screen w-screen top-0 left-0 inset-0 z-[10000] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center">
+        <div className="fixed h-screen w-screen top-0 left-0 inset-0 z-[999] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center">
           <div className="w-full flex justify-center align-middle">
             <NewConversation
               handleCloseModal={handleCloseNewConversationModal}

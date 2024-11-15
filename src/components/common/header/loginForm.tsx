@@ -6,7 +6,9 @@ import {
   useProfiles,
   Profile,
   useValidateHandle,
+  useLazyProfiles,
   useCreateProfile,
+  useOwnedHandles,
 } from "@lens-protocol/react-web";
 import { toast } from "react-hot-toast";
 import style from "./form.module.css";
@@ -32,11 +34,15 @@ export function LoginForm({
   const dispatch = useDispatch();
   // const { address } = useAccount();
   const { address } = useAppKitAccount();
+  // const [owner, setOwner] = useState(address as string);
   const { execute: validateHandle, loading: verifying } = useValidateHandle();
-  const { execute: createProfile, loading: creating } = useCreateProfile();
+  // const { execute: createProfile, loading: creating } = useCreateProfile();
   const { execute: login, loading: isLoginPending } = useLogin();
   const [creatingProfile, setCreatingProfile] = useState(false);
-  const { data, loading: loadingProfiles } = useProfiles({
+  const { called, data, execute } = useLazyProfiles();
+  const [loadingProfiles, setLoadingProfiles] = useState(true);
+
+  const { data: profilesData } = useProfiles({
     where: {
       ownedBy: [owner],
     },
@@ -103,6 +109,32 @@ export function LoginForm({
       handle: handle,
       to: address as string,
     });
+
+    setLoadingProfiles(true);
+    setTimeout(() => {
+      execute({
+        where: {
+          ownedBy: [owner],
+        },
+      });
+      setInterval(() => {
+        execute({
+          where: {
+            ownedBy: [owner],
+          },
+        });
+      }, 2000);
+    }, 5000);
+    // setOwner("0x");
+    // setTimeout(() => {
+    //   setOwner(address as string);
+    // }, 1000);
+
+    // const paginatedAccounts = await client.wallet.ownedHandles({
+    //   for: address as string,
+    // });
+    // const firstResult = paginatedAccounts.items[0];
+    // console.log("Id: ", firstResult.id);
     dispatch(
       openAlert({
         displayAlert: true,
@@ -117,10 +149,10 @@ export function LoginForm({
       })
     );
     setTimeout(() => {
-      window.location.reload();
+      // window.location.reload();
       dispatch(closeAlert());
     }, 3000);
-    dispatch(displayLoginModal({ display: false }));
+    // dispatch(displayLoginModal({ display: false }));
     // const result2 = await createProfile({
     //   localName: handle,
     //   to: address as string,
@@ -171,7 +203,9 @@ export function LoginForm({
 
   useEffect(() => {
     console.log("Found a profile!");
+
     if (data) {
+      console.log("Data: ", data);
       var temp: {
         picture: string;
         coverPicture: string;
@@ -191,8 +225,43 @@ export function LoginForm({
       });
 
       setProfiles(temp);
+      setLoadingProfiles(false);
+    } else if (profilesData) {
+      var temp: {
+        picture: string;
+        coverPicture: string;
+        displayName: string;
+        handle: string;
+        bio: string;
+        attributes: any;
+        id: any;
+        profile: Profile;
+      }[] = [];
+
+      profilesData.map((profile: Profile) => {
+        var profileData = getLensProfileData(profile);
+        if (profileData.handle !== "") {
+          temp.push({ ...profileData, profile: profile });
+        }
+      });
+
+      setProfiles(temp);
+      setLoadingProfiles(false);
     }
-  }, [data]);
+  }, [data, profilesData]);
+
+  useEffect(() => {
+    execute({
+      where: {
+        ownedBy: [owner],
+      },
+    }).then((result) => {
+      if (result.isFailure()) {
+        setLoadingProfiles(false);
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Shows list of available profiles associated with the connected wallet
   return (

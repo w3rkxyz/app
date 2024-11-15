@@ -23,7 +23,7 @@ const contractTypes = [
   "Proposals",
   "In-Progress",
   "Awaiting Approval",
-  "Open Disputes",
+  // "Open Disputes",
   "Completed",
 ];
 
@@ -47,17 +47,15 @@ const Contracts = () => {
   const [selectedContract, setSelectedContract] = useState<
     activeContractDetails | undefined
   >();
-  const [newContractDetails, setNewContractDetails] = useState<contractDetails>(
-    {
-      title: "",
-      description: "",
-      clientAddress: "",
-      freelancerAddress: "",
-      paymentAmount: 0,
-      dueDate: new Date(),
-      state: "",
-    }
-  );
+  const [newContractDetails, setNewContractDetails] = useState<any>({
+    title: "",
+    description: "",
+    clientAddress: "",
+    freelancerAddress: "",
+    paymentAmount: 0,
+    dueDate: new Date(),
+    state: "",
+  });
 
   const handleOpenModal = (contract: activeContractDetails) => {
     setType(contract.state);
@@ -124,7 +122,7 @@ const Contracts = () => {
             </div>
             <button
               className={`w-full py-[12px] flex items-center justify-center leading-[14.52px] text-[12px] text-white font-semibold bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px]`}
-              // onClick={() => setShowCreateContractModal(true)}
+              onClick={() => setShowCreateContractModal(true)}
             >
               Create New Contract
             </button>
@@ -132,7 +130,7 @@ const Contracts = () => {
           <div className="hidden md:flex w-full md:items-center flex-col relative">
             <button
               className={`w-full py-[12px] flex items-center justify-center leading-[14.52px] text-[14px] text-white font-semibold bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] mb-[14px] md:max-w-[600px]`}
-              // onClick={() => setShowCreateContractModal(true)}
+              onClick={() => setShowCreateContractModal(true)}
             >
               Create New Contract
             </button>
