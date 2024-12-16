@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -12,7 +14,7 @@ import {
   appId,
 } from "@lens-protocol/react-web";
 import { toast } from "react-hot-toast";
-import ViewJobModal from "../../views/view-job-modal/view-job-modal";
+import ViewJobModal from "../../../views/view-job-modal/view-job-modal";
 import getLensProfileData from "@/utils/getLensProfile";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
@@ -39,9 +41,8 @@ function getDomain(url: string) {
 //   };
 // }
 
-export default function Profile() {
-  const router = useRouter();
-  const { handle: userId } = router.query;
+export default function Profile({ params }: { params: { handle: string } }) {
+  const { handle: userId } = params;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);

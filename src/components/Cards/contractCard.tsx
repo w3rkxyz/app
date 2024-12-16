@@ -112,7 +112,7 @@ const ContractCard = ({ onCardClick, contractDetails }: CardProps) => {
               height={46}
               className="rounded-[8px] w-[46px] h-[46px]"
             />
-        ) : (
+          ) : (
             <Image
               src="/images/brand-logo.svg"
               alt="w3rk logo"

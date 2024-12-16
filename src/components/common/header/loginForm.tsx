@@ -260,7 +260,7 @@ export function LoginForm({
         setLoadingProfiles(false);
       }
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Shows list of available profiles associated with the connected wallet

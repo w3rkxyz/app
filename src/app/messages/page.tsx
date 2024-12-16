@@ -1,3 +1,5 @@
+"use client";
+
 import MyMessageOpenChat from "@/views/my-massage/my-Massage";
 import React, { useState } from "react";
 import { useEffect } from "react";

@@ -89,7 +89,7 @@ createAppKit({
 // Lens Protocol config
 const lensConfig: LensConfig = {
   bindings: wagmiBindings(wagmiAdapter.wagmiConfig),
-environment: development,
+  environment: production,
 };
 
 // Rainbow kit and Lens Context wrapper
