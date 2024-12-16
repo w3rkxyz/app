@@ -9,8 +9,8 @@ import "react-loading-skeleton/dist/skeleton.css";
 
 const ProfileSkeleton = () => {
   return (
-    <div className="px-[156px] sm:px-[16px] pt-[110px] sm:pt-[122px] sm:w-full mb-[40px]">
-      <div className="absolute w-full mx-0 left-0 top-156px sm:top-[79px] px-[156px] sm:px-[16px] -z-40">
+    <div className="px-[156px] profile-md:px-[80px] profile-sm:px-[20px] sm:px-[16px] pt-[110px] sm:pt-[122px] sm:w-full mb-[40px]">
+      <div className="absolute w-full mx-0 left-0 top-156px sm:top-[79px] px-[156px] profile-sm:px-[20px] profile-md:px-[80px] sm:px-[16px] -z-40">
         <Skeleton
           className="w-full h-[196px] sm:h-[110px] rounded-[16px] relative"
           baseColor="#E4E4E7"
