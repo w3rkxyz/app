@@ -16,7 +16,6 @@ const ProfileDropdown = ({ handle }: { handle?: HandleInfo }) => {
 
   const handleLogOut = async () => {
     if (handle) {
-      console.log(handle.ownedBy);
       await logout();
       disconnect();
       wipeKeys(handle.ownedBy);

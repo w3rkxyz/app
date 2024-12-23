@@ -27,11 +27,22 @@ const contractTypes = [
   "Completed",
 ];
 
+const contractStateFilters = [
+  "proposal",
+  "inProgress",
+  "awaitingApproval",
+  // "Open Disputes",
+  "completed",
+];
+
 const Contracts = () => {
   const searchParams = useSearchParams();
   const freelancer = searchParams.get("freelancer");
+  const [freelancerId, setFreelancerId] = useState(
+    freelancer !== null ? freelancer : ""
+  );
   const { data: profile, loading: loadingProfile } = useProfile({
-    forHandle: `lens/${freelancer as string}`,
+    forHandle: `lens/${freelancerId as string}`,
   });
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<number | null>(
     null
@@ -61,6 +72,20 @@ const Contracts = () => {
     setType(contract.state);
     setSelectedContract(contract);
     setIsModalOpen(true);
+  };
+
+  const handleSubmitContract = () => {
+    setShowCreateContractModal(false);
+    setNewContractDetails({
+      title: "",
+      description: "",
+      clientAddress: "",
+      freelancerAddress: "",
+      paymentAmount: 0,
+      dueDate: new Date(),
+      state: "",
+    });
+    setCreationStage(1);
   };
 
   const getData = async () => {
@@ -122,7 +147,10 @@ const Contracts = () => {
             </div>
             <button
               className={`w-full py-[12px] flex items-center justify-center leading-[14.52px] text-[12px] text-white font-semibold bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px]`}
-              onClick={() => setShowCreateContractModal(true)}
+              onClick={() => {
+                setFreelancerId("");
+                setShowCreateContractModal(true);
+              }}
             >
               Create New Contract
             </button>
@@ -130,7 +158,10 @@ const Contracts = () => {
           <div className="hidden md:flex w-full md:items-center flex-col relative">
             <button
               className={`w-full py-[12px] flex items-center justify-center leading-[14.52px] text-[14px] text-white font-semibold bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] mb-[14px] md:max-w-[600px]`}
-              onClick={() => setShowCreateContractModal(true)}
+              onClick={() => {
+                setFreelancerId("");
+                setShowCreateContractModal(true);
+              }}
             >
               Create New Contract
             </button>
@@ -206,14 +237,27 @@ const Contracts = () => {
               </>
             ) : contracts.length > 0 ? (
               contracts.map((contract, index) => {
-                return (
-                  <ContractCard
-                    key={index}
-                    type={type}
-                    contractDetails={contract}
-                    onCardClick={() => handleOpenModal(contract)}
-                  />
-                );
+                if (selectedTypeFilter === null) {
+                  return (
+                    <ContractCard
+                      key={index}
+                      type={type}
+                      contractDetails={contract}
+                      onCardClick={() => handleOpenModal(contract)}
+                    />
+                  );
+                } else if (
+                  contract.state === contractStateFilters[selectedTypeFilter]
+                ) {
+                  return (
+                    <ContractCard
+                      key={index}
+                      type={type}
+                      contractDetails={contract}
+                      onCardClick={() => handleOpenModal(contract)}
+                    />
+                  );
+                }
               })
             ) : (
               <div className="h-[460px] w-full flex flex-col gap-[11px] justify-center items-center">
@@ -246,7 +290,7 @@ const Contracts = () => {
             )}
             {creationStage === 2 && (
               <ReviewContractModal
-                handleCloseModal={() => setShowCreateContractModal(false)}
+                handleCloseModal={handleSubmitContract}
                 setCreationStage={setCreationStage}
                 contractDetails={newContractDetails}
               />

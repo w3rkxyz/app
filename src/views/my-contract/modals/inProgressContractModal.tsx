@@ -204,6 +204,7 @@ const InProgressContractModal = ({
     if (profile) {
       const profileData = getLensProfileData(profile);
       setUserData(profileData);
+
       setLoadingUser(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

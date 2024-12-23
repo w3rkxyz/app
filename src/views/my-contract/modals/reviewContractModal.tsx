@@ -66,9 +66,7 @@ const ReviewContractModal = ({
         text: "Approving Token use",
       })
     );
-    console.log("Uploading Data to IPFS");
     const escrowData = await uploadJsonToIPFS(contractDetails);
-    console.log("Data uploaded");
     const hash = await create_proposal(
       contractDetails.paymentAmount.toString(),
       contractDetails.freelancerAddress,

@@ -202,10 +202,7 @@ export function LoginForm({
   };
 
   useEffect(() => {
-    console.log("Found a profile!");
-
     if (data) {
-      console.log("Data: ", data);
       var temp: {
         picture: string;
         coverPicture: string;

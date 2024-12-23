@@ -70,7 +70,6 @@ const ViewJobModal = ({
         tokens = splitTokens(attribute.value);
       }
     });
-    console.log("Tokens: ", tokens);
   }
 
   var profileData;

@@ -377,15 +377,20 @@ const CreateContractModal = ({
             >
               {selectedTokens.length > 0 ? (
                 <span className="flex gap-[3px]">
-                  {selectedTokens.map((tokenIndex) => {
+                  {selectedTokens.map((tokenIndex, index) => {
                     return (
-                      <Image
-                        src={tokens[tokenIndex].image}
-                        alt="token icon"
-                        width={20}
-                        height={20}
-                        key={tokenIndex}
-                      />
+                      <div className="flex gap-[10px] items-center" key={index}>
+                        <Image
+                          src={tokens[tokenIndex].image}
+                          alt="token icon"
+                          width={20}
+                          height={20}
+                          key={tokenIndex}
+                        />
+                        <span className="font-normal leading-[14.52px] text-[12px] text-[#707070]">
+                          {tokens[tokenIndex].text}
+                        </span>
+                      </div>
                     );
                   })}
                 </span>

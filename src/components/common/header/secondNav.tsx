@@ -326,7 +326,7 @@ const SecondNav = ({ session }: { session: Session }) => {
                             e.target as HTMLImageElement
                           ).src = `https://api.hey.xyz/avatar?id=${profileData?.id}`;
                         }}
-                        layout="fill"
+                        fill
                         className="rounded-[8px] sm:rounded-[8.16px] relative mt-[2px]"
                         alt="user icon"
                       />

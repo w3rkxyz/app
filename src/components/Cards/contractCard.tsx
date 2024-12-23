@@ -129,7 +129,7 @@ const ContractCard = ({ onCardClick, contractDetails }: CardProps) => {
               ${contractDetails.paymentAmount}
             </span>
             <span className="text-[#707070] text-[12px] leading-[14.52px] font-medium">
-              Other Users Display Name
+              {userData?.displayName}
             </span>
           </div>
         </div>

@@ -167,15 +167,12 @@ const handleTokenApproval = async (
     return false;
   } else {
     try {
-      console.log("In part 1");
       const approvalTx = await contract.approve(
         approvalAddress,
         ethers.parseEther(amount.toString())
       );
-      console.log("in part 2");
 
       await approvalTx.wait();
-      console.log("in part 3");
       return true;
     } catch (error: any) {
       console.log("Error: ", error);
@@ -284,18 +281,14 @@ const create_proposal = async (
     Number(amount),
     dispatch
   );
-  console.log("Approved: ", tokensApproved);
-  console.log("Got here");
 
   if (tokensApproved) {
-    console.log("Got here 2");
     dispatch(
       openLoader({
         displaytransactionLoader: true,
         text: "Creating Cotract proposal",
       })
     );
-    console.log("Got here 3");
     const result = await handleContractTransaction(
       () =>
         contract.createProposal(
@@ -435,9 +428,7 @@ const request_extension = async (
 
   const newContract = { ...contractDetails };
   newContract.dueDate = new_date;
-  console.log("Got here 1");
   const escrowData = await uploadJsonToIPFS(newContract);
-  console.log("Git here 2");
 
   const result = await handleContractTransaction(
     () => contract.update_contract_data(contractId, escrowData),
@@ -523,15 +514,11 @@ const create_profile = async (
 ) => {
   const contract = await getPermissionContract();
 
-  console.log("Handle: ", handle);
-
   const createProfileParams = {
     to: address,
     followModule: "0x0000000000000000000000000000000000000000",
     followModuleInitData: "0x",
   };
-
-  console.log("Params", createProfileParams);
 
   const tx = await contract.createProfileWithHandle(
     createProfileParams,
@@ -539,7 +526,6 @@ const create_profile = async (
     ["0x71990499e005Db4d7854eea564023AB64ca884b5"]
   );
   await tx.wait();
-  console.log("Result: ", tx);
   return "Success!";
 };
 
@@ -547,7 +533,6 @@ const get_score = async (address: string) => {
   const contract = contractInstance;
 
   const score_raw = await contract.score(address);
-  console.log("Score: ", score_raw);
   return Number(score_raw);
 };
 

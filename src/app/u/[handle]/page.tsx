@@ -73,7 +73,7 @@ export default function Profile({ params }: { params: { handle: string } }) {
     displayName: "",
     handle: "@lenshandle.lens",
     cover: "",
-    picture: "/images/paco-square.svg",
+    picture: "",
     following: 100,
     followers: 75,
     about:
@@ -145,12 +145,9 @@ export default function Profile({ params }: { params: { handle: string } }) {
 
   const getData = async () => {
     if (profile && session) {
-      console.log("Reached here");
       setProfileId([profile.id]);
-      console.log("The Profile: ", profile);
 
       const profileData = getLensProfileData(profile);
-      console.log("Also reached here");
 
       const handle = {
         displayName: profileData.displayName,
@@ -186,11 +183,9 @@ export default function Profile({ params }: { params: { handle: string } }) {
         session?.type === SessionType.WithProfile &&
         session.profile.handle?.fullHandle === profile.handle?.fullHandle
       ) {
-        console.log("This ran na?");
         setIsMyProfile(true);
       }
 
-      console.log("Address: ", profile.ownedBy.address);
       const user_score = await get_score(profile.ownedBy.address);
       setScore(user_score);
       setDataLoading(false);
@@ -198,14 +193,15 @@ export default function Profile({ params }: { params: { handle: string } }) {
   };
 
   useEffect(() => {
-    console.log("Session updated");
     getData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileLoading, sessionLoading]);
 
   const handleImageError = () => {
     var data = { ...userData };
-    data.picture = "/images/paco-square.svg";
+    data.picture = profileId
+      ? `https://api.hey.xyz/avatar?id=${profileId[0]}`
+      : "/images/paco-square.svg";
     setUserData(data);
   };
 
@@ -231,7 +227,7 @@ export default function Profile({ params }: { params: { handle: string } }) {
           <div className="w-[160px] h-[160px] sm:w-[80px] sm:h-[80px] relative mb-[16px] sm:ml-[16px]">
             <Image
               src={userData.picture}
-              layout="fill"
+              fill
               className="rounded-[20px] sm:rounded-[12px]"
               alt="user icon"
               onError={handleImageError}

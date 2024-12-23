@@ -34,7 +34,6 @@ const Settings = () => {
   });
 
   useEffect(() => {
-    console.log("running this");
     if (
       session?.type === SessionType.WithProfile &&
       session.profile?.metadata
@@ -116,7 +115,6 @@ const Settings = () => {
 
   const handleSubmit = async () => {
     setSavingData(true);
-    // console.log(formState)
 
     const attributesMap: {
       key: string;
@@ -168,8 +166,6 @@ const Settings = () => {
         type: MetadataAttributeType.STRING;
       }) => attribute.value !== ""
     );
-
-    console.log(attributes);
 
     const metadata = profile({
       name: formState.name !== "" ? formState.name : undefined,

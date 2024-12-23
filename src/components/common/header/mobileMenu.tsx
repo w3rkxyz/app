@@ -46,7 +46,7 @@ const MobileProfileDropdown = ({
         <div className="w-[50px] h-[50px] relative">
           <Image
             src={profilePic}
-            layout="fill"
+            fill
             className="rounded-[12px]"
             alt="user icon"
           />
@@ -87,23 +87,25 @@ const MobileProfileDropdown = ({
       <div className="flex flex-col gap-[19px] pt-[10px] pb-[5px] pr-[15px] bg-white mb-[20px]">
         <Link href="/notifications" onClick={closeMenu}>
           <div className="drop-down-item">
-            <Image
-              src="/images/notification-grey.svg"
-              width={22}
-              height={22}
-              alt="notification icon"
-            ></Image>
+            <div className="w-[22px] h-[22px] relative">
+              <Image
+                src="/images/notification-grey.svg"
+                fill
+                alt="notification icon"
+              ></Image>
+            </div>
             <span className="drop-down-text">Notifications</span>
           </div>
         </Link>
         <Link href="/messages" onClick={closeMenu}>
           <div className="drop-down-item">
-            <Image
-              src="/images/discuss-grey.svg"
-              width={22}
-              height={22}
-              alt="discuss icon"
-            ></Image>
+            <div className="w-[22px] h-[22px] relative">
+              <Image
+                src="/images/discuss-grey.svg"
+                fill
+                alt="discuss icon"
+              ></Image>
+            </div>
             <span className="drop-down-text">Messages</span>
           </div>
         </Link>

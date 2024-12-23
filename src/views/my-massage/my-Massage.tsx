@@ -214,7 +214,6 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
 
           const stream = await client.conversations.stream();
           for await (const conversation of stream) {
-            console.log("This ran!");
             const conversations = await client.conversations.list();
             if (session?.type === SessionType.WithProfile) {
               await processConversations(client, session);
@@ -317,14 +316,12 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
       if (session?.type === SessionType.WithProfile) {
         await processConversations(client, session);
       }
-      // console.log("This was triggered");
 
       const scrollableDiv = document.getElementById("scrollableDiv");
       if (scrollableDiv) {
         scrollableDiv.scrollTop = scrollableDiv.scrollHeight;
         // setTimeout(() => {
         //   scrollableDiv.scrollTop = scrollableDiv.scrollHeight;
-        //   console.log("just triggered");
         // }, 1000);
       }
       // const bottomMarker = document.getElementById("bottomMarker");
@@ -655,7 +652,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
   useEffect(() => {}, [activeAttachments]);
 
   return (
-    <div className="h-screen w-screen overflow-hidden pt-[107px] sm:pt-[75px] px-[156px] banner-tablet:px-[80px] settings-xs:px-[30px] sm:px-[16px] flex gap-[5px] mb-[0px] absolute top-0 left-0 z-[998]">
+    <div className="h-screen w-screen overflow-hidden pt-[107px] sm:pt-[75px] px-[156px] banner-tablet:px-[80px] settings-xs:px-[30px] sm:px-[16px] flex gap-[5px] mb-[0px] absolute top-0 left-0">
       <div
         className={`horizontal-box px-[12px] w-[367px] sm:w-full flex ${
           selectedConversation !== null ? "sm:hidden" : "sm:flex"

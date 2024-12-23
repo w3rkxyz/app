@@ -92,12 +92,9 @@ const Profile = () => {
   };
 
   useEffect(() => {
-    console.log("Session updated");
     if (session?.type === SessionType.WithProfile) {
       const profile = session.profile;
       setProfileId([profile.id]);
-      console.log("Profile: ", profile);
-
       get_score(profile.ownedBy.address).then((user_score) => {
         setScore(user_score);
       });
@@ -132,7 +129,6 @@ const Profile = () => {
           ? profileData.attributes.linkedin
           : "",
       };
-      console.log("Handle: ", handle);
       setUserData(handle);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -162,7 +158,7 @@ const Profile = () => {
           <div className="w-[160px] h-[160px] sm:w-[80px] sm:h-[80px] relative mb-[16px]">
             <Image
               src={userData.picture}
-              layout="fill"
+              fill
               className="rounded-[20px] sm:rounded-[12px]"
               alt="user icon"
             />

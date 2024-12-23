@@ -245,7 +245,6 @@ const ProfileModal = ({
         tokenModalRef.current &&
         !tokenModalRef.current.contains(event.target as Node)
       ) {
-        console.log("outside the div");
         setShowTokens(false);
       }
     }

@@ -53,7 +53,7 @@ export const Connect = () => {
         className="button-primary mx-auto"
         onClick={() => open()}
       >
-        Connect Wallet
+        Sign In
       </button>
     );
   }
