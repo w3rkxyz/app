@@ -139,13 +139,10 @@ const FindWork = () => {
   };
 
   useEffect(() => {
-    console.log("There was an update");
-    console.log(hasMore);
     if (publications) {
       setData(
         publications.filter((publication) => publication.isHidden === false)
       );
-      console.log("Publications: ", publications);
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -165,7 +162,6 @@ const FindWork = () => {
   // }, [searchResults]);
 
   useEffect(() => {
-    console.log("Test");
   }, []);
 
   return (

@@ -244,6 +244,7 @@ const handleContractTransaction = async (
         })
       );
     } else {
+      console.log("Error: ", error);
       dispatch(
         openAlert({
           displayAlert: true,
@@ -364,6 +365,8 @@ const accept_proposal = async (
     ethers.parseEther(contractDetails.paymentAmount.toString()),
     "w3rk",
   ];
+
+  // check date and show expired if outdated
 
   const result = await handleContractTransaction(
     () =>

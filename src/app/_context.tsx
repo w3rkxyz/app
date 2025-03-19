@@ -42,12 +42,12 @@ const config = getDefaultConfig({
   },
 });
 
-// Setup queryClient
+// queryClient
 const queryClient = new QueryClient();
 
 // const projectId = process.env.NEXT_PUBLIC_APPKIT_ID;
 
-// 2. Create a metadata object - optional
+// metadata object
 const metadata = {
   name: "w3rk",
   description: "w3rk testnet",
@@ -55,10 +55,7 @@ const metadata = {
   icons: ["https://avatars.githubusercontent.com/u/179229932"],
 };
 
-// 3. Set the networks
-// const networks = [polygonAmoy, arbitrumSepolia, polygon];
-
-// 4. Create Wagmi Adapter
+// Wagmi Adapter
 const wagmiAdapter = new WagmiAdapter({
   networks: [polygonAmoy, arbitrumSepolia, polygon],
   projectId: process.env.NEXT_PUBLIC_APPKIT_ID as string,
@@ -71,7 +68,7 @@ const wagmiAdapter = new WagmiAdapter({
   },
 });
 
-// 5. Create modal
+// Creating Appkit modal
 createAppKit({
   adapters: [wagmiAdapter],
   networks: [polygonAmoy, arbitrumSepolia, polygon],
@@ -80,9 +77,9 @@ createAppKit({
   metadata,
   themeMode: "light",
   features: {
-    email: true, // default to true
+    email: true,
     socials: ["google"],
-    emailShowWallets: true, // default to true
+    emailShowWallets: true,
   },
 });
 

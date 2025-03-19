@@ -34,19 +34,7 @@ export const Connect = () => {
         Login
       </button>
     );
-  }
-  // else if (chain?.unsupported) {
-  //   return (
-  //     <button
-  //       onClick={openChainModal}
-  //       type="button"
-  //       className="button-primary ml-auto"
-  //     >
-  //       Wrong network
-  //     </button>
-  //   );
-  // }
-  else {
+  } else {
     return (
       <button
         type="button"
