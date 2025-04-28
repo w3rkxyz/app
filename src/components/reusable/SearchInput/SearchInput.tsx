@@ -13,7 +13,7 @@ const SearchInput = ({ toggleCategories, handleSearch }: Search) => {
         <input
           className="search-input rounded-[12px] p-[11px]"
           placeholder="Search..."
-          onChange={(e) => handleSearch(e.target.value)}
+          onChange={e => handleSearch(e.target.value)}
         />
         <button
           type="button"

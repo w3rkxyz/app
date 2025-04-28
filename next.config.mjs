@@ -1,19 +1,22 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: "export",
   trailingSlash: true,
   images: { unoptimized: true },
-  webpack: (config) => {
-    config.externals.push("pino-pretty", "lokijs", "encoding");
-    // tell webpack to load WASM files as an asset resource
-    config.module.rules.push({
-      test: /\.wasm$/,
-      type: "asset/resource",
-    });
+  swcMinify: true,
+  webpack: (config, { dev, isServer }) => {
+    if (!dev) {
+      config.externals.push("pino-pretty", "lokijs", "encoding");
+      config.resolve.fallback = { fs: false, net: false, tls: false };
+      // tell webpack to load WASM files as an asset resource
+      config.module.rules.push({
+        test: /\.wasm$/,
+        type: "asset/resource",
+      });
+    }
     return config;
   },
-  experimental: {
-    serverComponentsExternalPackages: ["@xmtp/user-preferences-bindings-wasm"],
-  },
+  serverExternalPackages: ["@xmtp/user-preferences-bindings-wasm"],
   transpilePackages: ["@lens-protocol"],
 };
 

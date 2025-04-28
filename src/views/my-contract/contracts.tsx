@@ -38,15 +38,11 @@ const contractStateFilters = [
 const Contracts = () => {
   const searchParams = useSearchParams();
   const freelancer = searchParams.get("freelancer");
-  const [freelancerId, setFreelancerId] = useState(
-    freelancer !== null ? freelancer : ""
-  );
+  const [freelancerId, setFreelancerId] = useState(freelancer !== null ? freelancer : "");
   const { data: profile, loading: loadingProfile } = useProfile({
     forHandle: `lens/${freelancerId as string}`,
   });
-  const [selectedTypeFilter, setSelectedTypeFilter] = useState<number | null>(
-    null
-  );
+  const [selectedTypeFilter, setSelectedTypeFilter] = useState<number | null>(null);
   const { address } = useAccount();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [contracts, setContracts] = useState<activeContractDetails[]>([]);
@@ -55,9 +51,7 @@ const Contracts = () => {
   const [type, setType] = useState("Proposals");
   const [showCreateContractModal, setShowCreateContractModal] = useState(false);
   const [creationStage, setCreationStage] = useState(1);
-  const [selectedContract, setSelectedContract] = useState<
-    activeContractDetails | undefined
-  >();
+  const [selectedContract, setSelectedContract] = useState<activeContractDetails | undefined>();
   const [newContractDetails, setNewContractDetails] = useState<any>({
     title: "",
     description: "",
@@ -90,25 +84,38 @@ const Contracts = () => {
 
   const getData = async () => {
     if (address) {
-      const contracts = await get_all_contracts(address);
-      const newContracts = [...contracts];
-      setContracts(newContracts);
-      setLoadingContracts(false);
+      try {
+        const contracts = await get_all_contracts(address);
+        const newContracts = [...contracts];
+        setContracts(newContracts);
+      } catch (error) {
+        console.error("Error fetching contracts:", error);
+      } finally {
+        setLoadingContracts(false);
+      }
     }
   };
 
   useEffect(() => {
-    getData();
-    contractInstance.on("ContractUpdate", (client, freelancer, event) => {
-      if (client === address || freelancer === address) {
-        getData();
-        setInterval(() => {
+    if (address) {
+      getData();
+
+      // Set up event listener for contract updates
+      const handleContractUpdate = (client: string, freelancer: string, event: any) => {
+        if (client === address || freelancer === address) {
           getData();
-        }, 5000);
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [address]);
+        }
+      };
+
+      // Subscribe to contract events
+      contractInstance.on("ContractUpdate", handleContractUpdate);
+
+      // Cleanup function
+      return () => {
+        contractInstance.off("ContractUpdate", handleContractUpdate);
+      };
+    }
+  }, [address, getData]);
 
   useEffect(() => {
     if (profile) {
@@ -170,16 +177,9 @@ const Contracts = () => {
               onClick={() => setShowTypesMobile(!showTypesMobile)}
             >
               <span className="font-medium leading-[16.94px] text-[14px] text-black">
-                {selectedTypeFilter === null
-                  ? "Contracts"
-                  : contractTypes[selectedTypeFilter]}
+                {selectedTypeFilter === null ? "Contracts" : contractTypes[selectedTypeFilter]}
               </span>
-              <Image
-                src="/images/drop-down.svg"
-                alt="drop-down icon"
-                width={20}
-                height={20}
-              />
+              <Image src="/images/drop-down.svg" alt="drop-down icon" width={20} height={20} />
               {showTypesMobile && (
                 <div
                   className="find-work-message-section w-full h-fit bg-[#FFFFFF] rounded-[16px] p-[16px] items-center gap-2 
@@ -246,9 +246,7 @@ const Contracts = () => {
                       onCardClick={() => handleOpenModal(contract)}
                     />
                   );
-                } else if (
-                  contract.state === contractStateFilters[selectedTypeFilter]
-                ) {
+                } else if (contract.state === contractStateFilters[selectedTypeFilter]) {
                   return (
                     <ContractCard
                       key={index}

@@ -32,10 +32,7 @@ import {
 } from "@xmtp/content-type-remote-attachment";
 import { uploadFileToIPFS, uploadJsonToIPFS } from "@/utils/uploadToIPFS";
 import axios from "axios";
-import {
-  ContentTypeReadReceipt,
-  ReadReceiptCodec,
-} from "@xmtp/content-type-read-receipt";
+import { ContentTypeReadReceipt, ReadReceiptCodec } from "@xmtp/content-type-read-receipt";
 
 const PREFIX = "lens.dev/dm";
 
@@ -70,7 +67,7 @@ interface StringIndexedObject {
 function groupMessagesByWhatsAppDate(messages: DecodedMessage<any>[]) {
   const groupedMessages: { date: string; messages: DecodedMessage[] }[] = [];
 
-  messages.forEach((message) => {
+  messages.forEach(message => {
     const now = moment().startOf("day");
     const inputDate = moment(message.sent).startOf("day");
     let dateKey: string;
@@ -83,9 +80,7 @@ function groupMessagesByWhatsAppDate(messages: DecodedMessage<any>[]) {
       dateKey = inputDate.format("MMM D");
     }
 
-    const existingGroup = groupedMessages.find(
-      (group) => group.date === dateKey
-    );
+    const existingGroup = groupedMessages.find(group => group.date === dateKey);
 
     if (existingGroup) {
       existingGroup.messages.push(message);
@@ -108,7 +103,7 @@ const buildConversationId = (profileIdA: string, profileIdB: string) => {
 
 function getOtherId(id: string, url: string): string {
   const ids = url.split("/").pop()?.split("-") || [];
-  return ids.find((item) => item !== id) || "";
+  return ids.find(item => item !== id) || "";
 }
 
 function isConversationParticipant(id: string, url: string): boolean {
@@ -120,10 +115,7 @@ const sortMessages = (messages: ConversationProp[]): ConversationProp[] => {
   return messages.sort((a, b) => {
     if (a.lastMessageTime === "") return 1; // Move empty to the end
     if (b.lastMessageTime === "") return -1; // Move empty to the end
-    return (
-      new Date(b.lastMessageTime).getTime() -
-      new Date(a.lastMessageTime).getTime()
-    ); // Sort by most recent
+    return new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime(); // Sort by most recent
   });
 };
 
@@ -158,35 +150,22 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
     }[]
   >([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Conversation<string | undefined>[]>(
-    []
-  );
+  const [messages, setMessages] = useState<Conversation<string | undefined>[]>([]);
   const [inputMessage, setInputMessage] = useState("");
-  const [isNewConversationModalOpen, setIsNewConversationModalOpen] =
-    useState(false);
-  const [selectedConversation, setSelectedConversation] = useState<
-    number | null
-  >(null);
-  const [activeConversationUserHandle, setActiveConversationUserHandle] =
-    useState<string>("");
+  const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
+  const [selectedConversation, setSelectedConversation] = useState<number | null>(null);
+  const [activeConversationUserHandle, setActiveConversationUserHandle] = useState<string>("");
   const [connectingXMTP, setConnectingXMTP] = useState(false);
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
   const [showMessagesMobile, setShowMessagesMobile] = useState(true);
   const [xmtp, setXmtp] = useState<Client>();
   const [activeMessages, setActiveMessages] = useState<any[]>([]);
-  const [conversationDates, setConversationDates] = useState<(Date | string)[]>(
-    []
-  );
+  const [conversationDates, setConversationDates] = useState<(Date | string)[]>([]);
   const [latestMessage, setLatestMessage] = useState<string[]>([]);
   const [unactivatedUserProfile, setUnactivatedUserProfile] = useState<any>();
-  const [conversationData, setConversationData] =
-    useState<StringIndexedObject>();
-  const [conversations, setConversations] = useState<ConversationProp[] | []>(
-    []
-  );
-  const [contactProfile, setContactProfile] = useState<UserProfile | null>(
-    null
-  );
+  const [conversationData, setConversationData] = useState<StringIndexedObject>();
+  const [conversations, setConversations] = useState<ConversationProp[] | []>([]);
+  const [contactProfile, setContactProfile] = useState<UserProfile | null>(null);
   const [isNewConversation, setIsNewConversation] = useState(false);
   const [attachmentsLoading, setAttachmentsLoading] = useState(false);
   const [activeAttachments, setActiveAttachments] = useState<any>({});
@@ -246,10 +225,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
 
     for (let i = 0; i < conversations.length; i++) {
       const conversation = conversations[i];
-      if (
-        session?.type === SessionType.WithProfile &&
-        conversation.context?.conversationId
-      ) {
+      if (session?.type === SessionType.WithProfile && conversation.context?.conversationId) {
         if (
           isConversationParticipant(
             session.profile.id,
@@ -264,9 +240,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
           ids.push(profileId(otherUserID));
           const lastMessage = await conversation.messages();
           dates.push(
-            lastMessage && lastMessage.length > 0
-              ? lastMessage[lastMessage.length - 1].sent
-              : ""
+            lastMessage && lastMessage.length > 0 ? lastMessage[lastMessage.length - 1].sent : ""
           );
           recentMessage.push(
             lastMessage && lastMessage.length > 0
@@ -288,9 +262,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
 
           dataById[otherUserID] = {
             lastMessageTime:
-              lastMessage && lastMessage.length > 0
-                ? lastMessage[lastMessage.length - 1].sent
-                : "",
+              lastMessage && lastMessage.length > 0 ? lastMessage[lastMessage.length - 1].sent : "",
             lastMessage:
               lastMessage && lastMessage.length > 0
                 ? (lastMessage[lastMessage.length - 1].content as string)
@@ -390,10 +362,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
   //   }
   // };
 
-  const openConversation = async (
-    conversation: ConversationProp,
-    index: number
-  ) => {
+  const openConversation = async (conversation: ConversationProp, index: number) => {
     const conversationMessages = await conversation.conversation.messages();
     setActiveMessages(groupMessagesByWhatsAppDate(conversationMessages));
     var attachments: {
@@ -409,11 +378,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
                 const data = response.data;
                 attachments[message.content] = data;
               } catch (error) {
-                console.error(
-                  "Error fetching data for:",
-                  message.content,
-                  error
-                );
+                console.error("Error fetching data for:", message.content, error);
               }
             } else {
               return message;
@@ -447,11 +412,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
                   const data = response.data;
                   attachments[message.content] = data;
                 } catch (error) {
-                  console.error(
-                    "Error fetching data for:",
-                    message.content,
-                    error
-                  );
+                  console.error("Error fetching data for:", message.content, error);
                 }
               } else {
                 return message;
@@ -477,10 +438,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
 
   useEffect(() => {
     const handleClickOutsideModal = (event: MouseEvent) => {
-      if (
-        isContractModalOpen &&
-        (event.target as HTMLElement).closest(".modal-content") === null
-      ) {
+      if (isContractModalOpen && (event.target as HTMLElement).closest(".modal-content") === null) {
         handleCloseModal();
       }
     };
@@ -511,21 +469,14 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
     if (xmtp && profile.handle && session?.type === SessionType.WithProfile) {
       const isOnNetwork = await xmtp.canMessage(profile.handle?.ownedBy);
       if (isOnNetwork) {
-        const conversationId = buildConversationId(
-          session.profile.id,
-          profile.id
-        );
-        const conversation = await xmtp.conversations.newConversation(
-          profile.handle.ownedBy,
-          {
-            conversationId: conversationId,
-            metadata: {},
-          }
-        );
+        const conversationId = buildConversationId(session.profile.id, profile.id);
+        const conversation = await xmtp.conversations.newConversation(profile.handle.ownedBy, {
+          conversationId: conversationId,
+          metadata: {},
+        });
         conversations.map((message, index) => {
           if (
-            conversation.context?.conversationId ===
-            message.conversation.context?.conversationId
+            conversation.context?.conversationId === message.conversation.context?.conversationId
           ) {
             openConversation(message, index);
           }
@@ -551,7 +502,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
         userLink: any;
       }[] = [];
       var allConversations: ConversationProp[] = [];
-      profiles.map((profile) => {
+      profiles.map(profile => {
         var data = getLensProfileData(profile);
         temp.push(data);
         if (conversationData) {
@@ -621,9 +572,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
     }
   };
 
-  const handleFileUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ): Promise<void> => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     const file = event.target.files?.[0]; // Get the uploaded file
     const attachment = event.target.files;
 
@@ -659,9 +608,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
         } flex-col pb-[10px]`}
       >
         <div className="flex justify-between items-center py-[19px] px-[9px]">
-          <span className="leading-[16.94px] font-medium text-[16px]">
-            Messages
-          </span>
+          <span className="leading-[16.94px] font-medium text-[16px]">Messages</span>
           {messagesEnabled && (
             <Image
               onClick={() => setIsNewConversationModalOpen(true)}
@@ -682,7 +629,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
               } flex-col gap-[5px] mt-[8px]`}
             >
               {showSkeleleton
-                ? [0, 1, 2, 3, 4, 5].map((item) => {
+                ? [0, 1, 2, 3, 4, 5].map(item => {
                     return <ConversationSkeleton key={item} />;
                   })
                 : conversations.length > 0 &&
@@ -691,9 +638,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
                       <div
                         key={index}
                         className={`p-[8px] w-full ${
-                          selectedConversation === index
-                            ? "bg-[#E4E4E7]"
-                            : "bg-[#FAFAFA]"
+                          selectedConversation === index ? "bg-[#E4E4E7]" : "bg-[#FAFAFA]"
                         } rounded-[8px] cursor-pointer ${
                           conversation.unreadMessages ? "bg-[#f0f0f3]" : ""
                         }`}
@@ -703,10 +648,9 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
                           <div className="flex gap-[10px]">
                             <Image
                               src={conversation.user.picture}
-                              onError={(e) => {
-                                (
-                                  e.target as HTMLImageElement
-                                ).src = `https://api.hey.xyz/avatar?id=${conversation.user.id}`;
+                              onError={e => {
+                                (e.target as HTMLImageElement).src =
+                                  `https://api.hey.xyz/avatar?id=${conversation.user.id}`;
                               }}
                               className="rounded-[8px]"
                               alt="paco pic"
@@ -724,19 +668,13 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
                           </div>
                           <span className="text-[#707070] leading-[12.1px] text-[12px] font-semibold">
                             {conversation.lastMessageTime !== ""
-                              ? moment(conversation.lastMessageTime).format(
-                                  "h:mmA"
-                                )
+                              ? moment(conversation.lastMessageTime).format("h:mmA")
                               : ""}
                           </span>
                         </div>
                         <p
                           className={`line-clamp-1 text-[11px] sm:text-[10px] text-[#000000] leading-[12px] font-medium 
-                            ${
-                              conversation.unreadMessages
-                                ? "font-extrabold"
-                                : ""
-                            }
+                            ${conversation.unreadMessages ? "font-extrabold" : ""}
                           `}
                         >
                           {conversation.lastMessage}
@@ -804,12 +742,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
                 onClick={() => setSelectedConversation(null)}
               />
               <div className="flex gap-[10px]">
-                <Image
-                  src={unactivatedUserProfile.picture}
-                  alt="paco pic"
-                  width={43}
-                  height={43}
-                />
+                <Image src={unactivatedUserProfile.picture} alt="paco pic" width={43} height={43} />
                 <div className="flex flex-col gap-[2px] pt-[5px]">
                   <span className="text-[14px] leading-[16.94px] font-medium">
                     {unactivatedUserProfile.displayName}
@@ -838,36 +771,21 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
               <input
                 className="form-input rounded-[8px] p-[10px] border-[1px] border-[#E4E4E7] w-full"
                 placeholder="Type your message here.."
-                onChange={(e) => setInputMessage(e.target.value)}
+                onChange={e => setInputMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
                 value={inputMessage}
                 disabled
               />
-              <button
-                className="rounded-[8px] bg-[#F4F4F5] p-[9px] h-fit"
-                disabled
-              >
-                <Image
-                  src={"/images/share.svg"}
-                  alt="paco pic"
-                  width={24}
-                  height={24}
-                />
+              <button className="rounded-[8px] bg-[#F4F4F5] p-[9px] h-fit" disabled>
+                <Image src={"/images/share.svg"} alt="paco pic" width={24} height={24} />
               </button>
               <button
                 className="px-[18px] sm:px-[10px] py-[10px] bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] flex w-fit gap-[7px] h-fit items-center"
                 onClick={handleSendMessage}
                 disabled
               >
-                <span className="text-[15px] text-white leading-none sm:hidden">
-                  Send
-                </span>
-                <Image
-                  src={"/images/arrow-right.svg"}
-                  alt="paco pic"
-                  width={16}
-                  height={16}
-                />
+                <span className="text-[15px] text-white leading-none sm:hidden">Send</span>
+                <Image src={"/images/arrow-right.svg"} alt="paco pic" width={16} height={16} />
               </button>
             </div>
           </div>
@@ -884,15 +802,12 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
               />
               <div className="flex w-full justify-between items-center">
                 <div className="flex gap-[10px]">
-                  <Link
-                    href={`/u/${conversations[selectedConversation].user.userLink}`}
-                  >
+                  <Link href={`/u/${conversations[selectedConversation].user.userLink}`}>
                     <Image
                       src={conversations[selectedConversation].user.picture}
-                      onError={(e) => {
-                        (
-                          e.target as HTMLImageElement
-                        ).src = `https://api.hey.xyz/avatar?id=${conversations[selectedConversation].user.id}`;
+                      onError={e => {
+                        (e.target as HTMLImageElement).src =
+                          `https://api.hey.xyz/avatar?id=${conversations[selectedConversation].user.id}`;
                       }}
                       alt="paco pic"
                       width={43}
@@ -927,77 +842,71 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
                 return (
                   <div
                     key={index}
-                    className={`${
-                      index === 0 ? "mt-auto" : ""
-                    } w-full flex flex-col h-fit`}
+                    className={`${index === 0 ? "mt-auto" : ""} w-full flex flex-col h-fit`}
                   >
                     <span className="text-[12px] leading-[12.1px] font-medium self-center mb-[15px] sm:mt-[15px]">
                       {messages.date}
                     </span>
-                    {messages.messages.map(
-                      (message: DecodedMessage, index: number) => {
-                        return !isLink(message.content) ? (
-                          <div
-                            key={index}
-                            className={`rounded-[8px] whitespace-pre-wrap min-w-[200px] sm:min-w-[150px] max-w-[450px] text-[12px] laptop-x:max-w-[350px] sm:max-w-[262px] laptop-x:text-[14px] mb-[12px] relative font-normal leading-[20px] p-[11px] py-[9px] 
+                    {messages.messages.map((message: DecodedMessage, index: number) => {
+                      return !isLink(message.content) ? (
+                        <div
+                          key={index}
+                          className={`rounded-[8px] whitespace-pre-wrap min-w-[200px] sm:min-w-[150px] max-w-[450px] text-[12px] laptop-x:max-w-[350px] sm:max-w-[262px] laptop-x:text-[14px] mb-[12px] relative font-normal leading-[20px] p-[11px] py-[9px] 
                       pr-[48px] sm:px-[8px] sm:pr-[9px] sm:pb-[23px] ${
                         session?.type === SessionType.WithProfile &&
                         message.senderAddress === session.address
                           ? "self-end bg-[#C6AAFF] text-white"
                           : "self-start bg-[#F4F4F5]"
                       } `}
-                          >
-                            {message.content}
-                            <span className="absolute right-[6px] bottom-[0px] text-[10px]">
-                              {moment(message.sent).format("h:mmA")}
-                            </span>
-                          </div>
-                        ) : activeAttachments[message.content] ? (
-                          <Link
-                            target="_blank"
-                            href={activeAttachments[message.content].link}
-                            download={activeAttachments[message.content].name}
-                            className={`rounded-[8px] whitespace-pre-wrap min-w-[200px] sm:min-w-[150px] max-w-[450px] text-[12px] laptop-x:max-w-[350px] sm:max-w-[262px] laptop-x:text-[14px] mb-[12px] relative font-normal leading-[20px] p-[11px] py-[9px] 
+                        >
+                          {message.content}
+                          <span className="absolute right-[6px] bottom-[0px] text-[10px]">
+                            {moment(message.sent).format("h:mmA")}
+                          </span>
+                        </div>
+                      ) : activeAttachments[message.content] ? (
+                        <Link
+                          target="_blank"
+                          href={activeAttachments[message.content].link}
+                          download={activeAttachments[message.content].name}
+                          className={`rounded-[8px] whitespace-pre-wrap min-w-[200px] sm:min-w-[150px] max-w-[450px] text-[12px] laptop-x:max-w-[350px] sm:max-w-[262px] laptop-x:text-[14px] mb-[12px] relative font-normal leading-[20px] p-[11px] py-[9px] 
                       pr-[48px] sm:px-[8px] sm:pr-[9px] sm:pb-[23px] flex items-center bg-[#E4E4E7] ${
                         session?.type === SessionType.WithProfile &&
                         message.senderAddress === session.address
                           ? "self-end"
                           : "self-start"
                       } `}
-                          >
-                            <Image
-                              src="/images/add-photo.svg"
-                              className={`sm:w-[20px] sm:h-[20px] mr-[10px]`}
-                              alt="user icon"
-                              width={24}
-                              height={24}
-                            />
-                            <span>
-                              {activeAttachments[message.content].name}
-                            </span>
-                            <span className="absolute right-[6px] bottom-[0px] text-[10px]">
-                              {moment(message.sent).format("h:mmA")}
-                            </span>
-                          </Link>
-                        ) : (
-                          <div
-                            key={index}
-                            className={`rounded-[8px] whitespace-pre-wrap min-w-[200px] sm:min-w-[150px] max-w-[450px] text-[12px] laptop-x:max-w-[350px] sm:max-w-[262px] laptop-x:text-[14px] mb-[12px] relative font-normal leading-[20px] p-[11px] py-[9px] 
+                        >
+                          <Image
+                            src="/images/add-photo.svg"
+                            className={`sm:w-[20px] sm:h-[20px] mr-[10px]`}
+                            alt="user icon"
+                            width={24}
+                            height={24}
+                          />
+                          <span>{activeAttachments[message.content].name}</span>
+                          <span className="absolute right-[6px] bottom-[0px] text-[10px]">
+                            {moment(message.sent).format("h:mmA")}
+                          </span>
+                        </Link>
+                      ) : (
+                        <div
+                          key={index}
+                          className={`rounded-[8px] whitespace-pre-wrap min-w-[200px] sm:min-w-[150px] max-w-[450px] text-[12px] laptop-x:max-w-[350px] sm:max-w-[262px] laptop-x:text-[14px] mb-[12px] relative font-normal leading-[20px] p-[11px] py-[9px] 
                       pr-[48px] sm:px-[8px] sm:pr-[9px] sm:pb-[23px] flex items-center bg-[#E4E4E7] ${
                         session?.type === SessionType.WithProfile &&
                         message.senderAddress === session.address
                           ? "self-end"
                           : "self-start"
                       } `}
-                          >
-                            <span>Loading...</span>
-                            <span className="absolute right-[6px] bottom-[0px] text-[10px]">
-                              {moment(message.sent).format("h:mmA")}
-                            </span>
-                          </div>
-                        );
-                      }
-                    )}
+                        >
+                          <span>Loading...</span>
+                          <span className="absolute right-[6px] bottom-[0px] text-[10px]">
+                            {moment(message.sent).format("h:mmA")}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })}
@@ -1008,7 +917,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
               <input
                 className="form-input rounded-[8px] p-[10px] border-[1px] border-[#E4E4E7] w-full"
                 placeholder="Type your message here.."
-                onChange={(e) => setInputMessage(e.target.value)}
+                onChange={e => setInputMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
                 value={inputMessage}
               />
@@ -1016,12 +925,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
                 htmlFor="file_upload"
                 className="rounded-[8px] bg-[#F4F4F5] p-[9px] h-fit inline-flex items-center cursor-pointer"
               >
-                <Image
-                  src={"/images/share.svg"}
-                  alt="paco pic"
-                  width={24}
-                  height={24}
-                />
+                <Image src={"/images/share.svg"} alt="paco pic" width={24} height={24} />
                 <input
                   id="file_upload"
                   type="file"
@@ -1034,15 +938,8 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
                 className="px-[18px] sm:px-[10px] py-[10px] bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] flex w-fit gap-[7px] h-fit items-center"
                 onClick={handleSendMessage}
               >
-                <span className="text-[15px] text-white leading-none sm:hidden">
-                  Send
-                </span>
-                <Image
-                  src={"/images/arrow-right.svg"}
-                  alt="paco pic"
-                  width={16}
-                  height={16}
-                />
+                <span className="text-[15px] text-white leading-none sm:hidden">Send</span>
+                <Image src={"/images/arrow-right.svg"} alt="paco pic" width={16} height={16} />
               </button>
             </div>
           </div>

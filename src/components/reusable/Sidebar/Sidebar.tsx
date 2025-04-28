@@ -283,8 +283,8 @@ const Sidebar = ({ height }: height) => {
                 About Me
               </p>
               <p className="text-[10px] font-semibold  font-secondary leading-[16px] tracking-[-1%] text-[#000000]/50">
-                bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla
-                bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla
+                bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla bla
+                bla bla bla bla bla bla bla bla bla bla bla
               </p>
             </div>
 

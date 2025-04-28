@@ -10,6 +10,7 @@ import { uploadJsonToIPFS } from "@/utils/uploadToIPFS";
 import { useDispatch } from "react-redux";
 import { openAlert, closeAlert } from "@/redux/alerts";
 import { openLoader } from "@/redux/alerts";
+import { useSession, SessionType } from "@lens-protocol/react-web";
 
 type Props = {
   handleCloseModal?: () => void;
@@ -29,20 +30,17 @@ const tokens = [
   // { text: "Bonsai (BONSAI)", image: "/images/bw-coin.svg" },
 ];
 
-const ReviewContractModal = ({
-  handleCloseModal,
-  setCreationStage,
-  contractDetails,
-}: Props) => {
+const ReviewContractModal = ({ handleCloseModal, setCreationStage, contractDetails }: Props) => {
   const { address } = useAccount();
   const myDivRef = useRef<HTMLDivElement>(null);
   const tagModalRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const tokenModalRef = useRef<HTMLButtonElement>(null);
+  const dispatch = useDispatch();
+  const [showMobile, setShowMobile] = useState(true);
+  const { data: session } = useSession();
 
-  const [showMobile, setShowMobile] = useState(false);
   const [showTokens, setShowTokens] = useState(false);
   const [selectedTokens, setSelectedTokens] = useState<number[]>([]);
-  const dispatch = useDispatch();
 
   const toggleTokensModal = () => {
     setShowTokens(!showTokens);
@@ -50,7 +48,7 @@ const ReviewContractModal = ({
 
   const onCLickToken = (index: number) => {
     if (selectedTokens.includes(index)) {
-      const updated = selectedTokens.filter((item) => item !== index);
+      const updated = selectedTokens.filter(item => item !== index);
       setSelectedTokens(updated);
     } else {
       var current = [...selectedTokens];
@@ -66,12 +64,16 @@ const ReviewContractModal = ({
         text: "Approving Token use",
       })
     );
+
     const escrowData = await uploadJsonToIPFS(contractDetails);
+    const senderHandle =
+      session?.type === SessionType.WithProfile ? session.profile.handle?.localName : undefined;
     const hash = await create_proposal(
       contractDetails.paymentAmount.toString(),
       contractDetails.freelancerAddress,
       escrowData,
-      dispatch
+      dispatch,
+      senderHandle
     );
     if (hash !== undefined) {
       dispatch(
@@ -99,10 +101,7 @@ const ReviewContractModal = ({
     setShowMobile(true);
 
     function handleClickOutside(event: any) {
-      if (
-        myDivRef.current &&
-        !myDivRef.current.contains(event.target as Node)
-      ) {
+      if (myDivRef.current && !myDivRef.current.contains(event.target as Node)) {
         if (handleCloseModal) {
           handleCloseModal();
         }
@@ -145,9 +144,7 @@ const ReviewContractModal = ({
       </div>
       <div className="bg-[white] rounded-[12px] sm:rounded-none py-[16px] sm:w-full max-w-[664px] flex flex-col">
         <div className="flex flex-col gap-[8px] sm:gap-[6px] mb-[16px] sm:w-full">
-          <span className="leading-[14.52px] text-[14px] font-semibold text-[black]">
-            Step 2/2
-          </span>
+          <span className="leading-[14.52px] text-[14px] font-semibold text-[black]">Step 2/2</span>
           <div className="w-full relative flex items-center justify-center">
             <div className="bg-[#351A6B] w-full h-[4px] rounded-[3px] absolute left-0"></div>
             {/* <div className="bg-[#351A6B] w-[16px] h-[16px] rounded-[16px] absolute"></div> */}
@@ -161,9 +158,7 @@ const ReviewContractModal = ({
         </p>
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
         <div className="flex flex-col gap-[6px]">
-          <span className="text-[14px] leading-[16.94px] font-medium">
-            Client Wallet Address
-          </span>
+          <span className="text-[14px] leading-[16.94px] font-medium">Client Wallet Address</span>
           <span className="text-[12px] leading-[14.52px] font-normal">
             {contractDetails.clientAddress}
           </span>
@@ -179,18 +174,14 @@ const ReviewContractModal = ({
         </div>
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
         <div className="flex flex-col gap-[6px]">
-          <span className="text-[14px] leading-[16.94px] font-medium">
-            Payment Amount
-          </span>
+          <span className="text-[14px] leading-[16.94px] font-medium">Payment Amount</span>
           <span className="text-[12px] leading-[14.52px] font-normal">
             ${contractDetails.paymentAmount}
           </span>
         </div>
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
         <div className="flex flex-col gap-[6px]">
-          <span className="text-[14px] leading-[16.94px] font-medium">
-            Due Date
-          </span>
+          <span className="text-[14px] leading-[16.94px] font-medium">Due Date</span>
           <span className="text-[12px] leading-[14.52px] font-normal">
             {contractDetails.dueDate.toLocaleDateString("en-US", {
               year: "numeric",
@@ -201,9 +192,7 @@ const ReviewContractModal = ({
         </div>
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
         <div className="flex flex-col gap-[6px] mb-[60px] sm:mb-[16px]">
-          <span className="text-[14px] leading-[16.94px] font-medium">
-            Payment Schedule
-          </span>
+          <span className="text-[14px] leading-[16.94px] font-medium">Payment Schedule</span>
           <span className="text-[14px] leading-[16.94px] font-medium text-[#009951]">
             Payment is released upon project completion
           </span>
@@ -213,12 +202,7 @@ const ReviewContractModal = ({
             className="w-fit flex gap-[5px] py-[10px] px-[24px] tx-[14px] leading-[14.5px] text-black bg-[#E4E4E7] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px] absolute top-0 sm:relative"
             onClick={() => setCreationStage(1)}
           >
-            <Image
-              src={"/images/backArrow.svg"}
-              alt="paco pic"
-              width={14}
-              height={14}
-            />
+            <Image src={"/images/backArrow.svg"} alt="paco pic" width={14} height={14} />
             Back
           </button>
           <button

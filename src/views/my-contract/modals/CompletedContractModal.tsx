@@ -25,10 +25,7 @@ function formatDate(dateString: Date) {
   });
 }
 
-const CompletedContractModal = ({
-  handleCloseModal,
-  contractDetails,
-}: Props) => {
+const CompletedContractModal = ({ handleCloseModal, contractDetails }: Props) => {
   const { address } = useAccount();
   const myDivRef = useRef<HTMLDivElement>(null);
   const [showMobile, setShowMobile] = useState(false);
@@ -37,9 +34,7 @@ const CompletedContractModal = ({
   );
   const [userData, setUserData] = useState<UserProfile>();
   const { data: profile, loading: profileLoading } = useProfile({
-    forProfileId: showClientView
-      ? contractDetails.freelancerHandle
-      : contractDetails.clientHandle,
+    forProfileId: showClientView ? contractDetails.freelancerHandle : contractDetails.clientHandle,
   });
   // const { data: profile, loading: profileLoading } = useProfile({
   //   forHandle: "@adam_",
@@ -50,10 +45,7 @@ const CompletedContractModal = ({
     setShowMobile(true);
 
     function handleClickOutside(event: any) {
-      if (
-        myDivRef.current &&
-        !myDivRef.current.contains(event.target as Node)
-      ) {
+      if (myDivRef.current && !myDivRef.current.contains(event.target as Node)) {
         if (handleCloseModal) {
           handleCloseModal();
         }
@@ -109,10 +101,9 @@ const CompletedContractModal = ({
             <div className="flex gap-[6px] items-center">
               <Image
                 src={userData.picture}
-                onError={(e) => {
-                  (
-                    e.target as HTMLImageElement
-                  ).src = `https://api.hey.xyz/avatar?id=${userData.id}`;
+                onError={e => {
+                  (e.target as HTMLImageElement).src =
+                    `https://api.hey.xyz/avatar?id=${userData.id}`;
                 }}
                 alt="paco pic"
                 width={46}
@@ -135,11 +126,7 @@ const CompletedContractModal = ({
             </Link>
           </div>
         ) : (
-          <Skeleton
-            className="w-full h-[80px]"
-            baseColor="#E4E4E7"
-            borderRadius={"12px"}
-          />
+          <Skeleton className="w-full h-[80px]" baseColor="#E4E4E7" borderRadius={"12px"} />
         )}
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
         <h3 className="text-[16px] leading-[19.36px] font-semibold mb-[6px]">
@@ -150,9 +137,7 @@ const CompletedContractModal = ({
         </p>
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
         <div className="flex flex-col gap-[6px]">
-          <span className="text-[14px] leading-[16.94px] font-medium">
-            Client Wallet Address
-          </span>
+          <span className="text-[14px] leading-[16.94px] font-medium">Client Wallet Address</span>
           <span className="text-[12px] leading-[14.52px] font-normal">
             {contractDetails.clientAddress}
           </span>
@@ -168,32 +153,22 @@ const CompletedContractModal = ({
         </div>
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
         <div className="flex flex-col gap-[6px]">
-          <span className="text-[14px] leading-[16.94px] font-medium">
-            Payment Amount
-          </span>
+          <span className="text-[14px] leading-[16.94px] font-medium">Payment Amount</span>
           <span className="text-[12px] leading-[14.52px] font-normal">
             ${contractDetails.paymentAmount}
           </span>
         </div>
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
         <div className="flex flex-col gap-[6px]">
-          <span className="text-[14px] leading-[16.94px] font-medium">
-            Due Date
-          </span>
+          <span className="text-[14px] leading-[16.94px] font-medium">Due Date</span>
           <span className="text-[12px] leading-[14.52px] font-normal">
             {formatDate(contractDetails.dueDate)}
           </span>
         </div>
         <div className="w-full bg-[#F5F5F5] rounded-[20px] py-[20px] gap-[7px] flex flex-col items-center mt-[29px] sm:mt-[16px]">
-          <Image
-            src="/images/completed.svg"
-            alt="tick icon"
-            width={34}
-            height={34}
-          />
+          <Image src="/images/completed.svg" alt="tick icon" width={34} height={34} />
           <p className="text-[14px] leading-[22px] font-semibold max-w-[300px] text-center">
-            Contract has been completed successfully and payment has been
-            released.
+            Contract has been completed successfully and payment has been released.
           </p>
         </div>
       </div>

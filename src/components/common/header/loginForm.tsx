@@ -21,7 +21,6 @@ import { create_new_profile, create_profile } from "@/api";
 import { useAccount } from "wagmi";
 import { Oval } from "react-loader-spinner";
 import { useAppKitAccount } from "@reown/appkit/react";
-import { LensClient, development } from "@lens-protocol/client";
 import { openAlert, closeAlert } from "@/redux/alerts";
 
 export function LoginForm({
@@ -59,9 +58,7 @@ export function LoginForm({
       profile: Profile;
     }[]
   >();
-  const [errorMessage, setErrorMessage] = useState(
-    "Sorry, handles cannot start with a number."
-  );
+  const [errorMessage, setErrorMessage] = useState("Sorry, handles cannot start with a number.");
   const [showError, setShowError] = useState(false);
   const [handle, setHandle] = useState("");
 
@@ -101,14 +98,14 @@ export function LoginForm({
     // console.log("Name: ", handle);
     // console.log("address: ", address as string);
 
-    const client = new LensClient({
-      environment: development,
-    });
+    // const client = new LensClient({
+    //   environment: development,
+    // });
 
-    const result2 = await client.wallet.createProfileWithHandle({
-      handle: handle,
-      to: address as string,
-    });
+    // const result2 = await client.wallet.createProfileWithHandle({
+    //   handle: handle,
+    //   to: address as string,
+    // });
 
     setLoadingProfiles(true);
     setTimeout(() => {
@@ -178,11 +175,7 @@ export function LoginForm({
     });
 
     if (result.isSuccess()) {
-      toast.success(
-        `Welcome ${String(
-          result.value && formatProfileIdentifier(result.value)
-        )}`
-      );
+      toast.success(`Welcome ${String(result.value && formatProfileIdentifier(result.value))}`);
 
       profiles?.map((profile: any) => {
         if (profile.id === id) {
@@ -252,7 +245,7 @@ export function LoginForm({
       where: {
         ownedBy: [owner],
       },
-    }).then((result) => {
+    }).then(result => {
       if (result.isFailure()) {
         setLoadingProfiles(false);
       }
@@ -265,9 +258,7 @@ export function LoginForm({
     <div className="fixed w-screen h-screen top-0 left-0 z-[99] flex items-center justify-center bg-[#80808080]">
       <div className="w-[360px] flex flex-col rounded-[12px] border-[1px] border-[#E4E4E7] bg-white">
         <div className="w-[360px] flex justify-between items-center px-[16px] py-[13px] border-b-[1px] border-b-[#E4E4E7] rounded-none sm:rounded-tl-[12px] sm:rounded-tr-[12px]">
-          <span className="leading-[14.52px] text-[16px] font-medium text-[black]">
-            Login
-          </span>
+          <span className="leading-[14.52px] text-[16px] font-medium text-[black]">Login</span>
           <Image
             onClick={handleCloseModal}
             className="cursor-pointer"
@@ -279,9 +270,7 @@ export function LoginForm({
         </div>
         <div className="p-[16px] pt-[12px] flex flex-col">
           {loadingProfiles ? (
-            <span className="text-[14px] leading-[14.52px] font-medium mb-[4px]">
-              Loading...
-            </span>
+            <span className="text-[14px] leading-[14.52px] font-medium mb-[4px]">Loading...</span>
           ) : profiles?.length === 0 ? (
             <>
               <span className="text-[14px] leading-[14.52px] font-medium mb-[12px]">

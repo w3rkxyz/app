@@ -3,18 +3,8 @@
 import React, { ReactNode } from "react";
 import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { WagmiProvider, createConfig, http } from "wagmi";
-import {
-  polygon,
-  polygonAmoy,
-  arbitrumSepolia,
-  polygonMumbai,
-} from "wagmi/chains";
-import {
-  LensConfig,
-  development,
-  LensProvider,
-  production,
-} from "@lens-protocol/react-web";
+import { polygon, polygonAmoy, arbitrumSepolia, polygonMumbai } from "wagmi/chains";
+import { LensConfig, development, LensProvider, production } from "@lens-protocol/react-web";
 import { bindings as wagmiBindings } from "@lens-protocol/wagmi";
 import { createAppKit } from "@reown/appkit/react";
 // import { arbitrumSepolia, polygonAmoy, polygon } from "@reown/appkit/networks";

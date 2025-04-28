@@ -11,6 +11,7 @@ import { Toaster } from "react-hot-toast";
 import ClientProvider from "./_clientProvider";
 import ModalWrapper from "./_modalWrapper";
 import Footer from "@/components/common/footer/footer";
+import { Web3Provider } from "./Web3Provider";
 
 // export const metadata: Metadata = {
 //   title: "w3rk - Web3 Freelancing Marketplace",
@@ -25,8 +26,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <ClientProvider>
-          <ContextProvider>
+        <Web3Provider>
+          <ClientProvider>
             <ModalWrapper>
               <ConditionalNav />
               <main className="main-w3rk-content-wrapper">
@@ -35,8 +36,8 @@ export default function RootLayout({
               </main>
               <Footer />
             </ModalWrapper>
-          </ContextProvider>
-        </ClientProvider>
+          </ClientProvider>
+        </Web3Provider>
       </body>
     </html>
   );

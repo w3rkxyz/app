@@ -54,14 +54,14 @@ const buttons = [
 
 function selectedCategoriesText(selected: number[]) {
   var array: string[] = [];
-  selected.map((item) => {
+  selected.map(item => {
     array.push(buttons[item].buttonText);
   });
   return array;
 }
 
 function filterbyTags(array1: string[], array2: string[]) {
-  return array2.every((item) => array1.includes(item));
+  return array2.every(item => array1.includes(item));
 }
 
 const FindTalent = () => {
@@ -110,7 +110,7 @@ const FindTalent = () => {
   }
 
   const searchItems = (items: AnyPublication[], searchText: string) => {
-    const filtered = items.filter((item) => {
+    const filtered = items.filter(item => {
       if (item.__typename === "Post") {
         const attribute4 = item.metadata.attributes?.[4].value.toLowerCase();
         const attribute5 = item.metadata.attributes?.[5].value.toLowerCase();
@@ -136,7 +136,7 @@ const FindTalent = () => {
 
   const onCLickCategory = (index: number) => {
     if (selectedCategories.includes(index)) {
-      const updated = selectedCategories.filter((item) => item !== index);
+      const updated = selectedCategories.filter(item => item !== index);
       setSelectedCategories(updated);
     } else {
       var current = [...selectedCategories];
@@ -171,16 +171,11 @@ const FindTalent = () => {
             Find the <span className="text-gradient">talent</span> you need.
           </h2>
           <div className="max-w-[600px] flex-1 md:w-full relative">
-            <SearchInput
-              toggleCategories={toggleCategoriesMobile}
-              handleSearch={handleSearch}
-            />
+            <SearchInput toggleCategories={toggleCategoriesMobile} handleSearch={handleSearch} />
             <div
               className={`find-work-message-section w-[206px] bg-[#FFFFFF] rounded-[12px] p-[8px] sm:items-center gap-[3px] absolute top-[100%] right-0
             border-[1px] border-[#E4E4E7] hidden ${
-              categoriesMobile
-                ? "sm:flex banner-tablet:flex"
-                : "sm:hidden banner-tablet:hidden"
+              categoriesMobile ? "sm:flex banner-tablet:flex" : "sm:hidden banner-tablet:hidden"
             } sm:flex-col banner-tablet:flex-col z-[100]`}
             >
               {buttons.map((button, index) => (
@@ -189,9 +184,7 @@ const FindTalent = () => {
                   buttonText={button.buttonText}
                   buttonType="secondary"
                   buttonStyles={`${button.buttonStyles} ${
-                    selectedCategories?.includes(index)
-                      ? "border-[1px] border-black"
-                      : ""
+                    selectedCategories?.includes(index) ? "border-[1px] border-black" : ""
                   }`}
                   action={() => onCLickCategory(index)}
                 />
@@ -216,9 +209,7 @@ const FindTalent = () => {
               <button
                 key={index}
                 className={`${button.buttonStyles} ${
-                  selectedCategories?.includes(index)
-                    ? "border-[1px] border-black"
-                    : ""
+                  selectedCategories?.includes(index) ? "border-[1px] border-black" : ""
                 } rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] w-[200px] sm:px-0 sm:w-[190px] sm:flex sm:justify-center min-w-[200px]`}
                 onClick={() => onCLickCategory(index)}
               >

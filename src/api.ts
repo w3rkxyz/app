@@ -8,13 +8,20 @@ import axios from "axios";
 import type { activeContractDetails, contractDetails } from "./types/types";
 import unicrow from "@unicrowio/sdk";
 import { uploadJsonToIPFS } from "./utils/uploadToIPFS";
+import { createNotification, Notification, NotificationType } from "@/utils/firebase";
 
+// Configure provider with rate limiting and retry logic
 const rpc_url = `https://arbitrum-sepolia.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_KEY}`;
-let provider = new ethers.JsonRpcProvider(rpc_url);
+const providerOptions = {
+  batchMaxCount: 1, // Process one request at a time
+  retryDelay: 1000, // Wait 1 second between retries
+  pollingInterval: 1000, // Poll every 1 second
+};
+
+let provider = new ethers.JsonRpcProvider(rpc_url, undefined, providerOptions);
 
 unicrow.config({
-  defaultNetwork: unicrow.DefaultNetwork.ArbitrumSepolia,
-  // autoSwitchNetwork: true,
+  chainId: BigInt(421614),
 });
 
 let contractInstance = new ethers.Contract(
@@ -33,9 +40,7 @@ function secondsUntil(targetDate: Date) {
 const getSigner = async () => {
   const provider = new ethers.BrowserProvider(window.ethereum);
 
-  const currentChainId = await provider
-    .getNetwork()
-    .then((network) => network.chainId);
+  const currentChainId = await provider.getNetwork().then(network => network.chainId);
 
   // Switch to Arbitrum Sepolia if not already switched
   if (Number(currentChainId) !== 421614) {
@@ -50,9 +55,7 @@ const getSigner = async () => {
 const getPolygonSigner = async () => {
   const provider = new ethers.BrowserProvider(window.ethereum);
 
-  const currentChainId = await provider
-    .getNetwork()
-    .then((network) => network.chainId);
+  const currentChainId = await provider.getNetwork().then(network => network.chainId);
 
   // Switch to Arbitrum Sepolia if not already switched
   // if (Number(currentChainId) !== 421614) {
@@ -209,8 +212,11 @@ const handleContractTransaction = async (
   dispatch: any
 ): Promise<string | undefined> => {
   try {
+    console.log("Got here 1");
     const tx = await txFunction();
+    console.log("Got here 2");
     await tx.wait();
+    console.log("Got here 3");
     dispatch(closeLoader());
     return createTransactionLink(tx.hash);
   } catch (error: any) {
@@ -272,8 +278,10 @@ const create_proposal = async (
   amount: string,
   freelancersAddress: string,
   escrowData: string,
-  dispatch: any
+  dispatch: any,
+  senderHandle?: string
 ) => {
+  console.log("Handle: ", senderHandle);
   const contract = await getContract();
 
   const tokensApproved = await handleTokenApproval(
@@ -286,68 +294,112 @@ const create_proposal = async (
     dispatch(
       openLoader({
         displaytransactionLoader: true,
-        text: "Creating Cotract proposal",
+        text: "Creating Contract proposal",
       })
     );
     const result = await handleContractTransaction(
-      () =>
-        contract.createProposal(
-          ethers.parseEther(amount),
-          freelancersAddress,
-          escrowData
-        ),
+      () => contract.createProposal(ethers.parseEther(amount), freelancersAddress, escrowData),
       dispatch
     );
 
-    return result;
+    if (result) {
+      // Only create notification if the transaction was successful
+      const notificationData: Omit<Notification, "id" | "createdAt" | "read"> & {
+        senderHandle?: string;
+      } = {
+        type: "contract_offer" as NotificationType,
+        title: "New Contract Offer",
+        message: `You have received a new contract offer for ${amount}`,
+        address: freelancersAddress,
+        contractId: result,
+        ...(senderHandle ? { senderHandle } : {}),
+      };
+
+      await createNotification(notificationData);
+      return result;
+    } else {
+      // Show error alert if transaction failed
+      dispatch(
+        openAlert({
+          displayAlert: true,
+          data: {
+            id: 2,
+            variant: "Failed",
+            classname: "text-black",
+            title: "Transaction Failed",
+            tag1: "Failed to create contract proposal",
+            tag2: "Please try again later",
+          },
+        })
+      );
+      setTimeout(() => {
+        dispatch(closeAlert());
+      }, 10000);
+      return undefined;
+    }
   } else {
     return undefined;
   }
 };
 
-const contractState = [
-  "proposal",
-  "inProgress",
-  "awaitingApproval",
-  "openDispute",
-  "completed",
-];
+const contractState = ["proposal", "inProgress", "awaitingApproval", "openDispute", "completed"];
 
 const get_all_contracts = async (user: string) => {
-  const contract = contractInstance;
-  const proposals = await contract.get_proposals(user);
-  const contracts_data = await contract.get_contracts(user);
+  try {
+    const contract = contractInstance;
+    const [proposals, contracts_data] = await Promise.all([
+      contract.get_proposals(user),
+      contract.get_contracts(user),
+    ]);
 
-  const contracts: any = [];
+    const contracts: any = [];
+    const batchSize = 5; // Process 5 requests at a time
 
-  const axiosRequests = proposals.map(async (proposal: any, index: number) => {
-    const response = await axios.get(proposal.data as string);
-
-    contracts.push({ ...response.data, state: "proposal", id: index });
-  });
-
-  await Promise.all(axiosRequests);
-
-  const axiosContractRequests = contracts_data.map(
-    async (contract: any, index: number) => {
-      const response = await axios.get(contract.data as string);
-
-      contracts.push({
-        ...response.data,
-        state: contractState[Number(contract.state)],
-        id: index,
-        escrowId: Number(contract.escrow_id),
+    // Process proposals in batches
+    for (let i = 0; i < proposals.length; i += batchSize) {
+      const batch = proposals.slice(i, i + batchSize);
+      const batchPromises = batch.map(async (proposal: any, index: number) => {
+        try {
+          const response = await axios.get(proposal.data as string);
+          contracts.push({ ...response.data, state: "proposal", id: index });
+        } catch (error) {
+          console.error("Error fetching proposal data:", error);
+        }
       });
+      await Promise.all(batchPromises);
     }
-  );
-  await Promise.all(axiosContractRequests);
-  return contracts;
+
+    // Process contracts in batches
+    for (let i = 0; i < contracts_data.length; i += batchSize) {
+      const batch = contracts_data.slice(i, i + batchSize);
+      const batchPromises = batch.map(async (contract: any, index: number) => {
+        try {
+          const response = await axios.get(contract.data as string);
+          contracts.push({
+            ...response.data,
+            state: contractState[Number(contract.state)],
+            id: index,
+            escrowId: Number(contract.escrow_id),
+          });
+        } catch (error) {
+          console.error("Error fetching contract data:", error);
+        }
+      });
+      await Promise.all(batchPromises);
+    }
+
+    return contracts;
+  } catch (error) {
+    console.error("Error in get_all_contracts:", error);
+    return [];
+  }
 };
 
 const accept_proposal = async (
   proposalId: number,
   contractDetails: contractDetails,
-  dispatch: any
+  dispatch: any,
+  senderHandle?: string
 ) => {
   dispatch(
     openLoader({
@@ -375,6 +427,19 @@ const accept_proposal = async (
     dispatch
   );
 
+  // Create notification for the client
+  const notificationData: Omit<Notification, "id" | "createdAt" | "read"> & {
+    senderHandle?: string;
+  } = {
+    type: "contract_accepted" as NotificationType,
+    title: "Contract Accepted",
+    message: "Your contract offer has been accepted",
+    address: contractDetails.freelancerAddress,
+    contractId: result,
+    ...(senderHandle ? { senderHandle } : {}),
+  };
+
+  await createNotification(notificationData);
   return result;
 };
 
@@ -482,11 +547,7 @@ const release_payement = async (
 };
 
 // Profile Creator
-const create_new_profile = async (
-  handle: string,
-  address: string,
-  dispatch: any
-) => {
+const create_new_profile = async (handle: string, address: string, dispatch: any) => {
   const contract = await getProfileContract();
 
   console.log("Handle: ", handle);
@@ -507,11 +568,7 @@ const create_new_profile = async (
   return "Success!";
 };
 
-const create_profile = async (
-  handle: string,
-  address: string,
-  dispatch: any
-) => {
+const create_profile = async (handle: string, address: string, dispatch: any) => {
   const contract = await getPermissionContract();
 
   const createProfileParams = {
@@ -520,11 +577,9 @@ const create_profile = async (
     followModuleInitData: "0x",
   };
 
-  const tx = await contract.createProfileWithHandle(
-    createProfileParams,
-    handle,
-    ["0x71990499e005Db4d7854eea564023AB64ca884b5"]
-  );
+  const tx = await contract.createProfileWithHandle(createProfileParams, handle, [
+    "0x71990499e005Db4d7854eea564023AB64ca884b5",
+  ]);
   await tx.wait();
   return "Success!";
 };

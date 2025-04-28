@@ -47,19 +47,17 @@ const HomeBanner = () => {
             <h1 className="banner-title max-w-[705px] mx-auto mb-[24px] sm:mb-4 text-[#120037]">
               {/* The <span className="text-primary">Web 3.0 </span> <br />
               Freelancing Marketplace */}
-              Discover <span className="text-gradient">decentralized</span>{" "}
-              <br />
+              Discover <span className="text-gradient">decentralized</span> <br />
               freelancing & hiring
             </h1>
             <p className="banner-desc max-w-[570px] sm:max-w-[350px] sm:mb-6 mx-auto mb-[24px] text-[18px] text-center font-medium sm:font-normal md:text-[16px] font-secondary tracking-[.01em] leading-[24px] sm:leading-[19.5px] text-[#000000] text-[400] sm:hidden">
-              Empowering decentralized freelancing within the SocialFi
-              ecosystem. Proudly bridging global businesses with exceptional
-              professionals who embrace cryptocurrency payments.
+              Empowering decentralized freelancing within the SocialFi ecosystem. Proudly bridging
+              global businesses with exceptional professionals who embrace cryptocurrency payments.
             </p>
             <p className="banner-desc max-w-[620px] sm:max-w-[350px] sm:mb-[46px] mx-auto mb-[24px] text-[18px] text-center font-medium sm:font-normal md:text-[16px] font-secondary tracking-[.01em] leading-[24px] sm:leading-[19.5px] text-[#000000] hidden sm:block">
-              Empowering decentralized freelancing within the SocialFi
-              ecosystem. <br /> Proudly bridging global businesses with
-              exceptional professionals who embrace cryptocurrency payments.
+              Empowering decentralized freelancing within the SocialFi ecosystem. <br /> Proudly
+              bridging global businesses with exceptional professionals who embrace cryptocurrency
+              payments.
             </p>
             {/* <button type="button" className="button-primary">
               Connect Wallet

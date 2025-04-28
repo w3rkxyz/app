@@ -44,18 +44,11 @@ const MobileProfileDropdown = ({
       </button>
       <div className="rounded-[12px] border-[1px] border-[#E4E4E7] flex align-middle p-[12px] gap-[12px] mb-[12px]">
         <div className="w-[50px] h-[50px] relative">
-          <Image
-            src={profilePic}
-            fill
-            className="rounded-[12px]"
-            alt="user icon"
-          />
+          <Image src={profilePic} fill className="rounded-[12px]" alt="user icon" />
         </div>
         <div className="flex flex-col justify-center gap-[6px] py-[2px]">
           <span className="bold-h2">Display Name</span>
-          <span className="bold-h2-subtext">
-            {handle ? `@${handle.localName}` : "@0xPaco"}
-          </span>
+          <span className="bold-h2-subtext">{handle ? `@${handle.localName}` : "@0xPaco"}</span>
         </div>
       </div>
       <hr className="w-full h-[1px] bg-[#E4E4E7] border-0 mb-[14px]" />
@@ -88,11 +81,7 @@ const MobileProfileDropdown = ({
         <Link href="/notifications" onClick={closeMenu}>
           <div className="drop-down-item">
             <div className="w-[22px] h-[22px] relative">
-              <Image
-                src="/images/notification-grey.svg"
-                fill
-                alt="notification icon"
-              ></Image>
+              <Image src="/images/notification-grey.svg" fill alt="notification icon"></Image>
             </div>
             <span className="drop-down-text">Notifications</span>
           </div>
@@ -100,45 +89,26 @@ const MobileProfileDropdown = ({
         <Link href="/messages" onClick={closeMenu}>
           <div className="drop-down-item">
             <div className="w-[22px] h-[22px] relative">
-              <Image
-                src="/images/discuss-grey.svg"
-                fill
-                alt="discuss icon"
-              ></Image>
+              <Image src="/images/discuss-grey.svg" fill alt="discuss icon"></Image>
             </div>
             <span className="drop-down-text">Messages</span>
           </div>
         </Link>
         <Link href={`/u/${handle?.localName}`} onClick={closeMenu}>
           <div className="drop-down-item">
-            <Image
-              src="/images/user.svg"
-              width={22}
-              height={22}
-              alt="person icon"
-            ></Image>
+            <Image src="/images/user.svg" width={22} height={22} alt="person icon"></Image>
             <span className="drop-down-text">My Profile</span>
           </div>
         </Link>
         <Link href="/contracts" onClick={closeMenu}>
           <div className="drop-down-item">
-            <Image
-              src="/images/contract.svg"
-              width={22}
-              height={22}
-              alt="person icon"
-            ></Image>
+            <Image src="/images/contract.svg" width={22} height={22} alt="person icon"></Image>
             <span className="drop-down-text">Contracts</span>
           </div>
         </Link>
         <Link href="/settings" onClick={closeMenu}>
           <div className="drop-down-item">
-            <Image
-              src="/images/settings.svg"
-              width={22}
-              height={22}
-              alt="settinfs icon"
-            ></Image>
+            <Image src="/images/settings.svg" width={22} height={22} alt="settinfs icon"></Image>
             <span className="drop-down-text">Settings</span>
           </div>
         </Link>
@@ -150,12 +120,7 @@ const MobileProfileDropdown = ({
           handleLogOut();
         }}
       >
-        <Image
-          src="/images/exit.svg"
-          width={22}
-          height={22}
-          alt="person icon"
-        ></Image>
+        <Image src="/images/exit.svg" width={22} height={22} alt="person icon"></Image>
         <span className="drop-down-text">Log Out</span>
       </div>
     </div>

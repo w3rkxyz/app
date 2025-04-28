@@ -22,26 +22,19 @@ import { useSearchParams } from "next/navigation";
 import ProfileSkeleton from "@/components/reusable/profileSkeleton";
 import { useRouter } from "next/router";
 import ProfileModal from "@/views/profile/profileModal";
-import { get_score } from "@/api";
+// import { get_score } from "@/api";
 
 function getDomain(url: string) {
   return url.replace(/https?:\/\//, "").replace(/\/$/, "");
 }
 
-// export async function getServerSideProps(context: any) {
-//   // const { id } = context.params;
-//   // const post = await fetchPostData(id); // Replace with your data fetching logic
+type PageProps = {
+  params: {
+    handle: string;
+  };
+};
 
-//   // return {
-//   //   props: { post },
-//   // };
-//   console.log("Context: ", context);
-//   return {
-//     props: { isThere: true },
-//   };
-// }
-
-export default function Profile({ params }: { params: { handle: string } }) {
+export default function Profile({ params }: PageProps) {
   const { handle: userId } = params;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
@@ -131,10 +124,7 @@ export default function Profile({ params }: { params: { handle: string } }) {
         const completion = await result.value.waitForCompletion();
 
         if (completion.isFailure()) {
-          console.log(
-            "There was an error processing the transaction",
-            completion.error.message
-          );
+          console.log("There was an error processing the transaction", completion.error.message);
           return;
         }
 
@@ -153,29 +143,16 @@ export default function Profile({ params }: { params: { handle: string } }) {
         displayName: profileData.displayName,
         handle: profileData.handle,
         cover: profileData.coverPicture,
-        picture:
-          profileData.picture !== ""
-            ? profileData.picture
-            : "/images/paco-square.svg",
+        picture: profileData.picture !== "" ? profileData.picture : "/images/paco-square.svg",
         following: profile ? profile.stats.following.toLocaleString() : 100,
-        jobTitle: profileData.attributes["job title"]
-          ? profileData.attributes["job title"]
-          : "",
+        jobTitle: profileData.attributes["job title"] ? profileData.attributes["job title"] : "",
         followers: profile ? profile.stats.followers.toLocaleString() : 75,
         about: profileData.bio ? profileData.bio : userData.about,
-        website: profileData.attributes.website
-          ? profileData.attributes.website
-          : "",
-        location: profileData.attributes.location
-          ? profileData.attributes.location
-          : "",
+        website: profileData.attributes.website ? profileData.attributes.website : "",
+        location: profileData.attributes.location ? profileData.attributes.location : "",
         X: profileData.attributes.x ? profileData.attributes.x : "",
-        github: profileData.attributes.github
-          ? profileData.attributes.github
-          : "",
-        linkedin: profileData.attributes.linkedin
-          ? profileData.attributes.linkedin
-          : "",
+        github: profileData.attributes.github ? profileData.attributes.github : "",
+        linkedin: profileData.attributes.linkedin ? profileData.attributes.linkedin : "",
       };
       setUserData(handle);
 
@@ -186,8 +163,9 @@ export default function Profile({ params }: { params: { handle: string } }) {
         setIsMyProfile(true);
       }
 
-      const user_score = await get_score(profile.ownedBy.address);
-      setScore(user_score);
+      // const user_score = await get_score(profile.ownedBy.address);
+      // setScore(user_score);
+      setScore(100);
       setDataLoading(false);
     }
   };
@@ -306,32 +284,17 @@ export default function Profile({ params }: { params: { handle: string } }) {
           <div className="flex gap-[12px] mb-[19px]">
             {userData.X !== "" && (
               <Link target="_blank" href={userData.X}>
-                <Image
-                  src="/images/twitter-social.svg"
-                  alt="user icon"
-                  width={24}
-                  height={24}
-                />
+                <Image src="/images/twitter-social.svg" alt="user icon" width={24} height={24} />
               </Link>
             )}
             {userData.github !== "" && (
               <Link target="_blank" href={userData.github}>
-                <Image
-                  src="/images/github-social.svg"
-                  alt="user icon"
-                  width={24}
-                  height={24}
-                />
+                <Image src="/images/github-social.svg" alt="user icon" width={24} height={24} />
               </Link>
             )}
             {userData.linkedin !== "" && (
               <Link target="_blank" href={userData.linkedin}>
-                <Image
-                  src="/images/linkedin-social.svg"
-                  alt="user icon"
-                  width={24}
-                  height={24}
-                />
+                <Image src="/images/linkedin-social.svg" alt="user icon" width={24} height={24} />
               </Link>
             )}
           </div>
@@ -339,12 +302,7 @@ export default function Profile({ params }: { params: { handle: string } }) {
             {userData.website !== "" && (
               <Link href={userData.website} target="_blank">
                 <div className="flex gap-[11.6px] items-center">
-                  <Image
-                    src="/images/earth.svg"
-                    alt="earth icon"
-                    width={24}
-                    height={24}
-                  />
+                  <Image src="/images/earth.svg" alt="earth icon" width={24} height={24} />
                   <span className="leading-[16.94px] text-[14px] font-medium text-[black]">
                     {getDomain(userData.website)}
                   </span>
@@ -353,24 +311,14 @@ export default function Profile({ params }: { params: { handle: string } }) {
             )}
             {userData.location !== "" && (
               <div className="flex gap-[14.2px] items-center pl-[3.2px]">
-                <Image
-                  src="/images/location.svg"
-                  alt="earth icon"
-                  width={18.33}
-                  height={24}
-                />
+                <Image src="/images/location.svg" alt="earth icon" width={18.33} height={24} />
                 <span className="leading-[16.94px] text-[14px] font-medium text-[black]">
                   {userData.location}
                 </span>
               </div>
             )}
             <div className="flex gap-[12.7px] items-center">
-              <Image
-                src="/images/w.svg"
-                alt="earth icon"
-                width={24}
-                height={15.3}
-              />
+              <Image src="/images/w.svg" alt="earth icon" width={24} height={15.3} />
               <span className="leading-[16.94px] text-[14px] font-medium text-[black]">
                 {score}
               </span>
@@ -435,11 +383,7 @@ export default function Profile({ params }: { params: { handle: string } }) {
                       jobIcon="/images/bag.svg"
                       onCardClick={() => handleOpenCardModal(publication)}
                       setType={setCardType}
-                      type={
-                        attributes["post type"]
-                          ? attributes["post type"]
-                          : "job"
-                      }
+                      type={attributes["post type"] ? attributes["post type"] : "job"}
                       publication={publication}
                     />
                   );

@@ -2,7 +2,6 @@ import type { Config } from "tailwindcss";
 
 const config: Config = {
   content: [
-    "./src/**/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
@@ -61,8 +60,7 @@ const config: Config = {
         white: "#ffffff",
       },
       backgroundImage: {
-        "inner-cta":
-          "linear-gradient(96.34deg,#926AFF 0%,#FF77B0 50%,#FFB367 100%)",
+        "inner-cta": "linear-gradient(96.34deg,#926AFF 0%,#FF77B0 50%,#FFB367 100%)",
       },
       gridTemplateColumns: {
         "16": "repeat(16, minmax(0, 1fr))",

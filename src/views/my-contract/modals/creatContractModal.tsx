@@ -7,12 +7,7 @@ import { isAddress } from "ethers";
 import { useAccount } from "wagmi";
 import type { activeContractDetails, contractDetails } from "@/types/types";
 import DatePicker from "react-datepicker";
-import {
-  SessionType,
-  useSession,
-  Profile,
-  useLazyProfiles,
-} from "@lens-protocol/react-web";
+import { SessionType, useSession, Profile, useLazyProfiles } from "@lens-protocol/react-web";
 import getLensProfileData from "@/utils/getLensProfile";
 
 import "react-datepicker/dist/react-datepicker.css";
@@ -45,11 +40,7 @@ const tokens = [
   // { text: "Bonsai (BONSAI)", image: "/images/bw-coin.svg" },
 ];
 
-const SelectProfileModal = ({
-  setFreelancer,
-  closeModal,
-  profiles,
-}: SelectProfileProps) => {
+const SelectProfileModal = ({ setFreelancer, closeModal, profiles }: SelectProfileProps) => {
   return (
     <div className="fixed w-screen h-screen top-0 left-0 z-[9999999] flex items-center justify-center bg-[#80808080]">
       <div className="w-[241px] flex flex-col rounded-[12px] border-[1px] border-[#E4E4E7] bg-white">
@@ -116,9 +107,7 @@ const CreateContractModal = ({
   const dispatch = useDispatch();
   const { data: session, loading } = useSession();
   const { data: profiles, execute } = useLazyProfiles();
-  const [selectedFreelancer, setSelectedFreelancer] = useState<
-    Profile | undefined
-  >(freelancer);
+  const [selectedFreelancer, setSelectedFreelancer] = useState<Profile | undefined>(freelancer);
   const [showSelectModal, setShowSelectModal] = useState(false);
   // execute({
   //   where: {
@@ -131,15 +120,9 @@ const CreateContractModal = ({
   const [selectedTokens, setSelectedTokens] = useState<number[]>([]);
   const [title, setTitle] = useState(contractDetails.title);
   const [description, setDescription] = useState(contractDetails.description);
-  const [clientAddress, setClientAddress] = useState(
-    contractDetails.clientAddress
-  );
-  const [freelancerAddress, setFreelancerAddress] = useState(
-    contractDetails.freelancerAddress
-  );
-  const [paymentAmount, setPaymentAmount] = useState(
-    contractDetails.paymentAmount
-  );
+  const [clientAddress, setClientAddress] = useState(contractDetails.clientAddress);
+  const [freelancerAddress, setFreelancerAddress] = useState(contractDetails.freelancerAddress);
+  const [paymentAmount, setPaymentAmount] = useState(contractDetails.paymentAmount);
   const [dueDate, setDueDate] = useState(contractDetails.dueDate);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
@@ -155,10 +138,7 @@ const CreateContractModal = ({
     setShowMobile(true);
 
     function handleClickOutside(event: any) {
-      if (
-        myDivRef.current &&
-        !myDivRef.current.contains(event.target as Node)
-      ) {
+      if (myDivRef.current && !myDivRef.current.contains(event.target as Node)) {
         if (handleCloseModal) {
           handleCloseModal();
         }
@@ -238,11 +218,7 @@ const CreateContractModal = ({
   };
 
   const handleSubmit = () => {
-    if (
-      session &&
-      session.type === SessionType.WithProfile &&
-      selectedFreelancer
-    ) {
+    if (session && session.type === SessionType.WithProfile && selectedFreelancer) {
       const details: activeContractDetails = {
         title,
         description,
@@ -296,9 +272,7 @@ const CreateContractModal = ({
       </div>
       <div className="bg-[white] rounded-[12px] sm:rounded-none py-[16px] sm:w-full max-w-[664px] flex flex-col">
         <div className="flex flex-col gap-[8px] sm:gap-[6px] mb-[16px] sm:w-full">
-          <span className="leading-[14.52px] text-[14px] font-semibold text-[black]">
-            Step 1/2
-          </span>
+          <span className="leading-[14.52px] text-[14px] font-semibold text-[black]">Step 1/2</span>
           <div className="w-full relative flex items-center justify-center">
             <div className="bg-[#351A6B] w-1/2 h-[4px] rounded-[3px] absolute left-0"></div>
             <div className="bg-[#351A6B] w-[16px] h-[16px] rounded-[16px] absolute"></div>
@@ -311,7 +285,7 @@ const CreateContractModal = ({
           <input
             className="form-input rounded-[12px] p-[11px] border-[1px] border-[#E4E4E7] sm:w-full"
             placeholder="Title your contract.."
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={e => setTitle(e.target.value)}
             value={title}
           />
         </div>
@@ -323,15 +297,13 @@ const CreateContractModal = ({
             maxLength={1000}
             className="form-input rounded-[12px] p-[11px] h-[160px] border-[1px] border-[#E4E4E7] resize-none sm:w-full"
             placeholder="Type a description.."
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={e => setDescription(e.target.value)}
             value={description}
           />
         </div>
         <div className="flex sm:flex-col gap-[16px] mb-[16px]">
           <div className="flex-1">
-            <span
-              className={`leading-[14.52px] text-[14px] font-mediumtext-[black]`}
-            >
+            <span className={`leading-[14.52px] text-[14px] font-mediumtext-[black]`}>
               Your Address
             </span>
             <input
@@ -341,35 +313,29 @@ const CreateContractModal = ({
             />
           </div>
           <div className="flex-1">
-            <span
-              className={`leading-[14.52px] text-[14px] font-medium text-[black]`}
-            >
+            <span className={`leading-[14.52px] text-[14px] font-medium text-[black]`}>
               Freelancer Wallet Address
             </span>
             <input
               className={`form-input rounded-[8px] px-[11px] py-[7px] border-[1px] border-[#E4E4E7]`}
               placeholder="Freelancer wallet address"
               type="text"
-              onChange={(e) => setFreelancerAddress(e.target.value)}
+              onChange={e => setFreelancerAddress(e.target.value)}
               onBlur={validateAddress}
-              value={
-                freelancer ? freelancer.ownedBy.address : freelancerAddress
-              }
+              value={freelancer ? freelancer.ownedBy.address : freelancerAddress}
               disabled={freelancer !== undefined}
             />
           </div>
         </div>
         <div className="flex sm:flex-col gap-[16px] mb-[16px]">
           <div className="flex-1">
-            <span
-              className={`leading-[14.52px] text-[14px] font-medium text-[black]`}
-            >
+            <span className={`leading-[14.52px] text-[14px] font-medium text-[black]`}>
               Payment Currency
             </span>
             <button
               type="button"
               className="w-full sm:w-full rounded-[8px] border-[1px] border-[#E4E4E7] p-[7px] flex justify-between items-center relative"
-              onClick={(e) => {
+              onClick={e => {
                 e.stopPropagation();
                 toggleTokensModal();
               }}
@@ -399,18 +365,11 @@ const CreateContractModal = ({
                   Select Tokens
                 </span>
               )}
-              <Image
-                src="/images/drop-down.svg"
-                alt="drop-down icon"
-                width={20}
-                height={20}
-              />
+              <Image src="/images/drop-down.svg" alt="drop-down icon" width={20} height={20} />
               <div
                 className={`find-work-message-section w-[100%] bg-[#FFFFFF] rounded-[8px] p-[16px] sm:items-start gap-[6px] absolute top-[100%] sm:top-[-265px] left-0
-              border-[1px] border-[#E4E4E7] ${
-                showTokens ? "flex" : "hidden"
-              } flex-col z-[999]`}
-                onClick={(e) => {
+              border-[1px] border-[#E4E4E7] ${showTokens ? "flex" : "hidden"} flex-col z-[999]`}
+                onClick={e => {
                   e.stopPropagation();
                 }}
               >
@@ -418,18 +377,11 @@ const CreateContractModal = ({
                   <div
                     key={index}
                     className={`flex gap-[8px] items-center rounded-[6px] ${
-                      selectedTokens?.includes(index)
-                        ? "border-[1px] border-black"
-                        : ""
+                      selectedTokens?.includes(index) ? "border-[1px] border-black" : ""
                     }`}
                     onClick={() => onCLickToken(index)}
                   >
-                    <Image
-                      src={token.image}
-                      alt="token icon"
-                      width={20}
-                      height={20}
-                    />
+                    <Image src={token.image} alt="token icon" width={20} height={20} />
                     <span className="font-medium text-[11px] leading-[20px] text-black">
                       {token.text}
                     </span>
@@ -439,9 +391,7 @@ const CreateContractModal = ({
             </button>
           </div>
           <div className="flex-1 relative">
-            <span
-              className={`leading-[14.52px] text-[14px] font-mediumtext-[black]`}
-            >
+            <span className={`leading-[14.52px] text-[14px] font-mediumtext-[black]`}>
               Payment Amount
             </span>
             <input
@@ -449,7 +399,7 @@ const CreateContractModal = ({
               value={paymentAmount}
               placeholder="$Amount in USD"
               type="number"
-              onChange={(e) => setPaymentAmount(Number(e.target.value))}
+              onChange={e => setPaymentAmount(Number(e.target.value))}
             />
             <span className="leading-[14.52px] text-[12px] font-normal text-[#707070] absolute left-0 top-full">
               Amount in selected cryptocurrency
@@ -458,9 +408,7 @@ const CreateContractModal = ({
         </div>
         <div className="flex w-full mb-[21px]">
           <div className="w-1/2 sm:w-full">
-            <span
-              className={`leading-[14.52px] text-[14px] font-mediumtext-[black]`}
-            >
+            <span className={`leading-[14.52px] text-[14px] font-mediumtext-[black]`}>
               Due Date
             </span>
             <button
@@ -471,17 +419,12 @@ const CreateContractModal = ({
             >
               <DatePicker
                 selected={dueDate}
-                onSelect={(date) => handlePickDate(date)}
+                onSelect={date => handlePickDate(date)}
                 className="font-normal leading-[14.52px] text-[14px] text-[#707070]"
                 open={showDatePicker}
                 onClickOutside={() => setShowDatePicker(false)}
               />
-              <Image
-                src="/images/calender.svg"
-                alt="drop-down icon"
-                width={20}
-                height={20}
-              />
+              <Image src="/images/calender.svg" alt="drop-down icon" width={20} height={20} />
             </button>
           </div>
         </div>
@@ -492,12 +435,7 @@ const CreateContractModal = ({
           onClick={handleSubmit}
         >
           Next
-          <Image
-            src={"/images/arrow-right.svg"}
-            alt="paco pic"
-            width={14}
-            height={14}
-          />
+          <Image src={"/images/arrow-right.svg"} alt="paco pic" width={14} height={14} />
         </button>
       </div>
       {showSelectModal && (

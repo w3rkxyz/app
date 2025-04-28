@@ -7,16 +7,15 @@ import { usePathname } from "next/navigation";
 import MobileProfileDropdown from "./mobileMenu";
 import { useSelector } from "react-redux";
 import { useAccount } from "wagmi";
-import {
-  useSearchProfiles,
-  LimitType,
-  SessionType,
-  Profile,
-  useSession,
-  Session,
-} from "@lens-protocol/react-web";
+import { LimitType, SessionType, Profile, useSession, Session } from "@lens-protocol/react-web";
 import { Oval } from "react-loader-spinner";
-import getLensProfileData, { UserProfile } from "@/utils/getLensProfile";
+import getLensProfileData, {
+  getLensAccountData,
+  UserProfile,
+  AccountData,
+} from "@/utils/getLensProfile";
+import { fetchAccounts } from "@lens-protocol/client/actions";
+import { client } from "@/client";
 
 const SecondNav = ({ session }: { session: Session }) => {
   // const { loginModal, user: profile } = useSelector((state: any) => state.app);
@@ -32,9 +31,7 @@ const SecondNav = ({ session }: { session: Session }) => {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const path = usePathname();
   const [searchText, setSearchText] = useState("");
-  const { data, error, loading } = useSearchProfiles({
-    query: searchText,
-  });
+  const [loading, setLoading] = useState(false);
   const [profiles, setProfiles] = useState<
     {
       picture: string;
@@ -47,14 +44,11 @@ const SecondNav = ({ session }: { session: Session }) => {
       profile: Profile;
       userLink: string;
     }[]
-  >();
+  >([]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (
-        myDivRef.current &&
-        !myDivRef.current.contains(event.target as Node)
-      ) {
+      if (myDivRef.current && !myDivRef.current.contains(event.target as Node)) {
         setShowSearchResults(false);
       }
     }
@@ -69,10 +63,7 @@ const SecondNav = ({ session }: { session: Session }) => {
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (
-        myDivRef.current &&
-        !myDivRef.current.contains(event.target as Node)
-      ) {
+      if (myDivRef.current && !myDivRef.current.contains(event.target as Node)) {
         setShowSearchResults(false);
       }
     }
@@ -95,10 +86,7 @@ const SecondNav = ({ session }: { session: Session }) => {
 
   useEffect(() => {
     const handleClickOutsideModal = (event: MouseEvent) => {
-      if (
-        drowdownRef.current &&
-        !drowdownRef.current.contains(event.target as Node)
-      ) {
+      if (drowdownRef.current && !drowdownRef.current.contains(event.target as Node)) {
         closeProfileDropdown();
       }
     };
@@ -114,9 +102,34 @@ const SecondNav = ({ session }: { session: Session }) => {
     setMobileMenuOpen(!isMobileMenuOpen);
   };
 
-  useEffect(() => {
-    if (data) {
-      var temp: {
+  const searchProfiles = async (query: string) => {
+    if (!query) {
+      setProfiles([]);
+      return;
+    }
+
+    setLoading(true);
+    console.log(query);
+    try {
+      const result = await fetchAccounts(client, {
+        filter: {
+          searchBy: {
+            localNameQuery: query,
+          },
+        },
+      });
+
+      if (result.isErr()) {
+        console.error(result.error);
+        setLoading(false);
+        return;
+      }
+
+      console.log("Result: ", result);
+
+      const { items } = result.value;
+
+      const temp: {
         picture: string;
         coverPicture: string;
         displayName: string;
@@ -128,16 +141,43 @@ const SecondNav = ({ session }: { session: Session }) => {
         userLink: string;
       }[] = [];
 
-      data.map((profile: Profile) => {
-        var profileData = getLensProfileData(profile);
-        if (profileData.handle !== "") {
-          temp.push({ ...profileData, profile: profile });
+      items.forEach(account => {
+        const accountData = getLensAccountData(account);
+
+        // Create a profile object for compatibility with existing UI
+        const profileObj = {
+          id: account.username?.id || "",
+          handle: account.username,
+          metadata: account.metadata,
+        } as Profile;
+
+        if (accountData.handle !== "") {
+          temp.push({
+            ...accountData,
+            profile: profileObj,
+          });
         }
       });
 
       setProfiles(temp);
+    } catch (error) {
+      console.error("Error searching profiles:", error);
+    } finally {
+      setLoading(false);
     }
-  }, [data]);
+  };
+
+  useEffect(() => {
+    if (searchText) {
+      const debounceTimer = setTimeout(() => {
+        searchProfiles(searchText);
+      }, 300);
+
+      return () => clearTimeout(debounceTimer);
+    } else {
+      setProfiles([]);
+    }
+  }, [searchText]);
 
   useEffect(() => {
     if (session?.type === SessionType.WithProfile) {
@@ -207,17 +247,14 @@ const SecondNav = ({ session }: { session: Session }) => {
                     <input
                       className="search-input rounded-[12px] p-[11px] pl-[3px]"
                       placeholder="Search..."
-                      onChange={(e) => {
+                      onChange={e => {
                         setShowSearchResults(true);
                         setSearchText(e.target.value);
                       }}
                       value={searchText}
                     />
                   </>
-                  <button
-                    className="search-button pr-[9px]"
-                    onClick={() => setSearchText("")}
-                  >
+                  <button className="search-button pr-[9px]" onClick={() => setSearchText("")}>
                     <Image
                       className="cursor-pointer"
                       src="/images/Close.svg"
@@ -226,13 +263,10 @@ const SecondNav = ({ session }: { session: Session }) => {
                       height={20}
                     />
                   </button>
-                  {profiles &&
-                  profiles.length > 0 &&
-                  searchText !== "" &&
-                  showSearchResults ? (
+                  {profiles && profiles.length > 0 && searchText !== "" && showSearchResults ? (
                     <div
                       className={`user-search-box mt-[0px] flex flex-col gap-[5px] absolute z-[9999] left-0 top-[47px] rounded-[10px] border-[1px] border-[#E4E4E7] bg-white py-[10px]`}
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={e => e.stopPropagation()}
                     >
                       {profiles.slice(0, 7).map((profile, index) => {
                         return (
@@ -244,10 +278,9 @@ const SecondNav = ({ session }: { session: Session }) => {
                               <div className="circle-div relative bg-gray-200 dark:border-gray-700">
                                 <Image
                                   src={profile.picture}
-                                  onError={(e) => {
-                                    (
-                                      e.target as HTMLImageElement
-                                    ).src = `https://api.hey.xyz/avatar?id=${profile.id}`;
+                                  onError={e => {
+                                    (e.target as HTMLImageElement).src =
+                                      `https://api.hey.xyz/avatar?id=${profile.id}`;
                                   }}
                                   fill
                                   className="circle-div relative bg-gray-200 dark:border-gray-700"
@@ -255,14 +288,10 @@ const SecondNav = ({ session }: { session: Session }) => {
                                 />
                               </div>
                               <span className="text-[14px] text-black mt-[1px]">
-                                {profile.displayName !== ""
-                                  ? profile.displayName
-                                  : `Display Name`}
+                                {profile.displayName !== "" ? profile.displayName : `Display Name`}
                               </span>
                               <span className="text-[13px] text-[#c1c0c0] mt-[1px]">
-                                {profile.handle !== ""
-                                  ? profile.handle
-                                  : "@lenshandle"}
+                                {profile.handle !== "" ? profile.handle : "@lenshandle"}
                               </span>
                             </div>
                           </Link>
@@ -272,7 +301,7 @@ const SecondNav = ({ session }: { session: Session }) => {
                   ) : loading && searchText !== "" && showSearchResults ? (
                     <div
                       className={`user-search-box mt-[0px] flex flex-col absolute top-[47px] left-0 rounded-[10px] border-[1px] border-[#E4E4E7] bg-white py-[10px] align-middle items-center`}
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={e => e.stopPropagation()}
                     >
                       <Oval
                         visible={true}
@@ -285,9 +314,7 @@ const SecondNav = ({ session }: { session: Session }) => {
                         wrapperStyle={{}}
                         wrapperClass=""
                       />
-                      <span className="font-bold text-[14px] mt-[6px]">
-                        Searching Users
-                      </span>
+                      <span className="font-bold text-[14px] mt-[6px]">Searching Users</span>
                     </div>
                   ) : null}
                 </div>
@@ -316,15 +343,10 @@ const SecondNav = ({ session }: { session: Session }) => {
                   <button onClick={openProfileDropdown}>
                     <div className="w-[34px] h-[34px] sm:w-[34px] sm:h-[34px] relative">
                       <Image
-                        src={
-                          profileData
-                            ? profileData.picture
-                            : "/images/paco-square.svg"
-                        }
-                        onError={(e) => {
-                          (
-                            e.target as HTMLImageElement
-                          ).src = `https://api.hey.xyz/avatar?id=${profileData?.id}`;
+                        src={profileData ? profileData.picture : "/images/paco-square.svg"}
+                        onError={e => {
+                          (e.target as HTMLImageElement).src =
+                            `https://api.hey.xyz/avatar?id=${profileData?.id}`;
                         }}
                         fill
                         className="rounded-[8px] sm:rounded-[8.16px] relative mt-[2px]"
@@ -334,24 +356,16 @@ const SecondNav = ({ session }: { session: Session }) => {
                   </button>
 
                   {/* Dropdown */}
-                  <div
-                    className="absolute right-[0px] top-[55px] z-[9999]"
-                    ref={drowdownRef}
-                  >
+                  <div className="absolute right-[0px] top-[55px] z-[9999]" ref={drowdownRef}>
                     {showProfileDropdown && (
                       <>
-                        <ProfileDropdown
-                          handle={profile?.handle ? profile.handle : undefined}
-                        />
+                        <ProfileDropdown handle={profile?.handle ? profile.handle : undefined} />
                       </>
                     )}
                   </div>
                 </div>
               </div>
-              <div
-                className="navbar-trigger hidden sm:block"
-                onClick={handleMobileMenuToggle}
-              >
+              <div className="navbar-trigger hidden sm:block" onClick={handleMobileMenuToggle}>
                 <Image
                   src="/images/header-trigger.svg"
                   alt="navbar trigger"
@@ -366,9 +380,7 @@ const SecondNav = ({ session }: { session: Session }) => {
               handle={profile?.handle ? profile.handle : undefined}
               menuOpen={isMobileMenuOpen}
               closeMenu={handleMobileMenuToggle}
-              profilePic={
-                profileData ? profileData.picture : "/images/paco-square.svg"
-              }
+              profilePic={profileData ? profileData.picture : "/images/paco-square.svg"}
             />
           </div>
         </div>

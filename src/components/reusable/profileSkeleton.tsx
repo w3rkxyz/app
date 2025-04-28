@@ -20,62 +20,34 @@ const ProfileSkeleton = () => {
       <div className="flex sm:flex-col sm:w-full gap-[24px] pt-[116px] sm:pt-[26px] px-[32px] sm:px-[0px]">
         <div className=" max-w-[320px] min-w-[320px] sm:w-full">
           <div className="w-[160px] h-[160px] sm:w-[80px] sm:h-[80px] relative mb-[16px] ml-[16px]">
-            <Skeleton
-              className="w-full h-full"
-              baseColor="#E4E4E7"
-              borderRadius={"12px"}
-            />
+            <Skeleton className="w-full h-full" baseColor="#E4E4E7" borderRadius={"12px"} />
           </div>
           <h3 className="leading-[19px] text-[16px] font-semibold mb-[0px] sm:mb-[0px]">
-            <Skeleton
-              className="w-full h-[19px]"
-              baseColor="#E4E4E7"
-              borderRadius={"5px"}
-            />
+            <Skeleton className="w-full h-[19px]" baseColor="#E4E4E7" borderRadius={"5px"} />
           </h3>
           <span className="text-[#707070] leading-[16.94px] text-[14px] font-medium mb-[12px] sm:mb-[20px]">
-            <Skeleton
-              className="w-full h-[16.94px]"
-              baseColor="#E4E4E7"
-              borderRadius={"5px"}
-            />
+            <Skeleton className="w-full h-[16.94px]" baseColor="#E4E4E7" borderRadius={"5px"} />
           </span>
           <h3 className="leading-[19px] text-[16px] font-semibold mt-[10px] mb-[12px] sm:mt-[6px]">
-            <Skeleton
-              className="w-full h-[19px]"
-              baseColor="#E4E4E7"
-              borderRadius={"5px"}
-            />
+            <Skeleton className="w-full h-[19px]" baseColor="#E4E4E7" borderRadius={"5px"} />
           </h3>
           <div className="flex gap-[4px] leading-[16.94px] text-[14px] font-medium">
             <span>About me</span>
             <span className="text-[#F71919]">max. 260 characters</span>
           </div>
           <p className="leading-[16.94px] text-[14px] font-medium text-[#707070] mb-[16px]">
-            <Skeleton
-              className="w-full h-[50px]"
-              baseColor="#E4E4E7"
-              borderRadius={"5px"}
-            />
+            <Skeleton className="w-full h-[50px]" baseColor="#E4E4E7" borderRadius={"5px"} />
           </p>
 
           <div className="flex gap-[13px] mb-[16px]">
             <div className="flex flex-col">
-              <Skeleton
-                className="w-full h-[16.94px]"
-                baseColor="#E4E4E7"
-                borderRadius={"5px"}
-              />
+              <Skeleton className="w-full h-[16.94px]" baseColor="#E4E4E7" borderRadius={"5px"} />
               <span className="leading-[16.94px] text-[14px] font-medium text-[#707070]">
                 Following
               </span>
             </div>
             <div className="flex flex-col">
-              <Skeleton
-                className="w-full h-[16.94px]"
-                baseColor="#E4E4E7"
-                borderRadius={"5px"}
-              />
+              <Skeleton className="w-full h-[16.94px]" baseColor="#E4E4E7" borderRadius={"5px"} />
               <span className="leading-[16.94px] text-[14px] font-medium text-[#707070]">
                 Followers
               </span>
@@ -91,35 +63,15 @@ const ProfileSkeleton = () => {
           </div>
           <hr className="bg-[#E4E4E7] h-[1px] mb-[16px]" />
           <div className="flex gap-[12px] mb-[19px]">
-            <Image
-              src="/images/twitter-social.svg"
-              alt="user icon"
-              width={24}
-              height={24}
-            />
+            <Image src="/images/twitter-social.svg" alt="user icon" width={24} height={24} />
 
-            <Image
-              src="/images/github-social.svg"
-              alt="user icon"
-              width={24}
-              height={24}
-            />
+            <Image src="/images/github-social.svg" alt="user icon" width={24} height={24} />
 
-            <Image
-              src="/images/linkedin-social.svg"
-              alt="user icon"
-              width={24}
-              height={24}
-            />
+            <Image src="/images/linkedin-social.svg" alt="user icon" width={24} height={24} />
           </div>
           <div className="flex flex-col gap-[16px] mb-[20px] sm:mb-[0px]">
             <div className="flex gap-[11.6px] items-center">
-              <Image
-                src="/images/earth.svg"
-                alt="earth icon"
-                width={24}
-                height={24}
-              />
+              <Image src="/images/earth.svg" alt="earth icon" width={24} height={24} />
               <Skeleton
                 className="h-full"
                 width={"200px"}
@@ -128,12 +80,7 @@ const ProfileSkeleton = () => {
               />
             </div>
             <div className="flex gap-[14.2px] items-center pl-[3.2px]">
-              <Image
-                src="/images/location.svg"
-                alt="earth icon"
-                width={18.33}
-                height={24}
-              />
+              <Image src="/images/location.svg" alt="earth icon" width={18.33} height={24} />
               <Skeleton
                 className="h-full"
                 width={"200px"}
@@ -142,12 +89,7 @@ const ProfileSkeleton = () => {
               />
             </div>
             <div className="flex gap-[12.7px] items-center">
-              <Image
-                src="/images/w.svg"
-                alt="earth icon"
-                width={24}
-                height={15.3}
-              />
+              <Image src="/images/w.svg" alt="earth icon" width={24} height={15.3} />
               <Skeleton
                 className="h-full"
                 width={"200px"}

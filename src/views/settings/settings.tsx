@@ -3,13 +3,8 @@
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { uploadFileToIPFS, uploadJsonToIPFS } from "@/utils/uploadToIPFS";
-import {
-  useSetProfileMetadata,
-  useSession,
-  SessionType,
-  Profile,
-} from "@lens-protocol/react-web";
-import { MetadataAttributeType, profile } from "@lens-protocol/metadata";
+import { useSetProfileMetadata, useSession, SessionType, Profile } from "@lens-protocol/react-web";
+import { MetadataAttributeType } from "@lens-protocol/metadata";
 import { toast } from "react-hot-toast";
 import getLensProfileData from "@/utils/getLensProfile";
 import { Oval } from "react-loader-spinner";
@@ -34,10 +29,7 @@ const Settings = () => {
   });
 
   useEffect(() => {
-    if (
-      session?.type === SessionType.WithProfile &&
-      session.profile?.metadata
-    ) {
+    if (session?.type === SessionType.WithProfile && session.profile?.metadata) {
       const profile = session.profile;
       const profileData = getLensProfileData(profile);
 
@@ -45,23 +37,13 @@ const Settings = () => {
         name: profileData.displayName,
         picture: profileData.picture,
         cover: profileData.coverPicture,
-        jobTitle: profileData.attributes["job title"]
-          ? profileData.attributes["job title"]
-          : "",
+        jobTitle: profileData.attributes["job title"] ? profileData.attributes["job title"] : "",
         bio: profileData.bio,
         X: profileData.attributes.x ? profileData.attributes.x : "",
-        github: profileData.attributes.github
-          ? profileData.attributes.github
-          : "",
-        linkedin: profileData.attributes.linkedin
-          ? profileData.attributes.linkedin
-          : "",
-        website: profileData.attributes.website
-          ? profileData.attributes.website
-          : "",
-        location: profileData.attributes.location
-          ? profileData.attributes.location
-          : "",
+        github: profileData.attributes.github ? profileData.attributes.github : "",
+        linkedin: profileData.attributes.linkedin ? profileData.attributes.linkedin : "",
+        website: profileData.attributes.website ? profileData.attributes.website : "",
+        location: profileData.attributes.location ? profileData.attributes.location : "",
       };
       setBackgroundImage(handle.cover);
       setPhoto(handle.picture);
@@ -79,7 +61,7 @@ const Settings = () => {
   // Generic change handler for all inputs
   const handleChange = (e: any) => {
     const { name, value } = e.target;
-    setFormState((prevState) => ({
+    setFormState(prevState => ({
       ...prevState,
       [name]: value,
     }));
@@ -92,7 +74,7 @@ const Settings = () => {
       const imageUrl = URL.createObjectURL(file);
       setBackgroundImage(imageUrl);
       const coverLink = await uploadFileToIPFS(cover);
-      setFormState((prevState) => ({
+      setFormState(prevState => ({
         ...prevState,
         ["cover"]: coverLink,
       }));
@@ -106,7 +88,7 @@ const Settings = () => {
       const imageUrl = URL.createObjectURL(file);
       setPhoto(imageUrl);
       const pictureLink = await uploadFileToIPFS(pic);
-      setFormState((prevState) => ({
+      setFormState(prevState => ({
         ...prevState,
         ["picture"]: pictureLink,
       }));
@@ -143,37 +125,28 @@ const Settings = () => {
       },
       {
         key: "linkedin",
-        value:
-          formState.linkedin !== ""
-            ? linkPrepend["linkedin"] + formState.linkedin
-            : "",
+        value: formState.linkedin !== "" ? linkPrepend["linkedin"] + formState.linkedin : "",
         type: MetadataAttributeType.STRING,
       },
       {
         key: "github",
-        value:
-          formState.github !== ""
-            ? linkPrepend["github"] + formState.github
-            : "",
+        value: formState.github !== "" ? linkPrepend["github"] + formState.github : "",
         type: MetadataAttributeType.STRING,
       },
     ];
 
     const attributes = attributesMap.filter(
-      (attribute: {
-        key: string;
-        value: string;
-        type: MetadataAttributeType.STRING;
-      }) => attribute.value !== ""
+      (attribute: { key: string; value: string; type: MetadataAttributeType.STRING }) =>
+        attribute.value !== ""
     );
 
-    const metadata = profile({
+    const metadata = {
       name: formState.name !== "" ? formState.name : undefined,
       bio: formState.bio !== "" ? formState.bio : undefined,
       picture: formState.picture !== "" ? formState.picture : undefined,
       coverPicture: formState.cover !== "" ? formState.cover : undefined,
       attributes: attributes.length !== 0 ? attributes : undefined,
-    });
+    };
 
     const metadataURI = await uploadJsonToIPFS(metadata);
 
@@ -250,9 +223,7 @@ const Settings = () => {
       </div>
       <div className="flex flex-col sm:w-full pt-[230px] settings-xs:pt-[290px] sm:pt-[130px] px-[294px] settings-xs:px-[180px] settings-small:px-[220px] sm:px-[0px]">
         <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
-          <span className="leading-[14.52px] text-[14px] font-medium text-[black]">
-            Name
-          </span>
+          <span className="leading-[14.52px] text-[14px] font-medium text-[black]">Name</span>
           <input
             className="form-input rounded-[12px] p-[11px] border-[1px] border-[#E4E4E7] sm:w-full"
             placeholder="Add your name"
@@ -262,9 +233,7 @@ const Settings = () => {
           />
         </div>
         <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
-          <span className="leading-[14.52px] text-[14px] font-medium text-[black]">
-            Job Title
-          </span>
+          <span className="leading-[14.52px] text-[14px] font-medium text-[black]">Job Title</span>
           <input
             className="form-input rounded-[12px] p-[11px] border-[1px] border-[#E4E4E7] sm:w-full"
             placeholder="Add your job title"
@@ -275,9 +244,7 @@ const Settings = () => {
         </div>
         <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px]">
           <div className="flex gap-[4px] items-center align-middle leading-[16.94px] text-[14px] font-medium">
-            <span className="leading-[14.52px] text-[14px] font-medium text-[black]">
-              Bio
-            </span>
+            <span className="leading-[14.52px] text-[14px] font-medium text-[black]">Bio</span>
             <span className="text-[#F71919]">max. 260 characters</span>
           </div>
           <textarea
@@ -306,9 +273,7 @@ const Settings = () => {
           </div>
         </div>
         <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
-          <span className="leading-[14.52px] text-[14px] font-medium text-[black]">
-            Github
-          </span>
+          <span className="leading-[14.52px] text-[14px] font-medium text-[black]">Github</span>
           <div className="w-full flex">
             <div className="rounded-l-[12px] w-[142px] pl-[10px] bg-[#F2F2F2] border-[1px] border-[#E4E4E7] flex items-center text-[#707070] text-[14px] font-normal leading-[14.52px]">
               https://github.com/
@@ -323,9 +288,7 @@ const Settings = () => {
           </div>
         </div>
         <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
-          <span className="leading-[14.52px] text-[14px] font-medium text-[black]">
-            Linkedin
-          </span>
+          <span className="leading-[14.52px] text-[14px] font-medium text-[black]">Linkedin</span>
           <div className="w-full flex">
             <div className="rounded-l-[12px] w-[142px] pl-[10px] bg-[#F2F2F2] border-[1px] border-[#E4E4E7] flex items-center text-[#707070] text-[14px] font-normal leading-[14.52px]">
               https://linkedin.com/
@@ -340,9 +303,7 @@ const Settings = () => {
           </div>
         </div>
         <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
-          <span className="leading-[14.52px] text-[14px] font-medium text-[black]">
-            Website
-          </span>
+          <span className="leading-[14.52px] text-[14px] font-medium text-[black]">Website</span>
           <input
             className="form-input rounded-[12px] p-[11px] border-[1px] border-[#E4E4E7] sm:w-full"
             placeholder="Website URL"
@@ -352,9 +313,7 @@ const Settings = () => {
           />
         </div>
         <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
-          <span className="leading-[14.52px] text-[14px] font-medium text-[black]">
-            Location
-          </span>
+          <span className="leading-[14.52px] text-[14px] font-medium text-[black]">Location</span>
           <input
             className="form-input rounded-[12px] p-[11px] border-[1px] border-[#E4E4E7] sm:w-full"
             placeholder="Enter Location"

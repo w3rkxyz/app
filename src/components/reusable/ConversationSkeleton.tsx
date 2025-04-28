@@ -24,18 +24,10 @@ const ConversationSkeleton = () => {
               baseColor="#E4E4E7"
               borderRadius={"5px"}
             />
-            <Skeleton
-              className="w-full h-[11.94px] p-0"
-              baseColor="#E4E4E7"
-              borderRadius={"5px"}
-            />
+            <Skeleton className="w-full h-[11.94px] p-0" baseColor="#E4E4E7" borderRadius={"5px"} />
           </div>
         </div>
-        <Skeleton
-          className="w-full h-[12.1px]"
-          baseColor="#E4E4E7"
-          borderRadius={"5px"}
-        />
+        <Skeleton className="w-full h-[12.1px]" baseColor="#E4E4E7" borderRadius={"5px"} />
       </div>
       <Skeleton
         className="w-[300px] h-[12px]"

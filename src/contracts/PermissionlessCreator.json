@@ -464,9 +464,7 @@
       "type": "function"
     },
     {
-      "inputs": [
-        { "internalType": "uint256", "name": "profileId", "type": "uint256" }
-      ],
+      "inputs": [{ "internalType": "uint256", "name": "profileId", "type": "uint256" }],
       "name": "getProfileCreatorUsingCredits",
       "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
       "stateMutability": "view",
@@ -529,27 +527,21 @@
       "type": "function"
     },
     {
-      "inputs": [
-        { "internalType": "uint128", "name": "newPrice", "type": "uint128" }
-      ],
+      "inputs": [{ "internalType": "uint128", "name": "newPrice", "type": "uint128" }],
       "name": "setHandleCreationPrice",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
     },
     {
-      "inputs": [
-        { "internalType": "uint8", "name": "newMinLength", "type": "uint8" }
-      ],
+      "inputs": [{ "internalType": "uint8", "name": "newMinLength", "type": "uint8" }],
       "name": "setHandleLengthMin",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
     },
     {
-      "inputs": [
-        { "internalType": "uint128", "name": "newPrice", "type": "uint128" }
-      ],
+      "inputs": [{ "internalType": "uint128", "name": "newPrice", "type": "uint128" }],
       "name": "setProfileCreationPrice",
       "outputs": [],
       "stateMutability": "nonpayable",

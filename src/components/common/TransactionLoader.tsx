@@ -35,9 +35,7 @@ function TransactionLoader({ variant, classname, text }: AlertProps) {
   return (
     <div className="bg-white rounded-[12px] overflow-hidden border-[1px] border-[#E4E4E7] w-[281px]">
       <div className="border-b-[1px] border-b-[#E4E4E7] w-full pl-[16px] py-[12px]">
-        <span className="font-medium text-[14px] text-[#707070]">
-          Transaction in progress
-        </span>
+        <span className="font-medium text-[14px] text-[#707070]">Transaction in progress</span>
       </div>
       <div className="pl-[16px] pr-[9px] py-[11px] w-full flex items-center">
         <span className="font-medium text-[14px] text-black">{text}</span>

@@ -14,8 +14,7 @@ const CtaSection = () => {
         <div className="cta-wrapper">
           <div className="cta-content-box top-pick-card-shadow py-[64px] px-[75px] sm:py-8 sm:px-10 rounded-[30px] bg-white-gray max-w-[643px] mx-auto">
             <p className="text-[18px] sm:text-[16px] text-center font-primary font-semibold leading-[1.3] text-dark mb-5">
-              Collaborate with us at w3rk to unlock exciting possibilities in
-              the Web 3.0 space.
+              Collaborate with us at w3rk to unlock exciting possibilities in the Web 3.0 space.
             </p>
             <p className="text-[18px] sm:text-[16px] text-center font-primary font-semibold leading-[1.3] text-dark">
               Let’s redefine how work gets done in the decentralized era!

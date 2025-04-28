@@ -41,15 +41,10 @@ const tagColors: any = {
 };
 
 function splitTokens(tokenString: string) {
-  return tokenString.split(",").map((token) => token.trim());
+  return tokenString.split(",").map(token => token.trim());
 }
 
-const ViewJobModal = ({
-  handleCloseModal,
-  closeJobCardModal,
-  type,
-  publication,
-}: Props) => {
+const ViewJobModal = ({ handleCloseModal, closeJobCardModal, type, publication }: Props) => {
   const { execute: hide, loading } = useHidePublication();
   const { address } = useAccount();
   const myDivRef = useRef<HTMLDivElement>(null);
@@ -63,7 +58,7 @@ const ViewJobModal = ({
   var attributes: any = {};
   var tokens: string[] = [];
   if (publication) {
-    publication.metadata.attributes?.map((attribute) => {
+    publication.metadata.attributes?.map(attribute => {
       attributes[attribute.key] = attribute.value;
 
       if (attribute.key === "paid in") {
@@ -88,10 +83,7 @@ const ViewJobModal = ({
     setShowMobile(true);
 
     function handleClickOutside(event: any) {
-      if (
-        myDivRef.current &&
-        !myDivRef.current.contains(event.target as Node)
-      ) {
+      if (myDivRef.current && !myDivRef.current.contains(event.target as Node)) {
         if (handleCloseModal) {
           handleCloseModal();
         }
@@ -151,11 +143,7 @@ const ViewJobModal = ({
               </Link>
             ) : (
               <Image
-                src={
-                  type === "job"
-                    ? "/images/werk.svg"
-                    : "/images/paco-square.svg"
-                }
+                src={type === "job" ? "/images/werk.svg" : "/images/paco-square.svg"}
                 alt="w3rk logo"
                 className="sm:w-[60px] sm:h-[60px]"
                 width={64}
@@ -181,22 +169,12 @@ const ViewJobModal = ({
           {type === "job" ? (
             <button className="flex align-middle items-center gap-[5px] text-[white] leading-[12.1px] text-[14px] font-semibold py-[5.4px] px-[17px] bg-[#C6AAFF] rounded-[4px] h-fit cursor-default">
               <span>Job</span>
-              <Image
-                src="/images/case.svg"
-                alt="suitcase icon"
-                width={14}
-                height={14}
-              />
+              <Image src="/images/case.svg" alt="suitcase icon" width={14} height={14} />
             </button>
           ) : (
             <button className="flex align-middle items-center gap-[5px] text-[white] leading-[12.1px] text-[14px] font-semibold py-[5.4px] px-[17px] bg-[#351A6B] rounded-[4px] h-fit cursor-default">
               <span>Service</span>
-              <Image
-                src="/images/service.svg"
-                alt="suitcase icon"
-                width={14}
-                height={14}
-              />
+              <Image src="/images/service.svg" alt="suitcase icon" width={14} height={14} />
             </button>
           )}
         </div>
@@ -206,18 +184,16 @@ const ViewJobModal = ({
           </div>
         ) : type === "job" ? (
           <div className="width-full rounded-[12px] leading-[19.52px] sm:leading-[16.52px] font-normal text-[16px] sm:text-[12px] border-[1px] border-[#E4E4E7] p-[13px] pb-[90px] sm:p-[9px] sm:pb-[10px] mb-[18px]">
-            We are seeking an experienced Full Stack Developer to help us update
-            and enhance our website. The ideal candidate will have a strong
-            background in both front-end and back-end development, with a keen
-            eye for detail and a passion for creating seamless user experiences.
-            You will be responsible for implementing new features, optimizing
+            We are seeking an experienced Full Stack Developer to help us update and enhance our
+            website. The ideal candidate will have a strong background in both front-end and
+            back-end development, with a keen eye for detail and a passion for creating seamless
+            user experiences. You will be responsible for implementing new features, optimizing
             performance, and ensuring the website remains secure and up-to-date.
             <br />
             <br />
             Responsibilities:
             <br />
-            * Collaborate with our team to understand project requirements and
-            goals.
+            * Collaborate with our team to understand project requirements and goals.
             <br />
             * Develop and implement new features and functionalities.
             <br />
@@ -231,20 +207,18 @@ const ViewJobModal = ({
             ​I have 3+ years of experience specializing in UI/UX
             <br />
             <br />
-            Design which involves mostly working on responsive websites and
-            mobile apps for iOS and Android. I enjoy working with passionate
-            people on exciting digital projects and have had the opportunity to
-            work with both large and small brands.
+            Design which involves mostly working on responsive websites and mobile apps for iOS and
+            Android. I enjoy working with passionate people on exciting digital projects and have
+            had the opportunity to work with both large and small brands.
             <br />
             <br />
             Why should you work with me?
             <br />
-            I can help you to convert your ideas and project goals into
-            products, from wireframes to prototype stage. I will find the best
-            design solutions to resolve all your problems in the most creative
-            way. I believe thoughtful design equals a more effective product or
-            service, it also reinforces your brand values and builds an
-            emotional connection with your users.
+            I can help you to convert your ideas and project goals into products, from wireframes to
+            prototype stage. I will find the best design solutions to resolve all your problems in
+            the most creative way. I believe thoughtful design equals a more effective product or
+            service, it also reinforces your brand values and builds an emotional connection with
+            your users.
             <br />
             <br />
             MY SKILLS
@@ -393,9 +367,7 @@ const ViewJobModal = ({
                       : "bg-[#E4E4E7]"
                   } rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] w-[225px] sm:px-[70px] sm:w-fit cursor-default`}
                 >
-                  {data?.metadata.tags
-                    ? data?.metadata.tags[index]
-                    : "Tag Name"}
+                  {data?.metadata.tags ? data?.metadata.tags[index] : "Tag Name"}
                 </button>
               );
             }
@@ -409,10 +381,7 @@ const ViewJobModal = ({
             Delete
           </button>
         ) : (
-          <Link
-            href={`/messages?handle=${publication?.by.handle?.localName}`}
-            className="mx-auto "
-          >
+          <Link href={`/messages?handle=${publication?.by.handle?.localName}`} className="mx-auto ">
             <button className="w-fit py-[9px] px-[26px] tx-[18px] Sm:py-[8px] sm:px-[23px] tx-[14px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[9px] sm:rounded-[8px] font-semibold mb-[8px]">
               Contact
             </button>

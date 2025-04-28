@@ -13,16 +13,7 @@ interface AlertProps {
   onClose?: () => void;
 }
 
-function Alert({
-  id,
-  variant,
-  classname,
-  title,
-  tag1,
-  tag2,
-  hash,
-  onClose,
-}: AlertProps) {
+function Alert({ id, variant, classname, title, tag1, tag2, hash, onClose }: AlertProps) {
   const theme = "dark";
   let color;
   let icon;
@@ -57,15 +48,11 @@ function Alert({
         <div className="flex flex-col">
           <span className="font-medium text-[14px] text-black">{tag1}</span>
           {tag2 && variant !== "Successful" && (
-            <span className="font-medium text-[12px] text-[#707070] mt-[7px]">
-              {tag2}
-            </span>
+            <span className="font-medium text-[12px] text-[#707070] mt-[7px]">{tag2}</span>
           )}
         </div>
         <Image
-          src={
-            variant === "Successful" ? "/images/succes.svg" : "/images/fail.svg"
-          }
+          src={variant === "Successful" ? "/images/succes.svg" : "/images/fail.svg"}
           alt="state icon"
           width={19}
           height={19}

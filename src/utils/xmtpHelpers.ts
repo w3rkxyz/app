@@ -14,10 +14,7 @@ export const loadKeys = (walletAddress: string): Uint8Array | undefined => {
 };
 
 export const storeKeys = (walletAddress: string, keys: Uint8Array) => {
-  localStorage.setItem(
-    buildLocalStorageKey(walletAddress),
-    Buffer.from(keys).toString(ENCODING)
-  );
+  localStorage.setItem(buildLocalStorageKey(walletAddress), Buffer.from(keys).toString(ENCODING));
 };
 
 export const wipeKeys = (walletAddress: string) => {

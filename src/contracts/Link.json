@@ -106,9 +106,7 @@
       "type": "function"
     },
     {
-      "inputs": [
-        { "internalType": "address", "name": "account", "type": "address" }
-      ],
+      "inputs": [{ "internalType": "address", "name": "account", "type": "address" }],
       "name": "balanceOf",
       "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
       "stateMutability": "view",
@@ -207,9 +205,7 @@
         { "internalType": "bytes", "name": "data", "type": "bytes" }
       ],
       "name": "transferAndCall",
-      "outputs": [
-        { "internalType": "bool", "name": "success", "type": "bool" }
-      ],
+      "outputs": [{ "internalType": "bool", "name": "success", "type": "bool" }],
       "stateMutability": "nonpayable",
       "type": "function"
     },

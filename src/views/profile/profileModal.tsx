@@ -5,11 +5,7 @@ import Image from "next/image";
 import MyButton from "@/components/reusable/Button/Button";
 import Sidebar from "@/components/reusable/Sidebar/Sidebar";
 import Link from "next/link";
-import {
-  article,
-  MetadataAttributeType,
-  textOnly,
-} from "@lens-protocol/metadata";
+import { article, MetadataAttributeType, textOnly } from "@lens-protocol/metadata";
 import { uploadJsonToIPFS } from "@/utils/uploadToIPFS";
 import toast from "react-hot-toast";
 import { useCreatePost } from "@lens-protocol/react-web";
@@ -29,13 +25,11 @@ function removeAtSymbol(text: string) {
 const categories = [
   {
     buttonText: "Blockchain Development",
-    buttonStyles:
-      "bg-[#FFC2C2] mb-[8px] sm:font-bold sm:text-[10px] sm:leading-[11px] sm:w-full",
+    buttonStyles: "bg-[#FFC2C2] mb-[8px] sm:font-bold sm:text-[10px] sm:leading-[11px] sm:w-full",
   },
   {
     buttonText: "Programming & Development",
-    buttonStyles:
-      "bg-[#FFD8C2] mb-[8px] sm:font-bold sm:text-[10px] sm:leading-[11px] sm:w-full",
+    buttonStyles: "bg-[#FFD8C2] mb-[8px] sm:font-bold sm:text-[10px] sm:leading-[11px] sm:w-full",
   },
   {
     buttonText: "Design",
@@ -98,20 +92,15 @@ const tokens = [
 
 function getTokenNamesByIndexes(indexes: number[]): string {
   return indexes
-    .map((index) => {
+    .map(index => {
       const match = tokens[index].text.match(/\(([^)]+)\)/);
       return match ? match[1] : ""; // Return the token name if matched, otherwise return an empty string
     })
-    .filter((name) => name !== "")
+    .filter(name => name !== "")
     .join(", "); // Filter out any empty strings just in case
 }
 
-const ProfileModal = ({
-  handleCloseModal,
-  closeJobCardModal,
-  type,
-  handle,
-}: Props) => {
+const ProfileModal = ({ handleCloseModal, closeJobCardModal, type, handle }: Props) => {
   const { execute, loading, error } = useCreatePost();
   const myDivRef = useRef<HTMLDivElement>(null);
   const tagModalRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -119,9 +108,7 @@ const ProfileModal = ({
   const [showMobile, setShowMobile] = useState(false);
   const [selectedTag, setSelectedTag] = useState<number | null>(null);
   const [showTokens, setShowTokens] = useState(false);
-  const [payementType, setPayementType] = useState<"hourly" | "fixed">(
-    "hourly"
-  );
+  const [payementType, setPayementType] = useState<"hourly" | "fixed">("hourly");
   const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
   const [selectedTokens, setSelectedTokens] = useState<number[]>([]);
   const [tags, setTags] = useState<string[]>(["", "", ""]);
@@ -155,7 +142,7 @@ const ProfileModal = ({
     var temp = [...tags];
     categories.map((category, index) => {
       if (category.buttonText === temp[id]) {
-        const updated = selectedCategories.filter((item) => item !== index);
+        const updated = selectedCategories.filter(item => item !== index);
         setSelectedCategories(updated);
       }
     });
@@ -197,7 +184,7 @@ const ProfileModal = ({
       setSelectedCategories(current);
       handleTagSelect(buttonIndex, categories[index].buttonText);
     } else if (tags[buttonIndex] === categories[index].buttonText) {
-      const updated = selectedCategories.filter((item) => item !== index);
+      const updated = selectedCategories.filter(item => item !== index);
       setSelectedCategories(updated);
       handleTagSelect(buttonIndex, categories[index].buttonText);
     } else {
@@ -206,7 +193,7 @@ const ProfileModal = ({
 
   const onCLickToken = (index: number) => {
     if (selectedTokens.includes(index)) {
-      const updated = selectedTokens.filter((item) => item !== index);
+      const updated = selectedTokens.filter(item => item !== index);
       setSelectedTokens(updated);
     } else {
       var current = [...selectedTokens];
@@ -219,10 +206,7 @@ const ProfileModal = ({
     setShowMobile(true);
 
     function handleClickOutside(event: MouseEvent) {
-      if (
-        myDivRef.current &&
-        !myDivRef.current.contains(event.target as Node)
-      ) {
+      if (myDivRef.current && !myDivRef.current.contains(event.target as Node)) {
         if (handleCloseModal) {
           handleCloseModal();
         } else if (closeJobCardModal) {
@@ -241,10 +225,7 @@ const ProfileModal = ({
         }
       }
 
-      if (
-        tokenModalRef.current &&
-        !tokenModalRef.current.contains(event.target as Node)
-      ) {
+      if (tokenModalRef.current && !tokenModalRef.current.contains(event.target as Node)) {
         setShowTokens(false);
       }
     }
@@ -266,18 +247,14 @@ const ProfileModal = ({
 
   const handlePost = async () => {
     setSavingData(true);
-    var updatedTags = tags.filter((item) => item !== "");
+    var updatedTags = tags.filter(item => item !== "");
     updatedTags = [...updatedTags, type, "w3rk"];
     if (canSubmitPost()) {
-      const publicContent = `${
-        type === "job" ? "📢 Job Opportunity!" : "🛠 Ready for work!"
-      } \n\n${
+      const publicContent = `${type === "job" ? "📢 Job Opportunity!" : "🛠 Ready for work!"} \n\n${
         type === "job"
           ? `Just posted a job on @w3rkxyz for a ${title}`
           : `Just listed my services on @w3rkxyz as a ${title}`
-      }\n\nFor more details please visit www.w3rk.xyz/${removeAtSymbol(
-        handle
-      )}`;
+      }\n\nFor more details please visit www.w3rk.xyz/${removeAtSymbol(handle)}`;
       const heyMetadata = textOnly({
         content: publicContent,
         appId: process.env.NEXT_PUBLIC_APP_ID,
@@ -336,9 +313,7 @@ const ProfileModal = ({
       setSavingData(false);
 
       handleCloseModal?.();
-      type === "job"
-        ? toast.success("Job Posted Succesfully!")
-        : toast.success("Service Listed!");
+      type === "job" ? toast.success("Job Posted Succesfully!") : toast.success("Service Listed!");
     } else {
       toast.error("Fill all fields and select at least one tag!");
     }
@@ -371,7 +346,7 @@ const ProfileModal = ({
           <input
             className="form-input rounded-[12px] p-[11px] border-[1px] border-[#E4E4E7] sm:w-full"
             placeholder="Title your post.."
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={e => setTitle(e.target.value)}
           />
         </div>
         <div className="flex flex-col gap-[4px] sm:gap-[6px] mb-[16px]">
@@ -381,7 +356,7 @@ const ProfileModal = ({
           <textarea
             className="form-input rounded-[12px] p-[11px] h-[160px] border-[1px] border-[#E4E4E7] resize-none sm:w-full"
             placeholder="Type a description.."
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={e => setDescription(e.target.value)}
           />
         </div>
         <div className="flex gap-[10px] mb-[16px]">
@@ -397,7 +372,7 @@ const ProfileModal = ({
               className="form-input rounded-[8px] px-[11px] py-[7px] border-[1px] border-[#E4E4E7]"
               placeholder="$ /hr..."
               type="number"
-              onChange={(e) => {
+              onChange={e => {
                 setPayementType("hourly");
                 setHourlyRate(e.target.value);
               }}
@@ -416,7 +391,7 @@ const ProfileModal = ({
               className={`form-input rounded-[8px] px-[11px] py-[7px] border-[1px] border-[#E4E4E7]`}
               placeholder="$ Amount..."
               type="number"
-              onChange={(e) => {
+              onChange={e => {
                 setPayementType("fixed");
                 setFixedPrice(e.target.value);
               }}
@@ -429,7 +404,7 @@ const ProfileModal = ({
           </span>
           <button
             className="w-[250px] sm:w-full rounded-[8px] border-[1px] border-[#E4E4E7] p-[7px] flex justify-between items-center relative"
-            onClick={(e) => {
+            onClick={e => {
               e.stopPropagation();
               toggleTokensModal();
             }}
@@ -437,7 +412,7 @@ const ProfileModal = ({
           >
             {selectedTokens.length > 0 ? (
               <span className="flex gap-[3px]">
-                {selectedTokens.map((tokenIndex) => {
+                {selectedTokens.map(tokenIndex => {
                   return (
                     <Image
                       src={tokens[tokenIndex].image}
@@ -454,18 +429,11 @@ const ProfileModal = ({
                 Select Tokens
               </span>
             )}
-            <Image
-              src="/images/drop-down.svg"
-              alt="drop-down icon"
-              width={20}
-              height={20}
-            />
+            <Image src="/images/drop-down.svg" alt="drop-down icon" width={20} height={20} />
             <div
               className={`find-work-message-section w-[100%] bg-[#FFFFFF] rounded-[8px] p-[16px] sm:items-start gap-[6px] absolute top-[100%] sm:top-[-265px] left-0
-              border-[1px] border-[#E4E4E7] ${
-                showTokens ? "flex" : "hidden"
-              } flex-col z-[999]`}
-              onClick={(e) => {
+              border-[1px] border-[#E4E4E7] ${showTokens ? "flex" : "hidden"} flex-col z-[999]`}
+              onClick={e => {
                 e.stopPropagation();
               }}
             >
@@ -473,18 +441,11 @@ const ProfileModal = ({
                 <button
                   key={index}
                   className={`flex gap-[8px] items-center rounded-[6px] ${
-                    selectedTokens?.includes(index)
-                      ? "border-[1px] border-black"
-                      : ""
+                    selectedTokens?.includes(index) ? "border-[1px] border-black" : ""
                   }`}
                   onClick={() => onCLickToken(index)}
                 >
-                  <Image
-                    src={token.image}
-                    alt="token icon"
-                    width={20}
-                    height={20}
-                  />
+                  <Image src={token.image} alt="token icon" width={20} height={20} />
                   <span className="font-medium text-[11px] leading-[20px] text-black">
                     {token.text}
                   </span>
@@ -503,25 +464,20 @@ const ProfileModal = ({
                 key={id}
                 className="rounded-[8px] border-[1px] border-[#E4E4E7] px-[9px] py-[10px] flex justify-between items-center w-[200px] relative"
                 onClick={() => handleTagClick(id)}
-                ref={(el) => (tagModalRefs.current[id] = el)}
+                ref={el => (tagModalRefs.current[id] = el)}
               >
                 <>
                   <span className="font-normal leading-[14.52px] text-[12px] text-[#707070]">
                     Add Tag
                   </span>
-                  <Image
-                    src="/images/plus.svg"
-                    alt="drop-down icon"
-                    width={12}
-                    height={12}
-                  />
+                  <Image src="/images/plus.svg" alt="drop-down icon" width={12} height={12} />
                 </>
                 <div
                   className={`find-work-message-section w-[200px] bg-[#FFFFFF] rounded-[8px] p-[20px] sm:items-center gap-[3px] absolute top-[-381px] sm:top-[-478px] left-0
             border-[1px] border-[#E4E4E7] ${
               selectedTag === id ? "flex" : "hidden"
             } flex-col z-[999]`}
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={e => e.stopPropagation()}
                 >
                   {categories.map((button, index) => (
                     <MyButton
@@ -529,9 +485,7 @@ const ProfileModal = ({
                       buttonText={button.buttonText}
                       buttonType="dropdown"
                       buttonStyles={`${button.buttonStyles} ${
-                        selectedCategories?.includes(index)
-                          ? "border-[1px] border-black"
-                          : ""
+                        selectedCategories?.includes(index) ? "border-[1px] border-black" : ""
                       }`}
                       action={() => {
                         onCLickCategory(index, buttonIndex);
@@ -547,7 +501,7 @@ const ProfileModal = ({
                     tagColors[tags[buttonIndex]]
                   }]`} rounded-[8px] text-[12px] font-semibold w-[200px] px-[9px] py-[10px] flex justify-center items-center relative`}
                   onClick={() => handleTagClick(id)}
-                  ref={(el) => (tagModalRefs.current[id] = el)}
+                  ref={el => (tagModalRefs.current[id] = el)}
                 >
                   {tags[buttonIndex]}
                   <div
@@ -555,7 +509,7 @@ const ProfileModal = ({
               border-[1px] border-[#E4E4E7] ${
                 selectedTag === id ? "flex" : "hidden"
               } flex-col z-[999]`}
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={e => e.stopPropagation()}
                   >
                     {categories.map((button, index) => (
                       <MyButton
@@ -563,9 +517,7 @@ const ProfileModal = ({
                         buttonText={button.buttonText}
                         buttonType="dropdown"
                         buttonStyles={`${button.buttonStyles} ${
-                          selectedCategories?.includes(index)
-                            ? "border-[1px] border-black"
-                            : ""
+                          selectedCategories?.includes(index) ? "border-[1px] border-black" : ""
                         }`}
                         action={() => {
                           onCLickCategory(index, buttonIndex);

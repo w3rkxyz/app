@@ -75,9 +75,7 @@ const ContractCard = ({ onCardClick, contractDetails }: CardProps) => {
   );
   const [userData, setUserData] = useState<UserProfile>();
   const { data: profile, loading: profileLoading } = useProfile({
-    forProfileId: showClientView
-      ? contractDetails.freelancerHandle
-      : contractDetails.clientHandle,
+    forProfileId: showClientView ? contractDetails.freelancerHandle : contractDetails.clientHandle,
   });
   const [loadingUser, setLoadingUser] = useState(true);
 
@@ -102,10 +100,8 @@ const ContractCard = ({ onCardClick, contractDetails }: CardProps) => {
           {!loadingUser && userData ? (
             <Image
               src={userData.picture}
-              onError={(e) => {
-                (
-                  e.target as HTMLImageElement
-                ).src = `https://api.hey.xyz/avatar?id=${userData.id}`;
+              onError={e => {
+                (e.target as HTMLImageElement).src = `https://api.hey.xyz/avatar?id=${userData.id}`;
               }}
               alt="paco pic"
               width={46}

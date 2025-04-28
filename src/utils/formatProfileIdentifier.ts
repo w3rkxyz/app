@@ -1,4 +1,4 @@
-import { HandleInfo, Profile } from '@lens-protocol/react-web';
+import { HandleInfo, Profile } from "@lens-protocol/react-web";
 
 function formatHandle(handle: HandleInfo): string {
   return `@${handle.fullHandle}`;

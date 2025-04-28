@@ -39,54 +39,29 @@ const ProfileDropdown = ({ handle }: { handle?: HandleInfo }) => {
       <div className="flex flex-col gap-[8px] pt-[10px] pb-[5px] pr-[15px] bg-white border-b-[1px] border-b-[#E4E4E7]">
         <Link href={`/u/${handle?.localName}`}>
           <div className="drop-down-item">
-            <Image
-              src="/images/user.svg"
-              width={22}
-              height={22}
-              alt="person icon"
-            ></Image>
+            <Image src="/images/user.svg" width={22} height={22} alt="person icon"></Image>
             <span className="drop-down-text">My Profile</span>
           </div>
         </Link>
         <Link href="/contracts">
           <div className="drop-down-item">
-            <Image
-              src="/images/contract.svg"
-              width={22}
-              height={22}
-              alt="person icon"
-            ></Image>
+            <Image src="/images/contract.svg" width={22} height={22} alt="person icon"></Image>
             <span className="drop-down-text">My Contracts</span>
           </div>
         </Link>
         <Link href="/settings">
           <div className="drop-down-item">
-            <Image
-              src="/images/settings.svg"
-              width={22}
-              height={22}
-              alt="person icon"
-            ></Image>
+            <Image src="/images/settings.svg" width={22} height={22} alt="person icon"></Image>
             <span className="drop-down-text">Settings</span>
           </div>
         </Link>
         <div className="drop-down-item" onClick={handleSwitchProfile}>
-          <Image
-            src="/images/switch.svg"
-            width={22}
-            height={22}
-            alt="person icon"
-          ></Image>
+          <Image src="/images/switch.svg" width={22} height={22} alt="person icon"></Image>
           <span className="drop-down-text">Switch Profile</span>
         </div>
       </div>
       <div className="drop-down-item pt-[8px] pb-[7px]" onClick={handleLogOut}>
-        <Image
-          src="/images/exit.svg"
-          width={22}
-          height={22}
-          alt="person icon"
-        ></Image>
+        <Image src="/images/exit.svg" width={22} height={22} alt="person icon"></Image>
         <span className="drop-down-text">Log Out</span>
       </div>
     </div>

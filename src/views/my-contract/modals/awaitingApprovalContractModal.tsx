@@ -31,10 +31,7 @@ function formatDate(dateString: Date) {
   });
 }
 
-const AwaitingApprovalContractModal = ({
-  handleCloseModal,
-  contractDetails,
-}: Props) => {
+const AwaitingApprovalContractModal = ({ handleCloseModal, contractDetails }: Props) => {
   const dispatch = useDispatch();
   const { address } = useAccount();
   const myDivRef = useRef<HTMLDivElement>(null);
@@ -47,9 +44,7 @@ const AwaitingApprovalContractModal = ({
   const [showNewDatePicker, setShowNewDatePicker] = useState(false);
   const [userData, setUserData] = useState<UserProfile>();
   const { data: profile, loading: profileLoading } = useProfile({
-    forProfileId: showClientView
-      ? contractDetails.freelancerHandle
-      : contractDetails.clientHandle,
+    forProfileId: showClientView ? contractDetails.freelancerHandle : contractDetails.clientHandle,
   });
   // const { data: profile, loading: profileLoading } = useProfile({
   //   forHandle: "@adam_",
@@ -60,10 +55,7 @@ const AwaitingApprovalContractModal = ({
     setShowMobile(true);
 
     function handleClickOutside(event: any) {
-      if (
-        myDivRef.current &&
-        !myDivRef.current.contains(event.target as Node)
-      ) {
+      if (myDivRef.current && !myDivRef.current.contains(event.target as Node)) {
         if (handleCloseModal) {
           handleCloseModal();
         }
@@ -90,10 +82,7 @@ const AwaitingApprovalContractModal = ({
   };
 
   const handleRelease = async () => {
-    if (
-      contractDetails.escrowId !== undefined &&
-      contractDetails.id !== undefined
-    ) {
+    if (contractDetails.escrowId !== undefined && contractDetails.id !== undefined) {
       dispatch(
         openLoader({
           displaytransactionLoader: true,
@@ -101,11 +90,7 @@ const AwaitingApprovalContractModal = ({
         })
       );
 
-      const hash = await release_payement(
-        contractDetails.id,
-        contractDetails,
-        dispatch
-      );
+      const hash = await release_payement(contractDetails.id, contractDetails, dispatch);
       dispatch(
         openAlert({
           displayAlert: true,
@@ -167,10 +152,9 @@ const AwaitingApprovalContractModal = ({
             <div className="flex gap-[6px] items-center">
               <Image
                 src={userData.picture}
-                onError={(e) => {
-                  (
-                    e.target as HTMLImageElement
-                  ).src = `https://api.hey.xyz/avatar?id=${userData.id}`;
+                onError={e => {
+                  (e.target as HTMLImageElement).src =
+                    `https://api.hey.xyz/avatar?id=${userData.id}`;
                 }}
                 alt="paco pic"
                 width={46}
@@ -193,11 +177,7 @@ const AwaitingApprovalContractModal = ({
             </Link>
           </div>
         ) : (
-          <Skeleton
-            className="w-full h-[80px]"
-            baseColor="#E4E4E7"
-            borderRadius={"12px"}
-          />
+          <Skeleton className="w-full h-[80px]" baseColor="#E4E4E7" borderRadius={"12px"} />
         )}
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
         <h3 className="text-[16px] leading-[19.36px] font-semibold mb-[6px]">
@@ -208,9 +188,7 @@ const AwaitingApprovalContractModal = ({
         </p>
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
         <div className="flex flex-col gap-[6px]">
-          <span className="text-[14px] leading-[16.94px] font-medium">
-            Client Wallet Address
-          </span>
+          <span className="text-[14px] leading-[16.94px] font-medium">Client Wallet Address</span>
           <span className="text-[12px] leading-[14.52px] font-normal">
             {contractDetails.clientAddress}
           </span>
@@ -226,9 +204,7 @@ const AwaitingApprovalContractModal = ({
         </div>
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
         <div className="flex flex-col gap-[6px]">
-          <span className="text-[14px] leading-[16.94px] font-medium">
-            Payment Amount
-          </span>
+          <span className="text-[14px] leading-[16.94px] font-medium">Payment Amount</span>
           <span className="text-[12px] leading-[14.52px] font-normal">
             ${contractDetails.paymentAmount}
           </span>
@@ -236,18 +212,14 @@ const AwaitingApprovalContractModal = ({
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
         <div className="flex sm:flex-col w-full justify-between sm:justify-start sm:gap-[6px]">
           <div className="flex flex-col gap-[6px]">
-            <span className="text-[14px] leading-[16.94px] font-medium">
-              Due Date
-            </span>
+            <span className="text-[14px] leading-[16.94px] font-medium">Due Date</span>
             <span className="text-[12px] leading-[14.52px] font-normal">
               {formatDate(contractDetails.dueDate)}
             </span>
           </div>
           {showNewDatePicker && (
             <div className="w-1/2 sm:w-full">
-              <span
-                className={`leading-[14.52px] text-[14px] font-mediumtext-[black]`}
-              >
+              <span className={`leading-[14.52px] text-[14px] font-mediumtext-[black]`}>
                 New Due Date
               </span>
               <button
@@ -256,17 +228,12 @@ const AwaitingApprovalContractModal = ({
               >
                 <DatePicker
                   selected={newDueDate}
-                  onSelect={(date) => handlePickDate(date)}
+                  onSelect={date => handlePickDate(date)}
                   className="font-normal leading-[14.52px] text-[14px] text-[#707070]"
                   open={showDatePicker}
                   onClickOutside={() => setShowDatePicker(false)}
                 />
-                <Image
-                  src="/images/calender.svg"
-                  alt="drop-down icon"
-                  width={20}
-                  height={20}
-                />
+                <Image src="/images/calender.svg" alt="drop-down icon" width={20} height={20} />
               </button>
             </div>
           )}

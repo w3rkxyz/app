@@ -3,22 +3,11 @@ import React from "react";
 interface ButtonElement {
   buttonText: string;
   buttonStyles: string;
-  buttonType:
-    | "primary"
-    | "secondary"
-    | "accent"
-    | "tertiary"
-    | "custom"
-    | "dropdown";
+  buttonType: "primary" | "secondary" | "accent" | "tertiary" | "custom" | "dropdown";
   action?: any;
 }
 
-const MyButton: React.FC<ButtonElement> = ({
-  buttonText,
-  buttonType,
-  buttonStyles,
-  action,
-}) => {
+const MyButton: React.FC<ButtonElement> = ({ buttonText, buttonType, buttonStyles, action }) => {
   const getButtonTypes = (type: string) => {
     switch (type) {
       case "primary":
@@ -41,7 +30,7 @@ const MyButton: React.FC<ButtonElement> = ({
       className={` ${buttonStyles} ${getButtonTypes(buttonType)} ${
         buttonType === "secondary" || "dropdown" ? "button-shadow" : ""
       }`}
-      onClick={(e) => {
+      onClick={e => {
         e.stopPropagation();
         action?.();
       }}

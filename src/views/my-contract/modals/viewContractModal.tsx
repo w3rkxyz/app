@@ -5,7 +5,7 @@ import Image from "next/image";
 import MyButton from "@/components/reusable/Button/Button";
 import { useAccount } from "wagmi";
 import { activeContractDetails, contractDetails } from "@/types/types";
-import { useProfile } from "@lens-protocol/react-web";
+import { useProfile, useSession, SessionType } from "@lens-protocol/react-web";
 import getLensProfileData, { UserProfile } from "@/utils/getLensProfile";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
@@ -38,20 +38,16 @@ const ViewContractModal = ({ handleCloseModal, contractDetails }: Props) => {
   );
   const [userData, setUserData] = useState<UserProfile>();
   const { data: profile, loading: profileLoading } = useProfile({
-    forProfileId: showClientView
-      ? contractDetails.freelancerHandle
-      : contractDetails.clientHandle,
+    forProfileId: showClientView ? contractDetails.freelancerHandle : contractDetails.clientHandle,
   });
   const [loadingUser, setLoadingUser] = useState(true);
+  const { data: session } = useSession();
 
   useEffect(() => {
     setShowMobile(true);
 
     function handleClickOutside(event: any) {
-      if (
-        myDivRef.current &&
-        !myDivRef.current.contains(event.target as Node)
-      ) {
+      if (myDivRef.current && !myDivRef.current.contains(event.target as Node)) {
         if (handleCloseModal) {
           handleCloseModal();
         }
@@ -136,10 +132,13 @@ const ViewContractModal = ({ handleCloseModal, contractDetails }: Props) => {
 
   const handleAccept = async () => {
     if (contractDetails.id !== undefined) {
+      const senderHandle =
+        session?.type === SessionType.WithProfile ? session.profile.handle?.localName : undefined;
       const hash = await accept_proposal(
         contractDetails.id,
         contractDetails,
-        dispatch
+        dispatch,
+        senderHandle
       );
       if (hash !== undefined) {
         dispatch(
@@ -172,8 +171,7 @@ const ViewContractModal = ({ handleCloseModal, contractDetails }: Props) => {
     >
       <div className="w-[667px] sm:w-full flex justify-between items-center py-[13px] border-b-[1px] border-b-[#E4E4E7] rounded-none sm:rounded-tl-[12px] sm:rounded-tr-[12px]">
         <span className="leading-[14.52px] text-[14px] font-semibold text-[black]">
-          Contract Proposal Summary -{" "}
-          {showClientView ? "Client View" : "Freelancer View"}
+          Contract Proposal Summary - {showClientView ? "Client View" : "Freelancer View"}
         </span>
         <Image
           onClick={handleCloseModal}
@@ -190,10 +188,9 @@ const ViewContractModal = ({ handleCloseModal, contractDetails }: Props) => {
             <div className="flex gap-[6px] items-center">
               <Image
                 src={userData.picture}
-                onError={(e) => {
-                  (
-                    e.target as HTMLImageElement
-                  ).src = `https://api.hey.xyz/avatar?id=${userData.id}`;
+                onError={e => {
+                  (e.target as HTMLImageElement).src =
+                    `https://api.hey.xyz/avatar?id=${userData.id}`;
                 }}
                 alt="paco pic"
                 width={46}
@@ -216,11 +213,7 @@ const ViewContractModal = ({ handleCloseModal, contractDetails }: Props) => {
             </Link>
           </div>
         ) : (
-          <Skeleton
-            className="w-full h-[80px]"
-            baseColor="#E4E4E7"
-            borderRadius={"12px"}
-          />
+          <Skeleton className="w-full h-[80px]" baseColor="#E4E4E7" borderRadius={"12px"} />
         )}
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
         <h3 className="text-[16px] leading-[19.36px] font-semibold mb-[6px]">
@@ -231,9 +224,7 @@ const ViewContractModal = ({ handleCloseModal, contractDetails }: Props) => {
         </p>
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
         <div className="flex flex-col gap-[6px]">
-          <span className="text-[14px] leading-[16.94px] font-medium">
-            Client Wallet Address
-          </span>
+          <span className="text-[14px] leading-[16.94px] font-medium">Client Wallet Address</span>
           <span className="text-[12px] leading-[14.52px] font-normal">
             {contractDetails.clientAddress}
           </span>
@@ -249,18 +240,14 @@ const ViewContractModal = ({ handleCloseModal, contractDetails }: Props) => {
         </div>
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
         <div className="flex flex-col gap-[6px]">
-          <span className="text-[14px] leading-[16.94px] font-medium">
-            Payment Amount
-          </span>
+          <span className="text-[14px] leading-[16.94px] font-medium">Payment Amount</span>
           <span className="text-[12px] leading-[14.52px] font-normal">
             ${contractDetails.paymentAmount}
           </span>
         </div>
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
         <div className="flex flex-col gap-[6px]">
-          <span className="text-[14px] leading-[16.94px] font-medium">
-            Due Date
-          </span>
+          <span className="text-[14px] leading-[16.94px] font-medium">Due Date</span>
           <span className="text-[12px] leading-[14.52px] font-normal">
             {formatDate(contractDetails.dueDate)}
           </span>
@@ -269,8 +256,7 @@ const ViewContractModal = ({ handleCloseModal, contractDetails }: Props) => {
         {!showClientView && (
           <div className="flex flex-col gap-[6px] mb-[16px] sm:mb-[16px]">
             <span className="text-[14px] leading-[16.94px] font-medium text-[#351A6B]">
-              Please contact the client directly to request any contract
-              modifications.
+              Please contact the client directly to request any contract modifications.
             </span>
           </div>
         )}

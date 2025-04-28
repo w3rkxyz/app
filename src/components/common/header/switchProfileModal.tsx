@@ -1,12 +1,6 @@
 import Image from "next/image";
 import { useEffect } from "react";
-import {
-  profileId,
-  useLogin,
-  useProfiles,
-  Profile,
-  useLogout,
-} from "@lens-protocol/react-web";
+import { profileId, useLogin, useProfiles, Profile, useLogout } from "@lens-protocol/react-web";
 import { toast } from "react-hot-toast";
 import style from "./form.module.css";
 import { formatProfileIdentifier } from "../../../utils/formatProfileIdentifier";
@@ -47,11 +41,7 @@ export function SwitchForm({ owner }: { owner: string }) {
     });
 
     if (result.isSuccess()) {
-      toast.success(
-        `Welcome ${String(
-          result.value && formatProfileIdentifier(result.value)
-        )}`
-      );
+      toast.success(`Welcome ${String(result.value && formatProfileIdentifier(result.value))}`);
 
       profiles?.map((profile: any) => {
         if (profile.id === id) {
@@ -113,9 +103,7 @@ export function SwitchForm({ owner }: { owner: string }) {
         </div>
         <div className="p-[16px] pt-[12px] flex flex-col">
           {loadingProfiles ? (
-            <span className="text-[14px] leading-[14.52px] font-medium mb-[4px]">
-              Loading...
-            </span>
+            <span className="text-[14px] leading-[14.52px] font-medium mb-[4px]">Loading...</span>
           ) : profiles?.length === 0 ? (
             <span className="text-[14px] leading-[14.52px] font-medium mb-[4px]">
               No Lens Handle Found

@@ -23,10 +23,7 @@ const Navbar = () => {
   };
   useEffect(() => {
     const handleClickOutsideModal = (event: MouseEvent) => {
-      if (
-        isMobileMenuOpen &&
-        (event.target as HTMLElement).closest(".modal-content") === null
-      ) {
+      if (isMobileMenuOpen && (event.target as HTMLElement).closest(".modal-content") === null) {
         closeMobileMenu();
       }
     };

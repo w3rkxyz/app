@@ -51,7 +51,7 @@ const JobCard = ({
 
   var attributes: any = {};
   if (publication) {
-    publication.metadata.attributes?.map((attribute) => {
+    publication.metadata.attributes?.map(attribute => {
       attributes[attribute.key] = attribute.value;
     });
   }
@@ -74,7 +74,7 @@ const JobCard = ({
           {profileData ? (
             <Link
               href={`/u/${profileData?.userLink}`}
-              onClick={(e) => e.stopPropagation()}
+              onClick={e => e.stopPropagation()}
               className="p-0 m-0 h-[60px] w-[60px]"
             >
               <Image
@@ -87,9 +87,7 @@ const JobCard = ({
             </Link>
           ) : (
             <Image
-              src={
-                type === "job" ? "/images/werk.svg" : "/images/paco-square.svg"
-              }
+              src={type === "job" ? "/images/werk.svg" : "/images/paco-square.svg"}
               alt="w3rk logo"
               className="rounded-[8px]"
               width={60}
@@ -115,22 +113,12 @@ const JobCard = ({
         {type === "job" ? (
           <button className="flex align-middle gap-[5px] text-[white] leading-[12.1px] text-[12px] font-semibold py-[5.4px] px-[17px] bg-[#C6AAFF] rounded-[4px] h-fit">
             <span>Job</span>
-            <Image
-              src="/images/case.svg"
-              alt="suitcase icon"
-              width={12}
-              height={12}
-            />
+            <Image src="/images/case.svg" alt="suitcase icon" width={12} height={12} />
           </button>
         ) : (
           <button className="flex align-middle gap-[5px] text-[white] leading-[12.1px] text-[12px] font-semibold py-[5.4px] px-[17px] bg-[#351A6B] rounded-[4px] h-fit">
             <span>Service</span>
-            <Image
-              src="/images/service.svg"
-              alt="suitcase icon"
-              width={12}
-              height={12}
-            />
+            <Image src="/images/service.svg" alt="suitcase icon" width={12} height={12} />
           </button>
         )}
       </div>

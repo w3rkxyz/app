@@ -6,6 +6,9 @@ import { useSelector } from "react-redux";
 import { useAccount } from "wagmi";
 import AlertModal from "@/components/common/Alert";
 import TransactionLoader from "@/components/common/TransactionLoader";
+import { useEffect, useState } from "react";
+import { Notification, getNotifications } from "@/utils/firebase";
+import NotificationPopup from "@/components/common/NotificationPopup";
 
 export default function ModalWrapper({
   children,
@@ -13,9 +16,37 @@ export default function ModalWrapper({
   children: React.ReactNode;
 }>) {
   const { loginModal, switchModal } = useSelector((state: any) => state.app);
-  const { displayAlert, alertData, displaytransactionLoader, loaderText } =
-    useSelector((state: any) => state.alerts);
+  const { displayAlert, alertData, displaytransactionLoader, loaderText } = useSelector(
+    (state: any) => state.alerts
+  );
   const { address } = useAccount();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [activeNotification, setActiveNotification] = useState<Notification | null>(null);
+
+  useEffect(() => {
+    if (!address) return;
+
+    const unsubscribe = getNotifications(address, newNotifications => {
+      // Filter for unread notifications
+      const unreadNotifications = newNotifications.filter(n => !n.read);
+      setNotifications(unreadNotifications);
+    });
+
+    return () => unsubscribe();
+  }, [address]);
+
+  useEffect(() => {
+    if (notifications.length > 0 && !activeNotification) {
+      // Show the first unread notification
+      setActiveNotification(notifications[0]);
+    }
+  }, [notifications, activeNotification]);
+
+  const handleNotificationClose = () => {
+    setActiveNotification(null);
+    // Remove the shown notification from the queue
+    setNotifications(prev => prev.slice(1));
+  };
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -30,6 +61,11 @@ export default function ModalWrapper({
       {displaytransactionLoader && (
         <div className="fixed right-[30px] top-[30px] z-[999999999999]">
           <TransactionLoader {...alertData} text={loaderText} />
+        </div>
+      )}
+      {activeNotification && (
+        <div className="fixed right-[30px] top-[30px] z-[999999999999]">
+          <NotificationPopup notification={activeNotification} onClose={handleNotificationClose} />
         </div>
       )}
     </div>
