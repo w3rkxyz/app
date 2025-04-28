@@ -144,8 +144,6 @@ const FindWork = () => {
   };
 
   useEffect(() => {
-    console.log("There was an update");
-    console.log(hasMore);
     if (publications) {
       setData(publications.filter(publication => publication.isHidden === false));
       console.log("Publications: ", publications);
