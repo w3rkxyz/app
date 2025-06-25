@@ -16,9 +16,8 @@ import { setLensProfile, displayLoginModal } from "@/redux/app";
 import { useState } from "react";
 import getLensProfileData, { UserProfile } from "@/utils/getLensProfile";
 import { create_new_profile, create_profile } from "@/api";
-import { useAccount } from "wagmi";
 import { Oval } from "react-loader-spinner";
-import { useAppKitAccount } from "@reown/appkit/react";
+import { useAccount } from "wagmi";
 import { LensClient, development } from "@lens-protocol/client";
 import { openAlert, closeAlert } from "@/redux/alerts";
 
@@ -30,8 +29,7 @@ export function LoginForm({
   owner: string;
 }) {
   const dispatch = useDispatch();
-  // const { address } = useAccount();
-  const { address } = useAppKitAccount();
+  const { address } = useAccount();
   const { execute: validateHandle, loading: verifying } = useValidateHandle();
   const { execute: createProfile, loading: creating } = useCreateProfile();
   const { execute: login, loading: isLoginPending } = useLogin();

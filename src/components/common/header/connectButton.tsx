@@ -2,14 +2,14 @@ import { ConnectKitButton } from "connectkit";
 import React from "react";
 import Link from "next/link";
 import { SessionType, useSession } from "@lens-protocol/react-web";
-import {  useAppKitAccount } from "@reown/appkit/react";
+import { useAccount } from "wagmi";
 import { useDispatch } from "react-redux";
 import { displayLoginModal } from "@/redux/app";
 
 export const Connect = () => {
   const { data: session, loading: sessionLoading } = useSession();
   const dispatch = useDispatch();
-  const { isConnected } = useAppKitAccount();
+  const { isConnected } = useAccount();
 
   if (
     isConnected &&
@@ -46,6 +46,10 @@ export const Connect = () => {
   //   );
   // }
   else {
-    return <ConnectKitButton />;
+    return (
+      <div className="flex justify-center items-center w-full">
+        <ConnectKitButton />
+      </div>
+    );
   }
 };
