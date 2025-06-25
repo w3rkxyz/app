@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import ConditionalNav from "@/components/common/header/conditionalNav";
-import "@rainbow-me/rainbowkit/styles.css";
 import ContextProvider from "./_context";
 import { Toaster } from "react-hot-toast";
 import ClientProvider from "./_clientProvider";
