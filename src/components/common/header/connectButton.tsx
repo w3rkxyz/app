@@ -1,15 +1,14 @@
-import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { ConnectKitButton } from "connectkit";
+import React from "react";
 import Link from "next/link";
 import { SessionType, useSession } from "@lens-protocol/react-web";
-import { useAccount } from "wagmi";
-import { useAppKit, useAppKitAccount } from "@reown/appkit/react";
+import {  useAppKitAccount } from "@reown/appkit/react";
 import { useDispatch } from "react-redux";
 import { displayLoginModal } from "@/redux/app";
 
 export const Connect = () => {
   const { data: session, loading: sessionLoading } = useSession();
   const dispatch = useDispatch();
-  const { open } = useAppKit();
   const { isConnected } = useAppKitAccount();
 
   if (
@@ -47,14 +46,6 @@ export const Connect = () => {
   //   );
   // }
   else {
-    return (
-      <button
-        type="button"
-        className="button-primary mx-auto"
-        onClick={() => open()}
-      >
-        Connect Wallet
-      </button>
-    );
+    return <ConnectKitButton />;
   }
 };
