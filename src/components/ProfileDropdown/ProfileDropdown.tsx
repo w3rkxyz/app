@@ -6,6 +6,7 @@ import React, { useState } from "react";
 import { HandleInfo, useLogout } from "@lens-protocol/react-web";
 import { useAccount, useDisconnect } from "wagmi";
 import { useDispatch } from "react-redux";
+import { useRouter } from "next/router";
 import { displayLoginModal, displaySwitchModal } from "@/redux/app";
 import { wipeKeys } from "@/utils/xmtpHelpers";
 
@@ -13,6 +14,7 @@ const ProfileDropdown = ({ handle }: { handle?: HandleInfo }) => {
   const { execute: logout, loading } = useLogout();
   const dispatch = useDispatch();
   const { disconnect } = useDisconnect();
+  const router = useRouter();
 
   const handleLogOut = async () => {
     if (handle) {
@@ -20,7 +22,7 @@ const ProfileDropdown = ({ handle }: { handle?: HandleInfo }) => {
       await logout();
       disconnect();
       wipeKeys(handle.ownedBy);
-      window.location.href = "/";
+      router.push("/"); // ✅ no page reload
     }
   };
 

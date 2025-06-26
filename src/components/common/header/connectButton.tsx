@@ -5,12 +5,18 @@ import { SessionType, useSession } from "@lens-protocol/react-web";
 import { useAccount } from "wagmi";
 import { useDispatch } from "react-redux";
 import { displayLoginModal } from "@/redux/app";
+import { useModal } from "connectkit";
+import { useChainId, useConfig } from "wagmi";
 
 export const Connect = () => {
   const { data: session, loading: sessionLoading } = useSession();
   const dispatch = useDispatch();
   const { isConnected } = useAccount();
-
+  const chainId = useChainId();
+  const config = useConfig();
+  const { openSwitchNetworks } = useModal();
+  const currentChain = config.chains.find((chain) => chain.id === chainId);
+  const isUnsupported = !currentChain;
   if (
     isConnected &&
     !sessionLoading &&
@@ -33,23 +39,23 @@ export const Connect = () => {
         Login
       </button>
     );
-  }
-  // else if (chain?.unsupported) {
-  //   return (
-  //     <button
-  //       onClick={openChainModal}
-  //       type="button"
-  //       className="button-primary ml-auto"
-  //     >
-  //       Wrong network
-  //     </button>
-  //   );
-  // }
-  else {
+  } else if (isUnsupported) {
     return (
-      <div className="flex justify-center items-center w-full">
-        <ConnectKitButton />
-      </div>
+      <button onClick={openSwitchNetworks} className="button-primary mx-auto">
+        Wrong Network
+      </button>
+    );
+  } else {
+    return (
+      <ConnectKitButton.Custom>
+        {({ isConnected, show, address, ensName }) => {
+          return (
+            <button className="button-primary mx-auto" onClick={show}>
+              {isConnected ? ensName ?? address : "Sign In"}
+            </button>
+          );
+        }}
+      </ConnectKitButton.Custom>
     );
   }
 };
