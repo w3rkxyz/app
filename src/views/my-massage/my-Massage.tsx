@@ -5,20 +5,11 @@ import Image from "next/image";
 import NewConversation from "./newConversation";
 import getCurrentTime from "@/utils/currentTime";
 import { Client, Conversation, DecodedMessage } from "@xmtp/xmtp-js";
-import {
-  Profile,
-  ProfileId,
-  useSession,
-  SessionType,
-  useProfiles,
-  useProfile,
-  profileId,
-  Session,
-} from "@lens-protocol/react-web";
+import {getLensClient} from "@/client"
 import toast from "react-hot-toast"; // Get the keys using a valid Signer. Save them somewhere secure.
 import { useEthersSigner } from "@/utils/getSigner";
 import moment from "moment";
-import getLensProfileData, { UserProfile } from "@/utils/getLensProfile";
+import getLensAccountData, {AccountData} from "@/utils/getLensProfile"
 import Link from "next/link";
 import { loadKeys, storeKeys } from "@/utils/xmtpHelpers";
 import { useAccount } from "wagmi";
@@ -33,6 +24,8 @@ import {
 import { uploadFileToIPFS, uploadJsonToIPFS } from "@/utils/uploadToIPFS";
 import axios from "axios";
 import { ContentTypeReadReceipt, ReadReceiptCodec } from "@xmtp/content-type-read-receipt";
+import { SessionClient, useAccount as useLensAccount } from '@lens-protocol/react'
+import {useSelector} from "react-redux"
 
 const PREFIX = "lens.dev/dm";
 
@@ -46,7 +39,7 @@ const isLink = (text: string): boolean => {
 };
 
 interface ConversationProp {
-  user: UserProfile;
+  user: AccountData;
   conversation: Conversation;
   lastMessage: string;
   lastMessageTime: string | Date;
@@ -120,22 +113,27 @@ const sortMessages = (messages: ConversationProp[]): ConversationProp[] => {
 };
 
 const MyMessageOpenChat = ({ keys }: { keys: any }) => {
+  console.log('Keys: ', keys)
+  const { user: userProfile } = useSelector((state: any) => state.app);
   const searchParams = useSearchParams();
   const handle = searchParams.get("handle");
   const { address } = useAccount();
   const [showSkeleleton, setShowSkeleton] = useState(keys !== undefined);
   const [messagesEnabled, setMessagesEnabled] = useState(keys !== undefined);
-  const { data: session, loading: sessionLoading } = useSession();
+  // const { data: session, loading: sessionLoading } = useSession();
   const signer = useEthersSigner();
-  const [chatUserIds, setChatUserIds] = useState<ProfileId[]>([]);
-  const { data: profile, loading: profileLoading } = useProfile({
-    forHandle: `lens/${handle}`,
+  const [chatUserIds, setChatUserIds] = useState<any[]>([]);
+  // const { data: profile, loading: profileLoading } = useProfile({
+  //   forHandle: `lens/${handle}`,
+  // });
+  const { data: profile, loading: profileLoading } = useLensAccount({
+    username: { localName: handle? handle : '' },
   });
-  const { data: profiles } = useProfiles({
-    where: {
-      profileIds: chatUserIds,
-    },
-  });
+  // const { data: profiles } = useProfiles({
+  //   where: {
+  //     profileIds: chatUserIds,
+  //   },
+  // });
   const [loading, setLoading] = useState(true);
   const [profilesData, setProfilesData] = useState<
     {
@@ -150,6 +148,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
     }[]
   >([]);
   const [isOpen, setIsOpen] = useState(false);
+  
   const [messages, setMessages] = useState<Conversation<string | undefined>[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
@@ -165,18 +164,23 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
   const [unactivatedUserProfile, setUnactivatedUserProfile] = useState<any>();
   const [conversationData, setConversationData] = useState<StringIndexedObject>();
   const [conversations, setConversations] = useState<ConversationProp[] | []>([]);
-  const [contactProfile, setContactProfile] = useState<UserProfile | null>(null);
+  const [contactProfile, setContactProfile] = useState<AccountData | null>(null);
   const [isNewConversation, setIsNewConversation] = useState(false);
   const [attachmentsLoading, setAttachmentsLoading] = useState(false);
   const [activeAttachments, setActiveAttachments] = useState<any>({});
-  // const [conversationUpdateState, setConversationUpdateState] = useState(false);
+  const [conversationUpdateState, setConversationUpdateState] = useState(false);
   // const clientOptions = { env: "production" };
 
   useEffect(() => {
     let keys = loadKeys(address as string);
     const initXMTP = async () => {
+      const sessionClient = await getLensClient()
+
+      console.log('Got here 1')
       if (address) {
+        console.log('Got here 2')
         if (keys) {
+          console.log('Got here 3')
           const client = await Client.create(null, {
             env: "production",
             privateKeyOverride: keys,
@@ -184,18 +188,22 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
           client.registerCodec(new AttachmentCodec());
           client.registerCodec(new RemoteAttachmentCodec());
           client.registerCodec(new ReadReceiptCodec());
+          console.log('Got here 4')
           setXmtp(client);
-          handleIncomingMessages(client);
+          // handleIncomingMessages(client);
 
-          if (session?.type === SessionType.WithProfile) {
-            processConversations(client, session);
+          if (sessionClient.isSessionClient()) {
+            console.log('Got here 5')
+            console.log('Yes its a session client')
+            processConversations(client, sessionClient);
           }
 
           const stream = await client.conversations.stream();
           for await (const conversation of stream) {
             const conversations = await client.conversations.list();
-            if (session?.type === SessionType.WithProfile) {
-              await processConversations(client, session);
+            if (sessionClient.isSessionClient()) {
+              // previously session from react/web
+              await processConversations(client, sessionClient);
               // setSelectedConversation(conversations.length - 1);
               setIsNewConversation(true);
             }
@@ -207,37 +215,38 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [address]);
 
-  useEffect(() => {
-    if (profile) {
-      const profileData = getLensProfileData(profile);
-      setContactProfile(profileData);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile]);
+  // useEffect(() => {
+  //   if (profile) {
+  //     const profileData = getLensAccountData(profile);
+  //     setContactProfile(profileData);
+  //   }
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [profile]);
 
-  const processConversations = async (client: Client, session: Session) => {
+  const processConversations = async (client: Client, session: SessionClient) => {
     const conversations = await client.conversations.list();
+    console.log('Conversations: ', conversations)
     var conversationsFilteredById: Conversation<string | undefined>[] = [];
-    var ids: ProfileId[] = [];
+    var ids: any[] = [];
     var dates: (Date | string)[] = [];
     var recentMessage: string[] = [];
     var dataById: StringIndexedObject = {};
 
     for (let i = 0; i < conversations.length; i++) {
       const conversation = conversations[i];
-      if (session?.type === SessionType.WithProfile && conversation.context?.conversationId) {
+      if (session.isSessionClient() && conversation.context?.conversationId) {
         if (
           isConversationParticipant(
-            session.profile.id,
+            userProfile.id,
             conversation.context?.conversationId as string
           )
         ) {
           conversationsFilteredById.push(conversation);
           const otherUserID = getOtherId(
-            session.profile.id,
+            userProfile.id,
             conversation.context?.conversationId as string
           );
-          ids.push(profileId(otherUserID));
+          ids.push((otherUserID));
           const lastMessage = await conversation.messages();
           dates.push(
             lastMessage && lastMessage.length > 0 ? lastMessage[lastMessage.length - 1].sent : ""
@@ -280,12 +289,13 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
     setConversationData(dataById);
     setShowSkeleton(false);
     setMessagesEnabled(true);
-    // if (messagesEnabled) setConversationUpdateState(!conversationUpdateState);
+    if (messagesEnabled) setConversationUpdateState(!conversationUpdateState);
   };
 
   const handleIncomingMessages = async (client: Client) => {
+    const session = await getLensClient()
     for await (const message of await client.conversations.streamAllMessages()) {
-      if (session?.type === SessionType.WithProfile) {
+      if (session.isSessionClient()) {
         await processConversations(client, session);
       }
 
@@ -303,6 +313,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
   };
 
   const createXMTPClient = async () => {
+    const sessionClient = await getLensClient()
     if (signer) {
       setConnectingXMTP(true);
       let keys = loadKeys(address as string);
@@ -322,18 +333,18 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
       client.registerCodec(new RemoteAttachmentCodec());
       client.registerCodec(new ReadReceiptCodec());
 
-      handleIncomingMessages(client);
+      // handleIncomingMessages(client);
 
       setXmtp(client);
-      if (session?.type === SessionType.WithProfile) {
-        processConversations(client, session);
+      if (sessionClient.isSessionClient()) {
+        processConversations(client, sessionClient);
       }
 
       const stream = await client.conversations.stream();
       for await (const conversation of stream) {
         const conversations = await client.conversations.list();
-        if (session?.type === SessionType.WithProfile) {
-          await processConversations(client, session);
+        if (sessionClient.isSessionClient()) {
+          await processConversations(client, sessionClient);
           // setSelectedConversation(conversations.length - 1);
           setIsNewConversation(true);
         }
@@ -342,8 +353,9 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
   };
 
   const updateMessages = async () => {
+    const session = await getLensClient()
     if (xmtp) {
-      if (session?.type === SessionType.WithProfile) {
+      if (session.isSessionClient()) {
         processConversations(xmtp, session);
       }
     }
@@ -436,19 +448,19 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
     setIsNewConversationModalOpen(false);
   };
 
-  useEffect(() => {
-    const handleClickOutsideModal = (event: MouseEvent) => {
-      if (isContractModalOpen && (event.target as HTMLElement).closest(".modal-content") === null) {
-        handleCloseModal();
-      }
-    };
+  // useEffect(() => {
+  //   const handleClickOutsideModal = (event: MouseEvent) => {
+  //     if (isContractModalOpen && (event.target as HTMLElement).closest(".modal-content") === null) {
+  //       handleCloseModal();
+  //     }
+  //   };
 
-    document.addEventListener("click", handleClickOutsideModal);
+  //   document.addEventListener("click", handleClickOutsideModal);
 
-    return () => {
-      document.removeEventListener("click", handleClickOutsideModal);
-    };
-  }, [isContractModalOpen]);
+  //   return () => {
+  //     document.removeEventListener("click", handleClickOutsideModal);
+  //   };
+  // }, [isContractModalOpen]);
 
   const handleSendMessage = () => {
     if (inputMessage.trim() !== "" && selectedConversation !== null) {
@@ -465,12 +477,14 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
     }
   };
 
-  const handleNewConversation = async (profile: Profile) => {
-    if (xmtp && profile.handle && session?.type === SessionType.WithProfile) {
-      const isOnNetwork = await xmtp.canMessage(profile.handle?.ownedBy);
+  const handleNewConversation = async (profile: AccountData) => {
+    const sessionClient = await getLensClient()
+    if (xmtp && profile.handle && sessionClient.isSessionClient()) {
+      console.log('Profile Address: ', profile.address)
+      const isOnNetwork = await xmtp.canMessage(profile.address);
       if (isOnNetwork) {
-        const conversationId = buildConversationId(session.profile.id, profile.id);
-        const conversation = await xmtp.conversations.newConversation(profile.handle.ownedBy, {
+        const conversationId = buildConversationId(userProfile.id, profile.id);
+        const conversation = await xmtp.conversations.newConversation(profile.address, {
           conversationId: conversationId,
           metadata: {},
         });
@@ -482,78 +496,78 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
           }
         });
       } else {
-        setUnactivatedUserProfile(getLensProfileData(profile));
+        setUnactivatedUserProfile(profile);
         setSelectedConversation(10000);
       }
     }
     setIsNewConversationModalOpen(false);
   };
 
-  useEffect(() => {
-    if (profiles) {
-      var temp: {
-        picture: string;
-        coverPicture: string;
-        displayName: string;
-        handle: string;
-        bio: string;
-        attributes: any;
-        id: any;
-        userLink: any;
-      }[] = [];
-      var allConversations: ConversationProp[] = [];
-      profiles.map(profile => {
-        var data = getLensProfileData(profile);
-        temp.push(data);
-        if (conversationData) {
-          var conversation: ConversationProp = {
-            user: data,
-            conversation: conversationData[profile.id].conversation,
-            lastMessage: isLink(conversationData[profile.id].lastMessage)
-              ? "attachement"
-              : conversationData[profile.id].lastMessage,
-            lastMessageTime: conversationData[profile.id].lastMessageTime,
-            unreadMessages: conversationData[profile.id].unreadMessages,
-          };
-          allConversations.push(conversation);
-        }
-      });
-      const sortedConversations = sortMessages(allConversations);
-      setProfilesData(temp);
-      if (isNewConversation) {
-        const lastConvo = sortedConversations.pop();
-        sortedConversations.unshift(lastConvo as ConversationProp);
-        setConversations(sortedConversations);
-        if (sortedConversations[0]) openConversation(sortedConversations[0], 0);
-        setIsNewConversation(false);
-      } else {
-        setConversations(sortedConversations);
-        sortedConversations.map((conversation, index) => {
-          if (conversation.user.handle === activeConversationUserHandle) {
-            openConversation(conversation, index);
-          }
-        });
-      }
-      if (!messagesEnabled) {
-        setMessagesEnabled(true);
-        setConnectingXMTP(false);
-      }
-      if (contactProfile !== null) {
-        for (let index = 0; index < sortedConversations.length; index++) {
-          const conversation = sortedConversations[index];
-          if (conversation.user.userLink === contactProfile.userLink) {
-            openConversation(conversation, index);
-            return;
-          }
-        }
+  // useEffect(() => {
+  //   if (profiles) {
+  //     var temp: {
+  //       picture: string;
+  //       coverPicture: string;
+  //       displayName: string;
+  //       handle: string;
+  //       bio: string;
+  //       attributes: any;
+  //       id: any;
+  //       userLink: any;
+  //     }[] = [];
+  //     var allConversations: ConversationProp[] = [];
+  //     profiles.map(profile => {
+  //       var data = getLensAccountData(profile);
+  //       temp.push(data);
+  //       if (conversationData) {
+  //         var conversation: ConversationProp = {
+  //           user: data,
+  //           conversation: conversationData[profile.id].conversation,
+  //           lastMessage: isLink(conversationData[profile.id].lastMessage)
+  //             ? "attachement"
+  //             : conversationData[profile.id].lastMessage,
+  //           lastMessageTime: conversationData[profile.id].lastMessageTime,
+  //           unreadMessages: conversationData[profile.id].unreadMessages,
+  //         };
+  //         allConversations.push(conversation);
+  //       }
+  //     });
+  //     const sortedConversations = sortMessages(allConversations);
+  //     setProfilesData(temp);
+  //     if (isNewConversation) {
+  //       const lastConvo = sortedConversations.pop();
+  //       sortedConversations.unshift(lastConvo as ConversationProp);
+  //       setConversations(sortedConversations);
+  //       if (sortedConversations[0]) openConversation(sortedConversations[0], 0);
+  //       setIsNewConversation(false);
+  //     } else {
+  //       setConversations(sortedConversations);
+  //       sortedConversations.map((conversation, index) => {
+  //         if (conversation.user.handle === activeConversationUserHandle) {
+  //           openConversation(conversation, index);
+  //         }
+  //       });
+  //     }
+  //     if (!messagesEnabled) {
+  //       setMessagesEnabled(true);
+  //       setConnectingXMTP(false);
+  //     }
+  //     if (contactProfile !== null) {
+  //       for (let index = 0; index < sortedConversations.length; index++) {
+  //         const conversation = sortedConversations[index];
+  //         if (conversation.user.userLink === contactProfile.userLink) {
+  //           openConversation(conversation, index);
+  //           return;
+  //         }
+  //       }
 
-        if (profile) {
-          handleNewConversation(profile);
-        }
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profiles, conversationDates]);
+  //       if (profile) {
+  //         handleNewConversation(profile);
+  //       }
+  //     }
+  //   }
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [profiles, conversationDates]);
 
   useEffect(() => {
     const scrollableDiv = document.getElementById("scrollableDiv");
@@ -598,7 +612,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
     }
   };
 
-  useEffect(() => {}, [activeAttachments]);
+  // useEffect(() => {}, [activeAttachments]);
 
   return (
     <div className="h-screen w-screen overflow-hidden pt-[107px] sm:pt-[75px] px-[156px] banner-tablet:px-[80px] settings-xs:px-[30px] sm:px-[16px] flex gap-[5px] mb-[0px] absolute top-0 left-0">
@@ -650,7 +664,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
                               src={conversation.user.picture}
                               onError={e => {
                                 (e.target as HTMLImageElement).src =
-                                  `https://api.hey.xyz/avatar?id=${conversation.user.id}`;
+                                  "https://static.hey.xyz/images/default.png";
                               }}
                               className="rounded-[8px]"
                               alt="paco pic"
@@ -807,7 +821,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
                       src={conversations[selectedConversation].user.picture}
                       onError={e => {
                         (e.target as HTMLImageElement).src =
-                          `https://api.hey.xyz/avatar?id=${conversations[selectedConversation].user.id}`;
+                          'https://static.hey.xyz/images/default.png';
                       }}
                       alt="paco pic"
                       width={43}
@@ -840,74 +854,7 @@ const MyMessageOpenChat = ({ keys }: { keys: any }) => {
             >
               {activeMessages.map((messages, index: number) => {
                 return (
-                  <div
-                    key={index}
-                    className={`${index === 0 ? "mt-auto" : ""} w-full flex flex-col h-fit`}
-                  >
-                    <span className="text-[12px] leading-[12.1px] font-medium self-center mb-[15px] sm:mt-[15px]">
-                      {messages.date}
-                    </span>
-                    {messages.messages.map((message: DecodedMessage, index: number) => {
-                      return !isLink(message.content) ? (
-                        <div
-                          key={index}
-                          className={`rounded-[8px] whitespace-pre-wrap min-w-[200px] sm:min-w-[150px] max-w-[450px] text-[12px] laptop-x:max-w-[350px] sm:max-w-[262px] laptop-x:text-[14px] mb-[12px] relative font-normal leading-[20px] p-[11px] py-[9px] 
-                      pr-[48px] sm:px-[8px] sm:pr-[9px] sm:pb-[23px] ${
-                        session?.type === SessionType.WithProfile &&
-                        message.senderAddress === session.address
-                          ? "self-end bg-[#C6AAFF] text-white"
-                          : "self-start bg-[#F4F4F5]"
-                      } `}
-                        >
-                          {message.content}
-                          <span className="absolute right-[6px] bottom-[0px] text-[10px]">
-                            {moment(message.sent).format("h:mmA")}
-                          </span>
-                        </div>
-                      ) : activeAttachments[message.content] ? (
-                        <Link
-                          target="_blank"
-                          href={activeAttachments[message.content].link}
-                          download={activeAttachments[message.content].name}
-                          className={`rounded-[8px] whitespace-pre-wrap min-w-[200px] sm:min-w-[150px] max-w-[450px] text-[12px] laptop-x:max-w-[350px] sm:max-w-[262px] laptop-x:text-[14px] mb-[12px] relative font-normal leading-[20px] p-[11px] py-[9px] 
-                      pr-[48px] sm:px-[8px] sm:pr-[9px] sm:pb-[23px] flex items-center bg-[#E4E4E7] ${
-                        session?.type === SessionType.WithProfile &&
-                        message.senderAddress === session.address
-                          ? "self-end"
-                          : "self-start"
-                      } `}
-                        >
-                          <Image
-                            src="/images/add-photo.svg"
-                            className={`sm:w-[20px] sm:h-[20px] mr-[10px]`}
-                            alt="user icon"
-                            width={24}
-                            height={24}
-                          />
-                          <span>{activeAttachments[message.content].name}</span>
-                          <span className="absolute right-[6px] bottom-[0px] text-[10px]">
-                            {moment(message.sent).format("h:mmA")}
-                          </span>
-                        </Link>
-                      ) : (
-                        <div
-                          key={index}
-                          className={`rounded-[8px] whitespace-pre-wrap min-w-[200px] sm:min-w-[150px] max-w-[450px] text-[12px] laptop-x:max-w-[350px] sm:max-w-[262px] laptop-x:text-[14px] mb-[12px] relative font-normal leading-[20px] p-[11px] py-[9px] 
-                      pr-[48px] sm:px-[8px] sm:pr-[9px] sm:pb-[23px] flex items-center bg-[#E4E4E7] ${
-                        session?.type === SessionType.WithProfile &&
-                        message.senderAddress === session.address
-                          ? "self-end"
-                          : "self-start"
-                      } `}
-                        >
-                          <span>Loading...</span>
-                          <span className="absolute right-[6px] bottom-[0px] text-[10px]">
-                            {moment(message.sent).format("h:mmA")}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <div key={index}>Hello Preview</div>
                 );
               })}
               <div id="bottomMarker"></div>

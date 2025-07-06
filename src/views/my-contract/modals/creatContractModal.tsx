@@ -7,25 +7,29 @@ import { isAddress } from "ethers";
 import { useAccount } from "wagmi";
 import type { activeContractDetails, contractDetails } from "@/types/types";
 import DatePicker from "react-datepicker";
-import { SessionType, useSession, Profile, useLazyProfiles } from "@lens-protocol/react-web";
-import getLensProfileData from "@/utils/getLensProfile";
+import { useAccount as useLensAccount, evmAddress } from "@lens-protocol/react";
+import getLensAccountData, { AccountData } from "@/utils/getLensProfile";
+import { fetchAccount } from '@lens-protocol/client/actions'
+import { getPublicClient } from "@/client"
 
 import "react-datepicker/dist/react-datepicker.css";
 import { openAlert, closeAlert } from "@/redux/alerts";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
 type Props = {
   handleCloseModal?: () => void;
   setCreationStage: any;
   setContractDetails: any;
   contractDetails: contractDetails;
-  freelancer?: Profile;
+  freelancer?: any;
 };
+
+// freelancer?: Profile;
 
 type SelectProfileProps = {
   setFreelancer: any;
   closeModal: any;
-  profiles: Profile[];
+  profiles: AccountData[];
 };
 
 const tokens = [
@@ -41,6 +45,8 @@ const tokens = [
 ];
 
 const SelectProfileModal = ({ setFreelancer, closeModal, profiles }: SelectProfileProps) => {
+  console.log("Profiles: ", profiles)
+  
   return (
     <div className="fixed w-screen h-screen top-0 left-0 z-[9999999] flex items-center justify-center bg-[#80808080]">
       <div className="w-[241px] flex flex-col rounded-[12px] border-[1px] border-[#E4E4E7] bg-white">
@@ -65,7 +71,6 @@ const SelectProfileModal = ({ setFreelancer, closeModal, profiles }: SelectProfi
           ) : (
             <>
               {profiles?.map((profile, index) => {
-                var details = getLensProfileData(profile);
                 return (
                   <div
                     key={index}
@@ -76,14 +81,14 @@ const SelectProfileModal = ({ setFreelancer, closeModal, profiles }: SelectProfi
                     }}
                   >
                     <Image
-                      src={details.picture}
+                      src={profile.picture}
                       alt="details pic"
                       height={40}
                       width={40}
                       className="w-[40px] h-[40px] rounded-[8px] border-[1px] border-[#E4E4E7]"
                     />
                     <span className="text-[14px] leading-[14.52px] font-medium">
-                      {details.handle}
+                      {profile.handle}
                     </span>
                   </div>
                 );
@@ -103,11 +108,10 @@ const CreateContractModal = ({
   contractDetails,
   freelancer,
 }: Props) => {
+   const { user: userProfile } = useSelector((state: any) => state.app);
   const { address } = useAccount();
   const dispatch = useDispatch();
-  const { data: session, loading } = useSession();
-  const { data: profiles, execute } = useLazyProfiles();
-  const [selectedFreelancer, setSelectedFreelancer] = useState<Profile | undefined>(freelancer);
+  const [selectedFreelancer, setSelectedFreelancer] = useState<AccountData | undefined>(freelancer);
   const [showSelectModal, setShowSelectModal] = useState(false);
   // execute({
   //   where: {
@@ -122,9 +126,13 @@ const CreateContractModal = ({
   const [description, setDescription] = useState(contractDetails.description);
   const [clientAddress, setClientAddress] = useState(contractDetails.clientAddress);
   const [freelancerAddress, setFreelancerAddress] = useState(contractDetails.freelancerAddress);
+  // const { data: profile, loading: profileLoading } = useLensAccount({
+  //   address: freelancerAddress,
+  // });
   const [paymentAmount, setPaymentAmount] = useState(contractDetails.paymentAmount);
   const [dueDate, setDueDate] = useState(contractDetails.dueDate);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [profiles, setProfiles] = useState<AccountData[]>([]);
 
   const toggleTokensModal = () => {
     setShowTokens(!showTokens);
@@ -172,11 +180,22 @@ const CreateContractModal = ({
   };
 
   const validateAddress = async () => {
-    if (isAddress(freelancerAddress)) {
-      const result = await execute({ where: { ownedBy: [freelancerAddress] } });
-      const profiles = result.unwrap();
+    // if (profileLoading) {
+    //   setTimeout(() => {
+    //     validateAddress();
+    //   }, 1000);
+    //   return;
+    // }
 
-      if (profiles.length === 0) {
+    if (isAddress(freelancerAddress)) {
+      const client = getPublicClient()
+      const result = await fetchAccount(client, {
+        address: evmAddress(freelancerAddress),
+      }).unwrapOr(
+        null
+      );
+      
+      if (!result) {
         dispatch(
           openAlert({
             displayAlert: true,
@@ -194,6 +213,10 @@ const CreateContractModal = ({
           dispatch(closeAlert());
         }, 5000);
       } else {
+        console.log('Result: ', result)
+        const profile = getLensAccountData(result)
+        console.log('Profile: ', profile)
+        // setProfiles([profile]);
         setShowSelectModal(true);
       }
     } else {
@@ -213,22 +236,20 @@ const CreateContractModal = ({
         dispatch(closeAlert());
       }, 5000);
     }
-
-    // const profiles = result.value;
   };
 
   const handleSubmit = () => {
-    if (session && session.type === SessionType.WithProfile && selectedFreelancer) {
+    if (userProfile && selectedFreelancer) {
       const details: activeContractDetails = {
         title,
         description,
         clientAddress: address as string,
-        freelancerAddress: selectedFreelancer.ownedBy.address,
+        freelancerAddress: selectedFreelancer.address,
         paymentAmount,
         dueDate,
         state: "proposal",
-        freelancerHandle: selectedFreelancer.id,
-        clientHandle: session.profile.id,
+        freelancerHandle: selectedFreelancer.userLink,
+        clientHandle: userProfile.userLink,
       };
       setContractDetails(details);
       setCreationStage(2);
@@ -250,6 +271,14 @@ const CreateContractModal = ({
       }, 5000);
     }
   };
+
+  // useEffect(() => {
+  //   if (profile) {
+  //     const profileData = getLensAccountData(profile);
+  //     set{rofiles([profileData]);
+  //     console.log("Profile: ", profile);
+  //   }
+  // }, [profile]);
 
   return (
     <div

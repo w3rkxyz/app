@@ -17,7 +17,7 @@ import { useAccount } from "wagmi";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import { useSearchParams } from "next/navigation";
-import { useProfile } from "@lens-protocol/react-web";
+import { useAccount as useLensAccount } from "@lens-protocol/react";
 
 const contractTypes = [
   "Proposals",
@@ -39,8 +39,11 @@ const Contracts = () => {
   const searchParams = useSearchParams();
   const freelancer = searchParams.get("freelancer");
   const [freelancerId, setFreelancerId] = useState(freelancer !== null ? freelancer : "");
-  const { data: profile, loading: loadingProfile } = useProfile({
-    forHandle: `lens/${freelancerId as string}`,
+  // const { data: profile, loading: loadingProfile } = useProfile({
+  //   forHandle: `lens/${freelancerId as string}`,
+  // });
+  const { data: profile, loading: loadingProfile } = useLensAccount({
+    legacyProfileId: freelancerId, 
   });
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<number | null>(null);
   const { address } = useAccount();
@@ -115,10 +118,12 @@ const Contracts = () => {
         contractInstance.off("ContractUpdate", handleContractUpdate);
       };
     }
-  }, [address, getData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [address]);
 
   useEffect(() => {
     if (profile) {
+      console.log("Profile: ", profile);
       setShowCreateContractModal(true);
     }
   }, [profile]);

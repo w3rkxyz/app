@@ -5,40 +5,53 @@ import Navbar from "./navbar";
 import { useEffect, useState } from "react";
 import SecondNav from "./secondNav";
 import { usePathname } from "next/navigation";
-import { useSession, SessionType } from "@lens-protocol/react-web";
 import { useAccount } from "wagmi";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { setLensProfile, displayLoginModal } from "@/redux/app";
+import { useSessionManager } from "@/hooks/useSession";
+import { evmAddress } from "@lens-protocol/client";
+import { fetchAccount, fetchAccounts } from "@lens-protocol/client/actions";
+import { client } from "@/client";
+import { useAuthenticatedUser } from "@lens-protocol/react";
+import { getLensClient } from "@/client";
+import getLensAccountData from "@/utils/getLensProfile";
 
 const ConditionalNav = () => {
-  const pathName = usePathname();
-  const homePages = ["/"];
-  const isHomePage = homePages.includes(pathName);
-  const { data: session, loading: sessionLoading } = useSession();
+  const { user: profile } = useSelector((state: any) => state.app);
   const { isConnected } = useAccount();
   const dispatch = useDispatch();
 
-  useEffect(() => {
-    if (isConnected && !sessionLoading) {
-      if (session?.type == SessionType.WithProfile) {
-        dispatch(displayLoginModal({ display: false }));
-        dispatch(setLensProfile({ profile: session.profile }));
-      } else {
-        dispatch(displayLoginModal({ display: true }));
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.type, session?.authenticated, isConnected]);
+  async function getAuthenticatedAccount() {
+    const client = await getLensClient();
 
-  return (
-    <>
-      {isConnected && session?.type === SessionType.WithProfile ? (
-        <SecondNav session={session} />
-      ) : (
-        <Navbar />
-      )}
-    </>
-  );
+    if (!client.isSessionClient()) {
+      return null;
+    }
+
+    const authenticatedUser = client.getAuthenticatedUser().unwrapOr(null);
+    if (!authenticatedUser) {
+      return null;
+    }
+
+    const account = await fetchAccount(client, { address: authenticatedUser.address }).unwrapOr(
+      null
+    );
+
+    if (account) {
+      const accountData = getLensAccountData(account);
+      dispatch(setLensProfile({ profile: accountData }));
+      dispatch(displayLoginModal({ display: false }));
+    } else {
+      dispatch(displayLoginModal({ display: true }));
+    }
+  }
+
+  useEffect(() => {
+    getAuthenticatedAccount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);;
+
+  return <>{isConnected && profile ? <SecondNav /> : <Navbar />}</>;
 };
 
 export default ConditionalNav;

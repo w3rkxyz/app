@@ -3,15 +3,25 @@
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { uploadFileToIPFS, uploadJsonToIPFS } from "@/utils/uploadToIPFS";
-import { useSetProfileMetadata, useSession, SessionType, Profile } from "@lens-protocol/react-web";
-import { MetadataAttributeType } from "@lens-protocol/metadata";
+import { MetadataAttributeType, account } from "@lens-protocol/metadata";
+import { uri, useAccount } from "@lens-protocol/react";
 import { toast } from "react-hot-toast";
-import getLensProfileData from "@/utils/getLensProfile";
 import { Oval } from "react-loader-spinner";
+import { getLensClient } from "@/client";
+import getLensAccountData from "@/utils/getLensProfile";
+import { fetchAccount, setAccountMetadata } from "@lens-protocol/client/actions";
+import { useRouter } from "next/navigation";
+import { handleOperationWith } from "@lens-protocol/client/viem";
+import { useWalletClient } from "wagmi";
+import { useSelector } from "react-redux";
 
 const Settings = () => {
-  const { execute: update, error, loading } = useSetProfileMetadata();
-  const { data: session, loading: sessionLoading } = useSession();
+  const [userId, setUserId] = useState("");
+  const { data: profile, loading: profileLoading } = useAccount({
+    username: { localName: userId },
+  });
+  const { data: walletClient } = useWalletClient();
+  const router = useRouter();
   const [backgroundImage, setBackgroundImage] = useState<any>(null);
   const [photo, setPhoto] = useState<any>(null);
   const [savingData, setSavingData] = useState(false);
@@ -28,29 +38,53 @@ const Settings = () => {
     location: "",
   });
 
-  useEffect(() => {
-    if (session?.type === SessionType.WithProfile && session.profile?.metadata) {
-      const profile = session.profile;
-      const profileData = getLensProfileData(profile);
+  async function getAuthenticatedAccount() {
+    const client = await getLensClient();
 
-      const handle = {
-        name: profileData.displayName,
-        picture: profileData.picture,
-        cover: profileData.coverPicture,
-        jobTitle: profileData.attributes["job title"] ? profileData.attributes["job title"] : "",
-        bio: profileData.bio,
-        X: profileData.attributes.x ? profileData.attributes.x : "",
-        github: profileData.attributes.github ? profileData.attributes.github : "",
-        linkedin: profileData.attributes.linkedin ? profileData.attributes.linkedin : "",
-        website: profileData.attributes.website ? profileData.attributes.website : "",
-        location: profileData.attributes.location ? profileData.attributes.location : "",
-      };
-      setBackgroundImage(handle.cover);
-      setPhoto(handle.picture);
-      setFormState(handle);
+    if (client.isSessionClient()) {
+      if (userId === "") {
+        console.log('This ran 1')
+        const authenticatedUser = client.getAuthenticatedUser().unwrapOr(null);
+        if (!authenticatedUser) {
+          return null;
+        }
+
+        const account = await fetchAccount(client, { address: authenticatedUser.address }).unwrapOr(
+          null
+        );
+        if (account) {
+          setUserId(account.username?.localName ? account.username.localName : "");
+        }
+      }
+
+      if (profile) {
+        const accountData = getLensAccountData(profile);
+        const handle = {
+          name: accountData.displayName,
+          picture: accountData.picture,
+          cover: accountData.coverPicture,
+          jobTitle: accountData.attributes["job title"] ? accountData.attributes["job title"] : "",
+          bio: accountData.bio,
+          X: accountData.attributes.x ? accountData.attributes.x : "",
+          github: accountData.attributes.github ? accountData.attributes.github : "",
+          linkedin: accountData.attributes.linkedin ? accountData.attributes.linkedin : "",
+          website: accountData.attributes.website ? accountData.attributes.website : "",
+          location: accountData.attributes.location ? accountData.attributes.location : "",
+        };
+
+        setBackgroundImage(handle.cover);
+        setPhoto(handle.picture);
+        setFormState(handle);
+      }
+    } else {
+      router.push("/");
     }
+  }
+
+  useEffect(() => {
+    getAuthenticatedAccount();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.type]);
+  }, [profileLoading, userId]);
 
   const linkPrepend: { [key: string]: string } = {
     X: "https://x.com/",
@@ -96,6 +130,8 @@ const Settings = () => {
   };
 
   const handleSubmit = async () => {
+    const sessionClient = await getLensClient();
+    if (!sessionClient.isSessionClient()) return;
     setSavingData(true);
 
     const attributesMap: {
@@ -140,29 +176,42 @@ const Settings = () => {
         attribute.value !== ""
     );
 
-    const metadata = {
+    type Attribute = {
+      key: string;
+      value: string | number;
+      type: MetadataAttributeType;
+    };
+
+    function mergeAttributes(original: Attribute[], updates: Attribute[]): Attribute[] {
+      const map = new Map<string, Attribute>();
+
+      for (const attr of original) {
+        map.set(attr.key, attr); // Use `key` instead of `trait_type`
+      }
+
+      for (const attr of updates) {
+        map.set(attr.key, attr); // Updates will override same key
+      }
+
+      return Array.from(map.values());
+    }
+
+    const metadata = account({
       name: formState.name !== "" ? formState.name : undefined,
       bio: formState.bio !== "" ? formState.bio : undefined,
       picture: formState.picture !== "" ? formState.picture : undefined,
       coverPicture: formState.cover !== "" ? formState.cover : undefined,
-      attributes: attributes.length !== 0 ? attributes : undefined,
-    };
+      attributes: attributes.length !== 0 ? attributes : []
+    });
 
     const metadataURI = await uploadJsonToIPFS(metadata);
 
-    const result = await update({
-      metadataURI,
-    });
+    const result = await setAccountMetadata(sessionClient, {
+      metadataUri: uri(metadataURI),
+    }).andThen(handleOperationWith(walletClient));
 
-    if (result.isFailure()) {
+    if (result.isErr()) {
       toast.error(result.error.message);
-      return;
-    }
-
-    const completion = await result.value.waitForCompletion();
-
-    if (completion.isFailure()) {
-      toast.error(completion.error.message);
       return;
     }
 

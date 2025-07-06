@@ -1,18 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, use } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import JobCard from "@/components/Cards/JobCard";
-import {
-  useProfile,
-  useFollow,
-  useSession,
-  SessionType,
-  usePublications,
-  ProfileId,
-  appId,
-} from "@lens-protocol/react-web";
 import { toast } from "react-hot-toast";
 import ViewJobModal from "../../../views/view-job-modal/view-job-modal";
 import getLensProfileData from "@/utils/getLensProfile";
@@ -22,43 +13,46 @@ import { useSearchParams } from "next/navigation";
 import ProfileSkeleton from "@/components/reusable/profileSkeleton";
 import { useRouter } from "next/router";
 import ProfileModal from "@/views/profile/profileModal";
-// import { get_score } from "@/api";
+import { useSelector } from "react-redux";
+import { useAccount, useFollowers, useFollowing, usePosts } from "@lens-protocol/react";
+import getLensAccountData from "@/utils/getLensProfile";
+import { get_score } from "@/api";
+import { getLensClient, getPublicClient } from "@/client";
+import { evmAddress } from "@lens-protocol/client";
+import { follow, unfollow, fetchAccountStats } from "@lens-protocol/client/actions";
+import { handleOperationWith } from "@lens-protocol/client/viem";
+import { useWalletClient } from "wagmi";
 
 function getDomain(url: string) {
   return url.replace(/https?:\/\//, "").replace(/\/$/, "");
 }
 
 type PageProps = {
-  params: {
+  params: Promise<{
     handle: string;
-  };
+  }>;
 };
 
 export default function Profile({ params }: PageProps) {
-  const { handle: userId } = params;
+  const { user: myProfile } = useSelector((state: any) => state.app);
+  const { data: walletClient } = useWalletClient();
+  const resolvedParams = use(params);
+  const { handle: userId } = resolvedParams;
+  const { data: profile, loading: profileLoading } = useAccount({
+    username: { localName: userId },
+  });
+
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isProfileFollowed, setIsProfileFollowed] = useState(false);
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
-  const [profileId, setProfileId] = useState<ProfileId[]>();
   const [isMyProfile, setIsMyProfile] = useState(false);
   const [data, setData] = useState<any[]>([]);
-  const { data: profile, loading: profileLoading } = useProfile({
-    forHandle: `lens/${userId}`,
-  });
   const [dataLoading, setDataLoading] = useState(true);
-  const { data: session, loading: sessionLoading } = useSession();
-  const { data: publications } = usePublications({
-    where: {
-      from: profileId,
-      metadata: {
-        publishedOn: [appId(process.env.NEXT_PUBLIC_APP_ID as string)],
-        tags: {
-          all: ["w3rk"],
-        },
-      },
-    },
+  // Add Apps filter later
+  const { data: publications, loading: publicationsLoading } = usePosts({
+    filter: { metadata: { tags: { all: ["w3rk"] } }, authors: [profile?.address] },
   });
-  const { execute: follow, loading: followLoading } = useFollow();
   const [cardType, setCardType] = useState("job");
   const [loading, setLoading] = useState(true);
   const [score, setScore] = useState(0);
@@ -104,49 +98,73 @@ export default function Profile({ params }: PageProps) {
     if (publication) setSelectedPublication(publication);
     setIsModalOpen(true);
   };
+
   const handleFollow = async () => {
-    if (profile) {
-      if (profile.operations.canFollow === "NO") {
-        toast.error("Can't follow if directly routed to user profile");
-        return null;
+    const sessionClient = await getLensClient();
+    if (profile && sessionClient.isSessionClient()) {
+      console.log('Profile: ', profile)
+      switch (profile.operations?.canFollow.__typename) {
+        case "AccountFollowOperationValidationPassed":
+          // Follow is allowed
+          console.log("Yes you can follow the user");
+
+          const result = await follow(sessionClient, {
+            account: evmAddress(profile.address),
+          }).andThen(handleOperationWith(walletClient));
+
+          if (result.isErr()) {
+            // handle failure scenarios
+            toast.error("couldn't follow user, try again later");
+            setIsProfileFollowed(false)
+            return;
+          }
+
+          toast.success("Followed successfully");
+          setIsProfileFollowed(true)
+          break;
+
+        case "AccountFollowOperationValidationFailed":
+          // Following is not possible
+          console.log(profile.operations.canFollow.reason);
+          toast.error(profile.operations.canFollow.reason);
+          break;
+
+        case "AccountFollowOperationValidationUnknown":
+          // Validation outcome is unknown
+          break;
       }
-
-      if (session?.type === SessionType.WithProfile) {
-        const result = await follow({ profile });
-
-        if (result.isFailure()) {
-          // handle failure scenarios
-          toast.error("couldn't follow user, try again later");
-          return;
-        }
-
-        // this might take a while depending on the congestion of the network
-        const completion = await result.value.waitForCompletion();
-
-        if (completion.isFailure()) {
-          console.log("There was an error processing the transaction", completion.error.message);
-          return;
-        }
-
-        toast.success("Followed successfully");
-      }
+    } else if (!sessionClient.isSessionClient()) {
+      toast.error("You need to login to follow");
     }
   };
 
   const getData = async () => {
-    if (profile && session) {
-      setProfileId([profile.id]);
+    // if (profile && session) {
+    if (profile) {
+      console.log('Profile: ', profile)
+      const profileData = getLensAccountData(profile);
+      console.log('Profile Data: ', profileData)
 
-      const profileData = getLensProfileData(profile);
+      if (profileData.userLink === myProfile.userLink) setIsMyProfile(true);
+
+      const client = getPublicClient();
+      const stats = await fetchAccountStats(client, { account: evmAddress(profile.address) });
+      var followers = 0;
+      var following = 0;
+      if (stats.isOk()) {
+        followers = stats.value ? stats.value.graphFollowStats.followers : 0;
+        following = stats.value ? stats.value.graphFollowStats.following : 0;
+      }
+      setIsProfileFollowed(profile.operations?.isFollowedByMe? true : false)
 
       const handle = {
         displayName: profileData.displayName,
         handle: profileData.handle,
         cover: profileData.coverPicture,
         picture: profileData.picture !== "" ? profileData.picture : "/images/paco-square.svg",
-        following: profile ? profile.stats.following.toLocaleString() : 100,
+        following: following,
         jobTitle: profileData.attributes["job title"] ? profileData.attributes["job title"] : "",
-        followers: profile ? profile.stats.followers.toLocaleString() : 75,
+        followers: followers,
         about: profileData.bio ? profileData.bio : userData.about,
         website: profileData.attributes.website ? profileData.attributes.website : "",
         location: profileData.attributes.location ? profileData.attributes.location : "",
@@ -156,16 +174,8 @@ export default function Profile({ params }: PageProps) {
       };
       setUserData(handle);
 
-      if (
-        session?.type === SessionType.WithProfile &&
-        session.profile.handle?.fullHandle === profile.handle?.fullHandle
-      ) {
-        setIsMyProfile(true);
-      }
-
-      // const user_score = await get_score(profile.ownedBy.address);
-      // setScore(user_score);
-      setScore(100);
+      const user_score = await get_score(profile.address);
+      setScore(user_score);
       setDataLoading(false);
     }
   };
@@ -173,19 +183,20 @@ export default function Profile({ params }: PageProps) {
   useEffect(() => {
     getData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profileLoading, sessionLoading]);
+  }, [profileLoading]);
+  // }, [profileLoading, sessionLoading]);
 
   const handleImageError = () => {
     var data = { ...userData };
-    data.picture = profileId
-      ? `https://api.hey.xyz/avatar?id=${profileId[0]}`
+    data.picture = profile
+      ? 'https://static.hey.xyz/images/default.png'
       : "/images/paco-square.svg";
     setUserData(data);
   };
 
   useEffect(() => {
     if (publications) {
-      setData(publications);
+      setData([...publications.items]);
       setLoading(false);
     }
   }, [publications]);
@@ -258,7 +269,7 @@ export default function Profile({ params }: PageProps) {
             </Link>
           ) : (
             <div className="flex gap-[16px] mb-[16px]">
-              {profile?.operations.isFollowedByMe.value ? (
+              {isProfileFollowed ? (
                 <button className="rounded-[8px] bg-[#351A6B] text-white px-[16px] py-[6px] text-[14px] leading-[24px]">
                   Following
                 </button>

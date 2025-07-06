@@ -2,12 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import Link from "next/link";
-import { AnyPublication, Post } from "@lens-protocol/react-web";
 import type { contractDetails } from "@/types/types";
 import { useAccount } from "wagmi";
-import { useProfile } from "@lens-protocol/react-web";
-import getLensProfileData, { UserProfile } from "@/utils/getLensProfile";
+import {useAccount as useLensAccount} from "@lens-protocol/react";
+import getLensAccountData, { AccountData } from "@/utils/getLensProfile";
 
 interface CardProps {
   type: string;
@@ -73,15 +71,15 @@ const ContractCard = ({ onCardClick, contractDetails }: CardProps) => {
   const [showClientView, setShowClientView] = useState(
     (address as string) === contractDetails.clientAddress
   );
-  const [userData, setUserData] = useState<UserProfile>();
-  const { data: profile, loading: profileLoading } = useProfile({
-    forProfileId: showClientView ? contractDetails.freelancerHandle : contractDetails.clientHandle,
-  });
+  const [userData, setUserData] = useState<AccountData>();
+  const { data: profile, loading: profileLoading } = useLensAccount({
+    username: { localName: showClientView ? contractDetails.freelancerHandle : contractDetails.clientHandle },
+  })
   const [loadingUser, setLoadingUser] = useState(true);
 
   useEffect(() => {
     if (profile) {
-      const profileData = getLensProfileData(profile);
+      const profileData = getLensAccountData(profile);
       setUserData(profileData);
       setLoadingUser(false);
     }
@@ -101,7 +99,7 @@ const ContractCard = ({ onCardClick, contractDetails }: CardProps) => {
             <Image
               src={userData.picture}
               onError={e => {
-                (e.target as HTMLImageElement).src = `https://api.hey.xyz/avatar?id=${userData.id}`;
+                (e.target as HTMLImageElement).src = 'https://static.hey.xyz/images/default.png';
               }}
               alt="paco pic"
               width={46}

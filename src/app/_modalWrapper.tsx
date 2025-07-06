@@ -1,6 +1,6 @@
 "use client";
 
-import { LoginForm } from "@/components/common/header/loginForm";
+import LoginForm from "@/components/common/header/loginForm";
 import { SwitchForm } from "@/components/common/header/switchProfileModal";
 import { useSelector } from "react-redux";
 import { useAccount } from "wagmi";
@@ -52,7 +52,7 @@ export default function ModalWrapper({
     <div className="flex flex-col min-h-screen">
       {children}
       {loginModal && !switchModal && address && <LoginForm owner={address} />}
-      {switchModal && address && <SwitchForm owner={address} />}
+      {switchModal && address && <SwitchForm />}
       {displayAlert && (
         <div className="fixed right-[30px] top-[30px] z-[999999999999]">
           <AlertModal {...alertData} />

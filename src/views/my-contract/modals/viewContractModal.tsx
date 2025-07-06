@@ -5,13 +5,13 @@ import Image from "next/image";
 import MyButton from "@/components/reusable/Button/Button";
 import { useAccount } from "wagmi";
 import { activeContractDetails, contractDetails } from "@/types/types";
-import { useProfile, useSession, SessionType } from "@lens-protocol/react-web";
-import getLensProfileData, { UserProfile } from "@/utils/getLensProfile";
+import {useAccount as useLensAccount} from "@lens-protocol/react";
+import getLensAccountData, { AccountData } from "@/utils/getLensProfile";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import Link from "next/link";
 import { cancle_proposal, accept_proposal, reject_proposal } from "@/api";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { openAlert, closeAlert } from "@/redux/alerts";
 
 type Props = {
@@ -29,6 +29,7 @@ function formatDate(dateString: Date) {
 }
 
 const ViewContractModal = ({ handleCloseModal, contractDetails }: Props) => {
+  const { user: userProfile } = useSelector((state: any) => state.app);
   const { address } = useAccount();
   const dispatch = useDispatch();
   const myDivRef = useRef<HTMLDivElement>(null);
@@ -36,12 +37,11 @@ const ViewContractModal = ({ handleCloseModal, contractDetails }: Props) => {
   const [showClientView, setShowClientView] = useState(
     (address as string) === contractDetails.clientAddress
   );
-  const [userData, setUserData] = useState<UserProfile>();
-  const { data: profile, loading: profileLoading } = useProfile({
-    forProfileId: showClientView ? contractDetails.freelancerHandle : contractDetails.clientHandle,
-  });
+  const [userData, setUserData] = useState<AccountData>();
+  const { data: profile, loading: profileLoading } = useLensAccount({
+    username: { localName: showClientView ? contractDetails.freelancerHandle : contractDetails.clientHandle },
+  })
   const [loadingUser, setLoadingUser] = useState(true);
-  const { data: session } = useSession();
 
   useEffect(() => {
     setShowMobile(true);
@@ -71,7 +71,7 @@ const ViewContractModal = ({ handleCloseModal, contractDetails }: Props) => {
 
   useEffect(() => {
     if (profile) {
-      const profileData = getLensProfileData(profile);
+      const profileData = getLensAccountData(profile);
       setUserData(profileData);
       setLoadingUser(false);
     }
@@ -133,7 +133,7 @@ const ViewContractModal = ({ handleCloseModal, contractDetails }: Props) => {
   const handleAccept = async () => {
     if (contractDetails.id !== undefined) {
       const senderHandle =
-        session?.type === SessionType.WithProfile ? session.profile.handle?.localName : undefined;
+         userProfile? userProfile.userLink : undefined;
       const hash = await accept_proposal(
         contractDetails.id,
         contractDetails,
@@ -190,7 +190,7 @@ const ViewContractModal = ({ handleCloseModal, contractDetails }: Props) => {
                 src={userData.picture}
                 onError={e => {
                   (e.target as HTMLImageElement).src =
-                    `https://api.hey.xyz/avatar?id=${userData.id}`;
+                    'https://static.hey.xyz/images/default.png';
                 }}
                 alt="paco pic"
                 width={46}

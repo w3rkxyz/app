@@ -4,16 +4,16 @@ import { WagmiProvider, createConfig, http } from "wagmi";
 import { chains } from "@lens-chain/sdk/viem";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ConnectKitProvider, getDefaultConfig } from "connectkit";
-import { LensConfig, development, LensProvider, production } from "@lens-protocol/react-web";
-import { bindings as wagmiBindings } from "@lens-protocol/wagmi";
 import { ReactNode } from "react";
+import { getPublicClient } from "@/client";
+import { LensProvider } from "@lens-protocol/react";
 
-const config = createConfig(
+const wagmiConfig = createConfig(
   getDefaultConfig({
-    chains: [chains.mainnet, chains.testnet],
+    chains: [chains.mainnet],
     transports: {
-      [chains.mainnet.id]: http(chains.mainnet.rpcUrls.default.http[0]!),
-      [chains.testnet.id]: http(chains.testnet.rpcUrls.default.http[0]!),
+      [chains.mainnet.id]: http(),
+      [chains.testnet.id]: http(),
     },
     walletConnectProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID as string,
     appName: "w3rk",
@@ -23,20 +23,15 @@ const config = createConfig(
   })
 );
 
-const queryClient = new QueryClient();
-
-// Lens Protocol config
-const lensConfig: LensConfig = {
-  bindings: wagmiBindings(config),
-  environment: development,
-};
-
 export const Web3Provider = ({ children }: { children: ReactNode }) => {
+  const queryClient = new QueryClient();
+  const publicClient = getPublicClient();
+
   return (
-    <WagmiProvider config={config}>
+    <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <ConnectKitProvider>
-          <LensProvider config={lensConfig}>{children}</LensProvider>
+          <LensProvider client={publicClient}>{children}</LensProvider>
         </ConnectKitProvider>
       </QueryClientProvider>
     </WagmiProvider>

@@ -1,19 +1,19 @@
 import { ConnectKitButton } from "connectkit";
 import Link from "next/link";
-import { SessionType, useSession } from "@lens-protocol/react-web";
 import { useDispatch } from "react-redux";
 import { displayLoginModal } from "@/redux/app";
+import { useAuthenticatedUser } from "@lens-protocol/react";
 
 export const Connect = () => {
-  const { data: session, loading: sessionLoading } = useSession();
   const dispatch = useDispatch();
+  const { data: authenticatedUser, loading: authUserLoading } = useAuthenticatedUser();
 
   return (
     <ConnectKitButton.Custom>
-      {({ isConnected, isConnecting, show, address, ensName, chain }) => {
-        if (isConnected && !sessionLoading && session?.type === SessionType.WithProfile) {
+      {({ isConnected, show }) => {
+        if (isConnected && authenticatedUser) {
           return (
-            <Link href={`/u/${session.profile.handle?.localName}`}>
+            <Link href={`/u/{session.profile.handle?.localName}`}>
               <button type="button" className="button-primary mx-auto">
                 Get Started
               </button>

@@ -9,8 +9,8 @@ import { useDispatch } from "react-redux";
 import { openAlert, closeAlert, openLoader } from "@/redux/alerts";
 import { activeContractDetails } from "@/types/types";
 import DatePicker from "react-datepicker";
-import { useProfile } from "@lens-protocol/react-web";
-import getLensProfileData, { UserProfile } from "@/utils/getLensProfile";
+import {useAccount as useLensAccount} from "@lens-protocol/react";
+import getLensAccountData, { AccountData } from "@/utils/getLensProfile";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import Link from "next/link";
@@ -42,13 +42,10 @@ const AwaitingApprovalContractModal = ({ handleCloseModal, contractDetails }: Pr
   const [newDueDate, setNewDueDate] = useState(contractDetails.dueDate);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showNewDatePicker, setShowNewDatePicker] = useState(false);
-  const [userData, setUserData] = useState<UserProfile>();
-  const { data: profile, loading: profileLoading } = useProfile({
-    forProfileId: showClientView ? contractDetails.freelancerHandle : contractDetails.clientHandle,
-  });
-  // const { data: profile, loading: profileLoading } = useProfile({
-  //   forHandle: "@adam_",
-  // });
+  const [userData, setUserData] = useState<AccountData>();
+  const { data: profile, loading: profileLoading } = useLensAccount({
+    username: { localName: showClientView ? contractDetails.freelancerHandle : contractDetails.clientHandle },
+  })
   const [loadingUser, setLoadingUser] = useState(true);
 
   useEffect(() => {
@@ -120,7 +117,7 @@ const AwaitingApprovalContractModal = ({ handleCloseModal, contractDetails }: Pr
 
   useEffect(() => {
     if (profile) {
-      const profileData = getLensProfileData(profile);
+      const profileData = getLensAccountData(profile);
       setUserData(profileData);
       setLoadingUser(false);
     }
@@ -154,7 +151,7 @@ const AwaitingApprovalContractModal = ({ handleCloseModal, contractDetails }: Pr
                 src={userData.picture}
                 onError={e => {
                   (e.target as HTMLImageElement).src =
-                    `https://api.hey.xyz/avatar?id=${userData.id}`;
+                    'https://static.hey.xyz/images/default.png';
                 }}
                 alt="paco pic"
                 width={46}

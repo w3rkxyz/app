@@ -6,19 +6,9 @@ import JobCard from "@/components/Cards/JobCard";
 import MyButton from "@/components/reusable/Button/Button";
 import ViewJobModal from "../view-job-modal/view-job-modal";
 import { useEffect, useState } from "react";
-import {
-  usePublications,
-  useSearchPublications,
-  appId,
-  AnyPublication,
-} from "@lens-protocol/react-web";
+import { usePosts, AnyPost } from "@lens-protocol/react";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
-
-import { ContentWarning, MainContentFocus } from "@lens-protocol/client";
-import { fetchPosts } from "@lens-protocol/client/actions";
-
-import { client } from "../../client";
 
 const buttons = [
   {
@@ -60,19 +50,8 @@ const FindWork = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [data, setData] = useState<any[]>([]);
-  const {
-    data: publications,
-    hasMore,
-    loading: publicationsLoading,
-  } = usePublications({
-    where: {
-      metadata: {
-        publishedOn: [appId(process.env.NEXT_PUBLIC_APP_ID as string)],
-        tags: {
-          all: ["w3rk", "job"],
-        },
-      },
-    },
+  const { data: publications, loading: publicationsLoading } = usePosts({
+    filter: { metadata: { tags: { all: ["w3rk", "job"] } } },
   });
 
   // const { data: searchResults } = useSearchPublications({
@@ -104,9 +83,9 @@ const FindWork = () => {
     };
   }
 
-  const searchItems = (items: AnyPublication[], searchText: string) => {
+  const searchItems = (items: AnyPost[], searchText: string) => {
     const filtered = items.filter(item => {
-      if (item.__typename === "Post") {
+      if (item.__typename === "Post" && item.metadata.__typename === "TextOnlyMetadata") {
         const attribute4 = item.metadata.attributes?.[4].value.toLowerCase();
         const attribute5 = item.metadata.attributes?.[5].value.toLowerCase();
         return (
@@ -120,7 +99,7 @@ const FindWork = () => {
 
   const handleSearch = (searchText: string) => {
     if (publications) {
-      const filtered = searchItems(publications, searchText);
+      const filtered = searchItems([...publications.items], searchText);
     }
   };
 
@@ -145,7 +124,7 @@ const FindWork = () => {
 
   useEffect(() => {
     if (publications) {
-      setData(publications.filter(publication => publication.isHidden === false));
+      setData(publications.items.filter(publication => publication.isDeleted === false));
       console.log("Publications: ", publications);
       setLoading(false);
     }
@@ -164,21 +143,6 @@ const FindWork = () => {
   //   }
   //   // eslint-disable-next-line react-hooks/exhaustive-deps
   // }, [searchResults]);
-
-  useEffect(() => {
-    const getData = async () => {
-      const result = await fetchPosts(client, {
-        filter: {
-          apps: [appId(process.env.NEXT_PUBLIC_APP_ID as string)],
-          metadata: {
-            tags: { all: ["w3rk", "job"] },
-          },
-        },
-      });
-      console.log(result);
-    };
-    getData();
-  }, []);
 
   return (
     <div className="find-work-section pt-[82px] md:pt-[120px] sm:pt-[60px] mb-[20px]">
@@ -288,7 +252,7 @@ const FindWork = () => {
                   borderRadius={"12px"}
                 />
               </>
-            ) : publications && publications.length > 0 ? (
+            ) : publications && publications.items.length > 0 ? (
               data.map((publication, index) => {
                 if (
                   publication.__typename === "Post" &&
@@ -317,40 +281,7 @@ const FindWork = () => {
                 }
               })
             ) : (
-              <>
-                <JobCard
-                  userAvatar="/images/head-2.svg"
-                  username="adam.lens"
-                  jobName="Post Title"
-                  jobIcon="/images/bag.svg"
-                  onCardClick={handleOpenModal}
-                  type="job"
-                />
-                <JobCard
-                  userAvatar="/images/head-2.svg"
-                  username="adam.lens"
-                  jobName="Post Title"
-                  jobIcon="/images/bag.svg"
-                  onCardClick={handleOpenModal}
-                  type="job"
-                />
-                <JobCard
-                  userAvatar="/images/head-2.svg"
-                  username="adam.lens"
-                  jobName="UI/UX Designer | Figma | Web, Dashboard Analytic, Mobile App | SaaS"
-                  jobIcon="/images/bag.svg"
-                  onCardClick={handleOpenModal}
-                  type="job"
-                />
-                <JobCard
-                  userAvatar="/images/head-2.svg"
-                  username="adam.lens"
-                  jobName="Post Title"
-                  jobIcon="/images/bag.svg"
-                  onCardClick={handleOpenModal}
-                  type="job"
-                />
-              </>
+              <div>No POSTS YET!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!</div>
             )}
           </div>
         </div>

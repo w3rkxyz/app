@@ -7,10 +7,9 @@ import { useAccount } from "wagmi";
 import type { contractDetails } from "@/types/types";
 import { create_proposal } from "@/api";
 import { uploadJsonToIPFS } from "@/utils/uploadToIPFS";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { openAlert, closeAlert } from "@/redux/alerts";
 import { openLoader } from "@/redux/alerts";
-import { useSession, SessionType } from "@lens-protocol/react-web";
 
 type Props = {
   handleCloseModal?: () => void;
@@ -31,13 +30,13 @@ const tokens = [
 ];
 
 const ReviewContractModal = ({ handleCloseModal, setCreationStage, contractDetails }: Props) => {
+  const { user: userProfile } = useSelector((state: any) => state.app);
   const { address } = useAccount();
   const myDivRef = useRef<HTMLDivElement>(null);
   const tagModalRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const tokenModalRef = useRef<HTMLButtonElement>(null);
   const dispatch = useDispatch();
   const [showMobile, setShowMobile] = useState(true);
-  const { data: session } = useSession();
 
   const [showTokens, setShowTokens] = useState(false);
   const [selectedTokens, setSelectedTokens] = useState<number[]>([]);
@@ -67,7 +66,7 @@ const ReviewContractModal = ({ handleCloseModal, setCreationStage, contractDetai
 
     const escrowData = await uploadJsonToIPFS(contractDetails);
     const senderHandle =
-      session?.type === SessionType.WithProfile ? session.profile.handle?.localName : undefined;
+      userProfile ? userProfile.userLink : undefined;
     const hash = await create_proposal(
       contractDetails.paymentAmount.toString(),
       contractDetails.freelancerAddress,

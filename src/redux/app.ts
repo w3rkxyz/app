@@ -1,5 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { Profile } from "@lens-protocol/react-web";
+import { AccountData } from "@/utils/getLensProfile";
 
 const initialState = {
   loginModal: false,
@@ -15,7 +15,7 @@ interface Display {
 
 interface SetProfile {
   payload: {
-    profile: Profile;
+    profile: AccountData;
   };
 }
 

@@ -1,29 +1,44 @@
 import Link from "next/link";
 import Image from "next/image";
 import React from "react";
-import { HandleInfo, useLogout } from "@lens-protocol/react-web";
 import { useDisconnect } from "wagmi";
+import { wipeKeys } from "@/utils/xmtpHelpers";
+import { getLensClient } from "@/client";
+import { useRouter } from "next/navigation";
+import { useDispatch, useSelector } from "react-redux";
+
 
 const MobileProfileDropdown = ({
-  handle,
   menuOpen,
   closeMenu,
-  profilePic,
 }: {
-  handle?: HandleInfo;
-  profilePic: string;
   menuOpen: boolean;
   closeMenu: () => void;
 }) => {
-  const { execute: logout, loading } = useLogout();
+  const { user: profile } = useSelector((state: any) => state.app);
+  const dispatch = useDispatch();
   const { disconnect } = useDisconnect();
+  const router = useRouter();
 
   const handleLogOut = async () => {
-    if (handle) {
-      await logout();
+    if (!profile) return;
+
+    try {
+      // Perform logout via the session client
+      const client = await getLensClient();
+
+      if (client.isSessionClient()) {
+        await client.logout();
+      }
+
       disconnect();
-      closeMenu();
-      window.location.href = "/";
+      wipeKeys(profile.address);
+
+      router.push("/"); // Redirect to the homepage or any other page
+
+      window.location.reload(); // Refresh the page to clear the session
+    } catch (error) {
+      console.error("Lens logout failed:", error);
     }
   };
 
@@ -44,11 +59,11 @@ const MobileProfileDropdown = ({
       </button>
       <div className="rounded-[12px] border-[1px] border-[#E4E4E7] flex align-middle p-[12px] gap-[12px] mb-[12px]">
         <div className="w-[50px] h-[50px] relative">
-          <Image src={profilePic} fill className="rounded-[12px]" alt="user icon" />
+          <Image src={profile.picture} fill className="rounded-[12px]" alt="user icon" />
         </div>
         <div className="flex flex-col justify-center gap-[6px] py-[2px]">
           <span className="bold-h2">Display Name</span>
-          <span className="bold-h2-subtext">{handle ? `@${handle.localName}` : "@0xPaco"}</span>
+          <span className="bold-h2-subtext">{profile ? profile.handle : "@user"}</span>
         </div>
       </div>
       <hr className="w-full h-[1px] bg-[#E4E4E7] border-0 mb-[14px]" />
@@ -94,7 +109,7 @@ const MobileProfileDropdown = ({
             <span className="drop-down-text">Messages</span>
           </div>
         </Link>
-        <Link href={`/u/${handle?.localName}`} onClick={closeMenu}>
+        <Link href={`/u/${profile?.userLink}`} onClick={closeMenu}>
           <div className="drop-down-item">
             <Image src="/images/user.svg" width={22} height={22} alt="person icon"></Image>
             <span className="drop-down-text">My Profile</span>

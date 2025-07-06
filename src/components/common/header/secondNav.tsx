@@ -6,60 +6,27 @@ import ProfileDropdown from "@/components/ProfileDropdown/ProfileDropdown";
 import { usePathname } from "next/navigation";
 import MobileProfileDropdown from "./mobileMenu";
 import { useSelector } from "react-redux";
-import { useAccount } from "wagmi";
-import { LimitType, SessionType, Profile, useSession, Session } from "@lens-protocol/react-web";
 import { Oval } from "react-loader-spinner";
-import getLensProfileData, {
-  getLensAccountData,
-  UserProfile,
-  AccountData,
-} from "@/utils/getLensProfile";
-import { fetchAccounts } from "@lens-protocol/client/actions";
-import { client } from "@/client";
+import { useAccounts } from "@lens-protocol/react";
+import getLensAccountData from "@/utils/getLensProfile";
 
-const SecondNav = ({ session }: { session: Session }) => {
-  // const { loginModal, user: profile } = useSelector((state: any) => state.app);
+const SecondNav = () => {
+  const { user: profile } = useSelector((state: any) => state.app);
   const myDivRef = useRef<HTMLDivElement>(null);
   const drowdownRef = useRef<HTMLDivElement>(null);
-  const { address } = useAccount();
-  const [profile, setProfile] = useState<Profile>();
-  // const { data: session, loading: sessionLoading } = useSession();
-  const [profileData, setProfileData] = useState<UserProfile>();
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const path = usePathname();
   const [searchText, setSearchText] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [profiles, setProfiles] = useState<
-    {
-      picture: string;
-      coverPicture: string;
-      displayName: string;
-      handle: string;
-      bio: string;
-      attributes: any;
-      id: any;
-      profile: Profile;
-      userLink: string;
-    }[]
-  >([]);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (myDivRef.current && !myDivRef.current.contains(event.target as Node)) {
-        setShowSearchResults(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const { data: accounts, loading: accountsLoading } = useAccounts({
+    filter: {
+      searchBy: {
+        localNameQuery: searchText,
+      },
+    },
+  });
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -102,93 +69,15 @@ const SecondNav = ({ session }: { session: Session }) => {
     setMobileMenuOpen(!isMobileMenuOpen);
   };
 
-  const searchProfiles = async (query: string) => {
-    if (!query) {
-      setProfiles([]);
-      return;
-    }
-
-    setLoading(true);
-    console.log(query);
-    try {
-      const result = await fetchAccounts(client, {
-        filter: {
-          searchBy: {
-            localNameQuery: query,
-          },
-        },
-      });
-
-      if (result.isErr()) {
-        console.error(result.error);
-        setLoading(false);
-        return;
-      }
-
-      console.log("Result: ", result);
-
-      const { items } = result.value;
-
-      const temp: {
-        picture: string;
-        coverPicture: string;
-        displayName: string;
-        handle: string;
-        bio: string;
-        attributes: any;
-        id: any;
-        profile: Profile;
-        userLink: string;
-      }[] = [];
-
-      items.forEach(account => {
-        const accountData = getLensAccountData(account);
-
-        // Create a profile object for compatibility with existing UI
-        const profileObj = {
-          id: account.username?.id || "",
-          handle: account.username,
-          metadata: account.metadata,
-        } as Profile;
-
-        if (accountData.handle !== "") {
-          temp.push({
-            ...accountData,
-            profile: profileObj,
-          });
-        }
-      });
-
-      setProfiles(temp);
-    } catch (error) {
-      console.error("Error searching profiles:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    if (searchText) {
-      const debounceTimer = setTimeout(() => {
-        searchProfiles(searchText);
-      }, 300);
-
-      return () => clearTimeout(debounceTimer);
+    if (searchText !== "") {
+      setShowSearchResults(true);
     } else {
-      setProfiles([]);
+      setShowSearchResults(false);
     }
   }, [searchText]);
 
-  useEffect(() => {
-    if (session?.type === SessionType.WithProfile) {
-      const profile = session.profile;
-
-      const profileData = getLensProfileData(profile);
-      setProfile(profile);
-      setProfileData(profileData);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.type, session?.authenticated]);
+  
 
   return (
     <>
@@ -248,7 +137,6 @@ const SecondNav = ({ session }: { session: Session }) => {
                       className="search-input rounded-[12px] p-[11px] pl-[3px]"
                       placeholder="Search..."
                       onChange={e => {
-                        setShowSearchResults(true);
                         setSearchText(e.target.value);
                       }}
                       value={searchText}
@@ -263,12 +151,16 @@ const SecondNav = ({ session }: { session: Session }) => {
                       height={20}
                     />
                   </button>
-                  {profiles && profiles.length > 0 && searchText !== "" && showSearchResults ? (
+                  {accounts &&
+                  accounts.items.length > 0 &&
+                  searchText !== "" &&
+                  showSearchResults ? (
                     <div
                       className={`user-search-box mt-[0px] flex flex-col gap-[5px] absolute z-[9999] left-0 top-[47px] rounded-[10px] border-[1px] border-[#E4E4E7] bg-white py-[10px]`}
                       onClick={e => e.stopPropagation()}
                     >
-                      {profiles.slice(0, 7).map((profile, index) => {
+                      {accounts.items.slice(0, 7).map((acc, index) => {
+                        const profile = getLensAccountData(acc);
                         return (
                           <Link href={`/u/${profile.userLink}`} key={index}>
                             <div
@@ -280,7 +172,7 @@ const SecondNav = ({ session }: { session: Session }) => {
                                   src={profile.picture}
                                   onError={e => {
                                     (e.target as HTMLImageElement).src =
-                                      `https://api.hey.xyz/avatar?id=${profile.id}`;
+                                      'https://static.hey.xyz/images/default.png';
                                   }}
                                   fill
                                   className="circle-div relative bg-gray-200 dark:border-gray-700"
@@ -298,7 +190,7 @@ const SecondNav = ({ session }: { session: Session }) => {
                         );
                       })}
                     </div>
-                  ) : loading && searchText !== "" && showSearchResults ? (
+                  ) : accountsLoading && searchText !== "" ? (
                     <div
                       className={`user-search-box mt-[0px] flex flex-col absolute top-[47px] left-0 rounded-[10px] border-[1px] border-[#E4E4E7] bg-white py-[10px] align-middle items-center`}
                       onClick={e => e.stopPropagation()}
@@ -343,14 +235,14 @@ const SecondNav = ({ session }: { session: Session }) => {
                   <button onClick={openProfileDropdown}>
                     <div className="w-[34px] h-[34px] sm:w-[34px] sm:h-[34px] relative">
                       <Image
-                        src={profileData ? profileData.picture : "/images/paco-square.svg"}
-                        onError={e => {
-                          (e.target as HTMLImageElement).src =
-                            `https://api.hey.xyz/avatar?id=${profileData?.id}`;
-                        }}
+                        src={profile.picture}
                         fill
                         className="rounded-[8px] sm:rounded-[8.16px] relative mt-[2px]"
                         alt="user icon"
+                        onError={e => {
+                          (e.target as HTMLImageElement).src =
+                            'https://static.hey.xyz/images/default.png';
+                        }}
                       />
                     </div>
                   </button>
@@ -359,7 +251,7 @@ const SecondNav = ({ session }: { session: Session }) => {
                   <div className="absolute right-[0px] top-[55px] z-[9999]" ref={drowdownRef}>
                     {showProfileDropdown && (
                       <>
-                        <ProfileDropdown handle={profile?.handle ? profile.handle : undefined} />
+                        <ProfileDropdown />
                       </>
                     )}
                   </div>
@@ -376,12 +268,7 @@ const SecondNav = ({ session }: { session: Session }) => {
             </nav>
 
             {/* Mobile Menu */}
-            <MobileProfileDropdown
-              handle={profile?.handle ? profile.handle : undefined}
-              menuOpen={isMobileMenuOpen}
-              closeMenu={handleMobileMenuToggle}
-              profilePic={profileData ? profileData.picture : "/images/paco-square.svg"}
-            />
+            <MobileProfileDropdown menuOpen={isMobileMenuOpen} closeMenu={handleMobileMenuToggle} />
           </div>
         </div>
         {/* Choose Account Modal */}

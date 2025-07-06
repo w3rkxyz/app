@@ -2,9 +2,9 @@
 
 import React, { useRef, useEffect, useState } from "react";
 import Image from "next/image";
-import { useSearchProfiles, LimitType, Profile } from "@lens-protocol/react-web";
 import { Oval } from "react-loader-spinner";
-import getLensProfileData from "@/utils/getLensProfile";
+import { useAccounts } from "@lens-protocol/react";
+import getLensAccountData from "@/utils/getLensProfile";
 
 type Props = {
   handleCloseModal?: () => void;
@@ -19,21 +19,13 @@ const NewConversation = ({
 }: Props) => {
   const myDivRef = useRef<HTMLDivElement>(null);
   const [searchText, setSearchText] = useState("");
-  const { data, error, loading } = useSearchProfiles({
-    query: searchText,
+  const { data: accounts, loading: accountsLoading } = useAccounts({
+    filter: {
+      searchBy: {
+        localNameQuery: searchText,
+      },
+    },
   });
-  const [profiles, setProfiles] = useState<
-    {
-      picture: string;
-      coverPicture: string;
-      displayName: string;
-      handle: string;
-      bio: string;
-      attributes: any;
-      id: any;
-      profile: Profile;
-    }[]
-  >();
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -53,30 +45,6 @@ const NewConversation = ({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    if (data) {
-      var temp: {
-        picture: string;
-        coverPicture: string;
-        displayName: string;
-        handle: string;
-        bio: string;
-        attributes: any;
-        id: any;
-        profile: Profile;
-      }[] = [];
-
-      data.map((profile: Profile) => {
-        var profileData = getLensProfileData(profile);
-        if (profileData.handle !== "") {
-          temp.push({ ...profileData, profile: profile });
-        }
-      });
-
-      setProfiles(temp);
-    }
-  }, [data]);
 
   return (
     <div
@@ -101,24 +69,25 @@ const NewConversation = ({
         placeholder="Search..."
         onChange={e => setSearchText(e.target.value)}
       />
-      {profiles && profiles.length > 0 && searchText !== "" ? (
+      {accounts && accounts.items.length > 0 && searchText !== "" ? (
         <div
           className={`user-search-box-modal mt-[0px] flex flex-col gap-[5px] absolute top-[105px] left-[16px] rounded-[10px] border-[1px] border-[#E4E4E7] bg-white py-[10px]`}
           onClick={e => e.stopPropagation()}
         >
-          {profiles.slice(0, 7).map((profile, index) => {
+          {accounts.items.slice(0, 7).map((acc, index) => {
+            const profile = getLensAccountData(acc);
             return (
               <div
                 className="text-[14px] hover:bg-[#f1f1f1] w-full gap-[8px] flex items-center cursor-pointer px-[10px] py-[8px]"
                 key={index}
-                onClick={() => handleStartConversation(profile.profile)}
+                onClick={() => handleStartConversation(profile)}
               >
                 <div className="circle-div relative bg-gray-200 dark:border-gray-700">
                   <Image
                     src={profile.picture}
                     onError={e => {
                       (e.target as HTMLImageElement).src =
-                        `https://api.hey.xyz/avatar?id=${profile.id}`;
+                        'https://static.hey.xyz/images/default.png';
                     }}
                     fill
                     className="circle-div relative bg-gray-200 dark:border-gray-700"
@@ -135,9 +104,9 @@ const NewConversation = ({
             );
           })}
         </div>
-      ) : loading && searchText !== "" ? (
+      ) : accountsLoading && searchText !== "" ? (
         <div
-          className={`user-search-box mt-[0px] flex flex-col absolute top-[105px] left-[16px] rounded-[10px] border-[1px] border-[#E4E4E7] bg-white py-[20px] align-middle items-center`}
+          className={`user-search-box-modal mt-[0px] flex flex-col absolute top-[105px] left-[16px] rounded-[10px] border-[1px] border-[#E4E4E7] bg-white py-[20px] align-middle items-center`}
           onClick={e => e.stopPropagation()}
         >
           <Oval

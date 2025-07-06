@@ -2,12 +2,11 @@
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import SecondNav from "./secondNav";
 import { Connect } from "./connectButton";
 import { useAccount } from "wagmi";
-import { useSession, SessionType, Profile } from "@lens-protocol/react-web";
 import { useSelector, useDispatch } from "react-redux";
 import { displayLoginModal, setLensProfile } from "@/redux/app";
+import LoginForm from "./loginForm";
 
 const Navbar = () => {
   const { loginModal, user: profile } = useSelector((state: any) => state.app);
@@ -15,8 +14,6 @@ const Navbar = () => {
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNavbar, setShowNavbar] = useState(true);
   const { isConnected, address } = useAccount();
-  const { data: session, loading: sessionLoading } = useSession();
-  // const [profile, setProfile] = useState<Profile>();
 
   const closeMobileMenu = () => {
     setMobileMenuOpen(false);
@@ -69,7 +66,7 @@ const Navbar = () => {
       {/* )} */}
 
       {/* Choose Account Modal */}
-      {/* {loginModal && address && <LoginForm owner={address} />} */}
+      {loginModal && address && <LoginForm owner={address} />}
     </>
   );
 };

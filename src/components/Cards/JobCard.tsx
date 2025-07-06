@@ -3,8 +3,13 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { AnyPublication, Post } from "@lens-protocol/react-web";
-import getLensProfileData from "@/utils/getLensProfile";
+import { Post, TextOnlyMetadata } from '@lens-protocol/react'
+import getLensAccountData from "@/utils/getLensProfile"
+
+// Extend the Post interface to ensure metadata is properly typed
+interface ExtendedPost extends Post {
+  metadata: TextOnlyMetadata
+}
 
 const tagColors: any = {
   "Blockchain Development": "#FFC2C2",
@@ -30,35 +35,23 @@ interface CardProps {
   onCardClick?: () => void;
   setType?: any;
   handlePostJobOpen?: () => void;
-  publication?: Post;
+  publication: ExtendedPost;
 }
 
 const JobCard = ({
-  userAvatar,
-  username,
-  jobName,
-  jobIcon,
-  cardStyles,
   onCardClick,
   setType,
   type,
   publication,
 }: CardProps) => {
-  const data =
-    publication && publication.metadata.__typename === "TextOnlyMetadataV3"
-      ? publication
-      : undefined;
-
   var attributes: any = {};
-  if (publication) {
-    publication.metadata.attributes?.map(attribute => {
-      attributes[attribute.key] = attribute.value;
-    });
-  }
+  publication.metadata.attributes?.map((attribute: any) => {
+    attributes[attribute.key] = attribute.value;
+  });
 
   var profileData;
-  if (data) {
-    profileData = getLensProfileData(data?.by);
+  if (publication) {
+    profileData = getLensAccountData(publication.author);
   }
 
   return (
@@ -124,7 +117,7 @@ const JobCard = ({
       </div>
       <p
         className={`line-clamp-6 leading-[22px] text-[12px] sm:text-[13px] font-normal mb-[12px] sm:mb-[17px] w-full laptop-x:text-[14px] ${
-          data ? "whitespace-pre-wrap" : ""
+          publication ? "whitespace-pre-wrap" : ""
         }`}
       >
         {attributes["content"]
@@ -134,18 +127,16 @@ const JobCard = ({
             character limit will have to be decided bc we don’t wanna run over the limit. User infoormation can go here along... `}
       </p>
       <div className="flex sm:flex-col gap-[15px] sm:gap-[10px]">
-        {data?.metadata.tags?.slice(0, 3).map((tag, index) => {
+        {publication.metadata.tags?.slice(0, 3).map((tag: string, index: number) => {
           if (tag !== "w3rk" && tag !== "job" && tag !== "service") {
             return (
               <button
                 key={index}
                 className={`${
-                  data?.metadata.tags
-                    ? `bg-[${tagColors[data?.metadata.tags[index]]}]`
-                    : "bg-[#E4E4E7]"
+                  tagColors[tag] ? `bg-[${tagColors[tag]}]` : "bg-[#E4E4E7]"
                 } rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] w-[200px] sm:px-0 sm:w-[190px] sm:flex sm:justify-center min-w-[200px]`}
               >
-                {data?.metadata.tags ? data?.metadata.tags[index] : "Tag Name"}
+                {tag}
               </button>
             );
           }

@@ -1,7 +1,11 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { useSession, SessionType } from "@lens-protocol/react-web";
+import { useSelector } from "react-redux";
+import { evmAddress } from "@lens-protocol/client";
+import {fetchAccountStats} from "@lens-protocol/client/actions"
+import {getLensClient} from "@/client"
+
 import { useEffect, useState } from "react";
 
 interface height {
@@ -18,26 +22,34 @@ const defaultUserState = {
 };
 
 const Sidebar = ({ height }: height) => {
-  const { data: session, error, loading: sessionLoading } = useSession();
+  const { user: myProfile } = useSelector((state: any) => state.app);
   const [user, setUser] = useState<any>(defaultUserState);
 
-  useEffect(() => {
-    if (session?.type == SessionType.WithProfile) {
+  const getData = async () => {
+    const client = await getLensClient();
+    if (client.isSessionClient()) {
+      const stats = await fetchAccountStats(client, { account: evmAddress(myProfile.address) });
+      var followers = 0;
+      var following = 0;
+      if (stats.isOk()) {
+        followers = stats.value ? stats.value.graphFollowStats.followers : 0;
+        following = stats.value ? stats.value.graphFollowStats.following : 0;
+      }
+      
       setUser({
-        handle:
-          `${session.profile.handle?.localName}.${session.profile.handle?.namespace}` ||
-          user.handle,
-        picture:
-          session.profile.metadata?.picture?.__typename == "ImageSet"
-            ? session.profile.metadata?.picture?.raw.uri
-            : user.picture,
-        following: session.profile.stats.following,
-        followers: session.profile.stats.followers,
-        about: session.profile.metadata?.bio || user.about,
+        handle: myProfile.handle,
+        picture: myProfile.picture,
+        following: following,
+        followers: followers,
+        about: myProfile.bio || user.about,
       });
     }
+  }
+
+  useEffect(() => {
+    getData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionLoading]);
+  }, [myProfile]);
 
   return (
     <div>

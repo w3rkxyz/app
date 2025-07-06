@@ -1,29 +1,25 @@
 import Image from "next/image";
-import { useEffect } from "react";
-import {
-  profileId,
-  useLogin,
-  useProfiles,
-  Profile,
-  useValidateHandle,
-  useLazyProfiles,
-  useCreateProfile,
-  useOwnedHandles,
-} from "@lens-protocol/react-web";
 import { toast } from "react-hot-toast";
 import style from "./form.module.css";
-import { formatProfileIdentifier } from "../../../utils/formatProfileIdentifier";
-import { useSelector, useDispatch } from "react-redux";
+import { useDispatch } from "react-redux";
 import { setLensProfile, displayLoginModal } from "@/redux/app";
-import { useState } from "react";
-import getLensProfileData, { UserProfile } from "@/utils/getLensProfile";
-import { create_new_profile, create_profile } from "@/api";
-import { useAccount } from "wagmi";
+import { useEffect, useState } from "react";
+import getLensAccountData, { AccountData } from "@/utils/getLensProfile";
+import { useAccount, useWalletClient } from "wagmi";
 import { Oval } from "react-loader-spinner";
-import { useAppKitAccount } from "@reown/appkit/react";
+import { Account, evmAddress, uri, nonNullable } from "@lens-protocol/client";
+import { useLogin, useAccountsAvailable, SessionClient } from "@lens-protocol/react";
+import {
+  canCreateUsername,
+  createAccountWithUsername,
+  fetchAccount,
+} from "@lens-protocol/client/actions";
+import { signMessageWith, handleOperationWith } from "@lens-protocol/client/viem";
+import { client } from "@/client";
+import { uploadJsonToIPFS } from "@/utils/uploadToIPFS";
 import { openAlert, closeAlert } from "@/redux/alerts";
 
-export function LoginForm({
+export default function LoginForm({
   owner,
 }: // setProfile,
 // onClose,
@@ -31,33 +27,15 @@ export function LoginForm({
   owner: string;
 }) {
   const dispatch = useDispatch();
-  // const { address } = useAccount();
-  const { address } = useAppKitAccount();
-  // const [owner, setOwner] = useState(address as string);
-  const { execute: validateHandle, loading: verifying } = useValidateHandle();
-  // const { execute: createProfile, loading: creating } = useCreateProfile();
-  const { execute: login, loading: isLoginPending } = useLogin();
   const [creatingProfile, setCreatingProfile] = useState(false);
-  const { called, data, execute } = useLazyProfiles();
-  const [loadingProfiles, setLoadingProfiles] = useState(true);
-
-  const { data: profilesData } = useProfiles({
-    where: {
-      ownedBy: [owner],
-    },
+  const { data: walletClient } = useWalletClient();
+  const [sessionClient, setSessionClient] = useState<SessionClient | null>(null);
+  const { data: availableAccounts, loading: accountsLoading } = useAccountsAvailable({
+    managedBy: walletClient?.account.address,
+    includeOwned: true,
   });
-  const [profiles, setProfiles] = useState<
-    {
-      picture: string;
-      coverPicture: string;
-      displayName: string;
-      handle: string;
-      bio: string;
-      attributes: any;
-      id: any;
-      profile: Profile;
-    }[]
-  >();
+  const { execute: authenticate, loading: authenticateLoading } = useLogin();
+  const wallet = useAccount();
   const [errorMessage, setErrorMessage] = useState("Sorry, handles cannot start with a number.");
   const [showError, setShowError] = useState(false);
   const [handle, setHandle] = useState("");
@@ -78,115 +56,254 @@ export function LoginForm({
   };
 
   const handleSubmit = async () => {
-    setCreatingProfile(true);
-    const result = await validateHandle({ localName: handle });
+    if (sessionClient !== null && handle !== "" && walletClient) {
+      setCreatingProfile(true);
 
-    if (result.isFailure()) {
-      setErrorMessage("Sorry, that handle is not available.");
-      setShowError(true);
-      setCreatingProfile(false);
-      return;
-    }
-
-    // const hash = await create_profile(handle, address as string, dispatch);
-    // if (hash) {
-    //   console.log("Success: ", hash);
-    // } else {
-    //   console.log("error dey");
-    // }
-
-    // console.log("Name: ", handle);
-    // console.log("address: ", address as string);
-
-    // const client = new LensClient({
-    //   environment: development,
-    // });
-
-    // const result2 = await client.wallet.createProfileWithHandle({
-    //   handle: handle,
-    //   to: address as string,
-    // });
-
-    setLoadingProfiles(true);
-    setTimeout(() => {
-      execute({
-        where: {
-          ownedBy: [owner],
-        },
+      const result = await canCreateUsername(sessionClient, {
+        localName: handle,
       });
-      setInterval(() => {
-        execute({
-          where: {
-            ownedBy: [owner],
-          },
-        });
-      }, 2000);
-    }, 5000);
-    // setOwner("0x");
-    // setTimeout(() => {
-    //   setOwner(address as string);
-    // }, 1000);
 
-    // const paginatedAccounts = await client.wallet.ownedHandles({
-    //   for: address as string,
-    // });
-    // const firstResult = paginatedAccounts.items[0];
-    // console.log("Id: ", firstResult.id);
-    dispatch(
-      openAlert({
-        displayAlert: true,
-        data: {
-          id: 1,
-          variant: "Successful",
-          classname: "text-black",
-          title: "Submission Successful",
-          tag1: "Profile minted!",
-          tag2: "View on etherscan",
-        },
-      })
-    );
-    setTimeout(() => {
-      // window.location.reload();
-      dispatch(closeAlert());
-    }, 3000);
-    // dispatch(displayLoginModal({ display: false }));
-    // const result2 = await createProfile({
-    //   localName: handle,
-    //   to: address as string,
-    // });
+      if (result.isErr()) {
+        setErrorMessage("Sorry, that handle is not available.");
+        setShowError(true);
+        setCreatingProfile(false);
+        return;
+      }
 
-    // if (result2.isFailure()) {
-    //   window.alert(result2.error.message);
-    //   setCreatingProfile(false);
-    //   return;
-    // }
+      switch (result.value.__typename) {
+        case "NamespaceOperationValidationPassed":
+          // Creating a username is allowed
 
-    // const profile = result.value;
-    // console.log("Profile: ", profile);
-    setCreatingProfile(false);
+          const metadata = {
+            name: handle,
+            bio: "",
+            picture: "",
+            coverPicture: "",
+            attributes: [],
+          };
+          console.log("Got here 0");
+
+          const metadataURI = await uploadJsonToIPFS(metadata);
+          console.log("Got here 1");
+
+          const accountResult = await createAccountWithUsername(sessionClient, {
+            username: { localName: handle },
+            metadataUri: uri(metadataURI),
+          })
+            .andThen(handleOperationWith(walletClient))
+            .then(() => {
+              sessionClient.logout()
+              dispatch(
+                openAlert({
+                  displayAlert: true,
+                  data: {
+                    id: 1,
+                    variant: "Successful",
+                    classname: "text-black",
+                    title: "Submission Successful",
+                    tag1: "Profile minted!",
+                    tag2: "View on etherscan",
+                  },
+                })
+              );
+              setTimeout(() => {
+                window.location.reload();
+                dispatch(closeAlert());
+              }, 3000);
+            });
+          break;
+
+        case "NamespaceOperationValidationFailed":
+          // Creating a username is not allowed
+          setErrorMessage(result.value.reason);
+          setShowError(true);
+          setCreatingProfile(false);
+          break;
+
+        case "NamespaceOperationValidationUnknown":
+          // Validation outcome is unknown
+          setErrorMessage("Sorry, something went wrong. Please try again.");
+          setShowError(true);
+          setCreatingProfile(false);
+          break;
+
+        case "UsernameTaken":
+          // The desired username is not available
+          setErrorMessage("Sorry, that handle is not available.");
+          setShowError(true);
+          setCreatingProfile(false);
+          break;
+      }
+
+      // const hash = await create_profile(handle, address as string, dispatch);
+      // if (hash) {
+      //   console.log("Success: ", hash);
+      // } else {
+      //   console.log("error dey");
+      // }
+
+      // console.log("Name: ", handle);
+      // console.log("address: ", address as string);
+
+      // const client = new LensClient({
+      //   environment: development,
+      // });
+
+      // const result2 = await client.wallet.createProfileWithHandle({
+      //   handle: handle,
+      //   to: address as string,
+      // });
+
+      // setLoadingProfiles(true);
+      // setTimeout(() => {
+      //   execute({
+      //     where: {
+      //       ownedBy: [owner],
+      //     },
+      //   });
+      //   setInterval(() => {
+      //     execute({
+      //       where: {
+      //         ownedBy: [owner],
+      //       },
+      //     });
+      //   }, 2000);
+      // }, 5000);
+
+      // setOwner("0x");
+      // setTimeout(() => {
+      //   setOwner(address as string);
+      // }, 1000);
+
+      // const paginatedAccounts = await client.wallet.ownedHandles({
+      //   for: address as string,
+      // });
+      // const firstResult = paginatedAccounts.items[0];
+      // console.log("Id: ", firstResult.id);
+
+      // Uncomment
+      // dispatch(
+      //   openAlert({
+      //     displayAlert: true,
+      //     data: {
+      //       id: 1,
+      //       variant: "Successful",
+      //       classname: "text-black",
+      //       title: "Submission Successful",
+      //       tag1: "Profile minted!",
+      //       tag2: "View on etherscan",
+      //     },
+      //   })
+      // );
+      // setTimeout(() => {
+      //   // window.location.reload();
+      //   dispatch(closeAlert());
+      // }, 3000);
+      // Stop here
+
+      // dispatch(displayLoginModal({ display: false }));
+      // const result2 = await createProfile({
+      //   localName: handle,
+      //   to: address as string,
+      // });
+
+      // if (result2.isFailure()) {
+      //   window.alert(result2.error.message);
+      //   setCreatingProfile(false);
+      //   return;
+      // }
+
+      // const profile = result.value;
+      // console.log("Profile: ", profile);
+      // setCreatingProfile(false);
+    }
   };
 
-  const handleProfileClick = async (profile: string) => {
-    const id = profileId(profile);
+  // const isNameAvailable = async (name: string) => {
+  //   if(sessionClient) {
+  //     const result = await canCreateUsername(sessionClient, {
+  //       localName: name,
+  //     });
 
-    const result = await login({
-      address: owner,
-      profileId: id,
-    });
+  //     if (result.isErr()) {
+  //       return console.error(result.error);
+  //     }
 
-    if (result.isSuccess()) {
-      toast.success(`Welcome ${String(result.value && formatProfileIdentifier(result.value))}`);
+  //     return result.value;
+  //   }
+  // }
 
-      profiles?.map((profile: any) => {
-        if (profile.id === id) {
-          localStorage.setItem("activeHandle", profile.handle?.fullHandle);
-          // setProfile(profile);
-          // onClose();
+  // useEffect(() => {
+  //   if (handle !== "" && sessionClient) {
 
-          dispatch(setLensProfile({ profile: profile }));
-          dispatch(displayLoginModal({ display: false }));
-        }
+  //   }
+  // }, [handle]);
+
+  const authenticateUser = async () => {
+    if (sessionClient === null && walletClient) {
+      const authenticated = await client.login({
+        onboardingUser: {
+          app: evmAddress(process.env.NEXT_PUBLIC_APP_ADDRESS_TESTNET as string),
+          wallet: walletClient.account.address,
+        },
+        signMessage: signMessageWith(walletClient),
       });
+
+      if (authenticated.isErr()) {
+        return console.error(authenticated.error);
+      }
+
+      const newSessionClient = authenticated.value;
+      setSessionClient(newSessionClient);
+    }
+  };
+
+  const handleSelectAccount = async (account: Account) => {
+    if (!walletClient) return;
+    try {
+      const isOwner = wallet.address === account.owner;
+      const authRequest = isOwner
+        ? {
+            accountOwner: {
+              account: account.address,
+              app:
+                process.env.NEXT_PUBLIC_ENVIRONMENT === "development"
+                  ? process.env.NEXT_PUBLIC_APP_ADDRESS_TESTNET
+                  : process.env.NEXT_PUBLIC_APP_ADDRESS_MAINNET,
+              owner: walletClient.account.address,
+            },
+          }
+        : {
+            accountManager: {
+              account: account.address,
+              app:
+                process.env.NEXT_PUBLIC_ENVIRONMENT === "development"
+                  ? process.env.NEXT_PUBLIC_APP_ADDRESS_TESTNET
+                  : process.env.NEXT_PUBLIC_APP_ADDRESS_MAINNET,
+              manager: walletClient.account.address,
+            },
+          };
+
+      await authenticate({
+        ...authRequest,
+        signMessage: async (message: string) => {
+          return await walletClient.signMessage({ message });
+        },
+      });
+
+      const selectedAccount = availableAccounts?.items.find(
+        acc => acc.account.address === account.address
+      )?.account;
+      const profile = getLensAccountData(selectedAccount!);
+
+      console.log("Profile: ", profile);
+
+      toast.success(`Welcome ${profile.handle}`);
+      localStorage.setItem("activeHandle", profile.handle);
+      dispatch(setLensProfile({ profile: profile }));
+      dispatch(displayLoginModal({ display: false }));
+    } catch (error) {
+      console.error("Lens authentication failed:", error);
     }
   };
 
@@ -195,63 +312,8 @@ export function LoginForm({
   };
 
   useEffect(() => {
-    if (data) {
-      var temp: {
-        picture: string;
-        coverPicture: string;
-        displayName: string;
-        handle: string;
-        bio: string;
-        attributes: any;
-        id: any;
-        profile: Profile;
-      }[] = [];
-
-      data.map((profile: Profile) => {
-        var profileData = getLensProfileData(profile);
-        if (profileData.handle !== "") {
-          temp.push({ ...profileData, profile: profile });
-        }
-      });
-
-      setProfiles(temp);
-      setLoadingProfiles(false);
-    } else if (profilesData) {
-      var temp: {
-        picture: string;
-        coverPicture: string;
-        displayName: string;
-        handle: string;
-        bio: string;
-        attributes: any;
-        id: any;
-        profile: Profile;
-      }[] = [];
-
-      profilesData.map((profile: Profile) => {
-        var profileData = getLensProfileData(profile);
-        if (profileData.handle !== "") {
-          temp.push({ ...profileData, profile: profile });
-        }
-      });
-
-      setProfiles(temp);
-      setLoadingProfiles(false);
-    }
-  }, [data, profilesData]);
-
-  useEffect(() => {
-    execute({
-      where: {
-        ownedBy: [owner],
-      },
-    }).then(result => {
-      if (result.isFailure()) {
-        setLoadingProfiles(false);
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    
+  }, [availableAccounts])
 
   // Shows list of available profiles associated with the connected wallet
   return (
@@ -269,9 +331,30 @@ export function LoginForm({
           />
         </div>
         <div className="p-[16px] pt-[12px] flex flex-col">
-          {loadingProfiles ? (
+          {accountsLoading && (
             <span className="text-[14px] leading-[14.52px] font-medium mb-[4px]">Loading...</span>
-          ) : profiles?.length === 0 ? (
+          )}
+          {availableAccounts && availableAccounts.items.length === 0 && sessionClient === null && (
+            <>
+              <span className="text-[14px] leading-[14.52px] font-medium mb-[12px]">
+                No Lens profiles found, mint yours now!
+              </span>
+              <div className="w-[272px] flex items-center space-between gap-[20px] box-border">
+                <span className="text-[14px] leading-[14.52px] font-medium">
+                  Create your first lens account now
+                </span>
+                <Image
+                  src={"/images/arrow-handle.svg"}
+                  alt="arrow icon"
+                  width={20}
+                  height={20}
+                  className="w-[24px] h-[24px] bg-[#F5F5F5] px-[5px] py-[4px] rounded-[6px] cursor-pointer"
+                  onClick={authenticateUser}
+                />
+              </div>
+            </>
+          )}
+          {availableAccounts && availableAccounts.items.length === 0 && sessionClient !== null && (
             <>
               <span className="text-[14px] leading-[14.52px] font-medium mb-[12px]">
                 No Lens profiles found, mint yours now!
@@ -319,27 +402,30 @@ export function LoginForm({
                 </span>
               )}
             </>
-          ) : (
+          )}
+          {availableAccounts && availableAccounts.items.length > 0 && (
             <>
               <span className="text-[14px] leading-[14.52px] font-medium mb-[4px]">
                 Please sign the message.
               </span>
-              {profiles?.map((profile, index) => {
+              {availableAccounts.items.map((acc, index) => {
                 return (
                   <div
                     key={index}
                     className="flex gap-[12px] items-center mt-[8px] cursor-pointer"
-                    onClick={() => handleProfileClick(profile.id)}
+                    onClick={() => handleSelectAccount(acc.account)}
                   >
                     <Image
-                      src={profile.picture}
+                      src={
+                        acc.account.metadata?.picture || "https://static.hey.xyz/images/default.png"
+                      }
                       alt="profile pic"
                       height={40}
                       width={40}
                       className="w-[40px] h-[40px] rounded-[8px] border-[1px] border-[#E4E4E7]"
                     />
                     <span className="text-[14px] leading-[14.52px] font-medium">
-                      {profile.handle}
+                      {acc.account.username?.localName || acc.account.address}
                     </span>
                   </div>
                 );

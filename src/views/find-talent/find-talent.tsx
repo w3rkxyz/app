@@ -6,12 +6,7 @@ import JobCard from "@/components/Cards/JobCard";
 import MyButton from "@/components/reusable/Button/Button";
 import { MouseEventHandler, useEffect, useState } from "react";
 import ViewJobModal from "../view-job-modal/view-job-modal";
-import {
-  usePublications,
-  useSearchPublications,
-  appId,
-  AnyPublication,
-} from "@lens-protocol/react-web";
+import { usePosts, AnyPost } from "@lens-protocol/react";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 
@@ -70,15 +65,8 @@ const FindTalent = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [data, setData] = useState<any[]>([]);
-  const { data: publications } = usePublications({
-    where: {
-      metadata: {
-        publishedOn: [appId(process.env.NEXT_PUBLIC_APP_ID as string)],
-        tags: {
-          all: ["w3rk", "service"],
-        },
-      },
-    },
+  const { data: publications, loading: publicationsLoading } = usePosts({
+    filter: { metadata: { tags: { all: ["w3rk", "service"] } } },
   });
 
   // const { data: searchResults } = useSearchPublications({
@@ -109,9 +97,9 @@ const FindTalent = () => {
     };
   }
 
-  const searchItems = (items: AnyPublication[], searchText: string) => {
+  const searchItems = (items: AnyPost[], searchText: string) => {
     const filtered = items.filter(item => {
-      if (item.__typename === "Post") {
+      if (item.__typename === "Post" && item.metadata.__typename === "TextOnlyMetadata") {
         const attribute4 = item.metadata.attributes?.[4].value.toLowerCase();
         const attribute5 = item.metadata.attributes?.[5].value.toLowerCase();
         return (
@@ -125,7 +113,7 @@ const FindTalent = () => {
 
   const handleSearch = (searchText: string) => {
     if (publications) {
-      const filtered = searchItems(publications, searchText);
+      const filtered = searchItems([...publications.items], searchText);
     }
   };
 
@@ -147,7 +135,7 @@ const FindTalent = () => {
 
   useEffect(() => {
     if (publications) {
-      setData(publications);
+      setData(publications.items.filter(publication => publication.isDeleted === false));
       setLoading(false);
     }
   }, [publications]);
@@ -232,7 +220,7 @@ const FindTalent = () => {
                   borderRadius={"12px"}
                 />
               </>
-            ) : publications && publications.length > 0 ? (
+            ) : publications && publications.items.length > 0 ? (
               data.map((publication, index) => {
                 if (
                   publication.__typename === "Post" &&
@@ -261,40 +249,7 @@ const FindTalent = () => {
                 }
               })
             ) : (
-              <>
-                <JobCard
-                  userAvatar="/images/head-2.svg"
-                  username="adam.lens"
-                  jobName="Post Title"
-                  jobIcon="/images/bag.svg"
-                  onCardClick={handleOpenModal}
-                  type="service"
-                />
-                <JobCard
-                  userAvatar="/images/head-2.svg"
-                  username="adam.lens"
-                  jobName="Post Title"
-                  jobIcon="/images/bag.svg"
-                  onCardClick={handleOpenModal}
-                  type="service"
-                />
-                <JobCard
-                  userAvatar="/images/head-2.svg"
-                  username="adam.lens"
-                  jobName="UI/UX Designer | Figma | Web, Dashboard Analytic, Mobile App | SaaS"
-                  jobIcon="/images/bag.svg"
-                  onCardClick={handleOpenModal}
-                  type="service"
-                />
-                <JobCard
-                  userAvatar="/images/head-2.svg"
-                  username="adam.lens"
-                  jobName="Post Title"
-                  jobIcon="/images/bag.svg"
-                  onCardClick={handleOpenModal}
-                  type="service"
-                />
-              </>
+              <div>No SERVICES YET!!!!!!!!!!!!!!!!!!!!!!!!!!!!!</div>
             )}
           </div>
         </div>

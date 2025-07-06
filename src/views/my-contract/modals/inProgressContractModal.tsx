@@ -5,8 +5,8 @@ import Image from "next/image";
 import MyButton from "@/components/reusable/Button/Button";
 import { useAccount } from "wagmi";
 import { activeContractDetails, contractDetails } from "@/types/types";
-import { useProfile } from "@lens-protocol/react-web";
-import getLensProfileData, { UserProfile } from "@/utils/getLensProfile";
+import {useAccount as useLensAccount} from "@lens-protocol/react";
+import getLensAccountData, { AccountData } from "@/utils/getLensProfile";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import Link from "next/link";
@@ -54,13 +54,10 @@ const InProgressContractModal = ({ handleCloseModal, contractDetails }: Props) =
   const [showClientView, setShowClientView] = useState(
     (address as string) === contractDetails.clientAddress
   );
-  const [userData, setUserData] = useState<UserProfile>();
-  const { data: profile, loading: profileLoading } = useProfile({
-    forProfileId: showClientView ? contractDetails.freelancerHandle : contractDetails.clientHandle,
-  });
-  // const { data: profile, loading: profileLoading } = useProfile({
-  //   forHandle: "@adam_",
-  // });
+  const [userData, setUserData] = useState<AccountData>();
+  const { data: profile, loading: profileLoading } = useLensAccount({
+    username: { localName: showClientView ? contractDetails.freelancerHandle : contractDetails.clientHandle },
+  })
   const [loadingUser, setLoadingUser] = useState(true);
   const [showNewDatePicker, setShowNewDatePicker] = useState(false);
 
@@ -186,14 +183,16 @@ const InProgressContractModal = ({ handleCloseModal, contractDetails }: Props) =
   };
 
   useEffect(() => {
+    console.log('This ran')
     if (profile) {
-      const profileData = getLensProfileData(profile);
+      console.log('This ran 2')
+      const profileData = getLensAccountData(profile);
       setUserData(profileData);
 
       setLoadingUser(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profileLoading]);
+  }, [profileLoading, profile]);
 
   useEffect(() => {
     document.body.style.overflowY = "hidden";
@@ -229,7 +228,7 @@ const InProgressContractModal = ({ handleCloseModal, contractDetails }: Props) =
                 src={userData.picture}
                 onError={e => {
                   (e.target as HTMLImageElement).src =
-                    `https://api.hey.xyz/avatar?id=${userData.id}`;
+                    'https://static.hey.xyz/images/default.png';
                 }}
                 alt="paco pic"
                 width={46}

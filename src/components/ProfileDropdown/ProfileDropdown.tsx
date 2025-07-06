@@ -2,31 +2,46 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import React, { useState } from "react";
-import { HandleInfo, useLogout } from "@lens-protocol/react-web";
-import { useAccount, useDisconnect } from "wagmi";
-import { useDispatch } from "react-redux";
-import { displayLoginModal, displaySwitchModal } from "@/redux/app";
+import React from "react";
+import { useDisconnect } from "wagmi";
+import { useDispatch, useSelector } from "react-redux";
+import { displaySwitchModal } from "@/redux/app";
 import { wipeKeys } from "@/utils/xmtpHelpers";
+import { getLensClient } from "@/client";
+import { useRouter } from "next/navigation";
 
-const ProfileDropdown = ({ handle }: { handle?: HandleInfo }) => {
-  const { execute: logout, loading } = useLogout();
+const ProfileDropdown = () => {
+  const { user: profile } = useSelector((state: any) => state.app);
   const dispatch = useDispatch();
   const { disconnect } = useDisconnect();
+  const router = useRouter();
 
   const handleLogOut = async () => {
-    if (handle) {
-      await logout();
+    if (!profile) return;
+
+    try {
+      // Perform logout via the session client
+      const client = await getLensClient();
+
+      if (client.isSessionClient()) {
+        await client.logout();
+      }
+
       disconnect();
-      wipeKeys(handle.ownedBy);
-      window.location.href = "/";
+      wipeKeys(profile.address);
+
+      router.push("/"); // Redirect to the homepage or any other page
+
+      window.location.reload(); // Refresh the page to clear the session
+    } catch (error) {
+      console.error("Lens logout failed:", error);
     }
   };
 
   const handleSwitchProfile = () => {
-    if (handle) {
+    if (profile) {
       dispatch(displaySwitchModal({ display: true }));
-      wipeKeys(handle.ownedBy);
+      wipeKeys(profile.address);
     }
   };
 
@@ -34,10 +49,10 @@ const ProfileDropdown = ({ handle }: { handle?: HandleInfo }) => {
     <div className="profile-dropdown-section drop-down">
       {/* <div className="custom-container"></div> */}
       <div className="pl-[12px] drop-down-text py-[9px] bg-white border-b-[1px] border-b-[#E4E4E7] bg-[transparent] font-semibold">
-        {handle ? `@${handle.localName}` : "@user"}
+        {profile ? `${profile.handle}` : "@user"}
       </div>
       <div className="flex flex-col gap-[8px] pt-[10px] pb-[5px] pr-[15px] bg-white border-b-[1px] border-b-[#E4E4E7]">
-        <Link href={`/u/${handle?.localName}`}>
+        <Link href={`/u/${profile?.userLink}`}>
           <div className="drop-down-item">
             <Image src="/images/user.svg" width={22} height={22} alt="person icon"></Image>
             <span className="drop-down-text">My Profile</span>

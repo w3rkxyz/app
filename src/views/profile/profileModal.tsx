@@ -3,13 +3,13 @@
 import React, { useRef, useEffect, useState } from "react";
 import Image from "next/image";
 import MyButton from "@/components/reusable/Button/Button";
-import Sidebar from "@/components/reusable/Sidebar/Sidebar";
-import Link from "next/link";
 import { article, MetadataAttributeType, textOnly } from "@lens-protocol/metadata";
 import { uploadJsonToIPFS } from "@/utils/uploadToIPFS";
 import toast from "react-hot-toast";
-import { useCreatePost } from "@lens-protocol/react-web";
 import { Oval } from "react-loader-spinner";
+import { useCreatePost } from "@lens-protocol/react";
+import { handleOperationWith } from "@lens-protocol/client/viem";
+import { useWalletClient } from "wagmi";
 
 type Props = {
   handleCloseModal?: () => void;
@@ -101,7 +101,8 @@ function getTokenNamesByIndexes(indexes: number[]): string {
 }
 
 const ProfileModal = ({ handleCloseModal, closeJobCardModal, type, handle }: Props) => {
-  const { execute, loading, error } = useCreatePost();
+  const { data: walletClient } = useWalletClient();
+  const { execute, loading, error } = useCreatePost(handleOperationWith(walletClient));
   const myDivRef = useRef<HTMLDivElement>(null);
   const tagModalRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const tokenModalRef = useRef<HTMLButtonElement>(null);
@@ -257,7 +258,6 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type, handle }: Pro
       }\n\nFor more details please visit www.w3rk.xyz/${removeAtSymbol(handle)}`;
       const heyMetadata = textOnly({
         content: publicContent,
-        appId: process.env.NEXT_PUBLIC_APP_ID,
         tags: updatedTags,
         attributes: [
           {
@@ -296,20 +296,20 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type, handle }: Pro
       const heyMetadataURI = await uploadJsonToIPFS(heyMetadata);
 
       const heyResult = await execute({
-        metadata: heyMetadataURI,
+        contentUri: heyMetadataURI
       });
 
-      if (heyResult.isFailure()) {
+      if (heyResult.isErr()) {
         toast.error(heyResult.error.message);
         return;
       }
 
-      const heyCompletion = await heyResult.value.waitForCompletion();
+      // const heyCompletion = await heyResult.value.waitForCompletion()
 
-      if (heyCompletion.isFailure()) {
-        toast.error(heyCompletion.error.message);
-        return;
-      }
+      // if (heyCompletion.isFailure()) {
+      //   toast.error(heyCompletion.error.message);
+      //   return;
+      // }
       setSavingData(false);
 
       handleCloseModal?.();
@@ -464,7 +464,9 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type, handle }: Pro
                 key={id}
                 className="rounded-[8px] border-[1px] border-[#E4E4E7] px-[9px] py-[10px] flex justify-between items-center w-[200px] relative"
                 onClick={() => handleTagClick(id)}
-                ref={el => (tagModalRefs.current[id] = el)}
+                ref={el => {
+                  tagModalRefs.current[id] = el;
+                }}
               >
                 <>
                   <span className="font-normal leading-[14.52px] text-[12px] text-[#707070]">
@@ -501,7 +503,9 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type, handle }: Pro
                     tagColors[tags[buttonIndex]]
                   }]`} rounded-[8px] text-[12px] font-semibold w-[200px] px-[9px] py-[10px] flex justify-center items-center relative`}
                   onClick={() => handleTagClick(id)}
-                  ref={el => (tagModalRefs.current[id] = el)}
+                  ref={el => {
+                    tagModalRefs.current[id] = el;
+                  }}
                 >
                   {tags[buttonIndex]}
                   <div

@@ -3,16 +3,22 @@
 import React, { useRef, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Post } from "@lens-protocol/react-web";
-import getLensProfileData from "@/utils/getLensProfile";
+import { Post, TextOnlyMetadata, postId } from "@lens-protocol/react";
+import getLensAccountData from "@/utils/getLensProfile"
 import { useAccount } from "wagmi";
-import { useHidePublication } from "@lens-protocol/react-web";
+import { deletePost } from "@lens-protocol/client/actions";
+import {getLensClient} from "@/client";
+
+// Extend the Post interface to ensure metadata is properly typed
+interface ExtendedPost extends Post {
+  metadata: TextOnlyMetadata
+}
 
 type Props = {
   handleCloseModal?: () => void;
   type: string;
   closeJobCardModal?: () => void;
-  publication?: Post;
+  publication: ExtendedPost;
 };
 
 const tokenImages: { [key: string]: string } = {
@@ -45,19 +51,12 @@ function splitTokens(tokenString: string) {
 }
 
 const ViewJobModal = ({ handleCloseModal, closeJobCardModal, type, publication }: Props) => {
-  const { execute: hide, loading } = useHidePublication();
   const { address } = useAccount();
   const myDivRef = useRef<HTMLDivElement>(null);
   const [showMobile, setShowMobile] = useState(false);
 
-  const data =
-    publication && publication.metadata.__typename === "TextOnlyMetadataV3"
-      ? publication
-      : undefined;
-
   var attributes: any = {};
   var tokens: string[] = [];
-  if (publication) {
     publication.metadata.attributes?.map(attribute => {
       attributes[attribute.key] = attribute.value;
 
@@ -65,16 +64,36 @@ const ViewJobModal = ({ handleCloseModal, closeJobCardModal, type, publication }
         tokens = splitTokens(attribute.value);
       }
     });
-  }
 
   var profileData;
-  if (data) {
-    profileData = getLensProfileData(data?.by);
-  }
+    profileData = getLensAccountData(publication.author);
 
   const handleDelete = async () => {
-    if (publication) {
-      await hide({ publication });
+    const client = await getLensClient();
+    if (publication && client.isSessionClient()) {
+      switch (publication.operations?.canDelete.__typename) {
+        case "PostOperationValidationPassed":
+          // Commenting is allowed
+          const result = await deletePost(client, {
+            post: postId(publication.id),
+          });
+
+          if (result.isErr()) {
+            return console.error(result.error);
+          }
+          break;
+
+        case "PostOperationValidationFailed":
+          // Commenting is not allowed
+          alert(publication.operations.canDelete.reason);
+          break;
+
+        case "PostOperationValidationUnknown":
+          // Validation outcome is unknown
+          alert('Unknown error')
+          break;
+      }
+      
       handleCloseModal?.();
     }
   };
@@ -235,7 +254,7 @@ const ViewJobModal = ({ handleCloseModal, closeJobCardModal, type, publication }
           <span className="text-[17px] sm:text-[16px] font-medium font-secondary  tracking-[-1%] text-[#000000] hidden sm:block">
             Accepts:
           </span>
-          {data ? (
+          {publication ? (
             <ul className="socials-widgets gap-[0px] flex items-center">
               {tokens.map((token: string, index: number) => {
                 return (
@@ -356,24 +375,24 @@ const ViewJobModal = ({ handleCloseModal, closeJobCardModal, type, publication }
           )}
         </div>
         <div className="flex gap-[18px] sm:flex-col sm:gap-[10px] sm:justify-start mb-[24px]">
-          {data?.metadata.tags?.slice(0, 3).map((tag, index) => {
+          {publication.metadata.tags?.slice(0, 3).map((tag, index) => {
             if (tag !== "w3rk" && tag !== "job" && tag !== "service") {
               return (
                 <button
                   key={index}
                   className={`${
-                    data?.metadata.tags
-                      ? `bg-[${tagColors[data?.metadata.tags[index]]}]`
+                    publication.metadata.tags
+                      ? `bg-[${tagColors[publication?.metadata.tags[index]]}]`
                       : "bg-[#E4E4E7]"
                   } rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] w-[225px] sm:px-[70px] sm:w-fit cursor-default`}
                 >
-                  {data?.metadata.tags ? data?.metadata.tags[index] : "Tag Name"}
+                  {tag}
                 </button>
               );
             }
           })}
         </div>
-        {address && address === publication?.by.handle?.ownedBy ? (
+        {address && address === profileData.address ? (
           <button
             className="mx-auto w-fit py-[9px] px-[26px] tx-[18px] Sm:py-[8px] sm:px-[23px] tx-[14px] leading-[14.5px] text-white bg-[#FF5757] hover:bg-[#511515] rounded-[9px] sm:rounded-[8px] font-semibold mb-[8px]"
             onClick={handleDelete}
@@ -381,7 +400,7 @@ const ViewJobModal = ({ handleCloseModal, closeJobCardModal, type, publication }
             Delete
           </button>
         ) : (
-          <Link href={`/messages?handle=${publication?.by.handle?.localName}`} className="mx-auto ">
+          <Link href={`/messages?handle=${profileData.handle}`} className="mx-auto ">
             <button className="w-fit py-[9px] px-[26px] tx-[18px] Sm:py-[8px] sm:px-[23px] tx-[14px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[9px] sm:rounded-[8px] font-semibold mb-[8px]">
               Contact
             </button>
