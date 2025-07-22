@@ -2,13 +2,11 @@ import { PublicClient, mainnet, testnet } from "@lens-protocol/client";
 import { clientCookieStorage, cookieStorage } from "./storage";
 import { fragments } from "./fragments";
 
-const isServer = typeof window === "undefined";
-
 export const client = PublicClient.create({
   environment: mainnet,
   // environment: process.env.NEXT_PUBLIC_ENVIRONMENT === "development" ? testnet : mainnet,
   fragments,
-  storage: isServer ? cookieStorage : clientCookieStorage,
+  storage: clientCookieStorage,
 });
 
 export const getPublicClient = () => {

@@ -9,13 +9,13 @@ import { useAccount } from "wagmi";
 export default function Messages() {
   const { address } = useAccount();
   const [keys, setKeys] = useState<any>(undefined);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    let keys = loadKeys(address as string);
-    setKeys(keys);
-    setLoading(false);
-  }, [address]);
+  // useEffect(() => {
+  //   let keys = loadKeys(address as string);
+  //   setKeys(keys);
+  //   setLoading(false);
+  // }, [address]);
 
-  return <>{!loading && <MyMessageOpenChat keys={keys} />}</>;
+  return <>{!loading && <MyMessageOpenChat />}</>;
 }

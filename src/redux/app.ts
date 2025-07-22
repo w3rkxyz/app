@@ -1,7 +1,13 @@
 import { createSlice } from "@reduxjs/toolkit";
 import { AccountData } from "@/utils/getLensProfile";
 
-const initialState = {
+interface AppState {
+  loginModal: boolean;
+  switchModal: boolean;
+  user: AccountData | undefined;
+}
+
+const initialState: AppState = {
   loginModal: false,
   switchModal: false,
   user: undefined,

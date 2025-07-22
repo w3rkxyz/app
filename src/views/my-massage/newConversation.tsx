@@ -4,22 +4,21 @@ import React, { useRef, useEffect, useState } from "react";
 import Image from "next/image";
 import { Oval } from "react-loader-spinner";
 import { useAccounts } from "@lens-protocol/react";
-import getLensAccountData from "@/utils/getLensProfile";
+import getLensAccountData, { AccountData } from "@/utils/getLensProfile";
+import { useConversations } from "@/hooks/useConversations";
+import { fetchAccounts } from "@lens-protocol/client/actions";
+import { getPublicClient } from "@/client";
+import useSearchAccounts from "@/hooks/useSearchAccounts";
 
 type Props = {
-  handleCloseModal?: () => void;
-  closeJobCardModal?: () => void;
-  handleStartConversation: any;
+  handleCloseModal: () => void;
 };
 
-const NewConversation = ({
-  handleCloseModal,
-  closeJobCardModal,
-  handleStartConversation,
-}: Props) => {
+const NewConversation = ({ handleCloseModal }: Props) => {
+  const { newDmWithIdentifier } = useConversations();
   const myDivRef = useRef<HTMLDivElement>(null);
   const [searchText, setSearchText] = useState("");
-  const { data: accounts, loading: accountsLoading } = useAccounts({
+  const { data: accounts, loading: accountsLoading } = useSearchAccounts({
     filter: {
       searchBy: {
         localNameQuery: searchText,
@@ -28,13 +27,41 @@ const NewConversation = ({
   });
 
   useEffect(() => {
+    const getAccounts = async () => {
+      const client = getPublicClient();
+      const accounts = await fetchAccounts(client, {
+        filter: { searchBy: { localNameQuery: searchText } },
+      });
+      console.log("Accounts: ", accounts);
+    };
+    if (searchText.length > 4) {
+      getAccounts();
+    }
+  }, [searchText]);
+
+  const [creatingConvo, setCreatingConvo] = useState(false);
+  const [selectedUser, setSelectedUser] = useState("");
+
+  const handleCreate = async (profile: AccountData) => {
+    console.log("Creating Conversation");
+    setSelectedUser(profile.displayName);
+    setCreatingConvo(true);
+    const conversation = await newDmWithIdentifier(
+      {
+        identifier: profile.address,
+        identifierKind: "Ethereum",
+      },
+      profile
+    );
+    setCreatingConvo(false);
+    console.log("Coversation Created: ", conversation);
+    handleCloseModal();
+  };
+
+  useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (myDivRef.current && !myDivRef.current.contains(event.target as Node)) {
-        if (handleCloseModal) {
-          handleCloseModal();
-        } else if (closeJobCardModal) {
-          closeJobCardModal();
-        }
+        handleCloseModal();
       }
     }
 
@@ -69,25 +96,45 @@ const NewConversation = ({
         placeholder="Search..."
         onChange={e => setSearchText(e.target.value)}
       />
-      {accounts && accounts.items.length > 0 && searchText !== "" ? (
+      {creatingConvo ? (
+        <div
+          className={`user-search-box-modal mt-[0px] flex flex-col absolute top-[105px] left-[16px] rounded-[10px] border-[1px] border-[#E4E4E7] bg-white py-[20px] align-middle items-center`}
+          onClick={e => e.stopPropagation()}
+        >
+          <Oval
+            visible={true}
+            height="24"
+            width="24"
+            color="#000000"
+            secondaryColor="#E4E4E7"
+            strokeWidth={"5"}
+            ariaLabel="oval-loading"
+            wrapperStyle={{}}
+            wrapperClass=""
+          />
+          <span className="font-bold text-[14px] mt-[6px]">
+            Creating a new Dm with {selectedUser}
+          </span>
+        </div>
+      ) : accounts && accounts.length > 0 && searchText !== "" ? (
         <div
           className={`user-search-box-modal mt-[0px] flex flex-col gap-[5px] absolute top-[105px] left-[16px] rounded-[10px] border-[1px] border-[#E4E4E7] bg-white py-[10px]`}
           onClick={e => e.stopPropagation()}
         >
-          {accounts.items.slice(0, 7).map((acc, index) => {
+          {accounts.slice(0, 7).map((acc, index) => {
             const profile = getLensAccountData(acc);
             return (
               <div
                 className="text-[14px] hover:bg-[#f1f1f1] w-full gap-[8px] flex items-center cursor-pointer px-[10px] py-[8px]"
                 key={index}
-                onClick={() => handleStartConversation(profile)}
+                onClick={() => handleCreate(profile)}
               >
                 <div className="circle-div relative bg-gray-200 dark:border-gray-700">
                   <Image
                     src={profile.picture}
                     onError={e => {
                       (e.target as HTMLImageElement).src =
-                        'https://static.hey.xyz/images/default.png';
+                        "https://static.hey.xyz/images/default.png";
                     }}
                     fill
                     className="circle-div relative bg-gray-200 dark:border-gray-700"

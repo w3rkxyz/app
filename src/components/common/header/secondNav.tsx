@@ -9,6 +9,7 @@ import { useSelector } from "react-redux";
 import { Oval } from "react-loader-spinner";
 import { useAccounts } from "@lens-protocol/react";
 import getLensAccountData from "@/utils/getLensProfile";
+import useSearchAccounts from "@/hooks/useSearchAccounts";
 
 const SecondNav = () => {
   const { user: profile } = useSelector((state: any) => state.app);
@@ -20,7 +21,7 @@ const SecondNav = () => {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const path = usePathname();
   const [searchText, setSearchText] = useState("");
-  const { data: accounts, loading: accountsLoading } = useAccounts({
+  const { data: accounts, loading: accountsLoading } = useSearchAccounts({
     filter: {
       searchBy: {
         localNameQuery: searchText,
@@ -76,8 +77,6 @@ const SecondNav = () => {
       setShowSearchResults(false);
     }
   }, [searchText]);
-
-  
 
   return (
     <>
@@ -151,15 +150,12 @@ const SecondNav = () => {
                       height={20}
                     />
                   </button>
-                  {accounts &&
-                  accounts.items.length > 0 &&
-                  searchText !== "" &&
-                  showSearchResults ? (
+                  {accounts && accounts.length > 0 && searchText !== "" && showSearchResults ? (
                     <div
                       className={`user-search-box mt-[0px] flex flex-col gap-[5px] absolute z-[9999] left-0 top-[47px] rounded-[10px] border-[1px] border-[#E4E4E7] bg-white py-[10px]`}
                       onClick={e => e.stopPropagation()}
                     >
-                      {accounts.items.slice(0, 7).map((acc, index) => {
+                      {accounts.slice(0, 7).map((acc, index) => {
                         const profile = getLensAccountData(acc);
                         return (
                           <Link href={`/u/${profile.userLink}`} key={index}>
@@ -172,7 +168,7 @@ const SecondNav = () => {
                                   src={profile.picture}
                                   onError={e => {
                                     (e.target as HTMLImageElement).src =
-                                      'https://static.hey.xyz/images/default.png';
+                                      "https://static.hey.xyz/images/default.png";
                                   }}
                                   fill
                                   className="circle-div relative bg-gray-200 dark:border-gray-700"
@@ -241,7 +237,7 @@ const SecondNav = () => {
                         alt="user icon"
                         onError={e => {
                           (e.target as HTMLImageElement).src =
-                            'https://static.hey.xyz/images/default.png';
+                            "https://static.hey.xyz/images/default.png";
                         }}
                       />
                     </div>

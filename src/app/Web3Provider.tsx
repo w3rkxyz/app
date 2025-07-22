@@ -7,6 +7,8 @@ import { ConnectKitProvider, getDefaultConfig } from "connectkit";
 import { ReactNode } from "react";
 import { getPublicClient } from "@/client";
 import { LensProvider } from "@lens-protocol/react";
+import { XMTPProvider } from "./XMTPContext";
+import { ApolloClient, InMemoryCache, ApolloProvider } from "@apollo/client";
 
 const wagmiConfig = createConfig(
   getDefaultConfig({
@@ -23,17 +25,26 @@ const wagmiConfig = createConfig(
   })
 );
 
+export const apolloClient = new ApolloClient({
+  uri: "https://api.lens.xyz/graphql",
+  cache: new InMemoryCache(),
+});
+
 export const Web3Provider = ({ children }: { children: ReactNode }) => {
   const queryClient = new QueryClient();
   const publicClient = getPublicClient();
 
   return (
-    <WagmiProvider config={wagmiConfig}>
-      <QueryClientProvider client={queryClient}>
-        <ConnectKitProvider>
-          <LensProvider client={publicClient}>{children}</LensProvider>
-        </ConnectKitProvider>
-      </QueryClientProvider>
-    </WagmiProvider>
+    <ApolloProvider client={apolloClient}>
+      <WagmiProvider config={wagmiConfig}>
+        <QueryClientProvider client={queryClient}>
+          <ConnectKitProvider>
+            <LensProvider client={publicClient}>
+              <XMTPProvider>{children}</XMTPProvider>
+            </LensProvider>
+          </ConnectKitProvider>
+        </QueryClientProvider>
+      </WagmiProvider>
+    </ApolloProvider>
   );
 };
