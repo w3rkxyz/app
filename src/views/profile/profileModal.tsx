@@ -7,7 +7,7 @@ import { article, MetadataAttributeType, textOnly } from "@lens-protocol/metadat
 import { uploadJsonToIPFS } from "@/utils/uploadToIPFS";
 import toast from "react-hot-toast";
 import { Oval } from "react-loader-spinner";
-import { useCreatePost } from "@lens-protocol/react";
+import { useCreatePost, UseCreatePostArgs } from "@lens-protocol/react";
 import { handleOperationWith } from "@lens-protocol/client/viem";
 import { useWalletClient } from "wagmi";
 
@@ -102,7 +102,7 @@ function getTokenNamesByIndexes(indexes: number[]): string {
 
 const ProfileModal = ({ handleCloseModal, closeJobCardModal, type, handle }: Props) => {
   const { data: walletClient } = useWalletClient();
-  const { execute, loading, error } = useCreatePost(handleOperationWith(walletClient));
+  const { execute, loading, error } = useCreatePost({ handler: handleOperationWith(walletClient) });
   const myDivRef = useRef<HTMLDivElement>(null);
   const tagModalRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const tokenModalRef = useRef<HTMLButtonElement>(null);
@@ -296,7 +296,7 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type, handle }: Pro
       const heyMetadataURI = await uploadJsonToIPFS(heyMetadata);
 
       const heyResult = await execute({
-        contentUri: heyMetadataURI
+        contentUri: heyMetadataURI,
       });
 
       if (heyResult.isErr()) {

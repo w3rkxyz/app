@@ -1,4 +1,3 @@
-import { initializeApp } from "firebase/app";
 import {
   getFirestore,
   collection,
@@ -8,18 +7,9 @@ import {
   onSnapshot,
   Timestamp,
 } from "firebase/firestore";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyB9h4A1HUqefXQFWji-P91CJAoocEacQpQ",
-  authDomain: "w3rk-18ccc.firebaseapp.com",
-  projectId: "w3rk-18ccc",
-  storageBucket: "w3rk-18ccc.firebasestorage.app",
-  messagingSenderId: "545283489131",
-  appId: "1:545283489131:web:38f683d18a92c8703b202e",
-};
+import app from "@/firebase";
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
 export type NotificationType =

@@ -70,11 +70,12 @@ const ConversationsNav = () => {
   useEffect(() => {
     const loadConversations = async () => {
       if (client) {
-        await list(undefined);
+        await list(undefined, true);
         await startStream();
       }
     };
     void loadConversations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [list, client]);
 
   // stop streaming on unmount
@@ -82,6 +83,7 @@ const ConversationsNav = () => {
     return () => {
       stopStream();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // UI MEthods
@@ -108,14 +110,6 @@ const ConversationsNav = () => {
     >
       <div className="flex justify-between items-center py-[19px] px-[9px]">
         <span className="leading-[16.94px] font-medium text-[16px]">Messages</span>
-        <Image
-          onClick={handleSync}
-          src="/images/new-message.svg"
-          className="cursor-pointer"
-          alt="new message"
-          width={26}
-          height={26}
-        />
         {client && (
           <Image
             onClick={() => setIsNewConversationModalOpen(true)}

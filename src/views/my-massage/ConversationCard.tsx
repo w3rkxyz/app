@@ -1,15 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { type Conversation, type Dm, type SafeGroupMember } from "@xmtp/browser-sdk";
+import { type Dm, type SafeGroupMember } from "@xmtp/browser-sdk";
 import { useEffect, useState } from "react";
 import { useConversations } from "@/hooks/useConversations";
 import ConversationSkeleton from "@/components/reusable/ConversationSkeleton";
-import useDatabase from "@/hooks/useDatabase";
 import type { AccountData } from "@/utils/getLensProfile";
 import type { ContentTypes } from "@/app/XMTPContext";
 import { useAccount } from "wagmi";
-import { getPublicClient } from "@/client";
 import getLensAccountData from "@/utils/getLensProfile";
 import { fetchAccount } from "@/hooks/useSearchAccounts";
 
@@ -20,7 +18,7 @@ type ConversationCardProps = {
 
 const ConversationCard = ({ conversation, usersDic }: ConversationCardProps) => {
   const { address } = useAccount();
-  const { activeConversation, setActiveConversation } = useConversations();
+  const { activeConversation, selectConversation } = useConversations();
   const [loading, setLoading] = useState(true);
   const [isSelected, setIsSelected] = useState(false);
   const [user, setUser] = useState<AccountData | null>(null);
@@ -32,7 +30,6 @@ const ConversationCard = ({ conversation, usersDic }: ConversationCardProps) => 
       if (user) {
         return user;
       } else {
-        const client = getPublicClient();
         const acc = await fetchAccount(otherUser.accountIdentifiers[0].identifier);
         if (acc) {
           const accountData = getLensAccountData(acc);
@@ -59,14 +56,14 @@ const ConversationCard = ({ conversation, usersDic }: ConversationCardProps) => 
   useEffect(() => {
     const getData = async () => {
       const members = await conversation.members();
-      const otherUser = await getOtherUser(members);
-      if (otherUser) {
-        setUser(otherUser);
+      const participant = await getOtherUser(members);
+      if (participant) {
+        setUser(participant);
         setLoading(false);
       }
     };
     getData();
-  }, [conversation]);
+  }, []);
 
   useEffect(() => {
     if (activeConversation && activeConversation.id === conversation.id) {
@@ -87,7 +84,7 @@ const ConversationCard = ({ conversation, usersDic }: ConversationCardProps) => 
         isSelected ? "bg-[#E4E4E7]" : "bg-[#FAFAFA]"
         //conversation.unreadMessages
       } rounded-[8px] cursor-pointer ${false ? "bg-[#f0f0f3]" : ""}`}
-      onClick={() => setActiveConversation(conversation)}
+      onClick={() => selectConversation(conversation)}
     >
       <div className="flex justify-between align-top mb-[6px]">
         <div className="flex gap-[10px]">

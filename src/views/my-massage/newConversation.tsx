@@ -3,21 +3,25 @@
 import React, { useRef, useEffect, useState } from "react";
 import Image from "next/image";
 import { Oval } from "react-loader-spinner";
-import { useAccounts } from "@lens-protocol/react";
+import { err, useAccounts } from "@lens-protocol/react";
 import getLensAccountData, { AccountData } from "@/utils/getLensProfile";
 import { useConversations } from "@/hooks/useConversations";
 import { fetchAccounts } from "@lens-protocol/client/actions";
 import { getPublicClient } from "@/client";
 import useSearchAccounts from "@/hooks/useSearchAccounts";
+import { useMemberId } from "@/hooks/useMemberId";
+import { isValidEthereumAddress } from "@/utils/strings";
 
 type Props = {
   handleCloseModal: () => void;
 };
 
 const NewConversation = ({ handleCloseModal }: Props) => {
-  const { newDmWithIdentifier } = useConversations();
+  const { newDmWithIdentifier, newDm } = useConversations();
+  const { inboxId, error, selectUser } = useMemberId();
   const myDivRef = useRef<HTMLDivElement>(null);
   const [searchText, setSearchText] = useState("");
+  const [selectedprofile, setSelectedProfile] = useState<AccountData | null>(null);
   const { data: accounts, loading: accountsLoading } = useSearchAccounts({
     filter: {
       searchBy: {
@@ -39,6 +43,23 @@ const NewConversation = ({ handleCloseModal }: Props) => {
     }
   }, [searchText]);
 
+  useEffect(() => {
+    const createDm = async () => {
+      if (error) {
+        setCreatingConvo(false);
+        handleCloseModal();
+      }
+
+      if (inboxId && selectedprofile) {
+        const conversation = await newDm(inboxId, selectedprofile);
+        setCreatingConvo(false);
+        console.log("Coversation Created: ", conversation);
+        handleCloseModal();
+      }
+    };
+    createDm();
+  }, [inboxId, error]);
+
   const [creatingConvo, setCreatingConvo] = useState(false);
   const [selectedUser, setSelectedUser] = useState("");
 
@@ -46,16 +67,8 @@ const NewConversation = ({ handleCloseModal }: Props) => {
     console.log("Creating Conversation");
     setSelectedUser(profile.displayName);
     setCreatingConvo(true);
-    const conversation = await newDmWithIdentifier(
-      {
-        identifier: profile.address,
-        identifierKind: "Ethereum",
-      },
-      profile
-    );
-    setCreatingConvo(false);
-    console.log("Coversation Created: ", conversation);
-    handleCloseModal();
+    selectUser(profile);
+    setSelectedProfile(profile);
   };
 
   useEffect(() => {

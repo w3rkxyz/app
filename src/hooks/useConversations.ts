@@ -1,17 +1,14 @@
 import {
-  Conversation,
   Identifier,
   SafeCreateGroupOptions,
   SafeListConversationsOptions,
   Dm,
-  Client,
 } from "@xmtp/browser-sdk";
 import { Utils } from "@xmtp/browser-sdk";
 import { useState, useRef, useEffect } from "react";
 import { useXMTPClient } from "./useXMTPClient";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "@/redux/store";
-import { setActiveUser } from "@/redux/xmtp";
 import type { AccountData } from "@/utils/getLensProfile";
 import useDatabase from "./useDatabase";
 import type { ContentTypes } from "@/app/XMTPContext";
@@ -21,14 +18,11 @@ export const useConversations = () => {
   const { client } = useXMTPClient();
   const { activeConversation, setActiveConversation, setNotOnNetwork, setInvalidUser } = useXMTP();
   const { addAddressToUser } = useDatabase();
-  const dispatch = useDispatch();
   const utilsRef = useRef<Utils | null>(null);
   const xmtpState = useSelector((state: RootState) => state.xmtp);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [conversations, setConversations] = useState<Dm<ContentTypes>[]>([]);
-  const [selectedConversation, setSelectedConversation] = useState<Dm<ContentTypes> | null>(null);
-  const [showNewConversationModal, setShowNewConversationModal] = useState(false);
 
   function isValidDm(convo: any): convo is Dm<ContentTypes> {
     return convo && typeof convo === "object";
@@ -40,7 +34,7 @@ export const useConversations = () => {
     return () => {
       utils.close();
     };
-  }, []);
+  }, [client]);
 
   const list = async (options?: SafeListConversationsOptions, syncFromNetwork: boolean = false) => {
     if (!client) throw new Error("XMTP client not initialized");
@@ -53,7 +47,6 @@ export const useConversations = () => {
       const convos = await client.conversations.list(options);
       const addedConvos = convos.filter(convo => isValidDm(convo));
       setConversations(addedConvos);
-      return convos;
     } finally {
       setLoading(false);
     }
@@ -130,11 +123,12 @@ export const useConversations = () => {
     setNotOnNetwork(true);
   };
 
-  const newDm = async (inboxId: string) => {
+  const newDm = async (inboxId: string, user: AccountData) => {
     if (!client) throw new Error("XMTP client not initialized");
     setLoading(true);
     try {
       const conversation = await client.conversations.newDm(inboxId);
+      addAddressToUser(user.address, user);
       return conversation;
     } finally {
       setLoading(false);
@@ -146,17 +140,24 @@ export const useConversations = () => {
     setLoading(true);
     try {
       if (!utilsRef.current) return;
-      const inboxId = await utilsRef.current.getInboxIdForIdentifier(identifier, "dev");
+      const inboxId = await utilsRef.current.getInboxIdForIdentifier(identifier, "production");
+      console.log("Id: ", inboxId);
 
+      console.log("Got here 4");
       if (!inboxId) {
+        console.log("Got here 5");
         setInvalidUser(user);
         userNotOnNetwork();
       } else {
+        console.log("Got here 6");
         const conversation = await client.conversations.newDmWithIdentifier(identifier);
         addAddressToUser(user.address, user);
-        setActiveConversation(conversation);
         return conversation;
       }
+    } catch (e) {
+      console.error(e);
+      console.log(e);
+      return "Failed";
     } finally {
       setLoading(false);
     }
@@ -182,6 +183,16 @@ export const useConversations = () => {
     };
   };
 
+  const selectConversation = (conversation: Dm<ContentTypes> | undefined) => {
+    if (conversation) {
+      setNotOnNetwork(false);
+      setInvalidUser(undefined);
+      setActiveConversation(conversation);
+    } else {
+      setActiveConversation(undefined);
+    }
+  };
+
   return {
     conversations,
     getConversationById,
@@ -199,6 +210,6 @@ export const useConversations = () => {
     dmUser: xmtpState.activeUser,
     userNotOnNetwork,
     activeConversation,
-    setActiveConversation,
+    selectConversation,
   };
 };

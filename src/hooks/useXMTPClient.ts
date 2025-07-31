@@ -43,7 +43,7 @@ export function useXMTPClient(address?: string) {
         },
       };
 
-      const client = await initialize({ signer, env: "dev" });
+      const client = await initialize({ signer, env: "production" });
       if (client) {
         return client;
       } else {
@@ -56,7 +56,7 @@ export function useXMTPClient(address?: string) {
       dispatch(setInitializing(false));
       setConnectingXMTP(false);
     }
-  }, [address, dispatch, signMessageAsync]);
+  }, [address, dispatch, signMessageAsync, initialize]);
 
   /**
    * Reconnect/initiate an existing XMTP client using `Client.build`
@@ -75,7 +75,7 @@ export function useXMTPClient(address?: string) {
         identifierKind: "Ethereum",
       };
 
-      const client = await Client.build(identifier, { env: "dev" });
+      const client = await Client.build(identifier, { env: "production" });
 
       return client;
     } catch (error) {
