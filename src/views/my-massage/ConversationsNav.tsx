@@ -76,7 +76,7 @@ const ConversationsNav = () => {
     };
     void loadConversations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [list, client]);
+  }, [client]);
 
   // stop streaming on unmount
   useEffect(() => {

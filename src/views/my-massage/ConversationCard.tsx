@@ -10,6 +10,7 @@ import type { ContentTypes } from "@/app/XMTPContext";
 import { useAccount } from "wagmi";
 import getLensAccountData from "@/utils/getLensProfile";
 import { fetchAccount } from "@/hooks/useSearchAccounts";
+import useDatabase from "@/hooks/useDatabase";
 
 type ConversationCardProps = {
   conversation: Dm<ContentTypes>;
@@ -18,21 +19,30 @@ type ConversationCardProps = {
 
 const ConversationCard = ({ conversation, usersDic }: ConversationCardProps) => {
   const { address } = useAccount();
+  const { addAddressToUser } = useDatabase();
   const { activeConversation, selectConversation } = useConversations();
   const [loading, setLoading] = useState(true);
   const [isSelected, setIsSelected] = useState(false);
   const [user, setUser] = useState<AccountData | null>(null);
 
   const getOtherUser = async (members: SafeGroupMember[]) => {
-    const otherUser = members.find(member => member.accountIdentifiers[0].identifier !== address);
+    console.log("Members: ", members);
+    const otherUser = members.find(
+      member => member.accountIdentifiers[0].identifier.toLowerCase() !== address?.toLowerCase()
+    );
+    console.log("Other user: ", otherUser);
     if (otherUser) {
-      const user = usersDic[otherUser.accountIdentifiers[0].identifier];
+      const user = usersDic[otherUser.accountIdentifiers[0].identifier.toLowerCase()];
+      console.log("user: ", user);
       if (user) {
         return user;
       } else {
         const acc = await fetchAccount(otherUser.accountIdentifiers[0].identifier);
+        console.log("Account: ", acc);
         if (acc) {
           const accountData = getLensAccountData(acc);
+          console.log("Account data: ", accountData);
+          addAddressToUser(accountData.address.toLowerCase(), accountData);
           return accountData;
         } else {
           const tempUser: AccountData = {

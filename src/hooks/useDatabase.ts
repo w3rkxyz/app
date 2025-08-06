@@ -28,7 +28,12 @@ const useDatabase = (): UseDatabase => {
   }, []);
 
   const addAddressToUser = async (address: string, accountData: AccountData) => {
-    const newAddressToUser = { ...addressToUser, [address]: accountData };
+    const docSnap = await getDoc(addressToUserDoc);
+    var currentDoc = addressToUser;
+    if (docSnap.exists()) {
+      currentDoc = docSnap.data();
+    }
+    const newAddressToUser = { ...currentDoc, [address]: accountData };
     await setDoc(addressToUserDoc, newAddressToUser);
     setAddressToUser(newAddressToUser);
   };

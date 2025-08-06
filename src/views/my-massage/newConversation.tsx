@@ -11,14 +11,17 @@ import { getPublicClient } from "@/client";
 import useSearchAccounts from "@/hooks/useSearchAccounts";
 import { useMemberId } from "@/hooks/useMemberId";
 import { isValidEthereumAddress } from "@/utils/strings";
+import { type Identifier } from "@xmtp/browser-sdk";
+import { useXMTP } from "@/app/XMTPContext";
 
 type Props = {
   handleCloseModal: () => void;
 };
 
 const NewConversation = ({ handleCloseModal }: Props) => {
-  const { newDmWithIdentifier, newDm } = useConversations();
-  const { inboxId, error, selectUser } = useMemberId();
+  const { client, setNotOnNetwork, setInvalidUser } = useXMTP();
+  const { newDmWithIdentifier, selectConversation } = useConversations();
+  const { inboxId, error, selectUser, memberId } = useMemberId();
   const myDivRef = useRef<HTMLDivElement>(null);
   const [searchText, setSearchText] = useState("");
   const [selectedprofile, setSelectedProfile] = useState<AccountData | null>(null);
@@ -30,45 +33,85 @@ const NewConversation = ({ handleCloseModal }: Props) => {
     },
   });
 
-  useEffect(() => {
-    const getAccounts = async () => {
-      const client = getPublicClient();
-      const accounts = await fetchAccounts(client, {
-        filter: { searchBy: { localNameQuery: searchText } },
-      });
-      console.log("Accounts: ", accounts);
-    };
-    if (searchText.length > 4) {
-      getAccounts();
-    }
-  }, [searchText]);
+  // useEffect(() => {
+  //   const getAccounts = async () => {
+  //     const client = getPublicClient();
+  //     const accounts = await fetchAccounts(client, {
+  //       filter: { searchBy: { localNameQuery: searchText } },
+  //     });
+  //     console.log("Accounts: ", accounts);
+  //   };
+  //   if (searchText.length > 4) {
+  //     getAccounts();
+  //   }
+  // }, [searchText]);
 
-  useEffect(() => {
-    const createDm = async () => {
-      if (error) {
-        setCreatingConvo(false);
-        handleCloseModal();
-      }
+  // useEffect(() => {
+  //   // console.log("Inbox ID changed");
+  //   const createDm = async () => {
+  //     // console.log("Got here with inboxID: ", inboxId);
+  //     if (error) {
+  //       setCreatingConvo(false);
+  //       handleCloseModal();
+  //     }
 
-      if (inboxId && selectedprofile) {
-        const conversation = await newDm(inboxId, selectedprofile);
-        setCreatingConvo(false);
-        console.log("Coversation Created: ", conversation);
-        handleCloseModal();
-      }
-    };
-    createDm();
-  }, [inboxId, error]);
+  //     if (inboxId && selectedprofile) {
+  //       console.log("Got here with inboxID 1: ", memberId);
+  //       const conversation = await newDmWithIdentifier(
+  //         {
+  //           identifier: memberId,
+  //           identifierKind: "Ethereum",
+  //         },
+  //         selectedprofile
+  //       );
+  //       setCreatingConvo(false);
+  //       console.log("Coversation Created: ", conversation);
+  //       handleCloseModal();
+  //     }
+  //   };
+  //   // createDm();
+  // }, [inboxId, error, selectedprofile]);
 
   const [creatingConvo, setCreatingConvo] = useState(false);
   const [selectedUser, setSelectedUser] = useState("");
 
   const handleCreate = async (profile: AccountData) => {
-    console.log("Creating Conversation");
+    if (!client) return;
+
+    setSelectedProfile(profile);
     setSelectedUser(profile.displayName);
     setCreatingConvo(true);
-    selectUser(profile);
-    setSelectedProfile(profile);
+    // selectUser(profile);
+
+    const identifiers: Identifier[] = [
+      {
+        identifier: profile.address.toLowerCase(),
+        identifierKind: "Ethereum",
+      },
+    ];
+
+    const isActive = await client.canMessage(identifiers);
+
+    if (isActive.get(profile.address.toLowerCase())) {
+      const conversation = await newDmWithIdentifier(
+        {
+          identifier: profile.address.toLowerCase(),
+          identifierKind: "Ethereum",
+        },
+        profile
+      );
+
+      if (conversation !== "Failed") {
+        selectConversation(conversation);
+      }
+
+      console.log("Coversation Created: ", conversation);
+    } else {
+      setInvalidUser(profile);
+      setNotOnNetwork(true);
+    }
+    setCreatingConvo(false);
+    handleCloseModal();
   };
 
   useEffect(() => {

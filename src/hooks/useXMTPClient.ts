@@ -43,7 +43,7 @@ export function useXMTPClient(address?: string) {
         },
       };
 
-      const client = await initialize({ signer, env: "production" });
+      const client = await initialize({ signer, env: "dev" });
       if (client) {
         return client;
       } else {
@@ -75,7 +75,7 @@ export function useXMTPClient(address?: string) {
         identifierKind: "Ethereum",
       };
 
-      const client = await Client.build(identifier, { env: "production" });
+      const client = await Client.build(identifier, { env: "dev" });
 
       return client;
     } catch (error) {

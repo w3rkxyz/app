@@ -2,7 +2,7 @@
 const ENCODING = "binary";
 
 export const getEnv = (): "dev" | "production" | "local" => {
-  return "production";
+  return "dev";
 };
 
 export const buildLocalStorageKey = (walletAddress: string) =>

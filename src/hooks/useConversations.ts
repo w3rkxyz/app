@@ -139,21 +139,9 @@ export const useConversations = () => {
     if (!client) throw new Error("XMTP client not initialized");
     setLoading(true);
     try {
-      if (!utilsRef.current) return;
-      const inboxId = await utilsRef.current.getInboxIdForIdentifier(identifier, "production");
-      console.log("Id: ", inboxId);
-
-      console.log("Got here 4");
-      if (!inboxId) {
-        console.log("Got here 5");
-        setInvalidUser(user);
-        userNotOnNetwork();
-      } else {
-        console.log("Got here 6");
-        const conversation = await client.conversations.newDmWithIdentifier(identifier);
-        addAddressToUser(user.address, user);
-        return conversation;
-      }
+      const conversation = await client.conversations.newDmWithIdentifier(identifier);
+      addAddressToUser(user.address.toLowerCase(), user);
+      return conversation;
     } catch (e) {
       console.error(e);
       console.log(e);
