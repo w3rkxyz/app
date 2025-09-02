@@ -1,6 +1,8 @@
+"use client";
+
 import { gql, useQuery } from "@apollo/client";
 import { Account, Paginated } from "@lens-protocol/client";
-import { apolloClient } from "@/app/Web3Provider";
+import { getApolloClient } from "@/apolloClient";
 
 const SEARCH_ACCOUNTS_QUERY = gql`
   query SearchAccounts($localNameQuery: String!) {
@@ -99,8 +101,10 @@ const useSearchAccounts = (options: UseSearchAccountsProps): UseMyAccountsResult
 };
 
 const fetchAccount = async (address: string) => {
+  const client = getApolloClient();
+
   try {
-    const { data } = await apolloClient.query({
+    const { data } = await client.query({
       query: ACCOUNTS_AVAILABLE_QUERY,
       variables: {
         request: {

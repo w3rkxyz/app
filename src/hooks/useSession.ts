@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { client } from "@/client";
 import { currentSession, fetchAccountsAvailable } from "@lens-protocol/client/actions";
@@ -77,7 +79,7 @@ export const useSessionManager = () => {
 
   const login = async (address: Hex, account: AccountData) => {
     setLoginLoading(true);
-    console.log('Address: ', address)
+    console.log("Address: ", address);
     const authenticated = await client.login({
       accountManager: {
         account: address,

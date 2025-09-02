@@ -2,7 +2,6 @@
 const nextConfig = {
   trailingSlash: true,
   images: { unoptimized: true },
-  swcMinify: true,
   webpack: (config, { dev, isServer }) => {
     if (!dev) {
       config.externals.push("pino-pretty", "lokijs", "encoding");

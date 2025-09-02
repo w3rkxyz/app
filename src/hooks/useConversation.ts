@@ -1,3 +1,5 @@
+"use client";
+
 import type { DecodedMessage, SafeListMessagesOptions, Dm } from "@xmtp/browser-sdk";
 import { useEffect, useState } from "react";
 import { useXMTPClient } from "./useXMTPClient";

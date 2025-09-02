@@ -49,7 +49,7 @@ const ConditionalNav = () => {
   useEffect(() => {
     getAuthenticatedAccount();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);;
+  }, []);
 
   return <>{isConnected && profile ? <SecondNav /> : <Navbar />}</>;
 };

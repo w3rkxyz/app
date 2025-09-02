@@ -6,7 +6,9 @@ import { Toaster } from "react-hot-toast";
 import ClientProvider from "./_clientProvider";
 import ModalWrapper from "./_modalWrapper";
 import Footer from "@/components/common/footer/footer";
-import { Web3Provider } from "./Web3Provider";
+import dynamic from "next/dynamic";
+
+const Web3Provider = dynamic(() => import("./Web3Provider"), { ssr: false });
 
 // export const metadata: Metadata = {
 //   title: "w3rk - Web3 Freelancing Marketplace",

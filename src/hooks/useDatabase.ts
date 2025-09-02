@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { getFirestore } from "firebase/firestore";
 import app from "@/firebase";

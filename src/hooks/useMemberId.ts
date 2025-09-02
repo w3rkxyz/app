@@ -1,3 +1,5 @@
+"use client";
+
 import { Utils, type Identifier } from "@xmtp/browser-sdk";
 import { useEffect, useRef, useState } from "react";
 import { isValidEthereumAddress, isValidInboxId } from "@/utils/strings";

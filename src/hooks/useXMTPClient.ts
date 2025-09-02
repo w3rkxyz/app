@@ -1,4 +1,4 @@
-// hooks/useXMTPClient.ts
+"use client";
 
 import { useDispatch, useSelector } from "react-redux";
 import { useCallback, useState, useRef } from "react";

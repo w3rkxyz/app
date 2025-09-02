@@ -7,7 +7,6 @@ import { usePathname } from "next/navigation";
 import MobileProfileDropdown from "./mobileMenu";
 import { useSelector } from "react-redux";
 import { Oval } from "react-loader-spinner";
-import { useAccounts } from "@lens-protocol/react";
 import getLensAccountData from "@/utils/getLensProfile";
 import useSearchAccounts from "@/hooks/useSearchAccounts";
 
