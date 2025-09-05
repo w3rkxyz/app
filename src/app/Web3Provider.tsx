@@ -9,29 +9,9 @@ import ClientApolloProvider from "@/app/ApolloProvider";
 import { LensProvider } from "@lens-protocol/react";
 import { XMTPProvider } from "@/app/XMTPContext";
 import { getPublicClient } from "@/client";
-
-const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID!;
+import { wagmiConfig } from "./wagmiConfig";
 
 export default function Web3Provider({ children }: { children: React.ReactNode }) {
-  const wagmiConfig = useMemo(
-    () =>
-      createConfig(
-        getDefaultConfig({
-          chains: [chains.mainnet],
-          transports: {
-            [chains.mainnet.id]: http(),
-            [chains.testnet.id]: http(),
-          },
-          walletConnectProjectId: projectId,
-          appName: "w3rk",
-          appDescription: "A socialfi freelance app",
-          appUrl: "http://localhost:3000",
-          appIcon: "http://localhost:3000/icon.png",
-        })
-      ),
-    []
-  );
-
   const qcRef = useRef<QueryClient | null>(null);
   if (!qcRef.current) {
     qcRef.current = new QueryClient();

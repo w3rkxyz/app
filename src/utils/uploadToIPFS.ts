@@ -1,6 +1,6 @@
 import lighthouse from "@lighthouse-web3/sdk";
 
-//Uploads File to IPFS
+//Uploads a File to IPFS and returns the link to that file
 const uploadFileToIPFS = async (file: any) => {
   const output = await lighthouse.upload(
     file,
@@ -10,6 +10,7 @@ const uploadFileToIPFS = async (file: any) => {
   return link;
 };
 
+// Uploads a JSON object to IPFS and returns a link to that object
 const uploadJsonToIPFS = async (Json: any) => {
   const serialized = JSON.stringify(Json);
   const response = await lighthouse.uploadText(

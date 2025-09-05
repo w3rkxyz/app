@@ -8,7 +8,7 @@ import axios from "axios";
 import type { activeContractDetails, contractDetails } from "./types/types";
 import unicrow from "@unicrowio/sdk";
 import { uploadJsonToIPFS } from "./utils/uploadToIPFS";
-import { createNotification, Notification, NotificationType } from "@/utils/firebase";
+import { createNotification, Notification, NotificationType } from "@/utils/notifications";
 
 // Configure provider with rate limiting and retry logic
 const rpc_url = `https://arbitrum-sepolia.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_KEY}`;

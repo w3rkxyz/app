@@ -40,19 +40,26 @@ export const alertsSlice = createSlice({
   name: "alerts",
   initialState,
   reducers: {
+    // display the alert modal
     openAlert: (state: any, action: Alert) => {
       state.displaytransactionLoader = false;
       state.displayAlert = true;
       state.alertData = action.payload.data;
     },
+
+    // closes the alert modal
     closeAlert: (state: any) => {
       state.displayAlert = false;
     },
+
+    // Opens the loader modal
     openLoader: (state: any, action: TransactionLoader) => {
       state.displayAlert = false;
       state.displaytransactionLoader = true;
       state.loaderText = action.payload.text;
     },
+
+    // Closes the loader modal
     closeLoader: (state: any) => {
       state.displaytransactionLoader = false;
     },

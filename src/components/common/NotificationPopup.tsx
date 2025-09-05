@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Notification } from "@/utils/firebase";
+import { Notification } from "@/utils/notifications";
 
 interface NotificationPopupProps {
   notification: Notification;

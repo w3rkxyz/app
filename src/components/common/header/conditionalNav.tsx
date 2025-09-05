@@ -8,7 +8,6 @@ import { usePathname } from "next/navigation";
 import { useAccount } from "wagmi";
 import { useDispatch, useSelector } from "react-redux";
 import { setLensProfile, displayLoginModal } from "@/redux/app";
-import { useSessionManager } from "@/hooks/useSession";
 import { evmAddress } from "@lens-protocol/client";
 import { fetchAccount, fetchAccounts } from "@lens-protocol/client/actions";
 import { client } from "@/client";

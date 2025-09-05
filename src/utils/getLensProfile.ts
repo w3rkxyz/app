@@ -1,18 +1,6 @@
 import { Account } from "@lens-protocol/client";
 
-function convertIpfsLink(link: string) {
-  const ipfsPrefix = "ipfs://";
-  const gatewayPrefix = "https://gateway.pinata.cloud/ipfs/";
-
-  if (link.startsWith(ipfsPrefix)) {
-    const cid = link.slice(ipfsPrefix.length);
-    return gatewayPrefix + cid;
-  }
-
-  // Return the original link if it doesn't start with ipfs://
-  return link;
-}
-
+// The Account data type, these are the properties from the lens account that are used in the app
 export interface AccountData {
   picture: string;
   coverPicture: string;
@@ -25,6 +13,7 @@ export interface AccountData {
   address: string;
 }
 
+// Gets the relevant account data from the lens account
 const getLensAccountData = (account: Account): AccountData => {
   let picture = "";
   let displayName = "";

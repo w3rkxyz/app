@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { useAccount } from "wagmi";
-import { Notification, getNotifications } from "@/utils/firebase";
+import { Notification, getNotifications } from "@/utils/notifications";
 import { formatDistanceToNow } from "date-fns";
 
 const Notifications = () => {
