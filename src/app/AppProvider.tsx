@@ -11,7 +11,7 @@ import { XMTPProvider } from "@/app/XMTPContext";
 import { getPublicClient } from "@/client";
 import { wagmiConfig } from "./wagmiConfig";
 
-export default function Web3Provider({ children }: { children: React.ReactNode }) {
+export default function AppProvider({ children }: { children: React.ReactNode }) {
   const qcRef = useRef<QueryClient | null>(null);
   if (!qcRef.current) {
     qcRef.current = new QueryClient();

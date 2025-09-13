@@ -8,7 +8,7 @@ import ModalWrapper from "./_modalWrapper";
 import Footer from "@/components/common/footer/footer";
 import dynamic from "next/dynamic";
 
-const Web3Provider = dynamic(() => import("./Web3Provider"), { ssr: false });
+const AppProvider = dynamic(() => import("./AppProvider"), { ssr: false });
 
 // export const metadata: Metadata = {
 //   title: "w3rk - Web3 Freelancing Marketplace",
@@ -23,7 +23,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <Web3Provider>
+        <AppProvider>
           <ClientProvider>
             <ModalWrapper>
               <ConditionalNav />
@@ -34,7 +34,7 @@ export default function RootLayout({
               <Footer />
             </ModalWrapper>
           </ClientProvider>
-        </Web3Provider>
+        </AppProvider>
       </body>
     </html>
   );
