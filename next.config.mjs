@@ -2,6 +2,7 @@
 const nextConfig = {
   trailingSlash: true,
   images: { unoptimized: true },
+  reactStrictMode: false, // Disable strict mode to reduce hydration issues
   webpack: (config, { dev, isServer }) => {
     if (!dev) {
       config.externals.push("pino-pretty", "lokijs", "encoding");
@@ -16,6 +17,11 @@ const nextConfig = {
   },
   serverExternalPackages: ["@xmtp/user-preferences-bindings-wasm"],
   transpilePackages: ["@lens-protocol"],
+  // Suppress hydration warnings in development
+  onDemandEntries: {
+    maxInactiveAge: 25 * 1000,
+    pagesBufferLength: 2,
+  },
 };
 
 export default nextConfig;
