@@ -104,7 +104,7 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type, handle }: Pro
   const { data: walletClient } = useWalletClient();
   const { execute, loading, error } = useCreatePost({ handler: handleOperationWith(walletClient) });
   const myDivRef = useRef<HTMLDivElement>(null);
-  const tagModalRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const tagModalRefs = useRef<Array<HTMLDivElement | null>>([]);
   const tokenModalRef = useRef<HTMLButtonElement>(null);
   const [showMobile, setShowMobile] = useState(false);
   const [selectedTag, setSelectedTag] = useState<number | null>(null);
@@ -316,6 +316,7 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type, handle }: Pro
       type === "job" ? toast.success("Job Posted Succesfully!") : toast.success("Service Listed!");
     } else {
       toast.error("Fill all fields and select at least one tag!");
+      setSavingData(false);
     }
   };
 
@@ -460,9 +461,9 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type, handle }: Pro
         <div className="flex sm:flex-col sm:gap-[10px] justify-between sm:justify-start mb-[24px]">
           {[1, 2, 3].map((id, buttonIndex) =>
             tags[buttonIndex] === "" ? (
-              <button
+              <div
                 key={id}
-                className="rounded-[8px] border-[1px] border-[#E4E4E7] px-[9px] py-[10px] flex justify-between items-center w-[200px] relative"
+                className="rounded-[8px] border-[1px] border-[#E4E4E7] px-[9px] py-[10px] flex justify-between items-center w-[200px] relative cursor-pointer"
                 onClick={() => handleTagClick(id)}
                 ref={el => {
                   tagModalRefs.current[id] = el;
@@ -495,13 +496,13 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type, handle }: Pro
                     />
                   ))}
                 </div>
-              </button>
+              </div>
             ) : (
               <>
-                <button
+                <div
                   className={`${`bg-[${
                     tagColors[tags[buttonIndex]]
-                  }]`} rounded-[8px] text-[12px] font-semibold w-[200px] px-[9px] py-[10px] flex justify-center items-center relative`}
+                  }]`} rounded-[8px] text-[12px] font-semibold w-[200px] px-[9px] py-[10px] flex justify-center items-center relative cursor-pointer`}
                   onClick={() => handleTagClick(id)}
                   ref={el => {
                     tagModalRefs.current[id] = el;
@@ -529,7 +530,7 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type, handle }: Pro
                       />
                     ))}
                   </div>
-                </button>
+                </div>
               </>
             )
           )}

@@ -39,6 +39,13 @@ export default function RootLayout({
                   if (message.includes('chrome-extension://') || 
                       message.includes('Host validation failed') ||
                       message.includes('Host is not supported') ||
+                      message.includes('Host is not valid') ||
+                      message.includes('Host is not in insights whitelist') ||
+                      message.includes('message channel closed') ||
+                      message.includes('asynchronous response') ||
+                      message.includes('listener indicated an asynchronous response') ||
+                      message.includes('A listener indicated an asynchronous response') ||
+                      message.includes('message channel closed before a response was received') ||
                       message.includes('nighthawk') ||
                       message.includes('Hydration failed')) {
                     return; // Suppress extension errors
@@ -51,6 +58,13 @@ export default function RootLayout({
                   if (message.includes('chrome-extension://') || 
                       message.includes('Host validation failed') ||
                       message.includes('Host is not supported') ||
+                      message.includes('Host is not valid') ||
+                      message.includes('Host is not in insights whitelist') ||
+                      message.includes('message channel closed') ||
+                      message.includes('asynchronous response') ||
+                      message.includes('listener indicated an asynchronous response') ||
+                      message.includes('A listener indicated an asynchronous response') ||
+                      message.includes('message channel closed before a response was received') ||
                       message.includes('nighthawk') ||
                       message.includes('Hydration failed')) {
                     return; // Suppress extension warnings
@@ -76,7 +90,7 @@ export default function RootLayout({
                   return originalInsertBefore.call(this, newNode, referenceNode);
                 };
                 
-                // Remove extension elements immediately
+                // Remove extension elements and attributes immediately
                 function removeExtensionElements() {
                   const extensionElements = document.querySelectorAll('[id*="nighthawk"], [class*="nighthawk"], [id*="chrome-extension"]');
                   extensionElements.forEach(el => {
@@ -84,14 +98,46 @@ export default function RootLayout({
                       el.parentNode.removeChild(el);
                     }
                   });
+                  
+                  // Remove extension attributes from body
+                  const body = document.body;
+                  if (body) {
+                    const extensionAttributes = [
+                      'data-new-gr-c-s-check-loaded',
+                      'data-gr-ext-installed', 
+                      'data-gr-ext-disabled',
+                      'data-grammarly-shadow-root',
+                      'data-grammarly-ignore'
+                    ];
+                    extensionAttributes.forEach(attr => {
+                      body.removeAttribute(attr);
+                    });
+                  }
                 }
                 
                 // Run immediately and on DOM changes
                 removeExtensionElements();
                 
-                // Watch for extension elements being added
+                // Prevent extension attributes from being added
+                const originalSetAttribute = Element.prototype.setAttribute;
+                Element.prototype.setAttribute = function(name, value) {
+                  const extensionAttributes = [
+                    'data-new-gr-c-s-check-loaded',
+                    'data-gr-ext-installed', 
+                    'data-gr-ext-disabled',
+                    'data-grammarly-shadow-root',
+                    'data-grammarly-ignore'
+                  ];
+                  if (extensionAttributes.includes(name)) {
+                    return; // Block extension attributes
+                  }
+                  return originalSetAttribute.call(this, name, value);
+                };
+                
+                // Watch for extension elements and attributes being added
                 const observer = new MutationObserver(function(mutations) {
                   mutations.forEach(function(mutation) {
+                    // Handle added nodes
                     mutation.addedNodes.forEach(function(node) {
                       if (node.nodeType === 1) { // Element node
                         if (node.id && (node.id.includes('nighthawk') || node.id.includes('chrome-extension'))) {
@@ -110,13 +156,34 @@ export default function RootLayout({
                         }
                       }
                     });
+                    
+                    // Handle attribute changes
+                    if (mutation.type === 'attributes') {
+                      const target = mutation.target;
+                      if (target.nodeType === 1) { // Element node
+                        const extensionAttributes = [
+                          'data-new-gr-c-s-check-loaded',
+                          'data-gr-ext-installed', 
+                          'data-gr-ext-disabled',
+                          'data-grammarly-shadow-root',
+                          'data-grammarly-ignore'
+                        ];
+                        extensionAttributes.forEach(attr => {
+                          if (target.hasAttribute(attr)) {
+                            target.removeAttribute(attr);
+                          }
+                        });
+                      }
+                    }
                   });
                 });
                 
                 // Start observing
                 observer.observe(document.body || document.documentElement, {
                   childList: true,
-                  subtree: true
+                  subtree: true,
+                  attributes: true,
+                  attributeFilter: ['data-new-gr-c-s-check-loaded', 'data-gr-ext-installed', 'data-gr-ext-disabled', 'data-grammarly-shadow-root', 'data-grammarly-ignore']
                 });
                 
                 // Suppress unhandled promise rejections from extensions
@@ -125,9 +192,17 @@ export default function RootLayout({
                     event.reason.toString().includes('chrome-extension://') ||
                     event.reason.toString().includes('Host validation failed') ||
                     event.reason.toString().includes('Host is not supported') ||
+                    event.reason.toString().includes('Host is not valid') ||
+                    event.reason.toString().includes('Host is not in insights whitelist') ||
+                    event.reason.toString().includes('message channel closed') ||
+                    event.reason.toString().includes('asynchronous response') ||
+                    event.reason.toString().includes('listener indicated an asynchronous response') ||
+                    event.reason.toString().includes('A listener indicated an asynchronous response') ||
+                    event.reason.toString().includes('message channel closed before a response was received') ||
                     event.reason.toString().includes('nighthawk')
                   )) {
                     event.preventDefault();
+                    event.stopPropagation();
                     return false;
                   }
                 });

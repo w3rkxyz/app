@@ -75,14 +75,16 @@ const ConversationInput = () => {
       <label
         htmlFor="file_upload"
         className="rounded-[8px] bg-[#F4F4F5] p-[9px] h-fit inline-flex items-center cursor-pointer"
+        aria-label="Upload file"
       >
-        <Image src={"/images/share.svg"} alt="paco pic" width={24} height={24} />
+        <Image src={"/images/share.svg"} alt="Upload file" width={24} height={24} />
         <input
           id="file_upload"
           type="file"
           name="file_upload"
           className="hidden"
           onChange={handleFileUpload}
+          aria-label="File upload"
         />
       </label>
       <button

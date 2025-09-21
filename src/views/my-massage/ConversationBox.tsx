@@ -106,8 +106,12 @@ const ConversationBox = () => {
               placeholder="Type your message here.."
               disabled
             />
-            <button className="rounded-[8px] bg-[#F4F4F5] p-[9px] h-fit" disabled>
-              <Image src={"/images/share.svg"} alt="paco pic" width={24} height={24} />
+            <button 
+              className="rounded-[8px] bg-[#F4F4F5] p-[9px] h-fit" 
+              disabled
+              aria-label="Share message"
+            >
+              <Image src={"/images/share.svg"} alt="Share" width={24} height={24} />
             </button>
             <button
               className="px-[18px] sm:px-[10px] py-[10px] bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] flex w-fit gap-[7px] h-fit items-center"

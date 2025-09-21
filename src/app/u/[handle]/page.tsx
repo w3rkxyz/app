@@ -38,9 +38,11 @@ export default function Profile({ params }: PageProps) {
   const { data: walletClient } = useWalletClient();
   const resolvedParams = use(params);
   const { handle: userId } = resolvedParams;
-  const { data: profile, loading: profileLoading } = useAccount({
+  const { data: profile, loading: profileLoading, error: profileError } = useAccount({
     username: { localName: userId },
   });
+
+  console.log('Profile Page Debug:', { userId, profile, profileLoading, profileError });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isProfileFollowed, setIsProfileFollowed] = useState(false);
@@ -200,6 +202,20 @@ export default function Profile({ params }: PageProps) {
       setLoading(false);
     }
   }, [publications]);
+
+  if (profileError) {
+    return (
+      <div className="px-[156px] profile-md:px-[80px] profile-sm:px-[20px] sm:px-[16px] pt-[110px] sm:pt-[122px] sm:w-full mb-[40px]">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-4">Profile Not Found</h2>
+          <p className="text-gray-600 mb-4">The profile &quot;{userId}&quot; could not be found.</p>
+          <Link href="/" className="text-blue-600 hover:underline">
+            Return to Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return dataLoading ? (
     <ProfileSkeleton />
