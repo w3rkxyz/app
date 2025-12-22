@@ -12,8 +12,9 @@ import InProgressContractModal from "./modals/inProgressContractModal";
 import AwaitingApprovalContractModal from "./modals/awaitingApprovalContractModal";
 import CompletedContractModal from "./modals/CompletedContractModal";
 import type { activeContractDetails, contractDetails } from "@/types/types";
-import { get_all_contracts, getContract, contractInstance } from "@/api";
+import { get_all_contracts, getContract, getContractInstance } from "@/api";
 import { useAccount } from "wagmi";
+import { useSelector } from "react-redux";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import { useSearchParams } from "next/navigation";
@@ -85,10 +86,17 @@ const Contracts = () => {
     setCreationStage(1);
   };
 
+  // Get user profile from Redux - contains Lens Account address
+  const { user: userProfile } = useSelector((state: any) => state.app);
+
   const getData = async () => {
-    if (address) {
+    // Use Lens Account address from user profile (stored in Redux)
+    // userProfile.address is the Lens Account address (smart contract)
+    const lensAccountAddress = userProfile?.address;
+    
+    if (lensAccountAddress) {
       try {
-        const contracts = await get_all_contracts(address);
+        const contracts = await get_all_contracts(lensAccountAddress);
         const newContracts = [...contracts];
         setContracts(newContracts);
       } catch (error) {
@@ -96,30 +104,60 @@ const Contracts = () => {
       } finally {
         setLoadingContracts(false);
       }
+    } else {
+      setLoadingContracts(false);
     }
   };
 
   useEffect(() => {
-    if (address) {
+    if (userProfile?.address) {
       getData();
 
-      // Set up event listener for contract updates
-      const handleContractUpdate = (client: string, freelancer: string, event: any) => {
-        if (client === address || freelancer === address) {
+      // Set up event listeners for contract updates
+      // New contract emits: ProposalCreated, ProposalAccepted, PaymentRequested, PaymentReleased, etc.
+      const lensAccountAddress = userProfile?.address;
+      const contract = getContractInstance();
+      
+      const handleProposalCreated = (client: string, freelancer: string, proposalId: any, amount: any, event: any) => {
+        if (lensAccountAddress && (client === lensAccountAddress || freelancer === lensAccountAddress)) {
+          getData();
+        }
+      };
+      
+      const handleProposalAccepted = (client: string, freelancer: string, contractId: any, event: any) => {
+        if (lensAccountAddress && (client === lensAccountAddress || freelancer === lensAccountAddress)) {
+          getData();
+        }
+      };
+      
+      const handlePaymentRequested = (freelancer: string, client: string, contractId: any, event: any) => {
+        if (lensAccountAddress && (client === lensAccountAddress || freelancer === lensAccountAddress)) {
+          getData();
+        }
+      };
+      
+      const handlePaymentReleased = (freelancer: string, client: string, contractId: any, event: any) => {
+        if (lensAccountAddress && (client === lensAccountAddress || freelancer === lensAccountAddress)) {
           getData();
         }
       };
 
       // Subscribe to contract events
-      contractInstance.on("ContractUpdate", handleContractUpdate);
+      contract.on("ProposalCreated", handleProposalCreated);
+      contract.on("ProposalAccepted", handleProposalAccepted);
+      contract.on("PaymentRequested", handlePaymentRequested);
+      contract.on("PaymentReleased", handlePaymentReleased);
 
       // Cleanup function
       return () => {
-        contractInstance.off("ContractUpdate", handleContractUpdate);
+        contract.off("ProposalCreated", handleProposalCreated);
+        contract.off("ProposalAccepted", handleProposalAccepted);
+        contract.off("PaymentRequested", handlePaymentRequested);
+        contract.off("PaymentReleased", handlePaymentReleased);
       };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [address]);
+  }, [userProfile?.address]);
 
   useEffect(() => {
     if (profile) {

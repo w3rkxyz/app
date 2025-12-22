@@ -240,11 +240,14 @@ const CreateContractModal = ({
 
   const handleSubmit = () => {
     if (userProfile && selectedFreelancer) {
+      // Use Lens Account addresses (not EOA addresses)
+      // userProfile.address is the client's Lens Account address
+      // selectedFreelancer.address is the freelancer's Lens Account address
       const details: activeContractDetails = {
         title,
         description,
-        clientAddress: address as string,
-        freelancerAddress: selectedFreelancer.address,
+        clientAddress: userProfile.address, // Lens Account address (smart contract)
+        freelancerAddress: selectedFreelancer.address, // Lens Account address (smart contract)
         paymentAmount,
         dueDate,
         state: "proposal",
@@ -332,13 +335,18 @@ const CreateContractModal = ({
         </div>
         <div className="flex sm:flex-col gap-[16px] mb-[16px]">
           <div className="flex-1">
-            <span className={`leading-[14.52px] text-[14px] font-mediumtext-[black]`}>
+            <label htmlFor="client-address" className={`leading-[14.52px] text-[14px] font-mediumtext-[black]`}>
               Your Address
-            </span>
+            </label>
             <input
+              id="client-address"
+              type="text"
               className="form-input rounded-[8px] px-[11px] py-[7px] border-[1px] border-[#E4E4E7]"
-              value={address}
+              value={address || ""}
               disabled
+              placeholder="Your wallet address"
+              aria-label="Your wallet address"
+              title="Your wallet address"
             />
           </div>
           <div className="flex-1">
@@ -440,12 +448,21 @@ const CreateContractModal = ({
             <span className={`leading-[14.52px] text-[14px] font-mediumtext-[black]`}>
               Due Date
             </span>
+            <label htmlFor="due-date-picker" className="sr-only">
+              Due Date
+            </label>
             <button
+              id="due-date-picker"
               type="button"
               name="date picker"
+              aria-label="Select due date"
+              title="Select due date"
               className="w-full sm:w-full rounded-[8px] border-[1px] border-[#E4E4E7] p-[7px] flex justify-between items-center relative"
               onClick={() => setShowDatePicker(true)}
             >
+              <span className="font-normal leading-[14.52px] text-[14px] text-[#707070]">
+                {dueDate.toLocaleDateString() || "Select date"}
+              </span>
               <DatePicker
                 selected={dueDate}
                 onSelect={date => handlePickDate(date)}
@@ -453,7 +470,7 @@ const CreateContractModal = ({
                 open={showDatePicker}
                 onClickOutside={() => setShowDatePicker(false)}
               />
-              <Image src="/images/calender.svg" alt="drop-down icon" width={20} height={20} />
+              <Image src="/images/calender.svg" alt="calendar icon" width={20} height={20} aria-hidden="true" />
             </button>
           </div>
         </div>

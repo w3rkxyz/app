@@ -23,7 +23,7 @@ import {
   RemoteAttachmentCodec,
   ContentTypeRemoteAttachment,
 } from "@xmtp/content-type-remote-attachment";
-import { uploadFileToIPFS, uploadJsonToIPFS } from "@/utils/uploadToIPFS";
+import { fileToDataURI, jsonToDataURI } from "@/utils/dataUriHelpers";
 import axios from "axios";
 import { ContentTypeReadReceipt, ReadReceiptCodec } from "@xmtp/content-type-read-receipt";
 import { SessionClient, useAccount as useLensAccount } from "@lens-protocol/react";

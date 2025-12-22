@@ -6,7 +6,7 @@ import MyButton from "@/components/reusable/Button/Button";
 import { useAccount } from "wagmi";
 import type { contractDetails } from "@/types/types";
 import { create_proposal } from "@/api";
-import { uploadJsonToIPFS } from "@/utils/uploadToIPFS";
+// All contract data stored on-chain
 import { useDispatch, useSelector } from "react-redux";
 import { openAlert, closeAlert } from "@/redux/alerts";
 import { openLoader } from "@/redux/alerts";
@@ -60,20 +60,32 @@ const ReviewContractModal = ({ handleCloseModal, setCreationStage, contractDetai
     dispatch(
       openLoader({
         displaytransactionLoader: true,
-        text: "Approving Token use",
+        text: "Creating Contract Proposal",
       })
     );
 
-    const escrowData = await uploadJsonToIPFS(contractDetails);
-    const senderHandle =
-      userProfile ? userProfile.userLink : undefined;
+    const senderHandle = userProfile ? userProfile.userLink : undefined;
+    const clientLensAccountAddress = userProfile?.address; // Client's Lens Account address
+    
+    // Get token address - using MockPaymentToken for now
+    // TODO: Get selected token address from user selection
+    const tokenAddress = process.env.NEXT_PUBLIC_TOKEN_ADDRESS || "0x0dEA5852CB2F3106C05DAc1582Da93659833A746";
+    
+    // NEW SIGNATURE: create_proposal(amount, freelancerAccount, title, description, dueDate, tokenAddress, dispatch, senderHandle, clientLensAccountAddress)
+    // All data is passed directly to the contract
+    // IMPORTANT: Transaction must be sent from Lens Account, not EOA
     const hash = await create_proposal(
       contractDetails.paymentAmount.toString(),
-      contractDetails.freelancerAddress,
-      escrowData,
+      contractDetails.freelancerAddress, // Freelancer's Lens Account address
+      contractDetails.title,             // On-chain title
+      contractDetails.description,        // On-chain description
+      contractDetails.dueDate,           // On-chain due date
+      tokenAddress,                      // Payment token address
       dispatch,
-      senderHandle
+      senderHandle,
+      clientLensAccountAddress           // Client's Lens Account address (for balance check)
     );
+    
     if (hash !== undefined) {
       dispatch(
         openAlert({
@@ -84,7 +96,7 @@ const ReviewContractModal = ({ handleCloseModal, setCreationStage, contractDetai
             classname: "text-black",
             title: "Submission Successful",
             tag1: "Contract Proposal created",
-            tag2: "View on etherscan",
+            tag2: "View on Lens Explorer",
             hash: hash,
           },
         })

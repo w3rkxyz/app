@@ -1,15 +1,14 @@
-// DEPRECATED: This file is kept for backward compatibility only
-// Please use dataUriHelpers.ts instead (jsonToDataURI, fileToDataURI)
-// This file will be removed in a future version
+// Data URI helpers for Lens Protocol metadata
+// Lens Protocol accepts data URIs (base64-encoded JSON), eliminating need for external services
 
 /**
- * @deprecated Use jsonToDataURI from dataUriHelpers.ts instead
  * Converts JSON to a data URI (base64-encoded)
- * @param Json - The JSON object to encode
+ * This works directly with Lens Protocol without requiring external services
+ * @param json - The JSON object to encode
  * @returns Data URI string (data:application/json;base64,...)
  */
-const uploadJsonToIPFS = async (Json: any): Promise<string> => {
-  const serialized = JSON.stringify(Json);
+export const jsonToDataURI = async (json: any): Promise<string> => {
+  const serialized = JSON.stringify(json);
   
   // Create base64-encoded data URI (UTF-8 safe)
   // btoa() only handles Latin1, so we need to convert UTF-8 to base64 properly
@@ -29,14 +28,13 @@ const uploadJsonToIPFS = async (Json: any): Promise<string> => {
 };
 
 /**
- * @deprecated Use fileToDataURI from dataUriHelpers.ts instead
  * Converts a file to a data URI (base64-encoded)
  * For images and small files, data URIs work well
  * For larger files, consider implementing a different solution
  * @param file - File or FileList to encode
  * @returns Data URI string
  */
-const uploadFileToIPFS = async (file: any): Promise<string> => {
+export const fileToDataURI = async (file: any): Promise<string> => {
   return new Promise((resolve, reject) => {
     try {
       const fileToUpload = file instanceof FileList ? file[0] : file;
@@ -47,7 +45,6 @@ const uploadFileToIPFS = async (file: any): Promise<string> => {
 
       const reader = new FileReader();
       reader.onloadend = () => {
-        const base64String = (reader.result as string).split(',')[1]; // Remove data:...;base64, prefix
         const dataUri = reader.result as string;
         resolve(dataUri);
       };
@@ -61,4 +58,8 @@ const uploadFileToIPFS = async (file: any): Promise<string> => {
   });
 };
 
-export { uploadFileToIPFS, uploadJsonToIPFS };
+// Legacy exports for backward compatibility during migration
+// TODO: Remove these after all imports are updated
+export const uploadJsonToIPFS = jsonToDataURI;
+export const uploadFileToIPFS = fileToDataURI;
+

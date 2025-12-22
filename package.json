@@ -21,7 +21,6 @@
     "@lens-protocol/client": "^0.0.0-canary-20250710104621",
     "@lens-protocol/metadata": "^2.0.0",
     "@lens-protocol/react": "^0.0.0-canary-20250710104621",
-    "@lighthouse-web3/sdk": "^0.3.7",
     "@reduxjs/toolkit": "^2.2.7",
     "@tanstack/react-query": "^5.72.2",
     "@unicrowio/sdk": "^1.2.0-beta.14",

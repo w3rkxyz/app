@@ -66,7 +66,9 @@ const getLensAccountData = (account: Account): AccountData => {
     attributes,
     id: account.username?.id || "",
     userLink,
-    address: account.owner || "",
+    // Use Lens Account address (smart contract) instead of owner (EOA)
+    // This is the address that will interact with ContractsManager
+    address: account.address || account.owner || "",
   };
 };
 

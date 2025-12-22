@@ -3,8 +3,8 @@ import { clientCookieStorage } from "./storage";
 import { fragments } from "./fragments";
 
 export const client = PublicClient.create({
-  environment: mainnet,
-  // environment: process.env.NEXT_PUBLIC_ENVIRONMENT === "development" ? testnet : mainnet,
+  // Use Lens Protocol testnet environment for Lens Chain Testnet
+  environment: testnet,
   fragments,
   storage: clientCookieStorage,
 });

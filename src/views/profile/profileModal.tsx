@@ -4,12 +4,14 @@ import React, { useRef, useEffect, useState } from "react";
 import Image from "next/image";
 import MyButton from "@/components/reusable/Button/Button";
 import { article, MetadataAttributeType, textOnly } from "@lens-protocol/metadata";
-import { uploadJsonToIPFS } from "@/utils/uploadToIPFS";
+import { uploadMetadataToLensStorage } from "@/utils/storage-client";
 import toast from "react-hot-toast";
 import { Oval } from "react-loader-spinner";
-import { useCreatePost, UseCreatePostArgs } from "@lens-protocol/react";
+import { useCreatePost, UseCreatePostArgs, uri } from "@lens-protocol/react";
 import { handleOperationWith } from "@lens-protocol/client/viem";
 import { useWalletClient } from "wagmi";
+import { getAcceptedTokens } from "@/api";
+import { ethers } from "ethers";
 
 type Props = {
   handleCloseModal?: () => void;
@@ -78,23 +80,33 @@ const tagColors: any = {
   Other: "#E4E4E7",
 };
 
-const tokens = [
-  { text: "Bitcoin (BTC)", image: "/images/btc.svg" },
-  { text: "Ethereum (ETH)", image: "/images/eth.svg" },
-  { text: "Tether (USDT)", image: "/images/usdt.svg" },
-  { text: "BNB (BNB)", image: "/images/bnb.svg" },
-  { text: "Solana (SOL)", image: "/images/solana.svg" },
-  { text: "USDC (USDC)", image: "/images/usdc.svg" },
-  { text: "Dai (DAI)", image: "/images/dai.svg" },
-  { text: "GHO (GHO)", image: "/images/green-coin.svg" },
-  { text: "Bonsai (BONSAI)", image: "/images/bw-coin.svg" },
-];
+// Token display information mapping (address => display info)
+// Only tokens accepted by the contract will be shown
+const TOKEN_DISPLAY_INFO: Record<string, { text: string; image: string }> = {
+  "0xfa0b2925ec86370dca72cf9e4d78e0b8e6b60a82": {
+    text: "Mock Payment Token (MPT)",
+    image: "/images/green-coin.svg",
+  },
+  // Add more token mappings here as they're added to the contract
+};
 
-function getTokenNamesByIndexes(indexes: number[]): string {
+// Default fallback token info
+const DEFAULT_TOKEN_INFO = {
+  text: "Payment Token",
+  image: "/images/green-coin.svg",
+};
+
+function getTokenNamesByIndexes(
+  indexes: number[],
+  tokenList: Array<{ address: string; text: string; image: string }>
+): string {
   return indexes
     .map(index => {
-      const match = tokens[index].text.match(/\(([^)]+)\)/);
-      return match ? match[1] : ""; // Return the token name if matched, otherwise return an empty string
+      if (index >= 0 && index < tokenList.length) {
+        const match = tokenList[index].text.match(/\(([^)]+)\)/);
+        return match ? match[1] : tokenList[index].text; // Return token name or full text
+      }
+      return "";
     })
     .filter(name => name !== "")
     .join(", "); // Filter out any empty strings just in case
@@ -105,7 +117,7 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type, handle }: Pro
   const { execute, loading, error } = useCreatePost({ handler: handleOperationWith(walletClient) });
   const myDivRef = useRef<HTMLDivElement>(null);
   const tagModalRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const tokenModalRef = useRef<HTMLButtonElement>(null);
+  const tokenModalRef = useRef<HTMLDivElement>(null);
   const [showMobile, setShowMobile] = useState(false);
   const [selectedTag, setSelectedTag] = useState<number | null>(null);
   const [showTokens, setShowTokens] = useState(false);
@@ -118,6 +130,7 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type, handle }: Pro
   const [hourlyRate, setHourlyRate] = useState("");
   const [fixedPrice, setFixedPrice] = useState("");
   const [savingData, setSavingData] = useState(false);
+  const [tokens, setTokens] = useState<Array<{ address: string; text: string; image: string }>>([]);
 
   const handleTagClick = (id: number) => {
     setSelectedTag(selectedTag === id ? null : id);
@@ -203,6 +216,33 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type, handle }: Pro
     }
   };
 
+  // Fetch accepted tokens from contract on mount
+  useEffect(() => {
+    const fetchAcceptedTokens = async () => {
+      try {
+        const acceptedTokenAddresses = await getAcceptedTokens();
+        const tokenList = acceptedTokenAddresses.map(address => {
+          const displayInfo = TOKEN_DISPLAY_INFO[address.toLowerCase()] || DEFAULT_TOKEN_INFO;
+          return {
+            address,
+            text: displayInfo.text,
+            image: displayInfo.image,
+          };
+        });
+        setTokens(tokenList);
+      } catch (error) {
+        console.error("Failed to fetch accepted tokens:", error);
+        // Fallback to default token if available
+        const defaultTokenAddress = process.env.NEXT_PUBLIC_TOKEN_ADDRESS;
+        if (defaultTokenAddress) {
+          const displayInfo = TOKEN_DISPLAY_INFO[defaultTokenAddress.toLowerCase()] || DEFAULT_TOKEN_INFO;
+          setTokens([{ address: defaultTokenAddress, text: displayInfo.text, image: displayInfo.image }]);
+        }
+      }
+    };
+    fetchAcceptedTokens();
+  }, []);
+
   useEffect(() => {
     setShowMobile(true);
 
@@ -262,7 +302,7 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type, handle }: Pro
         attributes: [
           {
             key: "paid in",
-            value: getTokenNamesByIndexes(selectedTokens),
+            value: getTokenNamesByIndexes(selectedTokens, tokens),
             type: MetadataAttributeType.STRING,
           },
           {
@@ -293,27 +333,35 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type, handle }: Pro
         ],
       });
 
-      const heyMetadataURI = await uploadJsonToIPFS(heyMetadata);
+      // Upload metadata to Lens Storage and get URI
+      const heyMetadataURI = await uploadMetadataToLensStorage(heyMetadata);
 
-      const heyResult = await execute({
-        contentUri: heyMetadataURI,
-      });
+      try {
+        const heyResult = await execute({
+          contentUri: uri(heyMetadataURI),
+        });
 
-      if (heyResult.isErr()) {
-        toast.error(heyResult.error.message);
-        return;
+        if (heyResult.isErr()) {
+          toast.error(heyResult.error.message);
+          setSavingData(false);
+          return;
+        }
+
+        // const heyCompletion = await heyResult.value.waitForCompletion()
+
+        // if (heyCompletion.isFailure()) {
+        //   toast.error(heyCompletion.error.message);
+        //   return;
+        // }
+        
+        setSavingData(false);
+        handleCloseModal?.();
+        type === "job" ? toast.success("Job Posted Successfully!") : toast.success("Service Listed!");
+      } catch (error: any) {
+        console.error("Failed to create post:", error);
+        toast.error(error?.message || "Failed to create post. Please try again.");
+        setSavingData(false);
       }
-
-      // const heyCompletion = await heyResult.value.waitForCompletion()
-
-      // if (heyCompletion.isFailure()) {
-      //   toast.error(heyCompletion.error.message);
-      //   return;
-      // }
-      setSavingData(false);
-
-      handleCloseModal?.();
-      type === "job" ? toast.success("Job Posted Succesfully!") : toast.success("Service Listed!");
     } else {
       toast.error("Fill all fields and select at least one tag!");
       setSavingData(false);
@@ -403,34 +451,41 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type, handle }: Pro
           <span className="leading-[14.52px] text-[14px] font-medium text-[black]">
             {type === "job" ? "Paid In" : "Tokens Accepted"}
           </span>
-          <button
+          <div
             className="w-[250px] sm:w-full rounded-[8px] border-[1px] border-[#E4E4E7] p-[7px] flex justify-between items-center relative"
-            onClick={e => {
-              e.stopPropagation();
-              toggleTokensModal();
-            }}
             ref={tokenModalRef}
           >
-            {selectedTokens.length > 0 ? (
-              <span className="flex gap-[3px]">
-                {selectedTokens.map(tokenIndex => {
-                  return (
-                    <Image
-                      src={tokens[tokenIndex].image}
-                      alt="token icon"
-                      width={20}
-                      height={20}
-                      key={tokenIndex}
-                    />
-                  );
-                })}
-              </span>
-            ) : (
-              <span className="font-normal leading-[14.52px] text-[12px] text-[#707070]">
-                Select Tokens
-              </span>
-            )}
-            <Image src="/images/drop-down.svg" alt="drop-down icon" width={20} height={20} />
+            <button
+              className="flex-1 flex items-center justify-between"
+              onClick={e => {
+                e.stopPropagation();
+                toggleTokensModal();
+              }}
+            >
+              {selectedTokens.length > 0 ? (
+                <span className="flex gap-[3px]">
+                  {selectedTokens.map(tokenIndex => {
+                    if (tokenIndex >= 0 && tokenIndex < tokens.length) {
+                      return (
+                        <Image
+                          src={tokens[tokenIndex].image}
+                          alt="token icon"
+                          width={20}
+                          height={20}
+                          key={tokenIndex}
+                        />
+                      );
+                    }
+                    return null;
+                  })}
+                </span>
+              ) : (
+                <span className="font-normal leading-[14.52px] text-[12px] text-[#707070]">
+                  {tokens.length > 0 ? "Select Tokens" : "Loading tokens..."}
+                </span>
+              )}
+              <Image src="/images/drop-down.svg" alt="drop-down icon" width={20} height={20} />
+            </button>
             <div
               className={`find-work-message-section w-[100%] bg-[#FFFFFF] rounded-[8px] p-[16px] sm:items-start gap-[6px] absolute top-[100%] sm:top-[-265px] left-0
               border-[1px] border-[#E4E4E7] ${showTokens ? "flex" : "hidden"} flex-col z-[999]`}
@@ -438,22 +493,26 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type, handle }: Pro
                 e.stopPropagation();
               }}
             >
-              {tokens.map((token, index) => (
-                <button
-                  key={index}
-                  className={`flex gap-[8px] items-center rounded-[6px] ${
-                    selectedTokens?.includes(index) ? "border-[1px] border-black" : ""
-                  }`}
-                  onClick={() => onCLickToken(index)}
-                >
-                  <Image src={token.image} alt="token icon" width={20} height={20} />
-                  <span className="font-medium text-[11px] leading-[20px] text-black">
-                    {token.text}
-                  </span>
-                </button>
-              ))}
+              {tokens.length > 0 ? (
+                tokens.map((token, index) => (
+                  <button
+                    key={token.address}
+                    className={`flex gap-[8px] items-center rounded-[6px] ${
+                      selectedTokens?.includes(index) ? "border-[1px] border-black" : ""
+                    }`}
+                    onClick={() => onCLickToken(index)}
+                  >
+                    <Image src={token.image} alt="token icon" width={20} height={20} />
+                    <span className="font-medium text-[11px] leading-[20px] text-black">
+                      {token.text}
+                    </span>
+                  </button>
+                ))
+              ) : (
+                <span className="text-[12px] text-[#707070] px-[8px] py-[4px]">Loading accepted tokens...</span>
+              )}
             </div>
-          </button>
+          </div>
         </div>
         <span className="leading-[14.52px] text-[14px] font-medium text-[black] mb-[4px]">
           Select Tags
@@ -498,7 +557,7 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type, handle }: Pro
                 </div>
               </div>
             ) : (
-              <>
+              <div key={id}>
                 <div
                   className={`${`bg-[${
                     tagColors[tags[buttonIndex]]
@@ -531,7 +590,7 @@ const ProfileModal = ({ handleCloseModal, closeJobCardModal, type, handle }: Pro
                     ))}
                   </div>
                 </div>
-              </>
+              </div>
             )
           )}
         </div>

@@ -13,10 +13,10 @@ export const wagmiConfig =
   g.__WAGMI_CONFIG__ ??
   (g.__WAGMI_CONFIG__ = createConfig(
     getDefaultConfig({
-      chains: [chains.mainnet],
+      chains: [chains.testnet], // Lens Chain Testnet (Chain ID: 37111)
       transports: {
-        [chains.mainnet.id]: http(),
         [chains.testnet.id]: http(),
+        [chains.mainnet.id]: http(), // Keep for fallback if needed
       },
       walletConnectProjectId: projectId,
       appName: "w3rk",

@@ -20,33 +20,56 @@ const ConditionalNav = () => {
   const { isConnected } = useAccount();
   const dispatch = useDispatch();
 
-  async function getAuthenticatedAccount() {
-    const client = await getLensClient();
-
-    if (!client.isSessionClient()) {
-      return null;
-    }
-
-    const authenticatedUser = client.getAuthenticatedUser().unwrapOr(null);
-    if (!authenticatedUser) {
-      return null;
-    }
-
-    const account = await fetchAccount(client, { address: authenticatedUser.address }).unwrapOr(
-      null
-    );
-
-    if (account) {
-      const accountData = getLensAccountData(account);
-      dispatch(setLensProfile({ profile: accountData }));
-      dispatch(displayLoginModal({ display: false }));
-    } else {
-      dispatch(displayLoginModal({ display: true }));
-    }
-  }
-
   useEffect(() => {
-    getAuthenticatedAccount();
+    // Don't block navigation - check auth asynchronously
+    let mounted = true;
+    
+    async function getAuthenticatedAccount() {
+      try {
+        const client = await getLensClient();
+
+        if (!mounted || !client.isSessionClient()) {
+          return;
+        }
+
+        const authenticatedUser = client.getAuthenticatedUser().unwrapOr(null);
+        if (!mounted || !authenticatedUser) {
+          return;
+        }
+
+        const account = await fetchAccount(client, { address: authenticatedUser.address }).unwrapOr(
+          null
+        );
+
+        if (!mounted) return;
+
+        if (account) {
+          const accountData = getLensAccountData(account);
+          dispatch(setLensProfile({ profile: accountData }));
+          dispatch(displayLoginModal({ display: false }));
+        } else {
+          dispatch(displayLoginModal({ display: true }));
+        }
+      } catch (error) {
+        console.error("Error fetching authenticated account:", error);
+        // Don't show login modal on error - let user navigate freely
+      }
+    }
+
+    // Use requestIdleCallback or setTimeout to defer non-critical work
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      requestIdleCallback(() => {
+        getAuthenticatedAccount();
+      }, { timeout: 2000 });
+    } else {
+      setTimeout(() => {
+        getAuthenticatedAccount();
+      }, 0);
+    }
+
+    return () => {
+      mounted = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

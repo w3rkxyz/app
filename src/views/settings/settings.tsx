@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
-import { uploadFileToIPFS, uploadJsonToIPFS } from "@/utils/uploadToIPFS";
+import { fileToDataURI, jsonToDataURI } from "@/utils/dataUriHelpers";
 import { MetadataAttributeType, account } from "@lens-protocol/metadata";
 import { uri, useAccount } from "@lens-protocol/react";
 import { toast } from "react-hot-toast";
@@ -107,7 +107,7 @@ const Settings = () => {
     if (file) {
       const imageUrl = URL.createObjectURL(file);
       setBackgroundImage(imageUrl);
-      const coverLink = await uploadFileToIPFS(cover);
+      const coverLink = await fileToDataURI(cover);
       setFormState(prevState => ({
         ...prevState,
         ["cover"]: coverLink,
@@ -121,7 +121,7 @@ const Settings = () => {
     if (file) {
       const imageUrl = URL.createObjectURL(file);
       setPhoto(imageUrl);
-      const pictureLink = await uploadFileToIPFS(pic);
+      const pictureLink = await fileToDataURI(pic);
       setFormState(prevState => ({
         ...prevState,
         ["picture"]: pictureLink,
@@ -204,7 +204,7 @@ const Settings = () => {
       attributes: attributes.length !== 0 ? attributes : []
     });
 
-    const metadataURI = await uploadJsonToIPFS(metadata);
+    const metadataURI = await jsonToDataURI(metadata);
 
     const result = await setAccountMetadata(sessionClient, {
       metadataUri: uri(metadataURI),

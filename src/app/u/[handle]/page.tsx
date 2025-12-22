@@ -147,7 +147,10 @@ export default function Profile({ params }: PageProps) {
       const profileData = getLensAccountData(profile);
       console.log('Profile Data: ', profileData)
 
-      if (profileData.userLink === myProfile.userLink) setIsMyProfile(true);
+      // Check if profileData and myProfile exist before accessing userLink
+      if (profileData && myProfile && profileData.userLink && myProfile.userLink) {
+        if (profileData.userLink === myProfile.userLink) setIsMyProfile(true);
+      }
 
       const client = getPublicClient();
       const stats = await fetchAccountStats(client, { account: evmAddress(profile.address) });
@@ -176,8 +179,14 @@ export default function Profile({ params }: PageProps) {
       };
       setUserData(handle);
 
-      const user_score = await get_score(profile.address);
-      setScore(user_score);
+      // Get score, but don't block page render if it fails
+      try {
+        const user_score = await get_score(profile.address);
+        setScore(user_score);
+      } catch (error) {
+        console.error("Failed to fetch user score:", error);
+        setScore(0); // Default score
+      }
       setDataLoading(false);
     }
   };
@@ -278,10 +287,11 @@ export default function Profile({ params }: PageProps) {
             </div>
           </div>
           {isMyProfile ? (
-            <Link href={"/settings"}>
-              <button className="rounded-[8px] bg-[#E4E4E7] text-black px-[16px] py-[7px] mb-[16px] text-[14px]">
-                Edit Profile
-              </button>
+            <Link
+              href={"/settings"}
+              className="rounded-[8px] bg-[#E4E4E7] text-black px-[16px] py-[7px] mb-[16px] text-[14px] inline-block text-center"
+            >
+              Edit Profile
             </Link>
           ) : (
             <div className="flex gap-[16px] mb-[16px]">
@@ -297,13 +307,11 @@ export default function Profile({ params }: PageProps) {
                   Follow
                 </button>
               )}
-              <Link href={`/messages?handle=${userData.handle}`}>
-                <button
-                  type="button"
-                  className="rounded-[8px] bg-[#E4E4E7] text-black px-[16px] py-[6px] text-[14px] leading-[24px]"
-                >
-                  Message
-                </button>
+              <Link
+                href={`/messages?handle=${userData.handle}`}
+                className="rounded-[8px] bg-[#E4E4E7] text-black px-[16px] py-[6px] text-[14px] leading-[24px] inline-block text-center"
+              >
+                Message
               </Link>
             </div>
           )}

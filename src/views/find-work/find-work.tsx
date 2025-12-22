@@ -5,7 +5,7 @@ import SearchInput from "@/components/reusable/SearchInput/SearchInput";
 import JobCard from "@/components/Cards/JobCard";
 import MyButton from "@/components/reusable/Button/Button";
 import ViewJobModal from "../view-job-modal/view-job-modal";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { usePosts, AnyPost } from "@lens-protocol/react";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
@@ -83,25 +83,33 @@ const FindWork = () => {
     };
   }
 
-  const searchItems = (items: AnyPost[], searchText: string) => {
-    const filtered = items.filter(item => {
-      if (item.__typename === "Post" && item.metadata.__typename === "TextOnlyMetadata") {
-        const attribute4 = item.metadata.attributes?.[4].value.toLowerCase();
-        const attribute5 = item.metadata.attributes?.[5].value.toLowerCase();
-        return (
-          attribute4?.includes(searchText.toLowerCase()) ||
-          attribute5?.includes(searchText.toLowerCase())
-        );
-      }
-    });
-    setData(filtered);
-  };
+  const searchItems = useMemo(() => {
+    return (items: readonly AnyPost[], searchText: string) => {
+      if (!searchText.trim()) return [...items]; // Return mutable copy
+      
+      const searchLower = searchText.toLowerCase();
+      return items.filter(item => {
+        if (item.__typename === "Post" && item.metadata.__typename === "TextOnlyMetadata") {
+          const attribute4 = item.metadata.attributes?.[4]?.value?.toLowerCase() || "";
+          const attribute5 = item.metadata.attributes?.[5]?.value?.toLowerCase() || "";
+          return (
+            attribute4.includes(searchLower) ||
+            attribute5.includes(searchLower)
+          );
+        }
+        return false;
+      });
+    };
+  }, []);
 
-  const handleSearch = (searchText: string) => {
+  const handleSearch = useCallback((searchText: string) => {
     if (publications) {
-      const filtered = searchItems([...publications.items], searchText);
+      const filtered = searchItems(publications.items, searchText);
+      // Convert readonly arrays to mutable arrays for state
+      const filteredArray = filtered.length > 0 ? [...filtered] : [...publications.items];
+      setData(filteredArray);
     }
-  };
+  }, [publications, searchItems]);
 
   const handleOpenModal = (publication?: any) => {
     if (publication) setSelectedPublication(publication);
@@ -124,12 +132,16 @@ const FindWork = () => {
 
   useEffect(() => {
     if (publications) {
-      setData(publications.items.filter(publication => publication.isDeleted === false));
-      console.log("Publications: ", publications);
+      // Convert readonly array to mutable array for state
+      const filtered = publications.items.filter(publication => publication.isDeleted === false);
+      setData([...filtered]);
       setLoading(false);
+    } else if (!publicationsLoading) {
+      // If not loading and no data, show empty state
+      setLoading(false);
+      setData([]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [publications]);
+  }, [publications, publicationsLoading]);
 
   // useEffect(() => {
   //   console.log('There was an update!')
@@ -253,35 +265,40 @@ const FindWork = () => {
                 />
               </>
             ) : publications && publications.items.length > 0 ? (
-              data.map((publication, index) => {
-                if (
-                  publication.__typename === "Post" &&
-                  filterbyTags(
-                    publication.metadata.tags,
-                    selectedCategoriesText(selectedCategories)
-                  )
-                ) {
-                  var attributes: any = {};
-                  publication.metadata.attributes?.map((attribute: any) => {
-                    attributes[attribute.key] = attribute.value;
-                  });
+              data
+                .filter(publication => {
+                  if (selectedCategories.length === 0) return true;
+                  return publication.__typename === "Post" &&
+                    filterbyTags(
+                      publication.metadata.tags || [],
+                      selectedCategoriesText(selectedCategories)
+                    );
+                })
+                .map((publication, index) => {
+                  if (publication.__typename === "Post") {
+                    const attributes: any = {};
+                    publication.metadata.attributes?.forEach((attribute: any) => {
+                      attributes[attribute.key] = attribute.value;
+                    });
 
-                  return (
-                    <JobCard
-                      key={index}
-                      userAvatar="/images/head-2.svg"
-                      username="adam.lens"
-                      jobName="Post Title"
-                      jobIcon="/images/bag.svg"
-                      onCardClick={() => handleOpenModal(publication)}
-                      type="job"
-                      publication={publication}
-                    />
-                  );
-                }
-              })
+                    return (
+                      <JobCard
+                        key={`${publication.id || index}`}
+                        userAvatar="/images/head-2.svg"
+                        username="adam.lens"
+                        jobName="Post Title"
+                        jobIcon="/images/bag.svg"
+                        onCardClick={() => handleOpenModal(publication)}
+                        type="job"
+                        publication={publication}
+                      />
+                    );
+                  }
+                  return null;
+                })
+                .filter(Boolean)
             ) : (
-              <div>No POSTS YET!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!</div>
+              <div className="text-center py-8 text-gray-500">No posts yet</div>
             )}
           </div>
         </div>

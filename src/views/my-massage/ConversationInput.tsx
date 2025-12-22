@@ -2,7 +2,7 @@
 import Image from "next/image";
 import { useState, useRef } from "react";
 import { useConversation } from "@/hooks/useConversation";
-import { uploadFileToIPFS, uploadJsonToIPFS } from "@/utils/uploadToIPFS";
+import { fileToDataURI, jsonToDataURI } from "@/utils/dataUriHelpers";
 
 const ConversationInput = () => {
   const { send, sending } = useConversation();
@@ -40,7 +40,7 @@ const ConversationInput = () => {
       return;
     }
 
-    const attachmentLink = await uploadFileToIPFS(attachment);
+    const attachmentLink = await fileToDataURI(attachment);
 
     const attachmentData = {
       name: file?.name,
@@ -48,7 +48,7 @@ const ConversationInput = () => {
       link: attachmentLink,
     };
 
-    const attachmentUrl = await uploadJsonToIPFS(attachmentData);
+    const attachmentUrl = await jsonToDataURI(attachmentData);
 
     await send(attachmentUrl);
     setMessage("");

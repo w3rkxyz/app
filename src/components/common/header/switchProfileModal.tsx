@@ -2,7 +2,7 @@ import Image from "next/image";
 import { toast } from "react-hot-toast";
 import { useDispatch } from "react-redux";
 import { setLensProfile, displaySwitchModal } from "@/redux/app";
-import {Account} from '@lens-protocol/client'
+import { Account, evmAddress } from '@lens-protocol/client'
 import { useAccountsAvailable, useLogin } from '@lens-protocol/react'
 import getLensAccountData, { AccountData } from "@/utils/getLensProfile";
 import { useWalletClient, useAccount } from "wagmi";
@@ -20,25 +20,62 @@ export function SwitchForm() {
   const handleProfileClick = async (account: Account) => {
     if (!walletClient) return;
     try {
+      // Ensure wallet is on Lens Chain Testnet before authentication
+      // Chain ID: 37111 (0x9117)
+      const currentChainId = walletClient.chain?.id;
+      if (currentChainId !== 37111) {
+        try {
+          await walletClient.switchChain({ id: 37111 });
+        } catch (error: any) {
+          if (error.code === 4902) {
+            // Chain not added, add it
+            await walletClient.addChain({
+              chain: {
+                id: 37111,
+                name: "Lens Chain Testnet",
+                nativeCurrency: {
+                  name: "GHO",
+                  symbol: "GHO",
+                  decimals: 18,
+                },
+                rpcUrls: {
+                  default: { http: ["https://rpc.testnet.lens.xyz"] },
+                },
+                blockExplorers: {
+                  default: {
+                    name: "Lens Explorer",
+                    url: "https://block-explorer.testnet.lens.xyz",
+                  },
+                },
+              },
+            });
+            await walletClient.switchChain({ id: 37111 });
+          } else {
+            console.error("Failed to switch to Lens Chain Testnet:", error);
+            toast.error("Please switch to Lens Chain Testnet to continue");
+            return;
+          }
+        }
+      }
+
+      // Use official Lens testnet test app (since we're on Lens Chain Testnet)
+      // Official test app: 0xC75A89145d765c396fd75CbD16380Eb184Bd2ca7
+      // Always use testnet app address for Lens Chain Testnet
+      const appAddress = process.env.NEXT_PUBLIC_APP_ADDRESS_TESTNET || "0xC75A89145d765c396fd75CbD16380Eb184Bd2ca7";
+
       const isOwner = wallet.address === account.owner;
       const authRequest = isOwner
         ? {
             accountOwner: {
               account: account.address,
-              app:
-                process.env.NEXT_PUBLIC_ENVIRONMENT === "development"
-                  ? process.env.NEXT_PUBLIC_APP_ADDRESS_TESTNET
-                  : process.env.NEXT_PUBLIC_APP_ADDRESS_MAINNET,
+              app: evmAddress(appAddress),
               owner: walletClient.account.address,
             },
           }
         : {
             accountManager: {
               account: account.address,
-              app:
-                process.env.NEXT_PUBLIC_ENVIRONMENT === "development"
-                  ? process.env.NEXT_PUBLIC_APP_ADDRESS_TESTNET
-                  : process.env.NEXT_PUBLIC_APP_ADDRESS_MAINNET,
+              app: evmAddress(appAddress),
               manager: walletClient.account.address,
             },
           };
