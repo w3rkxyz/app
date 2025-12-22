@@ -8,8 +8,8 @@ The W3RK platform has been updated to use **Lens Account addresses** (smart cont
 
 ### 1. Contract Address (Lens Chain Testnet)
 ```
-NEXT_PUBLIC_CONTRACT_ADDRESS=0x7d2c2d6ab1F08a081E9EbCDFD8d97C42e7AF73f8
-NEXT_PUBLIC_TOKEN_ADDRESS=0x0dEA5852CB2F3106C05DAc1582Da93659833A746
+NEXT_PUBLIC_CONTRACT_ADDRESS=0xb27288722f4bF33CE962Bdcc0D993d15230070B0
+NEXT_PUBLIC_TOKEN_ADDRESS=0xfa0b2925eC86370DCA72cF9e4D78e0b8E6B60a82
 ```
 
 ### 2. Network Configuration
@@ -110,8 +110,8 @@ Required environment variables:
 
 ```bash
 # Contract Addresses
-NEXT_PUBLIC_CONTRACT_ADDRESS=0x7d2c2d6ab1F08a081E9EbCDFD8d97C42e7AF73f8
-NEXT_PUBLIC_TOKEN_ADDRESS=0x0dEA5852CB2F3106C05DAc1582Da93659833A746
+NEXT_PUBLIC_CONTRACT_ADDRESS=0xb27288722f4bF33CE962Bdcc0D993d15230070B0
+NEXT_PUBLIC_TOKEN_ADDRESS=0xfa0b2925eC86370DCA72cF9e4D78e0b8E6B60a82
 
 # Network
 NEXT_PUBLIC_LENS_RPC_URL=https://rpc.testnet.lens.xyz
@@ -175,11 +175,11 @@ Since Lens Accounts hold tokens directly, approvals must be done **from the Lens
 ### 12. Block Explorer
 
 View transactions on Lens Chain Block Explorer:
-- Contract: https://block-explorer.testnet.lens.xyz/address/0x7d2c2d6ab1F08a081E9EbCDFD8d97C42e7AF73f8
+- Contract: https://block-explorer.testnet.lens.xyz/address/0xb27288722f4bF33CE962Bdcc0D993d15230070B0
 - Transactions: https://block-explorer.testnet.lens.xyz/tx/{hash}
 
 ---
 
-**Last Updated**: October 2024
+**Last Updated**: December 2024
 **Migration Status**: ✅ Core updates complete, ⚠️ Lens Account transaction signing needs verification
 

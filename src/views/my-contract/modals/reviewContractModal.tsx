@@ -69,7 +69,7 @@ const ReviewContractModal = ({ handleCloseModal, setCreationStage, contractDetai
     
     // Get token address - using MockPaymentToken for now
     // TODO: Get selected token address from user selection
-    const tokenAddress = process.env.NEXT_PUBLIC_TOKEN_ADDRESS || "0x0dEA5852CB2F3106C05DAc1582Da93659833A746";
+    const tokenAddress = process.env.NEXT_PUBLIC_TOKEN_ADDRESS || "0xfa0b2925eC86370DCA72cF9e4D78e0b8E6B60a82";
     
     // NEW SIGNATURE: create_proposal(amount, freelancerAccount, title, description, dueDate, tokenAddress, dispatch, senderHandle, clientLensAccountAddress)
     // All data is passed directly to the contract

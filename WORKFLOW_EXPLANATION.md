@@ -113,7 +113,7 @@ The W3RK platform currently has **TWO SEPARATE SYSTEMS** that are not directly c
 
 ### ContractsManager Contracts
 - **Chain**: Lens Chain (direct smart contract)
-- **Storage**: `ContractsManager.sol` contract at `0x7d2c2d6ab1F08a081E9EbCDFD8d97C42e7AF73f8`
+- **Storage**: `ContractsManager.sol` contract at `0xb27288722f4bF33CE962Bdcc0D993d15230070B0`
 - **Data**: Proposal/contract structs (title, description, dueDate, amounts, accounts)
 - **Access**: Via `ethers.Contract` instance in `api.ts`
 

@@ -4,7 +4,7 @@
 
 ### 1. Contract Integration
 - ✅ **Contract ABI Updated**: Replaced with new interface from deployed contract
-- ✅ **Contract Address**: Updated to `0x7d2c2d6ab1F08a081E9EbCDFD8d97C42e7AF73f8`
+- ✅ **Contract Address**: Updated to `0xb27288722f4bF33CE962Bdcc0D993d15230070B0`
 - ✅ **Network**: Changed from Arbitrum Sepolia to Lens Chain Testnet (Chain ID: 37111)
 
 ### 2. Function Signatures
@@ -66,8 +66,8 @@
 ### Environment Setup
 1. Update `.env` file with new contract addresses:
    ```bash
-   NEXT_PUBLIC_CONTRACT_ADDRESS=0x7d2c2d6ab1F08a081E9EbCDFD8d97C42e7AF73f8
-   NEXT_PUBLIC_TOKEN_ADDRESS=0x0dEA5852CB2F3106C05DAc1582Da93659833A746
+   NEXT_PUBLIC_CONTRACT_ADDRESS=0xb27288722f4bF33CE962Bdcc0D993d15230070B0
+   NEXT_PUBLIC_TOKEN_ADDRESS=0xfa0b2925eC86370DCA72cF9e4D78e0b8E6B60a82
    NEXT_PUBLIC_LENS_RPC_URL=https://rpc.testnet.lens.xyz
    ```
 
@@ -132,5 +132,5 @@
 ---
 
 **Status**: ✅ Core migration complete, ⚠️ Requires testing with Lens Account transactions
-**Date**: October 2024
+**Date**: December 2024
 
