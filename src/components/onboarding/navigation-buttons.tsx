@@ -32,7 +32,7 @@ const NavigationButtons: React.FC<NavigationButtonsProps> = ({
           <button
             type="button"
             onClick={onSkip}
-            className="text-sm font-medium text-gray-600 hover:text-gray-800 "
+            className="text-[14px] font-medium text-[#737373] hover:text-gray-800 "
           >
             Skip for now
           </button>

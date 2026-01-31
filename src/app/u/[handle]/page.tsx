@@ -53,13 +53,13 @@ export default function Profile({ params }: PageProps) {
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
   const [isMyProfile, setIsMyProfile] = useState(false);
   const [data, setData] = useState<any[]>([]);
-  const [dataLoading, setDataLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(false);
   // Add Apps filter later
   const { data: publications, loading: publicationsLoading } = usePosts({
     filter: { metadata: { tags: { all: ["w3rk"] } }, authors: [profile?.address] },
   });
   const [cardType, setCardType] = useState("job");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [score, setScore] = useState(0);
   const [userData, setUserData] = useState<any>({
     displayName: "Ahmad ",
@@ -242,15 +242,15 @@ export default function Profile({ params }: PageProps) {
   ) : (
     <div className="bg-wmin-h-screen">
       <div className="px-[156px] profile-md:px-[80px] profile-sm:px-[20px] sm:px-[16px]  pt-[90px] sm:pt-[122px] sm:w-full mb-[40px]">
-        <div className="absolute w-full mx-0 left-0 top-156px sm:top-[79px] px-[156px] profile-sm:px-[20px] profile-md:px-[80px] sm:px-[16px] -z-40">
+        <div className="absolute w-full mx-0 left-0 top-156px sm:top-[60px] px-[156px] profile-sm:px-[20px] profile-md:px-[80px] sm:px-[0px] -z-40">
           <div
-            className=" bg-white w-full h-[196px] sm:h-[110px] rounded-[6px] z-[1000] relative"
+            className=" bg-white w-full h-[196px] sm:h-[110px] rounded-[6px] sm:rounded-none z-[1000] relative"
             style={{ backgroundImage: `url(${userData.cover})` }}
           ></div>
         </div>
-        <div className="flex lg:flex-col lg:w-full gap-[30px] pt-[116px] sm:pt-[26px] px-[32px] sm:px-[0px]">
+        <div className="flex lg:flex-col lg:w-full gap-[30px] pt-[36px] bg-white sm:pt-0 px-[32px] sm:px-[0px]">
           <div className="max-w-[350px] min-w-[350px] sm:w-full">
-            <div className="w-[160px] h-[160px] sm:w-[80px] sm:h-[80px] relative mb-[16px] sm:ml-[16px]">
+            <div className="w-[160px] h-[160px] sm:w-[135px] sm:h-[135px] relative mb-[16px] sm:ml-[16px]">
               <Image
                 src={userData.picture}
                 fill
@@ -261,7 +261,7 @@ export default function Profile({ params }: PageProps) {
             </div>
             {userData.displayName !== "" && (
               <div className="flex items-center gap-2">
-                <h3 className="leading-[19px] text-24px] font-medium mb-[1px] sm:mb-[0px]">
+                <h3 className="leading-[19px] text-[24px] font-medium mb-[1px] sm:mb-[0px]">
                   {userData.displayName}
                 </h3>
                 <Link
@@ -277,32 +277,33 @@ export default function Profile({ params }: PageProps) {
               {userData.handle}
             </span>
             {userData.jobTitle !== "" && (
-              <h3 className="leading-[19px] text-[16px] font-medium mt-[10px] mb-[12px] sm:mt-[6px]">
+              <h3 className="leading-[19px] text-[16px] sm:text-[14px] font-medium mt-[10px] mb-[12px] sm:mt-[6px]">
                 {userData.jobTitle}
               </h3>
             )}
             <p
-              className={`leading-[16.94px] text-[14px] font-medium text-[#707070] mb-[16px] ${userData.jobTitle === "" ? "mt-[10px]" : ""
+              className={`leading-[16.94px] text-[14px] sm:text-[12px] font-medium text-[#707070] mb-[16px] ${userData.jobTitle === "" ? "mt-[10px]" : ""
                 } `}
             >
               {userData.about}
             </p>
 
-            <div className="flex gap-[13px] mb-[16px]">
-              <div className="flex flex-col">
-                <span className="leading-[16.94px] text-[14px] font-medium text-[black]">
-                  {userData.following}
-                </span>
-                <span className="leading-[16.94px] text-[14px] font-medium text-[#707070]">
-                  Following
-                </span>
-              </div>
-              <div className="flex flex-col">
-                <span className="leading-[16.94px] text-[14px] font-medium text-[black]">
+            <div className="flex  gap-[13px] mb-[16px]">
+
+              <div className="flex gap-2">
+                <span className="leading-[16.94px] text-[14px] sm:text-[12px] font-medium text-[black]">
                   {userData.followers}
                 </span>
-                <span className="leading-[16.94px] text-[14px] font-medium text-[#707070]">
+                <span className="leading-[16.94px] text-[14px] sm:text-[12px] font-medium text-[#707070]">
                   Followers
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <span className="leading-[16.94px] text-[14px] sm:text-[12px] font-medium text-[black]">
+                  {userData.following}
+                </span>
+                <span className="leading-[16.94px] text-[14px] sm:text-[12px] font-medium text-[#707070]">
+                  Following
                 </span>
               </div>
             </div>
@@ -337,65 +338,86 @@ export default function Profile({ params }: PageProps) {
               </div>
             )}
             <hr className="bg-[#E4E4E7] h-[1px] mb-[16px]" />
-            <div className="flex gap-[12px] mb-[19px]">
+            <div className="flex gap-[12px] mb-[19px] block sm:hidden">
               {userData.X !== "" && (
                 <Link target="_blank" href={userData.X}>
-                  <Image src="/images/twitter-social.svg" alt="user icon" width={24} height={24} />
+                  <Image src="/images/twitter-social.svg" alt="user icon" width={24} height={24} className="sm:w-[16px] sm:h-[16px]" />
                 </Link>
               )}
               {userData.github !== "" && (
                 <Link target="_blank" href={userData.github}>
-                  <Image src="/images/github-social.svg" alt="user icon" width={24} height={24} />
+                  <Image src="/images/github-social.svg" alt="user icon" width={24} height={24} className="sm:w-[16px] sm:h-[16px]" />
                 </Link>
               )}
               {userData.linkedin !== "" && (
                 <Link target="_blank" href={userData.linkedin}>
-                  <Image src="/images/linkedin-social.svg" alt="user icon" width={24} height={24} />
+                  <Image src="/images/linkedin-social.svg" alt="user icon" width={24} height={24} className="sm:w-[16px] sm:h-[16px]" />
                 </Link>
               )}
             </div>
             <div className="flex flex-col gap-[16px] mb-[20px] sm:mb-[0px]">
-              {userData.website !== "" && (
-                <Link href={userData.website} target="_blank">
-                  <div className="flex gap-[11.6px] items-center">
-                    <Image src="/images/earth.svg" alt="earth icon" width={24} height={24} />
-                    <span className="leading-[16.94px] text-[14px] font-medium text-[black]">
-                      {getDomain(userData.website)}
-                    </span>
-                  </div>
-                </Link>
-              )}
+              <div className="flex justify-between items-center">
+                {userData.website !== "" && (
+                  <Link href={userData.website} target="_blank">
+                    <div className="flex gap-[11.6px] items-center">
+                      <Image src="/images/earth.svg" alt="earth icon" width={24} height={24} className="sm:w-[16px] sm:h-[16px]" />
+                      <span className="leading-[16.94px] text-[14px] sm:text-[12px] font-medium text-[black]">
+                        {getDomain(userData.website)}
+                      </span>
+                    </div>
+                  </Link>
+                )}
+                <div className="sm:flex gap-[12px] hidden">
+                  {userData.X !== "" && (
+                    <Link target="_blank" href={userData.X}>
+                      <Image src="/images/twitter-social.svg" alt="user icon" width={24} height={24} className="sm:w-[16px] sm:h-[16px]" />
+                    </Link>
+                  )}
+                  {userData.github !== "" && (
+                    <Link target="_blank" href={userData.github}>
+                      <Image src="/images/github-social.svg" alt="user icon" width={24} height={24} className="sm:w-[16px] sm:h-[16px]" />
+                    </Link>
+                  )}
+                  {userData.linkedin !== "" && (
+                    <Link target="_blank" href={userData.linkedin}>
+                      <Image src="/images/linkedin-social.svg" alt="user icon" width={24} height={24} className="sm:w-[16px] sm:h-[16px]" />
+                    </Link>
+                  )}
+                </div>
+              </div>
+
               {userData.location !== "" && (
                 <div className="flex gap-[14.2px] items-center pl-[3.2px]">
-                  <Image src="/images/location.svg" alt="earth icon" width={18.33} height={24} />
-                  <span className="leading-[16.94px] text-[14px] font-medium text-[black]">
+                  <Image src="/images/location.svg" alt="earth icon" width={18.33} height={24} className="sm:w-[16px] sm:h-[16px]" />
+                  <span className="leading-[16.94px] text-[14px] sm:text-[12px] font-medium text-[black]">
                     {userData.location}
                   </span>
                 </div>
               )}
               <div className="flex gap-[12.7px] items-center">
-                <Image src="/images/w.svg" alt="earth icon" width={24} height={15.3} />
-                <span className="leading-[16.94px] text-[14px] font-medium text-[black]">
+                <Image src="/images/w.svg" alt="earth icon" width={24} height={15.3} className="sm:w-[16px] sm:h-[16px]" />
+                <span className="leading-[16.94px] text-[14px] sm:text-[12px] font-medium text-[black]">
                   {score}
                 </span>
               </div>
             </div>
           </div>
           <hr className="bg-[#E4E4E7] h-[1px] mb-[0px] hidden lg:block" />
-          <div className="pt-[96px] lg:pt-[50px] flex-1">
-            <div className="flex sm:flex-col sm:gap-[16px] justify-between sm:justify-start mb-[16px] align-middle">
+          <div className="sm:pt-0 pt-[196px] flex-1">
+            <div className="flex sm:flex-col-reverse sm:gap-[16px] justify-between sm:justify-start mb-[16px] align-middle">
               <button className="leading-[19.36px] text-[20px] font-semibold text-[black] sm:w-fit">
                 All Posts
               </button>
+              <div className="flex gap-[12px] sm:gap-[15px] sm:justify-between">
+                <button
+                  className="rounded-full bg-[#212121] flex justify-center items-center gap-1 text-white px-[16px] py-[8px] text-[14px] sm:flex-1"
+                  onClick={handleOpenJobModal}
+                >
+                  <PlusIcon className="w-5 h-5 mr-2" /> Create Post
+                </button>
+              </div>
               {isMyProfile && (
-                <div className="flex gap-[12px] sm:gap-[15px] sm:justify-between">
-                  <button
-                    className="rounded-full bg-[#212121] flex items-center gap-1 text-white px-[16px] py-[8px] text-[14px] sm:flex-1"
-                    onClick={handleOpenJobModal}
-                  >
-                    <PlusIcon className="w-5 h-5 mr-2" /> Create Post
-                  </button>
-                </div>
+                <></>
               )}
             </div>
             <div

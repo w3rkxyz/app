@@ -1,11 +1,11 @@
-'use client'
+"use client";
 
-import React from 'react'
-import Image from 'next/image'
-import FormInput from './form-input'
-import FormTextarea from './form-textarea'
-import NavigationButtons from './navigation-buttons'
-import type { Step2ProfileProps } from '@/types/onboarding'
+import React from "react";
+import Image from "next/image";
+import FormInput from "./form-input";
+import FormTextarea from "./form-textarea";
+import NavigationButtons from "./navigation-buttons";
+import type { Step2ProfileProps } from "@/types/onboarding";
 
 const Step2Profile: React.FC<Step2ProfileProps> = ({
   formData,
@@ -33,15 +33,13 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
 
         <div className="mb-6 flex justify-between items-center">
           <div>
-          <label className="mb-2 block text-sm font-medium text-[#212121]">
-            Profile Photo
-          </label>
-          <p className="mb-4 text-sm text-[#83899F]">Recommended size: 300 X 300</p>
+            <label className="mb-2 block text-sm font-medium text-[#212121]">Profile Photo</label>
+            <p className="mb-4 text-sm text-[#83899F]">Recommended size: 300 X 300</p>
           </div>
           <div className="flex items-center gap-6">
             <div className="relative">
               {profilePhoto ? (
-                <div className="h-24 w-24 overflow-hidden rounded-full border-2 border-gray-200 bg-gray-100 sm:h-32 sm:w-32">
+                <div className="xs:h-[50px] xs:w-[50px] h-24 w-24 overflow-hidden rounded-full border-2 border-gray-200 bg-gray-100 sm:h-32 sm:w-32">
                   <Image
                     src={profilePhoto}
                     alt="Profile"
@@ -51,8 +49,13 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
                   />
                 </div>
               ) : (
-                <label className="flex h-24 w-24 cursor-pointer items-center justify-center sm:h-32 sm:w-32">
-                  <Image src="/icons/choose-photo.svg" alt="Choose photo" width={100} height={100} />
+                <label className="flex xs:h-[50px] xs:w-[50px] h-24 w-24 cursor-pointer items-center justify-center sm:h-32 sm:w-32">
+                  <Image
+                    src="/icons/choose-photo.svg"
+                    alt="Choose photo"
+                    width={100}
+                    height={100}
+                  />
                   <input
                     type="file"
                     accept="image/*"
@@ -96,9 +99,7 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
 
         {/* Banner Section */}
         <div className="mb-6">
-        <label className="mb-2 block text-sm font-medium text-[#212121]">
-            Banner
-          </label>
+          <label className="mb-2 block text-sm font-medium text-[#212121]">Banner</label>
           <p className="mb-4 text-sm text-[#83899F]">Upload a banner photo (optional)</p>
           <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-[#FBFCFC] p-8 p transition-colors h-[172px] hover:border-gray-400">
             {bannerPhoto ? (
@@ -129,12 +130,7 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
                 <p className="text-xs text-[#969BA1]">Minimum width 480 pixels</p>
               </>
             )}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={onBannerPhotoChange}
-              className="hidden"
-            />
+            <input type="file" accept="image/*" onChange={onBannerPhotoChange} className="hidden" />
           </label>
         </div>
 
@@ -179,7 +175,9 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
           <div>
             <label className="mb-2 block text-sm font-medium text-[#212121]">Add Website</label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"><Image src={"/icons/link.svg"} alt='Link' height={20} width={20}/></span>
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">
+                <Image src={"/icons/link.svg"} alt="Link" height={20} width={20} />
+              </span>
               <input
                 type="url"
                 name="website"
@@ -192,11 +190,13 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-[#212121]">Add Social Links</label>
+            <label className="mb-2 block text-sm font-medium text-[#212121]">
+              Add Social Links
+            </label>
             <div className="space-y-4">
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold text-gray-700">
-                <Image src={"/icons/x.svg"} alt='X Icon' height={16} width={16}/>
+                  <Image src={"/icons/x.svg"} alt="X Icon" height={16} width={16} />
                 </span>
                 <input
                   type="url"
@@ -210,7 +210,7 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
 
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-blue-600">
-                <Image src={"/icons/linkedin.svg"} alt='Linkedin Icon' height={20} width={20}/>
+                  <Image src={"/icons/linkedin.svg"} alt="Linkedin Icon" height={20} width={20} />
                 </span>
                 <input
                   type="url"
@@ -223,7 +223,9 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
               </div>
 
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg"><Image src={"/icons/github.svg"} alt='Github Icon' height={20} width={20}/></span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg">
+                  <Image src={"/icons/github.svg"} alt="Github Icon" height={20} width={20} />
+                </span>
                 <input
                   type="url"
                   name="github"
@@ -246,8 +248,7 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
         />
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Step2Profile
-
+export default Step2Profile;

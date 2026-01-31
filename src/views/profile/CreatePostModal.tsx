@@ -267,7 +267,7 @@ const CreatePostModal = ({ handleCloseModal, handle }: Props) => {
 
     return (
         <div
-            className={`view-job-modal-section w-full max-w-[1047px] sm:w-full rounded-[12px] sm:rounded-none sm:rounded-tl-[12px]  sm:rounded-tr-[12px] bg-white nav-space sm:absolute sm:mobile-modal 
+            className={`view-job-modal-section w-auto max-w-[1047px] sm:w-auto rounded-[12px] sm:rounded-none sm:rounded-tl-[12px]  sm:rounded-tr-[12px] bg-white nav-space sm:absolute sm:mobile-modal 
       ${showMobile ? "open-modal" : ""}`}
             ref={myDivRef}
         >
@@ -293,7 +293,7 @@ const CreatePostModal = ({ handleCloseModal, handle }: Props) => {
                 />
             </div>
 
-            <div className="overflow-y-auto max-h-[80vh] min-h-[550px]">
+            <div className="overflow-y-auto max-h-[80vh] px-8 min-h-[550px]">
                 {step === 1 && (
                     <Step1RoleSelection
                         selectedRole={role}

@@ -27,7 +27,7 @@ const RateSelector: React.FC<RateSelectorProps> = ({
             onClick={() => onRateTypeChange('Hourly')}
             className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-all sm:px-6 sm:text-base ${
               rateType === 'Hourly'
-                ? 'bg-[#FAFAFA] text-primary'
+                ? 'bg-[#FAFAFA] text-[#777A82]'
                 : 'text-gray-700 hover:bg-gray-50'
             }`}
           >
