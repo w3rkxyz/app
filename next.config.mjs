@@ -2,7 +2,8 @@
 const nextConfig = {
   trailingSlash: true,
   images: { unoptimized: true },
-  reactStrictMode: false, // Disable strict mode to reduce hydration issues
+  reactStrictMode: false, 
+  turbopack: {},// Disable strict mode to reduce hydration issues
   webpack: (config, { dev, isServer }) => {
     if (!dev) {
       config.externals.push("pino-pretty", "lokijs", "encoding");

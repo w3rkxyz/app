@@ -5,12 +5,11 @@ import Image from "next/image";
 import { MetadataAttributeType, textOnly } from "@lens-protocol/metadata";
 import { uploadMetadataToLensStorage } from "@/utils/storage-client";
 import toast from "react-hot-toast";
-import { useCreatePost, uri } from "@lens-protocol/react";
-import { handleOperationWith } from "@lens-protocol/client/viem";
-import { useWalletClient } from "wagmi";
+import { useSessionClient, uri } from "@lens-protocol/react";
+import { post } from "@lens-protocol/client/actions";
 import { getAcceptedTokens } from "@/api";
-import Step1RoleSelection from "@/components/onboarding/step-1-role-selection";
-import Step3JobForm from "@/components/onboarding/step-3-job-form";
+import CreatePostRoleSelection from "@/views/profile/CreatePostRoleSelection";
+import CreatePostJobForm from "@/views/profile/CreatePostJobForm";
 import Step3ServiceForm from "@/components/onboarding/step-3-service-form";
 import { RateType } from "@/types/onboarding";
 
@@ -24,8 +23,7 @@ function removeAtSymbol(text: string) {
 }
 
 const CreatePostModal = ({ handleCloseModal, handle }: Props) => {
-    const { data: walletClient } = useWalletClient();
-    const { execute } = useCreatePost({ handler: handleOperationWith(walletClient) });
+    const { data: sessionClient } = useSessionClient();
     const myDivRef = useRef<HTMLDivElement>(null);
     const [showMobile, setShowMobile] = useState(false);
     const [step, setStep] = useState(1);
@@ -244,8 +242,13 @@ const CreatePostModal = ({ handleCloseModal, handle }: Props) => {
         });
 
         try {
+            if (!sessionClient) {
+                toast.error("Please connect your wallet and sign in to Lens.");
+                setSavingData(false);
+                return;
+            }
             const heyMetadataURI = await uploadMetadataToLensStorage(heyMetadata);
-            const heyResult = await execute({
+            const heyResult = await post(sessionClient, {
                 contentUri: uri(heyMetadataURI),
             });
 
@@ -267,35 +270,46 @@ const CreatePostModal = ({ handleCloseModal, handle }: Props) => {
 
     return (
         <div
-            className={`view-job-modal-section w-auto max-w-[1047px] sm:w-auto rounded-[12px] sm:rounded-none sm:rounded-tl-[12px]  sm:rounded-tr-[12px] bg-white nav-space sm:absolute sm:mobile-modal 
-      ${showMobile ? "open-modal" : ""}`}
+            className={`view-job-modal-section bg-white nav-space flex min-h-0 flex-col max-h-[90vh]
+      w-[720px] sm:w-full sm:max-h-[90vh] sm:absolute sm:bottom-0 sm:left-0 sm:right-0 sm:rounded-t-2xl sm:rounded-b-none
+      rounded-[16px] mobile-modal ${showMobile ? "open-modal" : ""}`}
             ref={myDivRef}
         >
-            <div className="w-full flex py-3 justify-between items-center px-[16px]  border-b-[1px] border-b-[#E4E4E7] rounded-tl-[12px] rounded-tr-[12px]">
+            {/* Drawer handle (visible on small screens only) */}
+            <div
+                className="hidden sm:block flex-shrink-0 pt-2 pb-1"
+                aria-hidden
+            >
+                <div className="mx-auto h-1 w-12 rounded-full bg-[#E4E4E7]" />
+            </div>
+            {/* Header */}
+            <header className="flex flex-shrink-0 items-center justify-between border-b border-[#E4E4E7] px-4 py-3 rounded-tl-[12px] rounded-tr-[12px] sm:rounded-tl-none sm:rounded-tr-none sm:px-4">
                 <Image
                     src="/images/logo.png"
                     alt="w3rk logo"
                     width={100}
                     height={40}
-                    className="object-contain bg-white "
+                    className="object-contain bg-white"
                 />
-                <Image
-                    src="/images/Close.svg"
-                    alt="close icon"
-                    className="cursor-pointer"
-                    width={20}
-                    height={20}
-                    onClick={() => {
-                        if (handleCloseModal) {
-                            handleCloseModal();
-                        }
-                    }}
-                />
-            </div>
+                <button
+                    type="button"
+                    aria-label="Close modal"
+                    className="cursor-pointer p-1"
+                    onClick={() => handleCloseModal?.()}
+                >
+                    <Image
+                        src="/images/Close.svg"
+                        alt=""
+                        width={20}
+                        height={20}
+                    />
+                </button>
+            </header>
 
-            <div className="overflow-y-auto max-h-[80vh] px-8 min-h-[550px]">
+            {/* Main — scrollable content area */}
+            <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-8">
                 {step === 1 && (
-                    <Step1RoleSelection
+                    <CreatePostRoleSelection
                         selectedRole={role}
                         onRoleSelect={handleRoleSelect}
                         onContinue={handleContinue}
@@ -305,11 +319,12 @@ const CreatePostModal = ({ handleCloseModal, handle }: Props) => {
                         clientSubtitle="Hire talent by posting a job."
                         freelancerTitle="Add a Service"
                         freelancerSubtitle="Offer your skills and get hired."
+                        hideContinueButton
                     />
                 )}
 
                 {step === 2 && role === "client" && (
-                    <Step3JobForm
+                    <CreatePostJobForm
                         jobData={jobData}
                         onInputChange={handleJobInputChange}
                         onCurrencyChange={handleJobCurrencyChange}
@@ -321,6 +336,7 @@ const CreatePostModal = ({ handleCloseModal, handle }: Props) => {
                         onBack={handleBack}
                         onPublish={handlePublish}
                         stepText=""
+                        hideNavigation
                     />
                 )}
 
@@ -337,9 +353,76 @@ const CreatePostModal = ({ handleCloseModal, handle }: Props) => {
                         onBack={handleBack}
                         onAddService={handlePublish}
                         stepText=""
+                        hideNavigation
                     />
                 )}
-            </div>
+            </main>
+
+            {/* Footer */}
+            <footer
+                className={`flex flex-shrink-0 items-center border-t border-[#E4E4E7] px-4 py-3 sm:px-8 ${step === 2 ? "justify-between" : "justify-end"}`}
+            >
+                {step === 1 && (
+                    <button
+                        type="button"
+                        onClick={handleContinue}
+                        disabled={!role}
+                        className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                            role
+                                ? "bg-[#212121] text-white hover:bg-gray-800 cursor-pointer"
+                                : "bg-[#DCDCDC] text-[#969696] cursor-not-allowed"
+                        }`}
+                    >
+                        Continue
+                    </button>
+                )}
+                {step === 2 && role === "client" && (
+                    <>
+                        <button
+                            type="button"
+                            onClick={handleBack}
+                            className="rounded-full border-2 border-[#212121] bg-white px-4 py-2 text-sm font-medium text-[#212121] transition-all hover:border-gray-400 hover:bg-gray-50"
+                        >
+                            Back
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handlePublish}
+                            disabled={!jobData.description || !jobData.budget || jobData.categories.length === 0}
+                            className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                                jobData.description && jobData.budget && jobData.categories.length > 0
+                                    ? "bg-[#212121] text-white hover:bg-gray-800 cursor-pointer"
+                                    : "bg-[#DCDCDC] text-[#969696] cursor-not-allowed"
+                            }`}
+                        >
+                            Publish Job
+                        </button>
+                    </>
+                )}
+                {step === 2 && role === "freelancer" && (
+                    <>
+                        <button
+                            type="button"
+                            onClick={handleBack}
+                            className="rounded-full border-2 border-[#212121] bg-white px-4 py-2 text-sm font-medium text-[#212121] transition-all hover:border-gray-400 hover:bg-gray-50"
+                        >
+                            Back
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handlePublish}
+                            disabled={!serviceData.serviceTitle || !serviceData.description || !serviceData.rate || serviceData.categories.length === 0}
+                            className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                                serviceData.serviceTitle && serviceData.description && serviceData.rate && serviceData.categories.length > 0
+                                    ? "bg-[#212121] text-white hover:bg-gray-800 cursor-pointer"
+                                    : "bg-[#DCDCDC] text-[#969696] cursor-not-allowed"
+                            }`}
+                        >
+                            Add Service
+                        </button>
+                    </>
+                )}
+            </footer>
         </div>
     );
 };

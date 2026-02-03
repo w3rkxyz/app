@@ -13,6 +13,8 @@ const Step3ServiceForm: React.FC<Step3ServiceFormProps & {
   title?: string;
   subtitle?: string;
   stepText?: string;
+  /** When true, navigation buttons are not rendered (e.g. when modal provides footer) */
+  hideNavigation?: boolean;
 }> = ({
   serviceData,
   onInputChange,
@@ -27,6 +29,7 @@ const Step3ServiceForm: React.FC<Step3ServiceFormProps & {
   title = "Create Your First Service",
   subtitle = "Showcase what you can do. Clients will discover your service when searching.",
   stepText = "Step 3 of 3",
+  hideNavigation = false,
 }) => {
     const isValid =
       serviceData.serviceTitle &&
@@ -91,13 +94,15 @@ const Step3ServiceForm: React.FC<Step3ServiceFormProps & {
             />
           </div>
 
-          <NavigationButtons
-            onBack={onBack}
-            onContinue={onAddService}
-            continueLabel="Add Service"
-            continueDisabled={!isValid}
-            showSkip={true}
-          />
+          {!hideNavigation && (
+            <NavigationButtons
+              onBack={onBack}
+              onContinue={onAddService}
+              continueLabel="Add Service"
+              continueDisabled={!isValid}
+              showSkip={true}
+            />
+          )}
         </div>
       </div>
     )

@@ -127,7 +127,7 @@ const FindWork = () => {
   return (
     <div className="min-h-screen bg-white">
       <div className="pt-[60px] sm:pt-[20px] custom-container max-w-[1440px] mx-auto">
-        <div className="flex sm:flex-col md:flex-row gap-[16px] md:gap-[32px] sm:pt-[48px] md:pt-[32px] pb-[80px] md:pb-[32px] px-[16px] md:px-0">
+        <div className="flex sm:flex-col md:flex-row gap-[16px] md:gap-[32px] sm:pt-[48px] md:pt-[32px] pb-[80px] md:pb-[32px] px-[8px] md:px-0">
           <div className="hidden md:flex flex-col gap-[12px]" ref={dropdownRef}>
             <h3 className="text-[12px] font-medium text-[#AEAEAE] uppercase leading-[150%] tracking-[1%] align-middle">
               CATEGORY
@@ -243,7 +243,7 @@ const FindWork = () => {
             </div>
           </div>
 
-          <div className="flex-1 flex flex-col w-full md:w-auto md:gap-0">
+          <div className="flex-1 flex flex-col w-full md:w-auto sm:gap-[16px] md:gap-0">
             {filteredJobs.length === 0 ? (
               <div className="bg-white rounded-[8px] p-[32px] text-center text-[#7A7A7A] text-[15px]">
                 No jobs found

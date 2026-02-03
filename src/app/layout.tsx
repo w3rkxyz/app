@@ -239,7 +239,6 @@ export default function RootLayout({
                     {children}
                     <Toaster />
                   </main>
-                  <Footer />
                 </ModalWrapper>
               </ClientProvider>
             </AppProvider>
