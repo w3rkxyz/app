@@ -4,15 +4,15 @@ import React, { useRef, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Post, TextOnlyMetadata, postId } from "@lens-protocol/react";
-import getLensAccountData from "@/utils/getLensProfile"
+import getLensAccountData from "@/utils/getLensProfile";
 import { useAccount } from "wagmi";
 import { deletePost } from "@lens-protocol/client/actions";
-import {getLensClient} from "@/client";
+import { getLensClient } from "@/client";
 import type { JobData } from "@/types/job";
 
 // Extend the Post interface to ensure metadata is properly typed
 interface ExtendedPost extends Post {
-  metadata: TextOnlyMetadata
+  metadata: TextOnlyMetadata;
 }
 
 type Props = {
@@ -65,16 +65,15 @@ const ViewJobModal = ({
 
   var attributes: any = {};
   var tokens: string[] = [];
-    publication.metadata.attributes?.map(attribute => {
-      attributes[attribute.key] = attribute.value;
+  publication.metadata.attributes?.map(attribute => {
+    attributes[attribute.key] = attribute.value;
 
-      if (attribute.key === "paid in") {
-        tokens = splitTokens(attribute.value);
-      }
-    });
+    if (attribute.key === "paid in") {
+      tokens = splitTokens(attribute.value);
+    }
+  });
 
-  var profileData;
-    profileData = getLensAccountData(publication.author);
+  const profileData = getLensAccountData(publication.author);
 
   const handleDelete = async () => {
     const client = await getLensClient();
@@ -98,10 +97,10 @@ const ViewJobModal = ({
 
         case "PostOperationValidationUnknown":
           // Validation outcome is unknown
-          alert('Unknown error')
+          alert("Unknown error");
           break;
       }
-      
+
       handleCloseModal?.();
     }
   };
