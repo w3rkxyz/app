@@ -5,10 +5,12 @@ import SearchInput from "@/components/reusable/SearchInput/SearchInput";
 import JobCard from "@/components/Cards/JobCard";
 import MyButton from "@/components/reusable/Button/Button";
 import ViewJobModal from "../view-job-modal/view-job-modal";
+import CreateContractFromPostModal from "./CreateContractFromPostModal";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { usePosts, AnyPost } from "@lens-protocol/react";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
+import type { JobData } from "@/types/job";
 
 const buttons = [
   {
@@ -48,6 +50,8 @@ const FindWork = () => {
   const [categoriesMobile, setCategoriesMobile] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showContractModal, setShowContractModal] = useState(false);
+  const [selectedJobData, setSelectedJobData] = useState<JobData | null>(null);
   const [searchText, setSearchText] = useState("");
   const [data, setData] = useState<any[]>([]);
   const { data: publications, loading: publicationsLoading } = usePosts({
@@ -75,6 +79,17 @@ const FindWork = () => {
   const handleCloseModal = () => {
     // document.documentElement.style.paddingRight = "";
     setIsModalOpen(false);
+  };
+
+  const handleGetStarted = (jobData: JobData) => {
+    setSelectedJobData(jobData);
+    setShowContractModal(true);
+    setIsModalOpen(false);
+  };
+
+  const handleCloseContractModal = () => {
+    setShowContractModal(false);
+    setSelectedJobData(null);
   };
 
   interface Item {
@@ -310,9 +325,13 @@ const FindWork = () => {
               handleCloseModal={handleCloseModal}
               type="job"
               publication={selectedPublication}
+              onGetStarted={handleGetStarted}
             />
           </div>
         </div>
+      )}
+      {showContractModal && selectedJobData && (
+        <CreateContractFromPostModal jobData={selectedJobData} onClose={handleCloseContractModal} />
       )}
     </div>
   );
