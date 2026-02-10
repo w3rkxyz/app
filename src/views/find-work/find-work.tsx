@@ -1,285 +1,338 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import Image from "next/image";
-import Link from "next/link";
-import {
-  Search,
-  Bell,
-  ChevronDown,
-  Link2 as LinkIcon,
-  Code,
-  Palette,
-  MessageCircle,
-  TrendingUp,
-  Headphones,
-  ShoppingBag,
-  Shield,
-  Users,
-  HelpCircle,
-  Plus,
-} from "lucide-react";
-import JobDetailDrawer from "@/components/find-work/job-detail-drawer";
-import JobDetailModal from "@/components/find-work/job-detail-modal";
-import CreateJobModal from "@/components/find-work/create-job-modal";
+import SearchInput from "@/components/reusable/SearchInput/SearchInput";
 
-import FindWorkJobCard from "@/components/Cards/FindWorkJobCard";
+import JobCard from "@/components/Cards/JobCard";
+import MyButton from "@/components/reusable/Button/Button";
+import ViewJobModal from "../view-job-modal/view-job-modal";
+import CreateContractFromPostModal from "./CreateContractFromPostModal";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { usePosts, AnyPost } from "@lens-protocol/react";
+import Skeleton from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
+import type { JobData } from "@/types/job";
 
-interface JobData {
-  username: string;
-  profileImage: string;
-  jobName: string;
-  jobIcon: string;
-  description: string;
-  contractType: string;
-  paymentAmount: string;
-  paidIn: string;
-  tags: string[];
-}
-
-interface Category {
-  name: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
-}
-
-const categories: Category[] = [
-  { name: "Blockchain Development", icon: LinkIcon },
-  { name: "Programming & Development", icon: Code },
-  { name: "Design", icon: Palette },
-  { name: "Consulting & Advisory", icon: MessageCircle },
-  { name: "Marketing", icon: TrendingUp },
-  { name: "Admin Support", icon: Headphones },
-  { name: "Customer Service", icon: ShoppingBag },
-  { name: "Security & Auditing", icon: Shield },
-  { name: "Community Building", icon: Users },
-  { name: "Other", icon: HelpCircle },
+const buttons = [
+  {
+    buttonText: "Blockchain Development",
+    buttonStyles: "bg-[#FFC2C2] mb-[8px]",
+  },
+  {
+    buttonText: "Programming & Development",
+    buttonStyles: "bg-[#FFD8C2] mb-[8px]",
+  },
+  { buttonText: "Design", buttonStyles: "bg-[#FFF2C2] mb-[8px]" },
+  { buttonText: "Marketing", buttonStyles: "bg-[#EFFFC2] mb-[8px]" },
+  { buttonText: "Admin Support", buttonStyles: "bg-[#C2FFC5] mb-[8px]" },
+  { buttonText: "Customer Service", buttonStyles: "bg-[#C2FFFF] mb-[8px]" },
+  { buttonText: "Security & Auditing", buttonStyles: "bg-[#C2CCFF] mb-[8px]" },
+  {
+    buttonText: "Consulting & Advisory",
+    buttonStyles: "bg-[#D9C2FF] mb-[8px]",
+  },
+  { buttonText: "Community Building", buttonStyles: "bg-[#FAC2FF] mb-[8px]" },
+  { buttonText: "Other", buttonStyles: "bg-[#E4E4E7] mb-[8px]" },
 ];
 
+function selectedCategoriesText(selected: number[]) {
+  var array: string[] = [];
+  selected.map(item => {
+    array.push(buttons[item].buttonText);
+  });
+  return array;
+}
+
+function filterbyTags(array1: string[], array2: string[]) {
+  return array2.every(item => array1.includes(item));
+}
+
 const FindWork = () => {
-  const [jobs, setJobs] = useState<JobData[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>("Design");
-  const [searchText, setSearchText] = useState("");
-  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [categoriesMobile, setCategoriesMobile] = useState(false);
+  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedJob, setSelectedJob] = useState<JobData | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const [isCreateJobModalOpen, setIsCreateJobModalOpen] = useState(false);
+  const [showContractModal, setShowContractModal] = useState(false);
+  const [selectedJobData, setSelectedJobData] = useState<JobData | null>(null);
+  const [searchText, setSearchText] = useState("");
+  const [data, setData] = useState<any[]>([]);
+  const { data: publications, loading: publicationsLoading } = usePosts({
+    filter: { metadata: { tags: { all: ["w3rk", "job"] } } },
+  });
 
-  useEffect(() => {
-    fetch("/find-work.json")
-      .then(res => res.json())
-      .then(data => setJobs(data))
-      .catch(err => console.error("Error loading jobs:", err));
-  }, []);
+  // const { data: searchResults } = useSearchPublications({
+  //   query: searchText,
+  //   where: {
+  //     metadata: {
+  //       publishedOn: [appId(process.env.NEXT_PUBLIC_APP_ID as string)],
+  //       tags: {
+  //         all: ["w3rk", "job"],
+  //       },
+  //     },
+  //   },
+  // });
+  const [loading, setLoading] = useState(true);
+  const [selectedPublication, setSelectedPublication] = useState<any>();
 
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 991);
+  const toggleCategoriesMobile = () => {
+    setCategoriesMobile(!categoriesMobile);
+  };
+
+  const handleCloseModal = () => {
+    // document.documentElement.style.paddingRight = "";
+    setIsModalOpen(false);
+  };
+
+  const handleGetStarted = (jobData: JobData) => {
+    setSelectedJobData(jobData);
+    setShowContractModal(true);
+    setIsModalOpen(false);
+  };
+
+  const handleCloseContractModal = () => {
+    setShowContractModal(false);
+    setSelectedJobData(null);
+  };
+
+  interface Item {
+    metadata: {
+      attributes: string[];
     };
+  }
 
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
+  const searchItems = useMemo(() => {
+    return (items: readonly AnyPost[], searchText: string) => {
+      if (!searchText.trim()) return [...items]; // Return mutable copy
+      
+      const searchLower = searchText.toLowerCase();
+      return items.filter(item => {
+        if (item.__typename === "Post" && item.metadata.__typename === "TextOnlyMetadata") {
+          const attribute4 = item.metadata.attributes?.[4]?.value?.toLowerCase() || "";
+          const attribute5 = item.metadata.attributes?.[5]?.value?.toLowerCase() || "";
+          return (
+            attribute4.includes(searchLower) ||
+            attribute5.includes(searchLower)
+          );
+        }
+        return false;
+      });
+    };
   }, []);
 
-  const handleJobCardClick = (job: JobData) => {
-    setSelectedJob(job);
-    if (window.innerWidth <= 767) {
-      setIsDrawerOpen(true);
+  const handleSearch = useCallback((searchText: string) => {
+    if (publications) {
+      const filtered = searchItems(publications.items, searchText);
+      // Convert readonly arrays to mutable arrays for state
+      const filteredArray = filtered.length > 0 ? [...filtered] : [...publications.items];
+      setData(filteredArray);
+    }
+  }, [publications, searchItems]);
+
+  const handleOpenModal = (publication?: any) => {
+    if (publication) setSelectedPublication(publication);
+    // const scrollbarWidth =
+    //   window.innerWidth - document.documentElement.clientWidth;
+    // // document.documentElement.style.paddingRight = `${scrollbarWidth}px`;
+    setIsModalOpen(true);
+  };
+
+  const onCLickCategory = (index: number) => {
+    if (selectedCategories.includes(index)) {
+      const updated = selectedCategories.filter(item => item !== index);
+      setSelectedCategories(updated);
     } else {
-      setIsModalOpen(true);
+      var current = [...selectedCategories];
+      current.push(index);
+      setSelectedCategories(current);
     }
   };
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsCategoryDropdownOpen(false);
-      }
-    };
-
-    if (isCategoryDropdownOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
+    if (publications) {
+      // Convert readonly array to mutable array for state
+      const filtered = publications.items.filter(publication => publication.isDeleted === false);
+      setData([...filtered]);
+      setLoading(false);
+    } else if (!publicationsLoading) {
+      // If not loading and no data, show empty state
+      setLoading(false);
+      setData([]);
     }
+  }, [publications, publicationsLoading]);
 
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isCategoryDropdownOpen]);
-
-  const filteredJobs = jobs.filter(job => {
-    const matchesSearch =
-      !searchText ||
-      job.jobName.toLowerCase().includes(searchText.toLowerCase()) ||
-      job.description.toLowerCase().includes(searchText.toLowerCase()) ||
-      job.username.toLowerCase().includes(searchText.toLowerCase());
-
-    const matchesCategory =
-      selectedCategory === "All" || job.tags.some(tag => tag === selectedCategory);
-
-    return matchesSearch && matchesCategory;
-  });
-
-  const selectedCategoryData = categories.find(cat => cat.name === selectedCategory);
+  // useEffect(() => {
+  //   console.log('There was an update!')
+  //   if (searchResults) {
+  //     if (searchText !== "" && searchResults.length > 0) {
+  //       setData(searchResults.filter((publication) => publication.isHidden === false));
+  //       console.log("Results: ", searchResults);
+  //     } else {
+  //       if (publications) setData(publications);
+  //     }
+  //   }
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [searchResults]);
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="pt-[60px] sm:pt-[20px] custom-container max-w-[1440px] mx-auto">
-        <div className="flex sm:flex-col md:flex-row gap-[16px] md:gap-[32px] sm:pt-[48px] md:pt-[32px] pb-[80px] md:pb-[32px] px-[8px] md:px-0">
-          <div className="hidden md:flex flex-col gap-[12px]" ref={dropdownRef}>
-            <h3 className="text-[12px] font-medium text-[#AEAEAE] uppercase leading-[150%] tracking-[1%] align-middle">
-              CATEGORY
-            </h3>
-            <div className="relative">
-              <button
-                onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                className="w-full h-[44px] border border-[#E0E0E0] rounded-[8px] px-[16px] flex items-center justify-between bg-white"
-              >
-                <div className="flex items-center gap-[12px]">
-                  {selectedCategoryData && (
-                    <>
-                      <selectedCategoryData.icon size={20} className="text-[#818181]" />
-                      <span className="text-[16px] font-medium text-[#212121]">
-                        {selectedCategory}
-                      </span>
-                    </>
-                  )}
-                  {!selectedCategoryData && (
-                    <span className="text-[16px] font-medium text-[#818181]">Select Category</span>
-                  )}
-                </div>
-                <ChevronDown
-                  size={20}
-                  className={`text-[#818181] transition-transform ${isCategoryDropdownOpen ? "rotate-180" : ""
-                    }`}
-                />
-              </button>
-              {isCategoryDropdownOpen && (
-                <div className="absolute z-10 w-full mt-[4px] bg-white border border-[#E0E0E0] rounded-[8px] shadow-lg max-h-[300px] overflow-y-auto">
-                  {categories.map(category => {
-                    const IconComponent = category.icon;
-                    const isSelected = selectedCategory === category.name;
-                    return (
-                      <button
-                        key={category.name}
-                        onClick={() => {
-                          setSelectedCategory(category.name);
-                          setIsCategoryDropdownOpen(false);
-                        }}
-                        className={`w-full flex items-center gap-[12px] px-[12px] py-[10px] rounded-[8px] text-left transition-colors ${isSelected ? "bg-[#EEEEEE]" : "hover:bg-[#F5F5F5]"
-                          }`}
-                      >
-                        <IconComponent size={20} className="flex-shrink-0 text-[#818181]" />
-                        <span
-                          className={`text-[16px] leading-[24px] tracking-[0px] align-middle ${isSelected
-                              ? "font-semibold text-[#212121]"
-                              : "font-medium text-[#818181]"
-                            }`}
-                        >
-                          {category.name}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="md:hidden w-[320px] flex-shrink-0">
-            <div className="bg-white rounded-[8px] p-[24px] flex flex-col gap-[12px] h-fit">
-              <div className="relative">
-                <Search
-                  className="absolute left-[16px] top-1/2 transform -translate-y-1/2 text-[#A0A0A0]"
-                  size={20}
-                />
-                <input
-                  type="text"
-                  placeholder="Search"
-                  value={searchText}
-                  onChange={e => setSearchText(e.target.value)}
-                  className="w-[268px] h-[40px] min-w-[32px] min-h-[32px] py-[8px] pl-[44px] pr-[16px] border-[0.5px] border-[#E0E0E0] rounded-[8px] text-[15px] leading-[16px] text-[#4A4A4A] placeholder:text-[#A0A0A0] focus:outline-none focus:border-[#5D3FD3] bg-white"
-                />
-              </div>
-
-              <div className="flex flex-col gap-[12px]">
-                <h3 className="text-[12px] font-medium text-[#AEAEAE] uppercase leading-[150%] tracking-[1%] align-middle">
-                  CATEGORY
-                </h3>
-                <div className="flex flex-col gap-[12px]">
-                  {categories.map(category => {
-                    const IconComponent = category.icon;
-                    const isSelected = selectedCategory === category.name;
-                    return (
-                      <button
-                        key={category.name}
-                        onClick={() => setSelectedCategory(category.name)}
-                        className="flex items-center gap-[12px] rounded-[8px] text-left transition-colors text-[#4A4A4A]"
-                      >
-                        <IconComponent size={20} className="flex-shrink-0 text-[#818181]" />
-                        <span
-                          className={`text-[16px] leading-[24px] tracking-[0px] align-middle ${isSelected
-                              ? "font-semibold text-[#212121]"
-                              : "font-medium text-[#818181]"
-                            }`}
-                        >
-                          {category.name}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <button
-                className="md:hidden w-full bg-[#212121] text-white rounded-full flex items-center justify-center gap-[8px] font-medium text-[14px] py-[8px] px-[16px] hover:bg-[#333333] transition-colors mt-auto"
-                onClick={() => setIsCreateJobModalOpen(true)}
-              >
-                <Plus size={20} />
-                <span>Publish a Job</span>
+    <div className="find-work-section pt-[82px] md:pt-[120px] sm:pt-[60px] mb-[20px]">
+      <div className="custom-container">
+        <div className="flex sm:flex-col md:flex-col justify-between items-center mt-[30px]  sm:items-start sm:gap-[16px] gap-[56px] relative">
+          <h2 className="section-title flex-shrink-0 text-center sm:text-start text-[32px] sm:text-[20px] font-semibold font-secondary leading-[20px] tracking-[-4%]">
+            Discover your next <span className="text-gradient">opportunity.</span>
+          </h2>
+          <div className="max-w-[600px] flex-1 md:w-full relative">
+            <SearchInput toggleCategories={toggleCategoriesMobile} handleSearch={handleSearch} />
+            <div
+              className={`find-work-message-section w-[206px] bg-[#FFFFFF] rounded-[8px] p-[8px] sm:items-center gap-[3px] absolute top-[100%] right-0
+            border-[1px] border-[#E4E4E7] hidden ${
+              categoriesMobile ? "sm:flex banner-tablet:flex" : "sm:hidden banner-tablet:hidden"
+            } sm:flex-col banner-tablet:flex-col z-[100]`}
+            >
+              <MyButton
+                buttonText="Blockchain Development"
+                buttonType="secondary"
+                buttonStyles="bg-[#FFC2C2] mb-[8px] sm:font-bold sm:text-[10px] sm:leading-[11px] sm:w-full"
+              ></MyButton>
+              <MyButton
+                buttonText="Programming & Development"
+                buttonType="secondary"
+                buttonStyles="bg-[#FFD8C2] mb-[8px] sm:font-bold sm:text-[10px] sm:leading-[11px] sm:w-full"
+              ></MyButton>
+              <MyButton
+                buttonText="Design"
+                buttonType="secondary"
+                buttonStyles="bg-[#FFF2C2] mb-[8px] w-[150px] sm:w-full"
+              ></MyButton>
+              <MyButton
+                buttonText="Marketing"
+                buttonType="secondary"
+                buttonStyles="bg-[#EFFFC2] mb-[8px] sm:w-full"
+              ></MyButton>
+              <MyButton
+                buttonText="Admin Support"
+                buttonType="secondary"
+                buttonStyles="bg-[#C2FFC5] mb-[8px] sm:w-full"
+              ></MyButton>
+              <MyButton
+                buttonText="Customer Service"
+                buttonType="secondary"
+                buttonStyles="bg-[#C2FFFF] mb-[8px] sm:w-full"
+              ></MyButton>
+              <MyButton
+                buttonText="Security & Auditing"
+                buttonType="secondary"
+                buttonStyles="bg-[#C2CCFF] mb-[8px] sm:w-full"
+              ></MyButton>
+              <MyButton
+                buttonText="Consulting & Advisory"
+                buttonType="secondary"
+                buttonStyles="bg-[#D9C2FF] mb-[8px] sm:w-full"
+              ></MyButton>
+              <MyButton
+                buttonText="Community Building"
+                buttonType="secondary"
+                buttonStyles="bg-[#FAC2FF] mb-[8px] sm:w-full"
+              ></MyButton>
+              <MyButton
+                buttonText="Other"
+                buttonType="secondary"
+                buttonStyles="bg-[#E4E4E7] mb-[8px] sm:w-full"
+              ></MyButton>
+              <button className="mx-auto w-fit py-[10px] px-[20px] tx-[12px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px] mt-[8px]">
+                Apply
               </button>
             </div>
           </div>
+        </div>
 
-          <div className="flex-1 flex flex-col w-full md:w-auto sm:gap-[16px] md:gap-0">
-            {filteredJobs.length === 0 ? (
-              <div className="bg-white rounded-[8px] p-[32px] text-center text-[#7A7A7A] text-[15px]">
-                No jobs found
-              </div>
+        <div className="tags-section w-full flex sm:justify-center sm:flex-col md:flex-col md:items-start gap-[35px] mt-[50px] sm:mt-[16px]">
+          <div
+            className="find-work-message-section w-fit flex flex-col px-[24px] flex-shrink-0 h-fit sm:h-auto md:h-auto sm:my-0 sm:py-0 bg-[#FFFFFF] sm:bg-transparent md:bg-transparent rounded-[20px] p-[29px] pt-[32px]
+            border-[1px] border-[#E4E4E7] sm:hidden banner-tablet:hidden"
+          >
+            <h4 className="text-[20px] font-semibold font-secondary leading-[20px] tracking-[-1%] text-center pb-[34px] sm:pb-[10px] md:pb-[10px]">
+              Categories
+            </h4>
+
+            {buttons.map((button, index) => (
+              <button
+                key={index}
+                className={`${button.buttonStyles} ${
+                  selectedCategories?.includes(index) ? "border-[1px] border-black" : ""
+                } rounded-[8px] leading-[14.52px] text-[12px] font-semibold py-[9px] w-[200px] sm:px-0 sm:w-[190px] sm:flex sm:justify-center min-w-[200px]`}
+                onClick={() => onCLickCategory(index)}
+              >
+                {button.buttonText}
+              </button>
+            ))}
+          </div>
+
+          <div className="border-[1px] border-[#E4E4E7] rounded-[16px] p-[16px] flex flex-1 w-full flex-col gap-[16px]">
+            {loading ? (
+              <>
+                <Skeleton
+                  className="h-[208px] w-full rounded-[16px] sm:h-[340px]"
+                  baseColor="#E4E4E7"
+                  borderRadius={"12px"}
+                />
+                <Skeleton
+                  className="h-[208px] w-full rounded-[16px] sm:h-[340px]"
+                  baseColor="#E4E4E7"
+                  borderRadius={"12px"}
+                />
+              </>
+            ) : publications && publications.items.length > 0 ? (
+              data
+                .filter(publication => {
+                  if (selectedCategories.length === 0) return true;
+                  return publication.__typename === "Post" &&
+                    filterbyTags(
+                      publication.metadata.tags || [],
+                      selectedCategoriesText(selectedCategories)
+                    );
+                })
+                .map((publication, index) => {
+                  if (publication.__typename === "Post") {
+                    const attributes: any = {};
+                    publication.metadata.attributes?.forEach((attribute: any) => {
+                      attributes[attribute.key] = attribute.value;
+                    });
+
+                    return (
+                      <JobCard
+                        key={`${publication.id || index}`}
+                        userAvatar="/images/head-2.svg"
+                        username="adam.lens"
+                        jobName="Post Title"
+                        jobIcon="/images/bag.svg"
+                        onCardClick={() => handleOpenModal(publication)}
+                        type="job"
+                        publication={publication}
+                      />
+                    );
+                  }
+                  return null;
+                })
+                .filter(Boolean)
             ) : (
-              filteredJobs.map((job, index) => (
-                <FindWorkJobCard
-                  key={index}
-                  job={job}
-                  onClick={handleJobCardClick}
-                  isLast={index === filteredJobs.length - 1}
-                />
-              ))
+              <div className="text-center py-8 text-gray-500">No posts yet</div>
             )}
           </div>
         </div>
       </div>
-
-      {isMobile && (
-        <button
-          className="fixed bottom-[20px] right-[20px] flex bg-[#212121] text-white rounded-full items-center justify-center gap-[8px] font-medium text-[14px] py-[8px] px-[16px] hover:bg-[#333333] transition-colors shadow-lg z-50"
-          onClick={() => setIsCreateJobModalOpen(true)}
-        >
-          <Plus size={20} />
-          <span>Publish a Job</span>
-        </button>
+      {isModalOpen && (
+        <div className="fixed h-screen w-screen overflow-hidden inset-0 z-[99991] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center sm:items-end cursor-auto">
+          <div className="w-full flex justify-center sm:just align-middle sm:align-bottom">
+            <ViewJobModal
+              handleCloseModal={handleCloseModal}
+              type="job"
+              publication={selectedPublication}
+              onGetStarted={handleGetStarted}
+            />
+          </div>
+        </div>
       )}
-
-      <JobDetailDrawer job={selectedJob} open={isDrawerOpen} onOpenChange={setIsDrawerOpen} />
-
-      <JobDetailModal job={selectedJob} open={isModalOpen} onClose={() => setIsModalOpen(false)} />
-
-      <CreateJobModal
-        open={isCreateJobModalOpen}
-        onClose={() => setIsCreateJobModalOpen(false)}
-      />
+      {showContractModal && selectedJobData && (
+        <CreateContractFromPostModal jobData={selectedJobData} onClose={handleCloseContractModal} />
+      )}
     </div>
   );
 };
