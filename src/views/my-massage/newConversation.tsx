@@ -11,7 +11,7 @@ import { getPublicClient } from "@/client";
 import useSearchAccounts from "@/hooks/useSearchAccounts";
 import { useMemberId } from "@/hooks/useMemberId";
 import { isValidEthereumAddress } from "@/utils/strings";
-import { type Identifier } from "@xmtp/browser-sdk";
+import { IdentifierKind, type Identifier } from "@xmtp/browser-sdk";
 import { useXMTP } from "@/app/XMTPContext";
 
 type Props = {
@@ -86,7 +86,7 @@ const NewConversation = ({ handleCloseModal }: Props) => {
     const identifiers: Identifier[] = [
       {
         identifier: profile.address.toLowerCase(),
-        identifierKind: "Ethereum",
+        identifierKind: IdentifierKind.Ethereum,
       },
     ];
 
@@ -96,7 +96,7 @@ const NewConversation = ({ handleCloseModal }: Props) => {
       const conversation = await newDmWithIdentifier(
         {
           identifier: profile.address.toLowerCase(),
-          identifierKind: "Ethereum",
+          identifierKind: IdentifierKind.Ethereum,
         },
         profile
       );

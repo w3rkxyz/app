@@ -1,13 +1,15 @@
 "use client";
 
 import Image from "next/image";
-import { type Dm, type SafeGroupMember } from "@xmtp/browser-sdk";
-import { useEffect, useState } from "react";
+import { type Dm, type GroupMember } from "@xmtp/browser-sdk";
+import { useCallback, useEffect, useState } from "react";
 import { useConversations } from "@/hooks/useConversations";
 import ConversationSkeleton from "@/components/reusable/ConversationSkeleton";
 import type { AccountData } from "@/utils/getLensProfile";
 import type { ContentTypes } from "@/app/XMTPContext";
 import { useAccount } from "wagmi";
+import { useSelector } from "react-redux";
+import { RootState } from "@/redux/store";
 import getLensAccountData from "@/utils/getLensProfile";
 import { fetchAccount } from "@/hooks/useSearchAccounts";
 import useDatabase from "@/hooks/useDatabase";
@@ -20,7 +22,9 @@ type ConversationCardProps = {
 };
 
 const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: ConversationCardProps) => {
-  const { address } = useAccount();
+  const { address: walletAddress } = useAccount();
+  const lensProfile = useSelector((state: RootState) => state.app.user);
+  const activeIdentityAddress = lensProfile?.address ?? walletAddress;
   const { addAddressToUser } = useDatabase();
   const { activeConversation, selectConversation } = useConversations();
   const [loading, setLoading] = useState(true);
@@ -28,45 +32,46 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
   const [user, setUser] = useState<AccountData | null>(null);
   const [lastMessage, setLastMessage] = useState<string>("Enter your message description here...");
   const [lastMessageTime, setLastMessageTime] = useState<string>("");
-  const [hasUnread, setHasUnread] = useState(false);
+  const [hasUnread] = useState(false);
 
-  const getOtherUser = async (members: SafeGroupMember[]) => {
-    console.log("Members: ", members);
-    const otherUser = members.find(
-      member => member.accountIdentifiers[0].identifier.toLowerCase() !== address?.toLowerCase()
-    );
-    console.log("Other user: ", otherUser);
-    if (otherUser) {
-      const user = usersDic[otherUser.accountIdentifiers[0].identifier.toLowerCase()];
-      console.log("user: ", user);
-      if (user) {
-        return user;
-      } else {
+  const getOtherUser = useCallback(
+    async (members: GroupMember[]) => {
+      const otherUser = members.find(
+        member =>
+          member.accountIdentifiers[0].identifier.toLowerCase() !==
+          activeIdentityAddress?.toLowerCase()
+      );
+
+      if (otherUser) {
+        const mapped = usersDic[otherUser.accountIdentifiers[0].identifier.toLowerCase()];
+        if (mapped) {
+          return mapped;
+        }
+
         const acc = await fetchAccount(otherUser.accountIdentifiers[0].identifier);
-        console.log("Account: ", acc);
         if (acc) {
           const accountData = getLensAccountData(acc);
-          console.log("Account data: ", accountData);
           addAddressToUser(accountData.address.toLowerCase(), accountData);
           return accountData;
-        } else {
-          const tempUser: AccountData = {
-            address: otherUser.accountIdentifiers[0].identifier,
-            displayName: otherUser.accountIdentifiers[0].identifier,
-            picture: "",
-            coverPicture: "",
-            attributes: {},
-            bio: "",
-            handle: "@ETH",
-            id: "",
-            userLink: "",
-          };
-          return tempUser;
         }
+
+        const tempUser: AccountData = {
+          address: otherUser.accountIdentifiers[0].identifier,
+          displayName: otherUser.accountIdentifiers[0].identifier,
+          picture: "",
+          coverPicture: "",
+          attributes: {},
+          bio: "",
+          handle: "@ETH",
+          id: "",
+          userLink: "",
+        };
+        return tempUser;
       }
-    }
-    return null;
-  };
+      return null;
+    },
+    [activeIdentityAddress, addAddressToUser, usersDic]
+  );
 
   useEffect(() => {
     const getData = async () => {
@@ -74,26 +79,24 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
       const participant = await getOtherUser(members);
       if (participant) {
         setUser(participant);
-        
-        // Get last message
+
         try {
           const messages = await conversation.messages({ limit: 1 });
           if (messages && messages.length > 0) {
             const lastMsg = messages[0];
-            const msgContent = lastMsg.content as any;
+            const msgContent = lastMsg.content as { text?: string };
             setLastMessage(msgContent?.text || "Enter your message description here...");
             setLastMessageTime(moment(lastMsg.sentAt).format("h:mmA"));
           }
-        } catch (error) {
-          console.log("Error fetching messages:", error);
+        } catch {
           setLastMessage("Enter your message description here...");
         }
-        
+
         setLoading(false);
       }
     };
     getData();
-  }, []);
+  }, [conversation, getOtherUser]);
 
   useEffect(() => {
     if (activeConversation && activeConversation.id === conversation.id) {
@@ -103,14 +106,13 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
     }
   }, [activeConversation, conversation.id]);
 
-  // Filter based on search query
   if (searchQuery.trim() && user) {
     const query = searchQuery.toLowerCase();
-    const matches = 
+    const matches =
       user.displayName.toLowerCase().includes(query) ||
       user.handle.toLowerCase().includes(query) ||
       lastMessage.toLowerCase().includes(query);
-    
+
     if (!matches) {
       return null;
     }
@@ -149,9 +151,7 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
                 {lastMessageTime}
               </span>
             </div>
-            <p className="line-clamp-1 text-[13px] leading-[15px] text-[#707070]">
-              {lastMessage}
-            </p>
+            <p className="line-clamp-1 text-[13px] leading-[15px] text-[#707070]">{lastMessage}</p>
           </div>
         </div>
         {hasUnread && (

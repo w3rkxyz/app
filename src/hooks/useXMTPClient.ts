@@ -1,41 +1,60 @@
 "use client";
 
 import { useDispatch, useSelector } from "react-redux";
-import { useCallback, useState, useRef } from "react";
-import { Client, type ClientOptions, type Signer, type Identifier } from "@xmtp/browser-sdk";
+import { useCallback, useState } from "react";
+import {
+  Client,
+  IdentifierKind,
+  type SCWSigner,
+  type EOASigner,
+  type Identifier,
+} from "@xmtp/browser-sdk";
 import { hexToBytes } from "viem";
-import { useSignMessage } from "wagmi";
+import { useChainId, useSignMessage } from "wagmi";
 import { setError, setInitializing } from "@/redux/xmtp";
-import { getLensClient } from "@/client";
 import { RootState } from "@/redux/store";
 import { useXMTP } from "@/app/XMTPContext";
+import { getEnv } from "@/utils/xmtpHelpers";
 
-export function useXMTPClient(address?: string) {
+const LENS_TESTNET_CHAIN_ID = 37111n;
+
+type UseXMTPClientParams = {
+  walletAddress?: string;
+  lensAccountAddress?: string;
+};
+
+export function useXMTPClient(params?: UseXMTPClientParams) {
   const dispatch = useDispatch();
   const { client, initialize } = useXMTP();
   const xmtpState = useSelector((state: RootState) => state.xmtp);
   const [connectingXMTP, setConnectingXMTP] = useState(false);
   const { signMessageAsync } = useSignMessage();
+  const chainId = useChainId();
+  const walletAddress = params?.walletAddress;
+  const lensAccountAddress = params?.lensAccountAddress;
+
+  const xmtpAddress = lensAccountAddress ?? walletAddress;
+  const useScwSigner =
+    lensAccountAddress !== undefined &&
+    walletAddress !== undefined &&
+    lensAccountAddress.toLowerCase() !== walletAddress.toLowerCase();
 
   /**
    * Create and connect to an XMTP client using a signer
    */
   const createXMTPClient = useCallback(async () => {
-    if (!address) return;
+    if (!xmtpAddress) return;
     setConnectingXMTP(true);
     dispatch(setInitializing(true));
     dispatch(setError(null));
 
     try {
-      const sessionClient = await getLensClient();
-
       const accountIdentifier: Identifier = {
-        identifier: address,
-        identifierKind: "Ethereum",
+        identifier: xmtpAddress.toLowerCase(),
+        identifierKind: IdentifierKind.Ethereum,
       };
 
-      const signer: Signer = {
-        type: "EOA",
+      const baseSigner = {
         getIdentifier: () => accountIdentifier,
         signMessage: async (message: string): Promise<Uint8Array> => {
           const signature = await signMessageAsync({ message });
@@ -43,7 +62,18 @@ export function useXMTPClient(address?: string) {
         },
       };
 
-      const client = await initialize({ signer, env: "dev" });
+      const signer: EOASigner | SCWSigner = useScwSigner
+        ? {
+            type: "SCW",
+            ...baseSigner,
+            getChainId: () => BigInt(chainId ?? Number(LENS_TESTNET_CHAIN_ID)),
+          }
+        : {
+            type: "EOA",
+            ...baseSigner,
+          };
+
+      const client = await initialize({ signer, env: getEnv() });
       if (client) {
         return client;
       } else {
@@ -56,26 +86,24 @@ export function useXMTPClient(address?: string) {
       dispatch(setInitializing(false));
       setConnectingXMTP(false);
     }
-  }, [address, dispatch, signMessageAsync, initialize]);
+  }, [chainId, dispatch, initialize, signMessageAsync, useScwSigner, xmtpAddress]);
 
   /**
    * Reconnect/initiate an existing XMTP client using `Client.build`
    */
   const initXMTPClient = useCallback(async () => {
-    if (!address) return;
+    if (!xmtpAddress) return;
 
     dispatch(setInitializing(true));
     dispatch(setError(null));
 
     try {
-      const sessionClient = await getLensClient();
-
       const identifier: Identifier = {
-        identifier: address,
-        identifierKind: "Ethereum",
+        identifier: xmtpAddress.toLowerCase(),
+        identifierKind: IdentifierKind.Ethereum,
       };
 
-      const client = await Client.build(identifier, { env: "dev" });
+      const client = await Client.build(identifier, { env: getEnv() });
 
       return client;
     } catch (error) {
@@ -84,7 +112,7 @@ export function useXMTPClient(address?: string) {
     } finally {
       dispatch(setInitializing(false));
     }
-  }, [address, dispatch]);
+  }, [dispatch, xmtpAddress]);
 
   return {
     client,
