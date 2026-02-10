@@ -38,8 +38,13 @@ const ConversationsNav = () => {
   const { list, loading, syncing, conversations, stream, syncAll, activeConversation } =
     useConversations();
   const { client } = useXMTP();
-  const { address } = useAccount();
-  const { createXMTPClient, connectingXMTP } = useXMTPClient(address as string);
+  const { address: walletAddress } = useAccount();
+  const lensProfile = useSelector((state: RootState) => state.app.user);
+  const xmtpIdentityAddress = lensProfile?.address ?? walletAddress;
+  const { createXMTPClient, connectingXMTP } = useXMTPClient({
+    walletAddress,
+    lensAccountAddress: lensProfile?.address,
+  });
   const stopStreamRef = useRef<(() => void) | null>(null);
   const [showMessagesMobile, setShowMessagesMobile] = useState(true);
   const [showSkeleleton, setShowSkeleton] = useState(true);
@@ -94,7 +99,7 @@ const ConversationsNav = () => {
 
   const createClient = async () => {
     try {
-      if (address) {
+      if (xmtpIdentityAddress) {
         const client = await createXMTPClient();
       }
     } catch (error) {

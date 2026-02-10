@@ -1,13 +1,15 @@
 "use client";
 
 import Image from "next/image";
-import { type Dm, type SafeGroupMember } from "@xmtp/browser-sdk";
-import { useEffect, useState } from "react";
+import { type Dm, type GroupMember } from "@xmtp/browser-sdk";
+import { useCallback, useEffect, useState } from "react";
 import { useConversations } from "@/hooks/useConversations";
 import ConversationSkeleton from "@/components/reusable/ConversationSkeleton";
 import type { AccountData } from "@/utils/getLensProfile";
 import type { ContentTypes } from "@/app/XMTPContext";
 import { useAccount } from "wagmi";
+import { useSelector } from "react-redux";
+import { RootState } from "@/redux/store";
 import getLensAccountData from "@/utils/getLensProfile";
 import { fetchAccount } from "@/hooks/useSearchAccounts";
 import useDatabase from "@/hooks/useDatabase";
@@ -18,50 +20,57 @@ type ConversationCardProps = {
 };
 
 const ConversationCard = ({ conversation, usersDic }: ConversationCardProps) => {
-  const { address } = useAccount();
+  const { address: walletAddress } = useAccount();
+  const lensProfile = useSelector((state: RootState) => state.app.user);
+  const activeIdentityAddress = lensProfile?.address ?? walletAddress;
   const { addAddressToUser } = useDatabase();
   const { activeConversation, selectConversation } = useConversations();
   const [loading, setLoading] = useState(true);
   const [isSelected, setIsSelected] = useState(false);
   const [user, setUser] = useState<AccountData | null>(null);
 
-  const getOtherUser = async (members: SafeGroupMember[]) => {
-    console.log("Members: ", members);
-    const otherUser = members.find(
-      member => member.accountIdentifiers[0].identifier.toLowerCase() !== address?.toLowerCase()
-    );
-    console.log("Other user: ", otherUser);
-    if (otherUser) {
-      const user = usersDic[otherUser.accountIdentifiers[0].identifier.toLowerCase()];
-      console.log("user: ", user);
-      if (user) {
-        return user;
-      } else {
-        const acc = await fetchAccount(otherUser.accountIdentifiers[0].identifier);
-        console.log("Account: ", acc);
-        if (acc) {
-          const accountData = getLensAccountData(acc);
-          console.log("Account data: ", accountData);
-          addAddressToUser(accountData.address.toLowerCase(), accountData);
-          return accountData;
+  const getOtherUser = useCallback(
+    async (members: GroupMember[]) => {
+      console.log("Members: ", members);
+      const otherUser = members.find(
+        member =>
+          member.accountIdentifiers[0].identifier.toLowerCase() !==
+          activeIdentityAddress?.toLowerCase()
+      );
+      console.log("Other user: ", otherUser);
+      if (otherUser) {
+        const user = usersDic[otherUser.accountIdentifiers[0].identifier.toLowerCase()];
+        console.log("user: ", user);
+        if (user) {
+          return user;
         } else {
-          const tempUser: AccountData = {
-            address: otherUser.accountIdentifiers[0].identifier,
-            displayName: otherUser.accountIdentifiers[0].identifier,
-            picture: "",
-            coverPicture: "",
-            attributes: {},
-            bio: "",
-            handle: "@ETH",
-            id: "",
-            userLink: "",
-          };
-          return tempUser;
+          const acc = await fetchAccount(otherUser.accountIdentifiers[0].identifier);
+          console.log("Account: ", acc);
+          if (acc) {
+            const accountData = getLensAccountData(acc);
+            console.log("Account data: ", accountData);
+            addAddressToUser(accountData.address.toLowerCase(), accountData);
+            return accountData;
+          } else {
+            const tempUser: AccountData = {
+              address: otherUser.accountIdentifiers[0].identifier,
+              displayName: otherUser.accountIdentifiers[0].identifier,
+              picture: "",
+              coverPicture: "",
+              attributes: {},
+              bio: "",
+              handle: "@ETH",
+              id: "",
+              userLink: "",
+            };
+            return tempUser;
+          }
         }
       }
-    }
-    return null;
-  };
+      return null;
+    },
+    [activeIdentityAddress, addAddressToUser, usersDic]
+  );
 
   useEffect(() => {
     const getData = async () => {
@@ -73,7 +82,7 @@ const ConversationCard = ({ conversation, usersDic }: ConversationCardProps) => 
       }
     };
     getData();
-  }, []);
+  }, [conversation, getOtherUser]);
 
   useEffect(() => {
     if (activeConversation && activeConversation.id === conversation.id) {

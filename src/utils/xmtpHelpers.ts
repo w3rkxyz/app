@@ -1,8 +1,19 @@
 // Create a client using keys returned from getKeys
 const ENCODING = "binary";
 
+const DEFAULT_XMTP_ENV = "dev";
+
 export const getEnv = (): "dev" | "production" | "local" => {
-  return "dev";
+  const configuredEnv = process.env.NEXT_PUBLIC_XMTP_ENV;
+  if (
+    configuredEnv === "local" ||
+    configuredEnv === "dev" ||
+    configuredEnv === "production"
+  ) {
+    return configuredEnv;
+  }
+
+  return DEFAULT_XMTP_ENV;
 };
 
 export const buildLocalStorageKey = (walletAddress: string) =>
