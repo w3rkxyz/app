@@ -550,9 +550,9 @@
   }
 
   .horizontal-box {
-    background-color: white;
-    border-radius: 16px;
-    height: calc(100vh - 160px);
+    /* background-color: white; */
+    /* border-radius: 16px; */
+    /* height: calc(100vh - 160px); */
     overflow: auto;
     overflow-y: scroll;
   }
@@ -573,7 +573,7 @@
     }
   }
 
-  .notification-box {
+  /* .notification-box {
     height: calc(100vh - 80px);
   }
 
@@ -581,7 +581,7 @@
     .notification-box {
       height: calc(100vh - 136px);
     }
-  }
+  } */
 
   .bg-fit {
     background-repeat: no-repeat;

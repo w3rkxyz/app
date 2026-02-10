@@ -82,7 +82,7 @@ const Step1RoleSelection: React.FC<
       </div>
 
       {/* Continue Button */}
-      <div className="w-full max-w-[1047px] flex xs:justify-center justify-end pt-4 xs:border-none border-t border-[#C3C7CE]">
+      <div className="w-full max-w-[1047px] flex xs:justify-center justify-center pt-4 xs:border-none">
         <button
           onClick={onContinue}
           disabled={!selectedRole}

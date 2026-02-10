@@ -150,7 +150,7 @@ const CreatePostProfileStep: React.FC<CreatePostProfileStepProps> = ({
                     d="M12 4v16m8-8H4"
                   />
                 </svg>
-                <p className="text-[10px] text-[#969BA1] xs:text-xs">Minimum width 480 pixels</p>
+                <p className="text-[10px] text-[#969BA1] xs:text-sm">Minimum width 480 pixels</p>
               </>
             )}
             <input type="file" accept="image/*" onChange={onBannerPhotoChange} className="hidden" />

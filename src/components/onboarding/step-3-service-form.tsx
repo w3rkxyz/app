@@ -38,18 +38,18 @@ const Step3ServiceForm: React.FC<Step3ServiceFormProps & {
       serviceData.categories.length > 0
 
     return (
-      <div className="flex min-h-screen flex-col w-full xs:px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <div className="flex min-h-screen flex-col w-full xs:px-4 sm:px-6 sm:py-8 lg:px-8">
         <div className="mx-auto w-full max-w-[584px]">
           {stepText && <p className="mb-2 text-[13px] text-[#83899F]">{stepText}</p>}
 
-          <div className="mb-6 sm:mb-8">
+          {/* <div className="mb-6 sm:mb-8">
             <h1 className="mb-1 xs:text-[24px] text-[28px] font-medium text-primary-black">
               {title}
             </h1>
             <p className="text-[#83899F] text-base">
               {subtitle}
             </p>
-          </div>
+          </div> */}
 
           <div className="space-y-4">
             <FormInput

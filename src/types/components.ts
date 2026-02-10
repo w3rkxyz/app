@@ -1,12 +1,13 @@
 export interface FormInputProps {
-  label: string
+  label?: string
   name: string
   value: string
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
   placeholder?: string
   type?: string
   required?: boolean
-  className?: string
+  className?: string,
+  startContent?: React.ReactNode
 }
 
 export interface FormTextareaProps {
@@ -19,5 +20,16 @@ export interface FormTextareaProps {
   rows?: number
   required?: boolean
   showCharCount?: boolean
+}
+
+export interface FormSelectProps {
+  label?: string
+  name: string
+  value: string
+  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void
+  placeholder?: string
+  options: Array<{ value: string; label: string }>
+  required?: boolean
+  className?: string
 }
 

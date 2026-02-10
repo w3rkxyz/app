@@ -12,7 +12,7 @@ function getDomain(url: string) {
 }
 
 // Dummy data matching design (Kate Elodie Mohr)
-const DUMMY_USER = {
+export const DUMMY_USER = {
   displayName: "Kate Elodie Mohr",
   handle: "@mohr007",
   cover: "/images/cover.png",
@@ -142,7 +142,7 @@ export default function Profile({ params }: PageProps) {
             <p className="text-[14px] text-[#6C6C6C] leading-[20px] mb-[16px]">{userData.about}</p>
 
             {/* Followers / Following */}
-            <div className="flex gap-[16px] my-[16px] sm:py-0 py-[16px] sm:px-0 px-[24px]">
+            <div className="flex gap-[16px] my-[16px] sm:py-0 py-[16px]">
               <span className="leading-[20px]">
                 <span className="font-semibold sm:text-[14px] text-[20px] text-[#212121]">
                   {userData.followers}
@@ -200,13 +200,13 @@ export default function Profile({ params }: PageProps) {
                   target="_blank"
                   className="flex items-center gap-[12px] text-[#212121] hover:opacity-80"
                 >
-                  <Image src="/images/earth.svg" alt="" width={20} height={20} />
+                  <Image src="/icons/globe.svg" alt="" width={20} height={20} />
                   <span className="text-[14px] font-medium">{getDomain(userData.website)}</span>
                 </Link>
               )}
               {userData.location && (
                 <div className="flex items-center gap-[12px] text-[#212121]">
-                  <Image src="/images/location.svg" alt="" width={18} height={24} />
+                  <Image src="/images/MapPin.svg" alt="" width={18} height={24} />
                   <span className="text-[14px] font-medium">{userData.location}</span>
                 </div>
               )}

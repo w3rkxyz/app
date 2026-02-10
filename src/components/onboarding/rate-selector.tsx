@@ -6,7 +6,10 @@ interface RateSelectorProps {
   rateType: 'Hourly' | 'Price'
   rate: string
   onRateTypeChange: (type: 'Hourly' | 'Price') => void
-  onRateChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onRateChange: (e: React.ChangeEvent<HTMLInputElement>) => void,
+  label?: string,
+  startContent?: string,
+  required?: boolean
 }
 
 const RateSelector: React.FC<RateSelectorProps> = ({
@@ -14,11 +17,14 @@ const RateSelector: React.FC<RateSelectorProps> = ({
   rate,
   onRateTypeChange,
   onRateChange,
+  label="What&apos;s Your Rate?",
+  startContent="Hourly",
+  required = false
 }) => {
   return (
     <div>
       <label className="mb-2 block text-sm font-bold text-gray-900">
-        What&apos;s Your Rate?<span className="text-red-500">*</span>
+        {label}{required && <span className="text-red-500">*</span>}
       </label>
       <div className="flex ">
         <div className="flex rounded-l-lg border border-gray-300">
@@ -31,7 +37,7 @@ const RateSelector: React.FC<RateSelectorProps> = ({
                 : 'text-gray-700 hover:bg-gray-50'
             }`}
           >
-            Hourly
+            {startContent}
           </button>
         </div>
         <input

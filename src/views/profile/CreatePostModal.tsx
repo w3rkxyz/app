@@ -284,13 +284,20 @@ const CreatePostModal = ({ handleCloseModal, handle }: Props) => {
             </div>
             {/* Header */}
             <header className="flex flex-shrink-0 items-center justify-between border-b border-[#E4E4E7] px-4 py-3 rounded-tl-[12px] rounded-tr-[12px] sm:rounded-tl-none sm:rounded-tr-none sm:px-4">
-                <Image
+                {step === 2 && (role === "client" || role === "freelancer") ? <div className="">
+          <h1 className="mb-1 text-[20px] font-medium text-primary-black xs:text-[24px] sm:text-[28px]">
+            {role === "client" ? "Create Your First Job" : "Create Your First Service"}
+          </h1>
+          <p className="text-sm text-[#83899F] xs:text-base">{role === "client" ? "Post your first job and connect with top freelancers." : "Post your first service and get hired by top clients."}
+
+</p>
+        </div> : <Image
                     src="/images/logo.png"
                     alt="w3rk logo"
                     width={100}
                     height={40}
                     className="object-contain bg-white"
-                />
+                />}
                 <button
                     type="button"
                     aria-label="Close modal"
@@ -307,7 +314,7 @@ const CreatePostModal = ({ handleCloseModal, handle }: Props) => {
             </header>
 
             {/* Main — scrollable content area */}
-            <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-8">
+            <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden py-4">
                 {step === 1 && (
                     <CreatePostRoleSelection
                         selectedRole={role}
@@ -378,13 +385,14 @@ const CreatePostModal = ({ handleCloseModal, handle }: Props) => {
                 )}
                 {step === 2 && role === "client" && (
                     <>
-                        <button
+                        {/* <button
                             type="button"
                             onClick={handleBack}
                             className="rounded-full border-2 border-[#212121] bg-white px-4 py-2 text-sm font-medium text-[#212121] transition-all hover:border-gray-400 hover:bg-gray-50"
                         >
                             Back
-                        </button>
+                        </button> */}
+                        <p></p>
                         <button
                             type="button"
                             onClick={handlePublish}
@@ -401,13 +409,14 @@ const CreatePostModal = ({ handleCloseModal, handle }: Props) => {
                 )}
                 {step === 2 && role === "freelancer" && (
                     <>
-                        <button
+                        {/* <button
                             type="button"
                             onClick={handleBack}
                             className="rounded-full border-2 border-[#212121] bg-white px-4 py-2 text-sm font-medium text-[#212121] transition-all hover:border-gray-400 hover:bg-gray-50"
                         >
                             Back
-                        </button>
+                        </button> */}
+                        <p></p>
                         <button
                             type="button"
                             onClick={handlePublish}
