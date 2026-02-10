@@ -127,7 +127,7 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
                     d="M12 4v16m8-8H4"
                   />
                 </svg>
-                <p className="text-xs text-[#969BA1]">Minimum width 480 pixels</p>
+                <p className="text-sm text-[#969BA1]">Minimum width 480 pixels</p>
               </>
             )}
             <input type="file" accept="image/*" onChange={onBannerPhotoChange} className="hidden" />

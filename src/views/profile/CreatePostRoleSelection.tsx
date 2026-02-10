@@ -28,12 +28,12 @@ const CreatePostRoleSelection: React.FC<
   hideContinueButton = false,
 }) => {
   return (
-    <div className="flex w-full max-w-full flex-col items-center justify-center px-2 py-4 xs:px-4 sm:px-6">
+    <div className="flex w-full max-w-full flex-col items-center justify-center px-8 py-8 xs:px-4 sm:px-6">
       <div className="mb-4 w-full text-center xs:mb-6 sm:mb-8">
-        <h1 className="mb-1 text-[20px] font-medium text-primary-black xs:mb-2 xs:text-[24px] sm:text-[28px]">
+        <h1 className="mb-1 text-[28px] font-medium text-primary-black xs:mb-2 xs:text-[24px] sm:text-[28px]">
           {title}
         </h1>
-        <p className="text-sm text-[#83899F] xs:text-base">{subtitle}</p>
+        <p className="text-base text-[#83899F] xs:text-base">{subtitle}</p>
       </div>
 
       <div className="mb-6 w-full max-w-full flex flex-row justify-center gap-4 xs:mb-8 sm:flex-col sm:gap-4 xs:gap-5">
@@ -64,7 +64,7 @@ const CreatePostRoleSelection: React.FC<
 
         <button
           onClick={() => onRoleSelect("freelancer")}
-          className={`flex min-w-0 max-w-[390px] h-[276px] flex-col items-center flex-1 rounded-[8px] border bg-white transition-all hover:border-gray-400 hover:shadow-md ${
+          className={`flex min-w-0 max-w-[390px] h-[276px] flex-col items-center flex-1 rounded-[8px] border-[0.5px] bg-white transition-all hover:border-gray-400 hover:shadow-md ${
             selectedRole === "freelancer" ? "border-[#212121] shadow-md" : "border-[#C3C7CE]"
           }`}
         >

@@ -6,20 +6,12 @@ import {
   Search,
   ChevronDown,
   Link2 as LinkIcon,
-  Code,
-  Palette,
-  MessageCircle,
-  TrendingUp,
-  Headphones,
-  ShoppingBag,
-  Shield,
-  Users,
-  HelpCircle,
   Plus,
 } from "lucide-react";
 import JobDetailDrawer from "@/components/find-work/job-detail-drawer";
 import JobDetailModal from "@/components/find-work/job-detail-modal";
 import CreateServiceModal from "@/components/find-work/create-service-modal";
+import { SVGAdminSupport, SVGBlockChain, SVGCampaign, SVGCode, SVGDesignPallete, SVGInfo, SVGLock, SVGUsers, SVGUserSound } from "@/assets/list-svg-icon";
 
 interface JobData {
   username: string;
@@ -38,17 +30,30 @@ interface Category {
   icon: React.ComponentType<{ size?: number; className?: string }>;
 }
 
+// const categories: Category[] = [
+//   { name: "Blockchain Development", icon: LinkIcon },
+//   { name: "Programming & Development", icon: Code },
+//   { name: "Design", icon: Palette },
+//   { name: "Consulting & Advisory", icon: MessageCircle },
+//   { name: "Marketing", icon: TrendingUp },
+//   { name: "Admin Support", icon: Headphones },
+//   { name: "Customer Service", icon: ShoppingBag },
+//   { name: "Security & Auditing", icon: Shield },
+//   { name: "Community Building", icon: Users },
+//   { name: "Other", icon: HelpCircle },
+// ];
+
 const categories: Category[] = [
-  { name: "Blockchain Development", icon: LinkIcon },
-  { name: "Programming & Development", icon: Code },
-  { name: "Design", icon: Palette },
-  { name: "Consulting & Advisory", icon: MessageCircle },
-  { name: "Marketing", icon: TrendingUp },
-  { name: "Admin Support", icon: Headphones },
-  { name: "Customer Service", icon: ShoppingBag },
-  { name: "Security & Auditing", icon: Shield },
-  { name: "Community Building", icon: Users },
-  { name: "Other", icon: HelpCircle },
+  { name: "Blockchain Development", icon: SVGBlockChain },
+  { name: "Programming & Development", icon: SVGCode },
+  { name: "Design", icon: SVGDesignPallete },
+  { name: "Consulting & Advisory", icon: SVGUserSound },
+  { name: "Marketing", icon: SVGCampaign },
+  { name: "Admin Support", icon: SVGAdminSupport },
+  { name: "Customer Service", icon: SVGUserSound },
+  { name: "Security & Auditing", icon: SVGLock },
+  { name: "Community Building", icon: SVGUsers },
+  { name: "Other", icon: SVGInfo },
 ];
 
 const FindTalent = () => {
@@ -260,7 +265,7 @@ const FindTalent = () => {
             </div>
           </div>
 
-          <div className="flex-1 flex flex-col w-full md:w-auto sm:gap-[16px] md:gap-0">
+          <div className="flex-1 flex flex-col w-full mt-5 md:w-auto sm:gap-[16px] md:gap-0">
             {filteredJobs.length === 0 ? (
               <div className="bg-white rounded-[8px] p-[32px] text-center text-[#7A7A7A] text-[15px]">
                 No jobs found

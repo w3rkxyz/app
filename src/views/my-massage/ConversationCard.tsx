@@ -11,19 +11,24 @@ import { useAccount } from "wagmi";
 import getLensAccountData from "@/utils/getLensProfile";
 import { fetchAccount } from "@/hooks/useSearchAccounts";
 import useDatabase from "@/hooks/useDatabase";
+import moment from "moment";
 
 type ConversationCardProps = {
   conversation: Dm<ContentTypes>;
   usersDic: { [address: string]: AccountData };
+  searchQuery?: string;
 };
 
-const ConversationCard = ({ conversation, usersDic }: ConversationCardProps) => {
+const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: ConversationCardProps) => {
   const { address } = useAccount();
   const { addAddressToUser } = useDatabase();
   const { activeConversation, selectConversation } = useConversations();
   const [loading, setLoading] = useState(true);
   const [isSelected, setIsSelected] = useState(false);
   const [user, setUser] = useState<AccountData | null>(null);
+  const [lastMessage, setLastMessage] = useState<string>("Enter your message description here...");
+  const [lastMessageTime, setLastMessageTime] = useState<string>("");
+  const [hasUnread, setHasUnread] = useState(false);
 
   const getOtherUser = async (members: SafeGroupMember[]) => {
     console.log("Members: ", members);
@@ -69,6 +74,21 @@ const ConversationCard = ({ conversation, usersDic }: ConversationCardProps) => 
       const participant = await getOtherUser(members);
       if (participant) {
         setUser(participant);
+        
+        // Get last message
+        try {
+          const messages = await conversation.messages({ limit: 1 });
+          if (messages && messages.length > 0) {
+            const lastMsg = messages[0];
+            const msgContent = lastMsg.content as any;
+            setLastMessage(msgContent?.text || "Enter your message description here...");
+            setLastMessageTime(moment(lastMsg.sentAt).format("h:mmA"));
+          }
+        } catch (error) {
+          console.log("Error fetching messages:", error);
+          setLastMessage("Enter your message description here...");
+        }
+        
         setLoading(false);
       }
     };
@@ -83,6 +103,19 @@ const ConversationCard = ({ conversation, usersDic }: ConversationCardProps) => 
     }
   }, [activeConversation, conversation.id]);
 
+  // Filter based on search query
+  if (searchQuery.trim() && user) {
+    const query = searchQuery.toLowerCase();
+    const matches = 
+      user.displayName.toLowerCase().includes(query) ||
+      user.handle.toLowerCase().includes(query) ||
+      lastMessage.toLowerCase().includes(query);
+    
+    if (!matches) {
+      return null;
+    }
+  }
+
   if (loading || user === null) {
     return <ConversationSkeleton key={conversation.id} />;
   }
@@ -91,44 +124,40 @@ const ConversationCard = ({ conversation, usersDic }: ConversationCardProps) => 
     <div
       key={conversation.id}
       className={`p-[8px] w-full ${
-        isSelected ? "bg-[#E4E4E7]" : "bg-[#FAFAFA]"
-        //conversation.unreadMessages
-      } rounded-[8px] cursor-pointer ${false ? "bg-[#f0f0f3]" : ""}`}
+        isSelected ? "bg-[#E4E4E7]" : "hover:bg-[#F3F3F3]"
+      } rounded-[8px] cursor-pointer transition-colors`}
       onClick={() => selectConversation(conversation)}
     >
-      <div className="flex justify-between align-top mb-[6px]">
-        <div className="flex gap-[10px]">
+      <div className="flex justify-between align-start gap-[10px]">
+        <div className="flex gap-[12px] flex-1 min-w-0">
           <Image
             src={user.picture}
             onError={e => {
               (e.target as HTMLImageElement).src = "https://static.hey.xyz/images/default.png";
             }}
-            className="rounded-[8px]"
-            alt="paco pic"
+            className="rounded-[8px] flex-shrink-0"
+            alt="user pic"
             width={40}
             height={40}
           />
-          <div className="flex flex-col gap-[5px] sm:gap-[1px] pt-[5px]">
-            <span className="text-[14px] leading-[16.94px] font-medium">{user.displayName}</span>
-            <span className="text-[14px] leading-[16.94px] font-medium text-[#707070]">
-              {user.handle}
-            </span>
+          <div className="flex flex-col gap-[4px] flex-1 min-w-0">
+            <div className="flex justify-between items-baseline gap-[8px]">
+              <span className="text-[14px] leading-[16.94px] font-medium text-black">
+                {user.displayName}
+              </span>
+              <span className="text-[12px] leading-[14px] font-medium text-[#999] flex-shrink-0">
+                {lastMessageTime}
+              </span>
+            </div>
+            <p className="line-clamp-1 text-[13px] leading-[15px] text-[#707070]">
+              {lastMessage}
+            </p>
           </div>
         </div>
-        <span className="text-[#707070] leading-[12.1px] text-[12px] font-semibold">
-          {/* {conversation.lastMessageTime !== ""
-            ? moment(conversation.lastMessageTime).format("h:mmA")
-            : ""} */}
-        </span>
+        {hasUnread && (
+          <div className="w-[8px] h-[8px] bg-black rounded-full mt-[6px] flex-shrink-0"></div>
+        )}
       </div>
-      <p
-        //   conversation.unreadMessages
-        className={`line-clamp-1 text-[11px] sm:text-[10px] text-[#000000] leading-[12px] font-medium
-                      ${false ? "font-extrabold" : ""}
-                    `}
-      >
-        {/* {conversation.lastMessage} */}
-      </p>
     </div>
   );
 };

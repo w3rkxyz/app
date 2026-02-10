@@ -24,6 +24,7 @@ import JobDetailModal from "@/components/find-work/job-detail-modal";
 import CreateJobModal from "@/components/find-work/create-job-modal";
 
 import FindWorkJobCard from "@/components/Cards/FindWorkJobCard";
+import { SVGAdminSupport, SVGBlockChain, SVGCampaign, SVGCode, SVGDesignPallete, SVGInfo, SVGLock, SVGUsers, SVGUserSound } from "@/assets/list-svg-icon";
 
 interface JobData {
   username: string;
@@ -39,20 +40,20 @@ interface JobData {
 
 interface Category {
   name: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: any;
 }
 
 const categories: Category[] = [
-  { name: "Blockchain Development", icon: LinkIcon },
-  { name: "Programming & Development", icon: Code },
-  { name: "Design", icon: Palette },
-  { name: "Consulting & Advisory", icon: MessageCircle },
-  { name: "Marketing", icon: TrendingUp },
-  { name: "Admin Support", icon: Headphones },
-  { name: "Customer Service", icon: ShoppingBag },
-  { name: "Security & Auditing", icon: Shield },
-  { name: "Community Building", icon: Users },
-  { name: "Other", icon: HelpCircle },
+  { name: "Blockchain Development", icon: SVGBlockChain },
+  { name: "Programming & Development", icon: SVGCode },
+  { name: "Design", icon: SVGDesignPallete },
+  { name: "Consulting & Advisory", icon: SVGUserSound },
+  { name: "Marketing", icon: SVGCampaign },
+  { name: "Admin Support", icon: SVGAdminSupport },
+  { name: "Customer Service", icon: SVGUserSound },
+  { name: "Security & Auditing", icon: SVGLock },
+  { name: "Community Building", icon: SVGUsers },
+  { name: "Other", icon: SVGInfo },
 ];
 
 const FindWork = () => {
@@ -171,7 +172,7 @@ const FindWork = () => {
                         className={`w-full flex items-center gap-[12px] px-[12px] py-[10px] rounded-[8px] text-left transition-colors ${isSelected ? "bg-[#EEEEEE]" : "hover:bg-[#F5F5F5]"
                           }`}
                       >
-                        <IconComponent size={20} className="flex-shrink-0 text-[#818181]" />
+                        {IconComponent}
                         <span
                           className={`text-[16px] leading-[24px] tracking-[0px] align-middle ${isSelected
                               ? "font-semibold text-[#212121]"
@@ -234,7 +235,7 @@ const FindWork = () => {
               </div>
 
               <button
-                className="md:hidden w-full bg-[#212121] text-white rounded-full flex items-center justify-center gap-[8px] font-medium text-[14px] py-[8px] px-[16px] hover:bg-[#333333] transition-colors mt-auto"
+                className="md:hidden w-full bg-[#212121] text-white rounded-full flex items-center justify-center gap-[8px] font-medium text-[14px] py-[10px] px-[16px] hover:bg-[#333333] transition-colors mt-auto"
                 onClick={() => setIsCreateJobModalOpen(true)}
               >
                 <Plus size={20} />
@@ -243,7 +244,7 @@ const FindWork = () => {
             </div>
           </div>
 
-          <div className="flex-1 flex flex-col w-full md:w-auto sm:gap-[16px] md:gap-0">
+          <div className="flex-1 flex flex-col w-full md:w-auto mt-5 sm:gap-[16px] md:gap-0">
             {filteredJobs.length === 0 ? (
               <div className="bg-white rounded-[8px] p-[32px] text-center text-[#7A7A7A] text-[15px]">
                 No jobs found

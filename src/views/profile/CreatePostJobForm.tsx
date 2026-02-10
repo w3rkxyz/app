@@ -36,18 +36,18 @@ const CreatePostJobForm: React.FC<
   const isValid = jobData.description && jobData.budget && jobData.categories.length > 0;
 
   return (
-    <div className="flex w-full max-w-full flex-col px-2 py-4 xs:px-4 sm:px-6 sm:py-6 md:px-8 md:py-8">
+    <div className="flex w-full max-w-full flex-col px-2 xs:px-4 sm:px-6 sm:py-6 md:px-8 md:py-8">
       <div className="mx-auto w-full max-w-[584px]">
         {stepText && (
           <p className="mb-1 text-xs text-[#83899F] xs:mb-2 xs:text-[13px]">{stepText}</p>
         )}
 
-        <div className="mb-4 xs:mb-6 sm:mb-8">
+        {/* <div className="mb-4 xs:mb-6 sm:mb-8">
           <h1 className="mb-1 text-[20px] font-medium text-primary-black xs:text-[24px] sm:text-[28px]">
             {title}
           </h1>
           <p className="text-sm text-[#83899F] xs:text-base">{subtitle}</p>
-        </div>
+        </div> */}
 
         <div className="space-y-3 xs:space-y-4">
           <FormInput

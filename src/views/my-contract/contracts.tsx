@@ -21,11 +21,11 @@ import { useSearchParams } from "next/navigation";
 import { useAccount as useLensAccount } from "@lens-protocol/react";
 
 const contractTypes = [
-  "Proposals",
-  "In-Progress",
+  "New Proposals",
+  "In Progress",
   "Awaiting Approval",
   // "Open Disputes",
-  "Completed",
+  // "Completed",
 ];
 
 const contractStateFilters = [
@@ -34,6 +34,70 @@ const contractStateFilters = [
   "awaitingApproval",
   // "Open Disputes",
   "completed",
+];
+
+// Dummy contract data for when no contracts are present
+const DUMMY_CONTRACTS: activeContractDetails[] = [
+  {
+    id: 1,
+    title: "Website Updates - Full Stack Developer",
+    description: "We're looking for an experienced Solidity developer to review and optimize our DeFi smart contracts. The role involves auditing security risks, reducing gas costs, and improving overall performance.",
+    state: "proposal",
+    clientHandle: "jeon-smith",
+    freelancerHandle: "freelancer-01",
+    paymentAmount: 500,
+    dueDate: new Date("2025-08-25"),
+    clientAddress: "0x0000000000000000000000000000000000000001",
+    freelancerAddress: "0x0000000000000000000000000000000000000002",
+  },
+  {
+    id: 2,
+    title: "Website Updates - Full Stack Developer",
+    description: "We're looking for an experienced Solidity developer to review and optimize our DeFi smart contracts. The role involves auditing security risks, reducing gas costs, and improving overall performance.",
+    state: "inProgress",
+    clientHandle: "jeon-smith",
+    freelancerHandle: "freelancer-01",
+    paymentAmount: 500,
+    dueDate: new Date("2025-08-25"),
+    clientAddress: "0x0000000000000000000000000000000000000001",
+    freelancerAddress: "0x0000000000000000000000000000000000000002",
+  },
+  {
+    id: 3,
+    title: "Website Updates - Full Stack Developer",
+    description: "We're looking for an experienced Solidity developer to review and optimize our DeFi smart contracts. The role involves auditing security risks, reducing gas costs, and improving overall performance.",
+    state: "inProgress",
+    clientHandle: "jeon-smith",
+    freelancerHandle: "freelancer-01",
+    paymentAmount: 500,
+    dueDate: new Date("2025-08-25"),
+    clientAddress: "0x0000000000000000000000000000000000000001",
+    freelancerAddress: "0x0000000000000000000000000000000000000002",
+  },
+  {
+    id: 4,
+    title: "Website Updates - Full Stack Developer",
+    description: "We're looking for an experienced Solidity developer to review and optimize our DeFi smart contracts. The role involves auditing security risks, reducing gas costs, and improving overall performance.",
+    state: "awaitingApproval",
+    clientHandle: "jeon-smith",
+    freelancerHandle: "freelancer-01",
+    paymentAmount: 500,
+    dueDate: new Date("2025-08-25"),
+    clientAddress: "0x0000000000000000000000000000000000000001",
+    freelancerAddress: "0x0000000000000000000000000000000000000002",
+  },
+  {
+    id: 5,
+    title: "Website Updates - Full Stack Developer",
+    description: "We're looking for an experienced Solidity developer to review and optimize our DeFi smart contracts. The role involves auditing security risks, reducing gas costs, and improving overall performance.",
+    state: "proposal",
+    clientHandle: "jeon-smith",
+    freelancerHandle: "freelancer-01",
+    paymentAmount: 500,
+    dueDate: new Date("2025-08-25"),
+    clientAddress: "0x0000000000000000000000000000000000000001",
+    freelancerAddress: "0x0000000000000000000000000000000000000002",
+  },
 ];
 
 const Contracts = () => {
@@ -48,13 +112,14 @@ const Contracts = () => {
   });
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<number | null>(null);
   const { address } = useAccount();
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(true);
   const [contracts, setContracts] = useState<activeContractDetails[]>([]);
-  const [loadingContracts, setLoadingContracts] = useState(true);
+  const [loadingContracts, setLoadingContracts] = useState(false);
   const [showTypesMobile, setShowTypesMobile] = useState(false);
-  const [type, setType] = useState("Proposals");
+  const [type, setType] = useState("awaitingApproval");
   const [showCreateContractModal, setShowCreateContractModal] = useState(false);
-  const [creationStage, setCreationStage] = useState(1);
+  const [activeTab, setActiveTab] = useState<'active' | 'ended'>('active');
+  const [creationStage, setCreationStage] = useState(2);
   const [selectedContract, setSelectedContract] = useState<activeContractDetails | undefined>();
   const [newContractDetails, setNewContractDetails] = useState<any>({
     title: "",
@@ -167,26 +232,47 @@ const Contracts = () => {
   }, [profile]);
 
   return (
-    <div className="find-work-section pt-[82px] md:pt-[110px] sm:pt-[60px] mb-[20px]">
+    <div className="find-work-section pt-10 mb-[20px] bg-white">
       <div className="custom-container">
         <div className="tags-section w-full flex md:justify-center md:flex-col gap-[45px] mt-[50px] md:mt-[0px] sm:mt-[16px]">
           <div
-            className="find-work-message-section w-[300px] flex-shrink-0 h-fit sm:h-auto md:h-auto sm:my-0 sm:py-0 bg-[#FFFFFF] sm:bg-transparent md:bg-transparent rounded-[20px] sm:rounded-[0px] p-[16px] sm:w-full sm:items-center gap-2 sm:whitespace-nowrap md:w-full md:items-center md:whitespace-nowrap overflow-x-auto sm:ml-[-20px]
-            border-[1px] border-[#E4E4E7] md:hidden"
+            className="find-work-message-section w-[300px] flex-shrink-0 h-fit sm:my-0 sm:py-0 bg-[#FFFFFF] sm:bg-transparent md:bg-transparent rounded-[20px] sm:rounded-[0px] p-[16px] sm:w-full sm:items-center sm:mt-10 gap-2 sm:whitespace-nowrap md:w-full md:items-center md:whitespace-nowrap overflow-x-auto 
+            "
           >
-            <h4 className="text-[20px] font-semibold font-secondary leading-[20px] tracking-[-1%] text-center pb-[17px] sm:pb-[10px] md:pb-[10px]">
+            {/* <h4 className="text-[20px] font-semibold font-secondary leading-[20px] tracking-[-1%] text-center pb-[17px] sm:pb-[10px] md:pb-[10px]">
               Contracts
-            </h4>
-            <hr className="bg-[#E4E4E7] mb-[17px]" />
-            <div className="w-full flex flex-col gap-[8px] mb-[321px]">
+            </h4> */}
+              <div className="bg-[#F2F2F2] rounded-full p-1.5 inline-flex shadow-inner w-full mb-4">
+                <button
+                  onClick={() => setActiveTab('active')}
+                  className={`px-4 py-1 rounded-full text-xl font-semibold transition-all duration-300 w-full ${
+                    activeTab === 'active'
+                      ? 'bg-white text-gray-900 shadow-lg'
+                      : 'bg-transparent text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Active
+                </button>
+                <button
+                  onClick={() => setActiveTab('ended')}
+                  className={`px-4 py-2 rounded-full text-xl font-semibold transition-all duration-300 w-full ${
+                    activeTab === 'ended'
+                      ? 'bg-white text-gray-900 shadow-lg'
+                      : 'bg-transparent text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Ended
+                </button>
+              </div>
+            <div className="w-full flex flex-col gap-[16px]">
               {contractTypes.map((type: string, index: number) => {
                 return (
                   <button
                     key={index}
-                    className={`w-full py-[12px] flex items-center justify-center leading-[14.52px] text-[12px] font-semibold border-[1px] rounded-[8px] ${
+                    className={`w-full py-[12px] flex items-center text-[#818181] justify-center leading-[14.52px] text-base font-medium border-[0.5px] rounded-full ${
                       selectedTypeFilter === index
                         ? "bg-[#E4E4E7] border-[#000000]"
-                        : "bg-[#FFFFFF] border-[#E4E4E7]"
+                        : "bg-[#FFFFFF] border-[#C3C7CE]"
                     }`}
                     onClick={() => setSelectedTypeFilter(index)}
                   >
@@ -194,18 +280,19 @@ const Contracts = () => {
                   </button>
                 );
               })}
-            </div>
             <button
-              className={`w-full py-[12px] flex items-center justify-center leading-[14.52px] text-[12px] text-white font-semibold bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px]`}
+              className={`w-full py-[12px] flex items-center justify-center leading-[14.52px] mt-6 text-sm text-white font-medium bg-[#212121] rounded-full`}
               onClick={() => {
                 setFreelancerId("");
                 setShowCreateContractModal(true);
               }}
             >
+              <Image src={'/images/add.svg'} height={20} width={20} alt='' className="mr-1" /> 
               Create New Contract
             </button>
+            </div>
           </div>
-          <div className="hidden md:flex w-full md:items-center flex-col relative">
+          {/* <div className="hidden md:flex w-full md:items-center flex-col relative">
             <button
               className={`w-full py-[12px] flex items-center justify-center leading-[14.52px] text-[14px] text-white font-semibold bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] mb-[14px] md:max-w-[600px]`}
               onClick={() => {
@@ -248,9 +335,9 @@ const Contracts = () => {
                 </div>
               )}
             </button>
-          </div>
+          </div> */}
 
-          <div className="border-[1px] border-[#E4E4E7] rounded-[16px] p-[16px] flex flex-1 flex-col gap-[16px]">
+          <div className=" p-[16px] flex flex-1 flex-col gap-[16px]">
             {/* {contractTypes.map((type: string, index: number) => {
               return (
                 <ContractCard
@@ -301,17 +388,28 @@ const Contracts = () => {
                 }
               })
             ) : (
-              <div className="h-[460px] w-full flex flex-col gap-[11px] justify-center items-center">
-                <Image
-                  src="/images/case-grey.svg"
-                  alt="job post icon"
-                  color="black"
-                  width={24}
-                  height={21}
-                />
-                <span className="leading-[16.94px] max-w-[280px] text-center text-[16px] font-semibold text-[#707070]">
-                  User has no job/service posts yet
-                </span>
+              <div className="flex flex-1 flex-col gap-[16px]">
+                {DUMMY_CONTRACTS.map((contract, index) => {
+                  if (selectedTypeFilter === null) {
+                    return (
+                      <ContractCard
+                        key={index}
+                        type={contract.state}
+                        contractDetails={contract}
+                        onCardClick={() => handleOpenModal(contract)}
+                      />
+                    );
+                  } else if (contract.state === contractStateFilters[selectedTypeFilter]) {
+                    return (
+                      <ContractCard
+                        key={index}
+                        type={contract.state}
+                        contractDetails={contract}
+                        onCardClick={() => handleOpenModal(contract)}
+                      />
+                    );
+                  }
+                })}
               </div>
             )}
           </div>
@@ -339,31 +437,31 @@ const Contracts = () => {
           </div>
         </div>
       )}
-      {isModalOpen && selectedContract && (
+      {isModalOpen && newContractDetails && (
         <div className="fixed h-screen w-screen overflow-hidden inset-0 z-[99991] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center sm:items-end cursor-auto">
           <div className="w-full flex justify-center sm:just align-middle sm:align-bottom">
             {type === "completed" && (
               <CompletedContractModal
                 handleCloseModal={() => setIsModalOpen(false)}
-                contractDetails={selectedContract}
+                contractDetails={newContractDetails}
               />
             )}
             {type === "inProgress" && (
               <InProgressContractModal
                 handleCloseModal={() => setIsModalOpen(false)}
-                contractDetails={selectedContract}
+                contractDetails={newContractDetails}
               />
             )}
             {type === "awaitingApproval" && (
               <AwaitingApprovalContractModal
                 handleCloseModal={() => setIsModalOpen(false)}
-                contractDetails={selectedContract}
+                contractDetails={newContractDetails}
               />
             )}
             {type === "proposal" && (
               <ViewContractModal
                 handleCloseModal={() => setIsModalOpen(false)}
-                contractDetails={selectedContract}
+                contractDetails={newContractDetails}
               />
             )}
           </div>

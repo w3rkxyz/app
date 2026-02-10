@@ -30,7 +30,7 @@ export const Connect = () => {
           );
         } else if (isConnected && (authUserLoading || accountLoading)) {
           return (
-            <button type="button" className="button-primary mx-auto" disabled>
+            <button type="button" className="bg-black rounded-full text-white px-5 py-2" disabled>
               Loading...
             </button>
           );
@@ -38,7 +38,7 @@ export const Connect = () => {
           return (
             <button
               type="button"
-              className="button-primary mx-auto"
+              className="bg-black rounded-full text-white px-5 py-2"
               onClick={() => dispatch(displayLoginModal({ display: true }))}
             >
               Login
@@ -46,7 +46,7 @@ export const Connect = () => {
           );
         } else {
           return (
-            <button type="button" className="button-primary mx-auto" onClick={show}>
+            <button type="button" className=" bg-black rounded-full text-white px-5 py-2" onClick={show}>
               Sign In
             </button>
           );
