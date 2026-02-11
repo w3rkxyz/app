@@ -66,11 +66,12 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     Boolean(walletAddress) &&
     lensAccountAddress!.toLowerCase() !== walletAddress!.toLowerCase();
   const walletClientAccountAddress = walletClient?.account?.address?.toLowerCase();
-  const expectedSigningAddress = walletAddress?.toLowerCase() ?? null;
-  const actualWalletClientAddress = walletClientAccountAddress ?? null;
-  const signingAddress = (walletAddress ?? walletClient?.account?.address ?? null) as
+  const signerAccountAddress = (walletClient?.account?.address ?? walletAddress ?? null) as
     | Address
     | null;
+  const expectedSigningAddress = signerAccountAddress?.toLowerCase() ?? null;
+  const actualWalletClientAddress = walletClientAccountAddress ?? null;
+  const signingAddress = signerAccountAddress;
 
   const logDebug = useCallback(
     (event: string, details?: Record<string, unknown>) => {
@@ -195,9 +196,11 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     try {
       const requestWalletSignature = async (
         message: string,
-        source: "preflight" | "xmtp_signer" = "xmtp_signer"
+        source: "preflight" | "xmtp_signer" | "xmtp_signer_eoa_fallback" = "xmtp_signer",
+        overrideSigningAddress?: Address | null
       ): Promise<Uint8Array> => {
         const messageHash = keccak256(stringToHex(message));
+        const activeSigningAddress = overrideSigningAddress ?? signingAddress;
         logDebug("signature:request:start", {
           source,
           message,
@@ -205,6 +208,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           messagePreview: message.slice(0, 200),
           expectedSignerAddress: expectedSigningAddress,
           actualWalletClientAddress,
+          activeSigningAddress,
         });
         const walletClientSignature = await withTimeout(
           (async () => {
@@ -215,7 +219,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
             try {
               logDebug("signature:walletClient:sign:start");
               return await walletClient.signMessage({
-                account: signingAddress ?? walletClient.account,
+                account: activeSigningAddress ?? walletClient.account,
                 message,
               });
             } catch {
@@ -245,7 +249,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
             : await withTimeout(
                 (async () => {
                   logDebug("signature:provider:sign:start");
-                  return signWithEthereumProvider(message, signingAddress);
+                  return signWithEthereumProvider(message, activeSigningAddress);
                 })(),
                 30000,
                 "Wallet signature timed out."
@@ -299,7 +303,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         configuredEnvRaw: configuredEnvRaw ?? null,
         walletChainId: walletChainId?.toString() ?? null,
         configuredLensChainId: configuredLensChainId?.toString() ?? null,
-        expectedSignerAddress,
+        expectedSignerAddress: expectedSigningAddress,
         actualWalletClientAddress,
         xmtpIdentifierAddress: xmtpAddress,
       });
@@ -438,48 +442,67 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
       let failedMethod: "Client.create" | "client.isRegistered" | "client.register" =
         "Client.create";
-
-      try {
+      const connectAndRegister = async (
+        activeSigner: EOASigner | SCWSigner,
+        mode: "primary" | "eoa_fallback"
+      ) => {
         updateStage("create_client");
-        logDebug("create:start", { env, disableAutoRegister: true });
-        const directClient = await withTimeout(
-          Client.create(signer, {
+        logDebug("create:start", {
+          mode,
+          env,
+          disableAutoRegister: true,
+          signerType: activeSigner.type,
+        });
+        const createdClient = await withTimeout(
+          Client.create(activeSigner, {
             env,
             disableAutoRegister: true,
           }),
           120000,
           "Creating XMTP client timed out."
         );
-        logDebug("create:success", { inboxId: (directClient as { inboxId?: string }).inboxId ?? null });
+        logDebug("create:success", {
+          mode,
+          inboxId: (createdClient as { inboxId?: string }).inboxId ?? null,
+        });
 
         updateStage("check_registration");
-        logDebug("create:isRegistered:start");
+        logDebug("create:isRegistered:start", { mode });
         failedMethod = "client.isRegistered";
         const isRegistered = await withTimeout(
-          directClient.isRegistered(),
+          createdClient.isRegistered(),
           15000,
           "Checking XMTP registration timed out."
         );
-        logDebug("create:isRegistered:result", { isRegistered });
+        logDebug("create:isRegistered:result", { mode, isRegistered });
 
         if (!isRegistered) {
           updateStage("register_account");
           failedMethod = "client.register";
           logDebug("create:register:start", {
-            registerValidationChainId: lensChainId.toString(),
+            mode,
+            registerValidationChainId:
+              activeSigner.type === "SCW" ? activeSigner.getChainId().toString() : null,
             registerValidationRpc: lensRpcFromWallet ?? lensPublicRpcFromWallet,
             xmtpEnv: env,
-            expectedSignerAddress,
+            expectedSignerAddress: expectedSigningAddress,
             actualWalletClientAddress,
-            xmtpIdentifierAddress: xmtpAddress,
+            xmtpIdentifierAddress:
+              (await activeSigner.getIdentifier()).identifier?.toLowerCase() ?? xmtpAddress,
           });
-          await withTimeout(directClient.register(), 90000, "XMTP registration timed out.");
-          logDebug("create:register:success");
+          await withTimeout(createdClient.register(), 90000, "XMTP registration timed out.");
+          logDebug("create:register:success", { mode });
         }
+
+        return createdClient;
+      };
+
+      try {
+        const directClient = await connectAndRegister(signer, "primary");
 
         setClient(directClient);
         updateStage("connected");
-        logDebug("create:connected");
+        logDebug("create:connected", { mode: "primary" });
         return directClient;
       } catch (createError) {
         lastError = createError;
@@ -493,6 +516,50 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           `XMTP create failed for ${xmtpAddress} (${isScwIdentity ? "SCW" : "EOA"}) on ${env}.`,
           createError
         );
+
+        const shouldTryEoaFallback =
+          isScwIdentity &&
+          Boolean(walletAddress) &&
+          walletAddress.toLowerCase() !== xmtpAddress.toLowerCase();
+
+        if (shouldTryEoaFallback) {
+          try {
+            logDebug("create:eoa_fallback:start", {
+              walletAddress: walletAddress?.toLowerCase(),
+              xmtpAddress,
+            });
+
+            const fallbackSigner: EOASigner = {
+              type: "EOA",
+              getIdentifier: () =>
+                ({
+                  identifier: walletAddress!.toLowerCase(),
+                  identifierKind: IdentifierKind.Ethereum,
+                }) as Identifier,
+              signMessage: async (message: string): Promise<Uint8Array> => {
+                updateStage("prompt_signature");
+                return requestWalletSignature(
+                  message,
+                  "xmtp_signer_eoa_fallback",
+                  (walletAddress ?? walletClient?.account?.address ?? null) as Address | null
+                );
+              },
+            };
+
+            failedMethod = "Client.create";
+            const fallbackClient = await connectAndRegister(fallbackSigner, "eoa_fallback");
+            setClient(fallbackClient);
+            updateStage("connected");
+            logDebug("create:connected", { mode: "eoa_fallback" });
+            return fallbackClient;
+          } catch (fallbackError) {
+            lastError = fallbackError;
+            logError("create:eoa_fallback:failed", fallbackError, {
+              env,
+              walletAddress: walletAddress?.toLowerCase() ?? null,
+            });
+          }
+        }
       }
 
       if (lastError instanceof Error) {
@@ -539,21 +606,81 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     dispatch(setError(null));
 
     try {
-      const identifier: Identifier = {
-        identifier: xmtpAddress.toLowerCase(),
-        identifierKind: IdentifierKind.Ethereum,
-      };
+      const configuredEnvRaw =
+        process.env.NEXT_PUBLIC_XMTP_ENV ?? process.env.NEXT_PUBLIC_XMTP_ENVIRONMENT;
+      const fallbackEnv = getEnv();
+      const walletChainId =
+        typeof walletClient?.chain?.id === "number" ? BigInt(walletClient.chain.id) : null;
+      const configuredLensChainId =
+        process.env.NEXT_PUBLIC_LENS_CHAIN_ID &&
+        Number.isFinite(Number(process.env.NEXT_PUBLIC_LENS_CHAIN_ID))
+          ? BigInt(process.env.NEXT_PUBLIC_LENS_CHAIN_ID)
+          : null;
+      const lensChainId =
+        walletChainId ??
+        configuredLensChainId ??
+        (fallbackEnv === "production" ? LENS_MAINNET_CHAIN_ID : LENS_TESTNET_CHAIN_ID);
+      const env: "local" | "dev" | "production" =
+        configuredEnvRaw === "local" ||
+        configuredEnvRaw === "dev" ||
+        configuredEnvRaw === "production"
+          ? configuredEnvRaw
+          : lensChainId === LENS_MAINNET_CHAIN_ID
+            ? "production"
+            : "dev";
 
-      const client = await Client.build(identifier, { env: getEnv() });
+      const identifiers: Identifier[] = [
+        {
+          identifier: xmtpAddress.toLowerCase(),
+          identifierKind: IdentifierKind.Ethereum,
+        },
+      ];
 
-      return client;
+      if (walletAddress && walletAddress.toLowerCase() !== xmtpAddress.toLowerCase()) {
+        identifiers.push({
+          identifier: walletAddress.toLowerCase(),
+          identifierKind: IdentifierKind.Ethereum,
+        });
+      }
+
+      for (const identifier of identifiers) {
+        try {
+          logDebug("init:build:start", {
+            env,
+            identifier: identifier.identifier,
+          });
+
+          const builtClient = await Client.build(identifier, { env });
+          const isRegistered = await builtClient.isRegistered();
+
+          logDebug("init:build:result", {
+            env,
+            identifier: identifier.identifier,
+            isRegistered,
+          });
+
+          if (isRegistered) {
+            setClient(builtClient);
+            return builtClient;
+          }
+
+          builtClient.close();
+        } catch (error) {
+          logError("init:build:failed", error, {
+            env,
+            identifier: identifier.identifier,
+          });
+        }
+      }
+
+      return undefined;
     } catch (error) {
       dispatch(setError(error as Error));
       console.error("Failed to init XMTP client:", error);
     } finally {
       dispatch(setInitializing(false));
     }
-  }, [dispatch, xmtpAddress]);
+  }, [dispatch, logDebug, logError, setClient, walletAddress, walletClient, xmtpAddress]);
 
   return {
     client,

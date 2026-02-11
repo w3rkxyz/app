@@ -29,7 +29,7 @@ const ConversationsNav = () => {
   const { client } = useXMTP();
   const { address: walletAddress } = useAccount();
   const lensProfile = useSelector((state: RootState) => state.app.user);
-  const { createXMTPClient, connectingXMTP, connectStage } = useXMTPClient({
+  const { createXMTPClient, initXMTPClient, connectingXMTP, connectStage } = useXMTPClient({
     walletAddress,
     lensAccountAddress: lensProfile?.address,
     lensProfileId: lensProfile?.id,
@@ -68,6 +68,34 @@ const ConversationsNav = () => {
     // `list` and `stream` are recreated by the hook each render; key off `client` to avoid loops.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const restoreClient = async () => {
+      if (client || connectingXMTP) {
+        return;
+      }
+
+      if (!walletAddress && !lensProfile?.address) {
+        return;
+      }
+
+      try {
+        await initXMTPClient();
+      } catch (error) {
+        if (!cancelled) {
+          console.warn("XMTP auto-restore failed:", error);
+        }
+      }
+    };
+
+    void restoreClient();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [client, connectingXMTP, initXMTPClient, lensProfile?.address, walletAddress]);
 
   const handleEnable = async () => {
     const toastId = toast.loading(stageLabel.idle);
