@@ -154,7 +154,14 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
       const connectWithSigner = async (identityAddress: string, signerType: "SCW" | "EOA") => {
         const signer = buildSigner(identityAddress, signerType);
-        const directClient = await withTimeout(Client.create(signer, { env: getEnv() }), 30000);
+        const directClient = await withTimeout(
+          Client.create(signer, { env: getEnv(), disableAutoRegister: true }),
+          30000
+        );
+        const isRegistered = await withTimeout(directClient.isRegistered(), 10000);
+        if (!isRegistered) {
+          await withTimeout(directClient.register(), 25000);
+        }
         setClient(directClient);
         return directClient;
       };
