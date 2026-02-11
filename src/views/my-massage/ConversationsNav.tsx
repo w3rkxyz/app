@@ -32,6 +32,8 @@ const ConversationsNav = () => {
   const { createXMTPClient, connectingXMTP, connectStage } = useXMTPClient({
     walletAddress,
     lensAccountAddress: lensProfile?.address,
+    lensProfileId: lensProfile?.id,
+    lensHandle: lensProfile?.handle,
   });
 
   const stopStreamRef = useRef<(() => void) | null>(null);
