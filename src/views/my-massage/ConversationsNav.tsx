@@ -58,6 +58,7 @@ const ConversationsNav = () => {
   const handleEnable = async () => {
     try {
       await createXMTPClient();
+      toast.success("XMTP enabled");
     } catch (error) {
       const message =
         error instanceof Error && error.message
@@ -141,7 +142,8 @@ const ConversationsNav = () => {
             <p className="text-gray-500 text-lg mb-4">Enable Messages</p>
             <button
               onClick={handleEnable}
-              className="px-6 py-2 bg-gray-900 text-white text-sm rounded-full hover:bg-gray-800 transition-colors"
+              disabled={connectingXMTP}
+              className="px-6 py-2 bg-gray-900 text-white text-sm rounded-full hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {connectingXMTP ? "Connecting..." : "Enable"}
             </button>

@@ -108,7 +108,16 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
       const connectWithSigner = async (identityAddress: string, signerType: "SCW" | "EOA") => {
         const signer = buildSigner(identityAddress, signerType);
-        return await withTimeout(initialize({ signer, env: getEnv() }));
+        const initializedClient = await withTimeout(initialize({ signer, env: getEnv() }));
+        if (initializedClient) {
+          setClient(initializedClient);
+          return initializedClient;
+        }
+
+        // Fallback: if context initialization returned undefined (e.g. race), create directly.
+        const directClient = await withTimeout(Client.create(signer, { env: getEnv() }));
+        setClient(directClient);
+        return directClient;
       };
 
       let createdClient: Client | undefined;
