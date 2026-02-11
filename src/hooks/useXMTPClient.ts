@@ -9,7 +9,7 @@ import {
   type EOASigner,
   type Identifier,
 } from "@xmtp/browser-sdk";
-import { hexToBytes } from "viem";
+import { hexToBytes, stringToHex } from "viem";
 import { useSignMessage } from "wagmi";
 import { setError, setInitializing } from "@/redux/xmtp";
 import { RootState } from "@/redux/store";
@@ -38,6 +38,32 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     lensAccountAddress !== undefined &&
     walletAddress !== undefined &&
     lensAccountAddress.toLowerCase() !== walletAddress.toLowerCase();
+
+  const signWithEthereumProvider = useCallback(
+    async (message: string): Promise<string | null> => {
+      if (typeof window === "undefined") {
+        return null;
+      }
+
+      const ethereum = (
+        window as Window & { ethereum?: { request?: (args: any) => Promise<any> } }
+      ).ethereum;
+      if (!ethereum?.request || !walletAddress) {
+        return null;
+      }
+
+      try {
+        const signature = await ethereum.request({
+          method: "personal_sign",
+          params: [stringToHex(message), walletAddress],
+        });
+        return typeof signature === "string" ? signature : null;
+      } catch {
+        return null;
+      }
+    },
+    [walletAddress]
+  );
 
   const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = 45000): Promise<T> => {
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -78,7 +104,16 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
     try {
       const requestWalletSignature = async (message: string): Promise<Uint8Array> => {
-        const signature = await withTimeout(signMessageAsync({ message }), 25000);
+        const wagmiSignature = await withTimeout(signMessageAsync({ message }), 25000).catch(
+          async () => null
+        );
+        const signature =
+          typeof wagmiSignature === "string"
+            ? wagmiSignature
+            : await withTimeout(signWithEthereumProvider(message), 25000);
+        if (!signature) {
+          throw new Error("Wallet signature request failed or was cancelled.");
+        }
         return hexToBytes(signature);
       };
 
@@ -159,6 +194,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     lensAccountAddress,
     setClient,
     signMessageAsync,
+    signWithEthereumProvider,
     useScwSigner,
     walletAddress,
     xmtpAddress,
