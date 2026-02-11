@@ -2,33 +2,25 @@ import Image from "next/image";
 import { toast } from "react-hot-toast";
 import { useDispatch } from "react-redux";
 import { setLensProfile, displayLoginModal } from "@/redux/app";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import getLensAccountData from "@/utils/getLensProfile";
 import { useAccount, useWalletClient } from "wagmi";
 import { Oval } from "react-loader-spinner";
 import { Account, evmAddress, uri } from "@lens-protocol/client";
 import { useLogin, useAccountsAvailable, SessionClient } from "@lens-protocol/react";
-import {
-  canCreateUsername,
-  createAccountWithUsername,
-  fetchAccountsAvailable,
-} from "@lens-protocol/client/actions";
+import { canCreateUsername, createAccountWithUsername } from "@lens-protocol/client/actions";
 import { signMessageWith, handleOperationWith } from "@lens-protocol/client/viem";
 import { client } from "@/client";
 import { jsonToDataURI } from "@/utils/dataUriHelpers";
 import { openAlert, closeAlert } from "@/redux/alerts";
 
-type AvailableAccountItem = {
-  account: Account;
-};
-
 const LENS_TESTNET_CHAIN_ID = 37111;
 const LENS_TESTNET_APP = "0xC75A89145d765c396fd75CbD16380Eb184Bd2ca7";
 
-const getErrorMessage = (error: unknown, fallback: string): string => {
+const getErrMsg = (error: unknown, fallback: string) => {
   if (error && typeof error === "object" && "message" in error) {
     const msg = (error as { message?: unknown }).message;
-    if (typeof msg === "string" && msg.length > 0) {
+    if (typeof msg === "string" && msg.trim().length > 0) {
       return msg;
     }
   }
@@ -42,46 +34,31 @@ export default function LoginForm({ owner }: { owner: string }) {
 
   const [creatingProfile, setCreatingProfile] = useState(false);
   const [sessionClient, setSessionClient] = useState<SessionClient | null>(null);
-  const [handle, setHandle] = useState("");
   const [errorMessage, setErrorMessage] = useState("Sorry, handles cannot start with a number.");
   const [showError, setShowError] = useState(false);
-  const [onboardingLoading, setOnboardingLoading] = useState(false);
-  const [fallbackAccounts, setFallbackAccounts] = useState<AvailableAccountItem[]>([]);
-  const [fallbackLoading, setFallbackLoading] = useState(false);
-  const [fallbackError, setFallbackError] = useState<string | null>(null);
+  const [handle, setHandle] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
+  const [continuing, setContinuing] = useState(false);
+
+  const managedBy = useMemo(
+    () => walletClient?.account.address ?? evmAddress(owner),
+    [walletClient?.account.address, owner]
+  );
 
   const {
     data: availableAccounts,
     loading: accountsLoading,
     error: accountsError,
   } = useAccountsAvailable({
-    managedBy: evmAddress(owner),
+    managedBy,
     includeOwned: true,
   });
 
   const { execute: authenticate, loading: authenticateLoading } = useLogin();
-
   const walletReady = Boolean(walletClient?.account.address);
 
-  const accountItems = useMemo(() => {
-    const hookItems = availableAccounts?.items ?? [];
-    return hookItems.length > 0 ? hookItems : fallbackAccounts;
-  }, [availableAccounts, fallbackAccounts]);
-
-  const loadingProfiles = accountsLoading || fallbackLoading;
-  const noProfiles = walletReady && !loadingProfiles && accountItems.length === 0;
-
-  const accountsErrorMessage = useMemo(() => {
-    if (accountsError) {
-      return getErrorMessage(accountsError, "Could not load your Lens accounts.");
-    }
-    return fallbackError;
-  }, [accountsError, fallbackError]);
-
-  const ensureLensChain = useCallback(async () => {
+  const ensureLensChain = async () => {
     if (!walletClient) {
-      toast.error("Wallet not ready. Please reconnect and try again.");
       return false;
     }
 
@@ -96,7 +73,7 @@ export default function LoginForm({ owner }: { owner: string }) {
     } catch (error: unknown) {
       const err = error as { code?: number };
       if (err?.code !== 4902) {
-        toast.error("Please switch to Lens Chain Testnet to continue.");
+        toast.error("Please switch to Lens Chain Testnet to continue");
         return false;
       }
 
@@ -124,36 +101,55 @@ export default function LoginForm({ owner }: { owner: string }) {
         await walletClient.switchChain({ id: LENS_TESTNET_CHAIN_ID });
         return true;
       } catch {
-        toast.error("Could not add Lens Chain Testnet to your wallet.");
+        toast.error("Could not add Lens Chain Testnet to your wallet");
         return false;
       }
     }
-  }, [walletClient]);
+  };
 
-  const loadAvailableAccounts = useCallback(async () => {
-    setFallbackLoading(true);
-    setFallbackError(null);
-
-    const result = await fetchAccountsAvailable(client, {
-      managedBy: evmAddress(owner),
-      includeOwned: true,
-    });
-
-    if (result.isErr()) {
-      setFallbackAccounts([]);
-      setFallbackError(getErrorMessage(result.error, "Could not load your Lens accounts."));
-      setFallbackLoading(false);
+  const authenticateUser = async () => {
+    if (!walletClient) {
+      setAuthError("Wallet not ready. Reconnect and try again.");
       return;
     }
 
-    setFallbackAccounts(result.value.items as AvailableAccountItem[]);
-    setFallbackLoading(false);
-  }, [owner]);
+    setAuthError(null);
+    setContinuing(true);
 
-  useEffect(() => {
-    if (!walletReady) return;
-    void loadAvailableAccounts();
-  }, [walletReady, loadAvailableAccounts]);
+    try {
+      const canContinue = await ensureLensChain();
+      if (!canContinue) {
+        setContinuing(false);
+        return;
+      }
+
+      const appAddress = process.env.NEXT_PUBLIC_APP_ADDRESS_TESTNET || LENS_TESTNET_APP;
+
+      const authenticated = await client.login({
+        onboardingUser: {
+          app: evmAddress(appAddress),
+          wallet: walletClient.account.address,
+        },
+        signMessage: signMessageWith(walletClient),
+      });
+
+      if (authenticated.isErr()) {
+        const msg = getErrMsg(authenticated.error, "Lens login failed");
+        setAuthError(msg);
+        toast.error(msg);
+        setContinuing(false);
+        return;
+      }
+
+      setSessionClient(authenticated.value);
+    } catch (error: unknown) {
+      const msg = getErrMsg(error, "Lens login failed");
+      setAuthError(msg);
+      toast.error(msg);
+    } finally {
+      setContinuing(false);
+    }
+  };
 
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value;
@@ -170,56 +166,8 @@ export default function LoginForm({ owner }: { owner: string }) {
     }
   };
 
-  const authenticateUser = async () => {
-    setAuthError(null);
-
-    if (!walletClient) {
-      const msg = "Wallet not ready. Reconnect and try again.";
-      setAuthError(msg);
-      toast.error(msg);
-      return;
-    }
-
-    setOnboardingLoading(true);
-
-    try {
-      const canContinue = await ensureLensChain();
-      if (!canContinue) {
-        setOnboardingLoading(false);
-        return;
-      }
-
-      const appAddress = process.env.NEXT_PUBLIC_APP_ADDRESS_TESTNET || LENS_TESTNET_APP;
-
-      const authenticated = await client.login({
-        onboardingUser: {
-          app: evmAddress(appAddress),
-          wallet: walletClient.account.address,
-        },
-        signMessage: signMessageWith(walletClient),
-      });
-
-      if (authenticated.isErr()) {
-        const msg = getErrorMessage(authenticated.error, "Lens authentication failed.");
-        setAuthError(msg);
-        toast.error(msg);
-        setOnboardingLoading(false);
-        return;
-      }
-
-      setSessionClient(authenticated.value);
-      await loadAvailableAccounts();
-    } catch (error: unknown) {
-      const msg = getErrorMessage(error, "Lens authentication failed.");
-      setAuthError(msg);
-      toast.error(msg);
-    } finally {
-      setOnboardingLoading(false);
-    }
-  };
-
   const handleSubmit = async () => {
-    if (!sessionClient || !walletClient || handle.trim() === "") {
+    if (sessionClient === null || handle.trim() === "" || !walletClient) {
       return;
     }
 
@@ -260,6 +208,7 @@ export default function LoginForm({ owner }: { owner: string }) {
 
           setCreatingProfile(false);
           sessionClient.logout();
+
           dispatch(
             openAlert({
               displayAlert: true,
@@ -273,6 +222,7 @@ export default function LoginForm({ owner }: { owner: string }) {
               },
             })
           );
+
           setTimeout(() => {
             window.location.reload();
             dispatch(closeAlert());
@@ -304,7 +254,6 @@ export default function LoginForm({ owner }: { owner: string }) {
 
   const handleSelectAccount = async (account: Account) => {
     if (!walletClient) {
-      toast.error("Wallet not ready. Please reconnect and try again.");
       return;
     }
 
@@ -346,13 +295,18 @@ export default function LoginForm({ owner }: { owner: string }) {
       dispatch(setLensProfile({ profile }));
       dispatch(displayLoginModal({ display: false }));
     } catch (error: unknown) {
-      toast.error(getErrorMessage(error, "Lens account login failed."));
+      const msg = getErrMsg(error, "Lens authentication failed");
+      setAuthError(msg);
+      toast.error(msg);
     }
   };
 
   const handleCloseModal = () => {
     dispatch(displayLoginModal({ display: false }));
   };
+
+  const profileCount = availableAccounts?.items.length ?? 0;
+  const showPrepare = walletReady && !accountsLoading && !availableAccounts && !accountsError;
 
   return (
     <div className="fixed w-screen h-screen top-0 left-0 z-[99] flex items-center justify-center bg-[#80808080]">
@@ -369,65 +323,65 @@ export default function LoginForm({ owner }: { owner: string }) {
           />
         </div>
 
-        <div className="p-[16px] pt-[12px] flex flex-col gap-[10px]">
+        <div className="p-[16px] pt-[12px] flex flex-col gap-[8px]">
           {!walletReady && (
-            <span className="text-[14px] leading-[20px] text-[#444]">
-              Connect your wallet first, then click Login again.
-            </span>
+            <span className="text-[14px] leading-[18px]">Connect your wallet first, then click Login again.</span>
           )}
 
-          {walletReady && loadingProfiles && (
-            <span className="text-[14px] leading-[14.52px] font-medium">Loading your Lens accounts...</span>
+          {accountsLoading && (
+            <span className="text-[14px] leading-[14.52px] font-medium mb-[4px]">Loading...</span>
           )}
 
-          {accountsErrorMessage && walletReady && (
-            <span className="text-[12px] leading-[16px] text-[#FF5555]">{accountsErrorMessage}</span>
-          )}
-
-          {accountItems.length > 0 && (
+          {showPrepare && (
             <>
-              <span className="text-[14px] leading-[14.52px] font-medium">Please sign the message.</span>
-              {accountItems.map((acc, index) => (
-                <div
-                  key={`${acc.account.address}-${index}`}
-                  className="flex gap-[12px] items-center mt-[4px] cursor-pointer"
-                  onClick={() => handleSelectAccount(acc.account)}
-                >
-                  <Image
-                    src={acc.account.metadata?.picture || "https://static.hey.xyz/images/default.png"}
-                    alt="profile pic"
-                    height={40}
-                    width={40}
-                    className="w-[40px] h-[40px] rounded-[8px] border-[1px] border-[#E4E4E7]"
-                  />
-                  <span className="text-[14px] leading-[14.52px] font-medium">
-                    {acc.account.username?.localName || acc.account.address}
-                  </span>
-                </div>
-              ))}
+              <span className="text-[14px] leading-[16px] font-medium">Preparing your Lens login...</span>
+              <button
+                type="button"
+                className="w-full bg-black rounded-[8px] text-white px-4 py-2 text-[14px]"
+                onClick={authenticateUser}
+                disabled={continuing || authenticateLoading}
+              >
+                {continuing || authenticateLoading ? "Waiting for signature..." : "Continue"}
+              </button>
             </>
           )}
 
-          {noProfiles && sessionClient === null && (
+          {accountsError && (
             <>
-              <span className="text-[14px] leading-[16px] font-medium">
-                No Lens profile found for this wallet yet.
+              <span className="text-[12px] leading-[16px] text-[#FF5555]">
+                {getErrMsg(accountsError, "Could not load Lens profiles")}
               </span>
               <button
                 type="button"
                 className="w-full bg-black rounded-[8px] text-white px-4 py-2 text-[14px]"
                 onClick={authenticateUser}
-                disabled={onboardingLoading || authenticateLoading}
+                disabled={continuing || authenticateLoading}
               >
-                {onboardingLoading || authenticateLoading ? "Waiting for signature..." : "Continue"}
+                {continuing || authenticateLoading ? "Retrying..." : "Continue"}
               </button>
             </>
           )}
 
-          {noProfiles && sessionClient !== null && (
+          {availableAccounts && profileCount === 0 && sessionClient === null && walletReady && (
             <>
-              <span className="text-[14px] leading-[14.52px] font-medium mb-[2px]">
-                No Lens profile found, mint yours now.
+              <span className="text-[14px] leading-[14.52px] font-medium mb-[12px]">
+                No Lens profiles found, mint yours now!
+              </span>
+              <button
+                type="button"
+                className="w-full bg-black rounded-[8px] text-white px-4 py-2 text-[14px]"
+                onClick={authenticateUser}
+                disabled={continuing || authenticateLoading}
+              >
+                {continuing || authenticateLoading ? "Waiting for signature..." : "Continue"}
+              </button>
+            </>
+          )}
+
+          {availableAccounts && profileCount === 0 && sessionClient !== null && walletReady && (
+            <>
+              <span className="text-[14px] leading-[14.52px] font-medium mb-[12px]">
+                No Lens profiles found, mint yours now!
               </span>
               <div className="w-[272px] rounded-[8px] bg-[#F5F5F5] p-[3px] pl-[5px] flex items-center gap-[4px] box-border">
                 <Image
@@ -443,7 +397,7 @@ export default function LoginForm({ owner }: { owner: string }) {
                   onChange={handleInput}
                 />
                 {creatingProfile ? (
-                  <div className="w-[24px] h-[24px] bg-white flex items-center rounded-[6px]">
+                  <div className="w-[24px] h-[24px] bg-white flex items-center align-middle rounded-[6px] cursor-pointer">
                     <Oval
                       visible={true}
                       height="20"
@@ -467,23 +421,40 @@ export default function LoginForm({ owner }: { owner: string }) {
                 )}
               </div>
               {showError && (
-                <span className="text-[12px] leading-[14px] text-[#FF5555] font-normal">{errorMessage}</span>
+                <span className="text-[12px] leading-[14px] text-[#FF5555] font-normal mt-[6px]">
+                  {errorMessage}
+                </span>
               )}
             </>
           )}
 
-          {authError && <span className="text-[12px] leading-[16px] text-[#FF5555]">{authError}</span>}
-
-          {walletReady && !loadingProfiles && noProfiles && (
-            <button
-              type="button"
-              className="w-full border border-[#DDDDDD] rounded-[8px] text-[#222] px-4 py-2 text-[14px]"
-              onClick={loadAvailableAccounts}
-              disabled={fallbackLoading}
-            >
-              {fallbackLoading ? "Retrying..." : "Retry account lookup"}
-            </button>
+          {availableAccounts && profileCount > 0 && (
+            <>
+              <span className="text-[14px] leading-[14.52px] font-medium mb-[4px]">
+                Please sign the message.
+              </span>
+              {availableAccounts.items.map((acc, index) => (
+                <div
+                  key={index}
+                  className="flex gap-[12px] items-center mt-[8px] cursor-pointer"
+                  onClick={() => handleSelectAccount(acc.account)}
+                >
+                  <Image
+                    src={acc.account.metadata?.picture || "https://static.hey.xyz/images/default.png"}
+                    alt="profile pic"
+                    height={40}
+                    width={40}
+                    className="w-[40px] h-[40px] rounded-[8px] border-[1px] border-[#E4E4E7]"
+                  />
+                  <span className="text-[14px] leading-[14.52px] font-medium">
+                    {acc.account.username?.localName || acc.account.address}
+                  </span>
+                </div>
+              ))}
+            </>
           )}
+
+          {authError && <span className="text-[12px] leading-[16px] text-[#FF5555]">{authError}</span>}
         </div>
       </div>
     </div>
