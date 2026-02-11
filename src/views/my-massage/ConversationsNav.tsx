@@ -10,6 +10,7 @@ import { RootState } from "@/redux/store";
 import { useSelector } from "react-redux";
 import { useXMTP } from "@/app/XMTPContext";
 import { useXMTPClient } from "@/hooks/useXMTPClient";
+import toast from "react-hot-toast";
 
 const ConversationsNav = () => {
   const { list, conversations, stream, activeConversation, loading } = useConversations();
@@ -58,6 +59,11 @@ const ConversationsNav = () => {
     try {
       await createXMTPClient();
     } catch (error) {
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Failed to connect XMTP. Please retry.";
+      toast.error(message);
       console.error("Failed to connect XMTP:", error);
     }
   };

@@ -1,10 +1,11 @@
 // Create a client using keys returned from getKeys
 const ENCODING = "binary";
 
-const DEFAULT_XMTP_ENV = "dev";
+const DEFAULT_XMTP_ENV = "production";
 
 export const getEnv = (): "dev" | "production" | "local" => {
-  const configuredEnv = process.env.NEXT_PUBLIC_XMTP_ENV;
+  const configuredEnv =
+    process.env.NEXT_PUBLIC_XMTP_ENV ?? process.env.NEXT_PUBLIC_XMTP_ENVIRONMENT;
   if (
     configuredEnv === "local" ||
     configuredEnv === "dev" ||
