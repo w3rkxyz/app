@@ -10,7 +10,7 @@ import {
   type Identifier,
 } from "@xmtp/browser-sdk";
 import { hexToBytes } from "viem";
-import { useSignMessage, useWalletClient } from "wagmi";
+import { useSignMessage } from "wagmi";
 import { setError, setInitializing } from "@/redux/xmtp";
 import { RootState } from "@/redux/store";
 import { useXMTP } from "@/app/XMTPContext";
@@ -29,7 +29,6 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
   const xmtpState = useSelector((state: RootState) => state.xmtp);
   const [connectingXMTP, setConnectingXMTP] = useState(false);
   const { signMessageAsync } = useSignMessage();
-  const { data: walletClient } = useWalletClient();
   const walletAddress = params?.walletAddress;
   const lensAccountAddress = params?.lensAccountAddress;
 
@@ -78,6 +77,16 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     dispatch(setError(null));
 
     try {
+      const requestWalletSignature = async (message: string): Promise<Uint8Array> => {
+        const signature = await withTimeout(signMessageAsync({ message }), 25000);
+        return hexToBytes(signature);
+      };
+
+      // Preflight signature to guarantee wallet prompt appears before XMTP initialization.
+      await requestWalletSignature(
+        `Enable XMTP on w3rk\nWallet: ${walletAddress}\nTime: ${new Date().toISOString()}`
+      );
+
       const buildSigner = (identityAddress: string, signerType: "SCW" | "EOA") => {
         const accountIdentifier: Identifier = {
           identifier: identityAddress.toLowerCase(),
@@ -87,16 +96,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         const baseSigner = {
           getIdentifier: () => accountIdentifier,
           signMessage: async (message: string): Promise<Uint8Array> => {
-            const signature = walletClient
-              ? await withTimeout(
-                  walletClient.signMessage({
-                    account: walletClient.account,
-                    message,
-                  }),
-                  25000
-                )
-              : await withTimeout(signMessageAsync({ message }), 25000);
-            return hexToBytes(signature);
+            return await requestWalletSignature(message);
           },
         };
 
@@ -119,7 +119,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
       const connectWithSigner = async (identityAddress: string, signerType: "SCW" | "EOA") => {
         const signer = buildSigner(identityAddress, signerType);
-        const directClient = await withTimeout(Client.create(signer, { env: getEnv() }));
+        const directClient = await withTimeout(Client.create(signer, { env: getEnv() }), 30000);
         setClient(directClient);
         return directClient;
       };
@@ -157,7 +157,6 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     client,
     dispatch,
     lensAccountAddress,
-    walletClient,
     setClient,
     signMessageAsync,
     useScwSigner,
