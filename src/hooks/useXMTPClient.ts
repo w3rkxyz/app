@@ -207,9 +207,22 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
             8000,
             "Restoring XMTP session timed out."
           );
-          setClient(builtClient);
-          updateStage("connected");
-          return builtClient;
+
+          updateStage("check_registration");
+          const isRegistered = await withTimeout(
+            builtClient.isRegistered(),
+            10000,
+            "Checking XMTP registration timed out."
+          );
+
+          if (isRegistered) {
+            setClient(builtClient);
+            updateStage("connected");
+            return builtClient;
+          }
+
+          // Build can succeed for an unregistered identity. Fall through to signer-based create.
+          builtClient.close();
         } catch (buildError) {
           lastError = buildError;
           console.warn(
@@ -228,9 +241,21 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
             8000,
             "Restoring XMTP session timed out."
           );
-          setClient(builtFallbackClient);
-          updateStage("connected");
-          return builtFallbackClient;
+
+          updateStage("check_registration");
+          const isRegistered = await withTimeout(
+            builtFallbackClient.isRegistered(),
+            10000,
+            "Checking XMTP registration timed out."
+          );
+
+          if (isRegistered) {
+            setClient(builtFallbackClient);
+            updateStage("connected");
+            return builtFallbackClient;
+          }
+
+          builtFallbackClient.close();
         } catch (fallbackError) {
           lastError = fallbackError;
           console.warn(
@@ -271,6 +296,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           const directClient = await withTimeout(
             Client.create(signer, {
               env,
+              disableAutoRegister: true,
             }),
             120000,
             "Creating XMTP client timed out."
