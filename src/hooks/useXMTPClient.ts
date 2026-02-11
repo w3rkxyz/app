@@ -10,7 +10,7 @@ import {
   type Identifier,
 } from "@xmtp/browser-sdk";
 import { hexToBytes, stringToHex } from "viem";
-import { useChainId, useSignMessage, useWalletClient } from "wagmi";
+import { useSignMessage, useWalletClient } from "wagmi";
 import { setError, setInitializing } from "@/redux/xmtp";
 import { RootState } from "@/redux/store";
 import { useXMTP } from "@/app/XMTPContext";
@@ -22,6 +22,7 @@ type UseXMTPClientParams = {
 };
 
 const LENS_TESTNET_CHAIN_ID = 37111n;
+const LENS_MAINNET_CHAIN_ID = 232n;
 
 export type XMTPConnectStage =
   | "idle"
@@ -46,7 +47,6 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
   const [connectStage, setConnectStage] = useState<XMTPConnectStage>("idle");
   const { signMessageAsync } = useSignMessage();
   const { data: walletClient } = useWalletClient();
-  const chainId = useChainId();
   const walletAddress = params?.walletAddress;
   const lensAccountAddress = params?.lensAccountAddress;
 
@@ -174,15 +174,12 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         return hexToBytes(signature);
       };
 
-      // Use configured env first. Keep one fallback in case project env drifted.
-      const envCandidates: Array<"dev" | "production" | "local"> = [];
-      const primaryEnv = getEnv();
-      envCandidates.push(primaryEnv);
-      if (primaryEnv === "dev") {
-        envCandidates.push("production");
-      } else if (primaryEnv === "production") {
-        envCandidates.push("dev");
-      }
+      // Do not mix XMTP environments during a single enable attempt.
+      const env = getEnv();
+      const lensChainId =
+        env === "production"
+          ? LENS_MAINNET_CHAIN_ID
+          : BigInt(process.env.NEXT_PUBLIC_LENS_CHAIN_ID || Number(LENS_TESTNET_CHAIN_ID));
 
       let lastError: unknown;
 
@@ -200,41 +197,37 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           : null;
 
       updateStage("restore_session");
-      for (const env of envCandidates) {
-        try {
-          const builtClient = await withTimeout(
-            Client.build(primaryIdentifier, { env }),
-            8000,
-            "Restoring XMTP session timed out."
-          );
+      try {
+        const builtClient = await withTimeout(
+          Client.build(primaryIdentifier, { env }),
+          8000,
+          "Restoring XMTP session timed out."
+        );
 
-          updateStage("check_registration");
-          const isRegistered = await withTimeout(
-            builtClient.isRegistered(),
-            10000,
-            "Checking XMTP registration timed out."
-          );
+        updateStage("check_registration");
+        const isRegistered = await withTimeout(
+          builtClient.isRegistered(),
+          10000,
+          "Checking XMTP registration timed out."
+        );
 
-          if (isRegistered) {
-            setClient(builtClient);
-            updateStage("connected");
-            return builtClient;
-          }
-
-          // Build can succeed for an unregistered identity. Fall through to signer-based create.
-          builtClient.close();
-        } catch (buildError) {
-          lastError = buildError;
-          console.warn(
-            `XMTP build failed for ${primaryIdentifier.identifier} on ${env}.`,
-            buildError
-          );
+        if (isRegistered) {
+          setClient(builtClient);
+          updateStage("connected");
+          return builtClient;
         }
 
-        if (!fallbackIdentifier) {
-          continue;
-        }
+        // Build can succeed for an unregistered identity. Fall through to signer-based create.
+        builtClient.close();
+      } catch (buildError) {
+        lastError = buildError;
+        console.warn(
+          `XMTP build failed for ${primaryIdentifier.identifier} on ${env}.`,
+          buildError
+        );
+      }
 
+      if (fallbackIdentifier) {
         try {
           const builtFallbackClient = await withTimeout(
             Client.build(fallbackIdentifier, { env }),
@@ -267,6 +260,14 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
       updateStage("build_failed_fallback_create");
 
+      // Preflight signature to ensure wallet prompt path is available before XMTP registration.
+      updateStage("prompt_signature");
+      await withTimeout(
+        requestWalletSignature(`Enable XMTP for w3rk (${xmtpAddress})`),
+        45000,
+        "Wallet signature timed out."
+      );
+
       const baseSigner = {
         getIdentifier: () =>
           ({
@@ -283,47 +284,45 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         ? {
             type: "SCW",
             ...baseSigner,
-            getChainId: () => BigInt(chainId || walletClient?.chain?.id || Number(LENS_TESTNET_CHAIN_ID)),
+            getChainId: () => lensChainId,
           }
         : {
             type: "EOA",
             ...baseSigner,
           };
 
-      for (const env of envCandidates) {
-        try {
-          updateStage("create_client");
-          const directClient = await withTimeout(
-            Client.create(signer, {
-              env,
-              disableAutoRegister: true,
-            }),
-            120000,
-            "Creating XMTP client timed out."
-          );
+      try {
+        updateStage("create_client");
+        const directClient = await withTimeout(
+          Client.create(signer, {
+            env,
+            disableAutoRegister: true,
+          }),
+          120000,
+          "Creating XMTP client timed out."
+        );
 
-          updateStage("check_registration");
-          const isRegistered = await withTimeout(
-            directClient.isRegistered(),
-            15000,
-            "Checking XMTP registration timed out."
-          );
+        updateStage("check_registration");
+        const isRegistered = await withTimeout(
+          directClient.isRegistered(),
+          15000,
+          "Checking XMTP registration timed out."
+        );
 
-          if (!isRegistered) {
-            updateStage("register_account");
-            await withTimeout(directClient.register(), 90000, "XMTP registration timed out.");
-          }
-
-          setClient(directClient);
-          updateStage("connected");
-          return directClient;
-        } catch (createError) {
-          lastError = createError;
-          console.warn(
-            `XMTP create failed for ${xmtpAddress} (${isScwIdentity ? "SCW" : "EOA"}) on ${env}.`,
-            createError
-          );
+        if (!isRegistered) {
+          updateStage("register_account");
+          await withTimeout(directClient.register(), 90000, "XMTP registration timed out.");
         }
+
+        setClient(directClient);
+        updateStage("connected");
+        return directClient;
+      } catch (createError) {
+        lastError = createError;
+        console.warn(
+          `XMTP create failed for ${xmtpAddress} (${isScwIdentity ? "SCW" : "EOA"}) on ${env}.`,
+          createError
+        );
       }
 
       if (lastError instanceof Error && lastError.message) {
@@ -346,7 +345,6 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     setClient,
     signMessageAsync,
     walletClient,
-    chainId,
     signWithEthereumProvider,
     walletAddress,
     isScwIdentity,
