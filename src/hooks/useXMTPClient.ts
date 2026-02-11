@@ -25,7 +25,7 @@ type UseXMTPClientParams = {
 
 export function useXMTPClient(params?: UseXMTPClientParams) {
   const dispatch = useDispatch();
-  const { client, initialize, setClient } = useXMTP();
+  const { client, setClient } = useXMTP();
   const xmtpState = useSelector((state: RootState) => state.xmtp);
   const [connectingXMTP, setConnectingXMTP] = useState(false);
   const { signMessageAsync } = useSignMessage();
@@ -59,6 +59,10 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
    * Create and connect to an XMTP client using a signer
    */
   const createXMTPClient = useCallback(async () => {
+    if (client) {
+      return client;
+    }
+
     if (!xmtpAddress) {
       throw new Error("Missing XMTP identity address.");
     }
@@ -108,13 +112,6 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
       const connectWithSigner = async (identityAddress: string, signerType: "SCW" | "EOA") => {
         const signer = buildSigner(identityAddress, signerType);
-        const initializedClient = await withTimeout(initialize({ signer, env: getEnv() }));
-        if (initializedClient) {
-          setClient(initializedClient);
-          return initializedClient;
-        }
-
-        // Fallback: if context initialization returned undefined (e.g. race), create directly.
         const directClient = await withTimeout(Client.create(signer, { env: getEnv() }));
         setClient(directClient);
         return directClient;
@@ -150,8 +147,8 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       setConnectingXMTP(false);
     }
   }, [
+    client,
     dispatch,
-    initialize,
     lensAccountAddress,
     setClient,
     signMessageAsync,
