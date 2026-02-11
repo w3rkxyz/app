@@ -103,90 +103,108 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     dispatch(setError(null));
 
     try {
-      const requestWalletSignature = async (message: string): Promise<Uint8Array> => {
-        const wagmiSignature = await withTimeout(signMessageAsync({ message }), 25000).catch(
-          async () => null
-        );
-        const signature =
-          typeof wagmiSignature === "string"
-            ? wagmiSignature
-            : await withTimeout(signWithEthereumProvider(message), 25000);
-        if (!signature) {
-          throw new Error("Wallet signature request failed or was cancelled.");
-        }
-        return hexToBytes(signature);
-      };
+      const createdClient = await withTimeout(
+        (async () => {
+          const requestWalletSignature = async (message: string): Promise<Uint8Array> => {
+            const wagmiSignature = await withTimeout(signMessageAsync({ message }), 25000).catch(
+              async () => null
+            );
+            const signature =
+              typeof wagmiSignature === "string"
+                ? wagmiSignature
+                : await withTimeout(signWithEthereumProvider(message), 25000);
+            if (!signature) {
+              throw new Error("Wallet signature request failed or was cancelled.");
+            }
+            return hexToBytes(signature);
+          };
 
-      // Preflight signature to guarantee wallet prompt appears before XMTP initialization.
-      await requestWalletSignature(
-        `Enable XMTP on w3rk\nWallet: ${walletAddress}\nTime: ${new Date().toISOString()}`
+          // Preflight signature to guarantee wallet prompt appears before XMTP initialization.
+          await requestWalletSignature(
+            `Enable XMTP on w3rk\nWallet: ${walletAddress}\nTime: ${new Date().toISOString()}`
+          );
+
+          // Fast-path for existing XMTP users: rebuild from identifier without extra registration flow.
+          try {
+            const builtClient = await withTimeout(
+              Client.build(
+                {
+                  identifier: xmtpAddress,
+                  identifierKind: IdentifierKind.Ethereum,
+                },
+                { env: getEnv() }
+              ),
+              15000
+            );
+            setClient(builtClient);
+            return builtClient;
+          } catch (buildError) {
+            console.warn("XMTP build failed, falling back to create flow.", buildError);
+          }
+
+          const buildSigner = (identityAddress: string, signerType: "SCW" | "EOA") => {
+            const accountIdentifier: Identifier = {
+              identifier: identityAddress.toLowerCase(),
+              identifierKind: IdentifierKind.Ethereum,
+            };
+
+            const baseSigner = {
+              getIdentifier: () => accountIdentifier,
+              signMessage: async (message: string): Promise<Uint8Array> => {
+                return await requestWalletSignature(message);
+              },
+            };
+
+            if (signerType === "SCW") {
+              const scwSigner: SCWSigner = {
+                type: "SCW",
+                ...baseSigner,
+                // Lens account verification must resolve on Lens Testnet even if wallet is currently on another chain.
+                getChainId: () => LENS_TESTNET_CHAIN_ID,
+              };
+              return scwSigner;
+            }
+
+            const eoaSigner: EOASigner = {
+              type: "EOA",
+              ...baseSigner,
+            };
+            return eoaSigner;
+          };
+
+          const connectWithSigner = async (identityAddress: string, signerType: "SCW" | "EOA") => {
+            const signer = buildSigner(identityAddress, signerType);
+            const directClient = await withTimeout(
+              Client.create(signer, { env: getEnv(), disableAutoRegister: true }),
+              30000
+            );
+            const isRegistered = await withTimeout(directClient.isRegistered(), 10000);
+            if (!isRegistered) {
+              await withTimeout(directClient.register(), 25000);
+            }
+            setClient(directClient);
+            return directClient;
+          };
+
+          if (walletAddress) {
+            try {
+              return await connectWithSigner(walletAddress, "EOA");
+            } catch (eoaError) {
+              console.warn("EOA XMTP init failed.", eoaError);
+              if (useScwSigner && lensAccountAddress) {
+                console.warn("Retrying XMTP init with Lens SCW identity.");
+                return await connectWithSigner(lensAccountAddress, "SCW");
+              }
+              throw eoaError;
+            }
+          }
+
+          throw new Error("XMTP client was not created.");
+        })(),
+        65000
       );
 
-      const buildSigner = (identityAddress: string, signerType: "SCW" | "EOA") => {
-        const accountIdentifier: Identifier = {
-          identifier: identityAddress.toLowerCase(),
-          identifierKind: IdentifierKind.Ethereum,
-        };
-
-        const baseSigner = {
-          getIdentifier: () => accountIdentifier,
-          signMessage: async (message: string): Promise<Uint8Array> => {
-            return await requestWalletSignature(message);
-          },
-        };
-
-        if (signerType === "SCW") {
-          const scwSigner: SCWSigner = {
-            type: "SCW",
-            ...baseSigner,
-            // Lens account verification must resolve on Lens Testnet even if wallet is currently on another chain.
-            getChainId: () => LENS_TESTNET_CHAIN_ID,
-          };
-          return scwSigner;
-        }
-
-        const eoaSigner: EOASigner = {
-          type: "EOA",
-          ...baseSigner,
-        };
-        return eoaSigner;
-      };
-
-      const connectWithSigner = async (identityAddress: string, signerType: "SCW" | "EOA") => {
-        const signer = buildSigner(identityAddress, signerType);
-        const directClient = await withTimeout(
-          Client.create(signer, { env: getEnv(), disableAutoRegister: true }),
-          30000
-        );
-        const isRegistered = await withTimeout(directClient.isRegistered(), 10000);
-        if (!isRegistered) {
-          await withTimeout(directClient.register(), 25000);
-        }
-        setClient(directClient);
-        return directClient;
-      };
-
-      let createdClient: Client | undefined;
-
-      if (walletAddress) {
-        try {
-          createdClient = await connectWithSigner(walletAddress, "EOA");
-        } catch (eoaError) {
-          console.warn("EOA XMTP init failed.", eoaError);
-          if (useScwSigner && lensAccountAddress) {
-            console.warn("Retrying XMTP init with Lens SCW identity.");
-            createdClient = await connectWithSigner(lensAccountAddress, "SCW");
-          } else {
-            throw eoaError;
-          }
-        }
-      }
-
-      if (createdClient) {
-        return createdClient;
-      }
-
-      throw new Error("XMTP client was not created.");
+      return createdClient;
     } catch (error) {
       dispatch(setError(error as Error));
       setClient(undefined);
