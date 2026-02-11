@@ -9,7 +9,7 @@ import {
   type EOASigner,
   type Identifier,
 } from "@xmtp/browser-sdk";
-import { hexToBytes, stringToHex } from "viem";
+import { hexToBytes, keccak256, stringToHex, type Address } from "viem";
 import { useSignMessage, useWalletClient } from "wagmi";
 import { setError, setInitializing } from "@/redux/xmtp";
 import { RootState } from "@/redux/store";
@@ -25,6 +25,11 @@ type UseXMTPClientParams = {
 
 const LENS_TESTNET_CHAIN_ID = 37111n;
 const LENS_MAINNET_CHAIN_ID = 232n;
+const XMTP_API_URLS = {
+  local: "http://localhost:5557",
+  dev: "https://api.dev.xmtp.network:5558",
+  production: "https://api.production.xmtp.network:5558",
+} as const;
 
 export type XMTPConnectStage =
   | "idle"
@@ -60,6 +65,12 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     Boolean(lensAccountAddress) &&
     Boolean(walletAddress) &&
     lensAccountAddress!.toLowerCase() !== walletAddress!.toLowerCase();
+  const walletClientAccountAddress = walletClient?.account?.address?.toLowerCase();
+  const expectedSigningAddress = walletAddress?.toLowerCase() ?? null;
+  const actualWalletClientAddress = walletClientAccountAddress ?? null;
+  const signingAddress = (walletAddress ?? walletClient?.account?.address ?? null) as
+    | Address
+    | null;
 
   const logDebug = useCallback(
     (event: string, details?: Record<string, unknown>) => {
@@ -80,6 +91,8 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
   const logError = useCallback(
     (event: string, error: unknown, details?: Record<string, unknown>) => {
       const asError = error instanceof Error ? error : null;
+      const asObject =
+        typeof error === "object" && error !== null ? (error as Record<string, unknown>) : null;
       console.error("[XMTP_DEBUG_ERROR]", {
         event,
         walletAddress: walletAddress?.toLowerCase() ?? null,
@@ -91,6 +104,10 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         errorName: asError?.name ?? null,
         errorMessage: asError?.message ?? String(error),
         errorStack: asError?.stack ?? null,
+        errorCause: asError?.cause ?? asObject?.cause ?? null,
+        errorCode: asObject?.code ?? null,
+        errorDetails: asObject?.details ?? null,
+        errorContext: asObject?.context ?? null,
         rawError: error,
         ...details,
       });
@@ -99,7 +116,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
   );
 
   const signWithEthereumProvider = useCallback(
-    async (message: string): Promise<string | null> => {
+    async (message: string, accountAddress: Address | null): Promise<string | null> => {
       if (typeof window === "undefined") {
         return null;
       }
@@ -107,21 +124,21 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       const ethereum = (
         window as Window & { ethereum?: { request?: (args: any) => Promise<any> } }
       ).ethereum;
-      if (!ethereum?.request || !walletAddress) {
+      if (!ethereum?.request || !accountAddress) {
         return null;
       }
 
       try {
         const signature = await ethereum.request({
           method: "personal_sign",
-          params: [stringToHex(message), walletAddress],
+          params: [stringToHex(message), accountAddress],
         });
         return typeof signature === "string" ? signature : null;
       } catch {
         return null;
       }
     },
-    [walletAddress]
+    []
   );
 
   const withTimeout = async <T,>(
@@ -176,18 +193,29 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     dispatch(setError(null));
 
     try {
-      const requestWalletSignature = async (message: string): Promise<Uint8Array> => {
-        logDebug("signature:request:start", { messagePreview: message.slice(0, 120) });
+      const requestWalletSignature = async (
+        message: string,
+        source: "preflight" | "xmtp_signer" = "xmtp_signer"
+      ): Promise<Uint8Array> => {
+        const messageHash = keccak256(stringToHex(message));
+        logDebug("signature:request:start", {
+          source,
+          message,
+          messageHash,
+          messagePreview: message.slice(0, 200),
+          expectedSignerAddress: expectedSigningAddress,
+          actualWalletClientAddress,
+        });
         const walletClientSignature = await withTimeout(
           (async () => {
-            if (!walletClient?.account) {
+            if (!walletClient) {
               logDebug("signature:walletClient:missing_account");
               return null;
             }
             try {
               logDebug("signature:walletClient:sign:start");
               return await walletClient.signMessage({
-                account: walletClient.account,
+                account: signingAddress ?? walletClient.account,
                 message,
               });
             } catch {
@@ -217,7 +245,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
             : await withTimeout(
                 (async () => {
                   logDebug("signature:provider:sign:start");
-                  return signWithEthereumProvider(message);
+                  return signWithEthereumProvider(message, signingAddress);
                 })(),
                 30000,
                 "Wallet signature timed out."
@@ -226,20 +254,54 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           logError("signature:request:missing_signature", "No signature returned");
           throw new Error("Wallet signature request failed or was cancelled.");
         }
-        logDebug("signature:request:success", { signatureLength: signature.length });
+        logDebug("signature:request:success", {
+          source,
+          messageHash,
+          signatureLength: signature.length,
+        });
         return hexToBytes(signature);
       };
 
       // Do not mix XMTP environments during a single enable attempt.
-      const env = getEnv();
+      // If XMTP env is not explicitly configured, infer it from active Lens chain.
+      const configuredEnvRaw =
+        process.env.NEXT_PUBLIC_XMTP_ENV ?? process.env.NEXT_PUBLIC_XMTP_ENVIRONMENT;
+      const fallbackEnv = getEnv();
+      const walletChainId =
+        typeof walletClient?.chain?.id === "number" ? BigInt(walletClient.chain.id) : null;
+      const configuredLensChainId =
+        process.env.NEXT_PUBLIC_LENS_CHAIN_ID &&
+        Number.isFinite(Number(process.env.NEXT_PUBLIC_LENS_CHAIN_ID))
+          ? BigInt(process.env.NEXT_PUBLIC_LENS_CHAIN_ID)
+          : null;
       const lensChainId =
-        env === "production"
-          ? LENS_MAINNET_CHAIN_ID
-          : BigInt(process.env.NEXT_PUBLIC_LENS_CHAIN_ID || Number(LENS_TESTNET_CHAIN_ID));
+        walletChainId ??
+        configuredLensChainId ??
+        (fallbackEnv === "production" ? LENS_MAINNET_CHAIN_ID : LENS_TESTNET_CHAIN_ID);
+      const env: "local" | "dev" | "production" =
+        configuredEnvRaw === "local" ||
+        configuredEnvRaw === "dev" ||
+        configuredEnvRaw === "production"
+          ? configuredEnvRaw
+          : lensChainId === LENS_MAINNET_CHAIN_ID
+            ? "production"
+            : "dev";
+      const lensRpcFromWallet = walletClient?.chain?.rpcUrls?.default?.http?.[0] ?? null;
+      const lensPublicRpcFromWallet = walletClient?.chain?.rpcUrls?.public?.http?.[0] ?? null;
+      const xmtpApiUrl = XMTP_API_URLS[env];
 
       logDebug("config:resolved", {
         env,
         chainId: lensChainId.toString(),
+        xmtpApiUrl,
+        lensRpcFromWallet,
+        lensPublicRpcFromWallet,
+        configuredEnvRaw: configuredEnvRaw ?? null,
+        walletChainId: walletChainId?.toString() ?? null,
+        configuredLensChainId: configuredLensChainId?.toString() ?? null,
+        expectedSignerAddress,
+        actualWalletClientAddress,
+        xmtpIdentifierAddress: xmtpAddress,
       });
 
       let lastError: unknown;
@@ -340,7 +402,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       updateStage("prompt_signature");
       logDebug("preflight_signature:start");
       await withTimeout(
-        requestWalletSignature(`Enable XMTP for w3rk (${xmtpAddress})`),
+        requestWalletSignature(`Enable XMTP for w3rk (${xmtpAddress})`, "preflight"),
         45000,
         "Wallet signature timed out."
       );
@@ -354,7 +416,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           }) as Identifier,
         signMessage: async (message: string): Promise<Uint8Array> => {
           updateStage("prompt_signature");
-          return await requestWalletSignature(message);
+          return await requestWalletSignature(message, "xmtp_signer");
         },
       };
 
@@ -374,6 +436,9 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         signerChainId: signer.type === "SCW" ? lensChainId.toString() : null,
       });
 
+      let failedMethod: "Client.create" | "client.isRegistered" | "client.register" =
+        "Client.create";
+
       try {
         updateStage("create_client");
         logDebug("create:start", { env, disableAutoRegister: true });
@@ -389,6 +454,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
         updateStage("check_registration");
         logDebug("create:isRegistered:start");
+        failedMethod = "client.isRegistered";
         const isRegistered = await withTimeout(
           directClient.isRegistered(),
           15000,
@@ -398,7 +464,15 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
         if (!isRegistered) {
           updateStage("register_account");
-          logDebug("create:register:start");
+          failedMethod = "client.register";
+          logDebug("create:register:start", {
+            registerValidationChainId: lensChainId.toString(),
+            registerValidationRpc: lensRpcFromWallet ?? lensPublicRpcFromWallet,
+            xmtpEnv: env,
+            expectedSignerAddress,
+            actualWalletClientAddress,
+            xmtpIdentifierAddress: xmtpAddress,
+          });
           await withTimeout(directClient.register(), 90000, "XMTP registration timed out.");
           logDebug("create:register:success");
         }
@@ -410,6 +484,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       } catch (createError) {
         lastError = createError;
         logError("create:failed", createError, {
+          failedMethod,
           env,
           signerType: signer.type,
           signerChainId: signer.type === "SCW" ? lensChainId.toString() : null,
@@ -449,6 +524,9 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     xmtpAddress,
     logDebug,
     logError,
+    expectedSigningAddress,
+    actualWalletClientAddress,
+    signingAddress,
   ]);
 
   /**
