@@ -149,11 +149,6 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
             return hexToBytes(signature);
           };
 
-          // Preflight signature to guarantee wallet prompt appears before XMTP initialization.
-          await requestWalletSignature(
-            `Enable XMTP on w3rk\nWallet: ${walletAddress}\nTime: ${new Date().toISOString()}`
-          );
-
           const envCandidates: Array<"dev" | "production" | "local"> = [];
           const primaryEnv = getEnv();
           envCandidates.push(primaryEnv);
@@ -233,7 +228,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
               try {
                 const directClient = await withTimeout(
                   Client.create(signer, { env, disableAutoRegister: true }),
-                  15000,
+                  45000,
                   "Creating XMTP client timed out."
                 );
 
@@ -262,7 +257,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
           throw new Error("Creating XMTP client timed out.");
         })(),
-        90000
+        120000
       );
 
       return createdClient;
