@@ -12,12 +12,24 @@ import { useXMTP } from "@/app/XMTPContext";
 import { useXMTPClient } from "@/hooks/useXMTPClient";
 import toast from "react-hot-toast";
 
+const stageLabel: Record<string, string> = {
+  idle: "Preparing XMTP...",
+  prompt_signature: "Check your wallet to sign",
+  restore_session: "Restoring XMTP session...",
+  build_failed_fallback_create: "Session restore failed, creating client...",
+  create_client: "Creating XMTP client...",
+  check_registration: "Checking XMTP registration...",
+  register_account: "Registering XMTP account...",
+  connected: "XMTP connected",
+  failed: "XMTP connection failed",
+};
+
 const ConversationsNav = () => {
   const { list, conversations, stream, activeConversation, loading } = useConversations();
   const { client } = useXMTP();
   const { address: walletAddress } = useAccount();
   const lensProfile = useSelector((state: RootState) => state.app.user);
-  const { createXMTPClient, connectingXMTP } = useXMTPClient({
+  const { createXMTPClient, connectingXMTP, connectStage } = useXMTPClient({
     walletAddress,
     lensAccountAddress: lensProfile?.address,
   });
@@ -56,9 +68,22 @@ const ConversationsNav = () => {
   }, [client]);
 
   const handleEnable = async () => {
-    const toastId = toast.loading("Check your wallet to enable XMTP");
+    const toastId = toast.loading(stageLabel.idle);
     try {
-      await createXMTPClient();
+      await createXMTPClient({
+        onStage: stage => {
+          const message = stageLabel[stage] ?? "Connecting XMTP...";
+          if (stage === "connected") {
+            toast.success(message, { id: toastId });
+            return;
+          }
+          if (stage === "failed") {
+            toast.error(message, { id: toastId });
+            return;
+          }
+          toast.loading(message, { id: toastId });
+        },
+      });
       toast.success("XMTP enabled", { id: toastId });
     } catch (error) {
       const message =
@@ -148,6 +173,9 @@ const ConversationsNav = () => {
             >
               {connectingXMTP ? "Connecting..." : "Enable"}
             </button>
+            {connectingXMTP && (
+              <p className="text-xs text-gray-500 mt-2">{stageLabel[connectStage] ?? "Connecting..."}</p>
+            )}
           </div>
         </div>
       )}

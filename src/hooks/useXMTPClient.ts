@@ -5,6 +5,7 @@ import { useCallback, useState } from "react";
 import {
   Client,
   IdentifierKind,
+  type EOASigner,
   type Identifier,
 } from "@xmtp/browser-sdk";
 import { hexToBytes, stringToHex } from "viem";
@@ -19,11 +20,27 @@ type UseXMTPClientParams = {
   lensAccountAddress?: string;
 };
 
+export type XMTPConnectStage =
+  | "idle"
+  | "prompt_signature"
+  | "restore_session"
+  | "build_failed_fallback_create"
+  | "create_client"
+  | "check_registration"
+  | "register_account"
+  | "connected"
+  | "failed";
+
+type XMTPConnectOptions = {
+  onStage?: (stage: XMTPConnectStage) => void;
+};
+
 export function useXMTPClient(params?: UseXMTPClientParams) {
   const dispatch = useDispatch();
   const { client, setClient } = useXMTP();
   const xmtpState = useSelector((state: RootState) => state.xmtp);
   const [connectingXMTP, setConnectingXMTP] = useState(false);
+  const [connectStage, setConnectStage] = useState<XMTPConnectStage>("idle");
   const { signMessageAsync } = useSignMessage();
   const walletAddress = params?.walletAddress;
 
@@ -56,11 +73,15 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     [walletAddress]
   );
 
-  const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = 45000): Promise<T> => {
+  const withTimeout = async <T,>(
+    promise: Promise<T>,
+    timeoutMs = 45000,
+    timeoutMessage = "XMTP connection timed out. Please retry."
+  ): Promise<T> => {
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     const timeoutPromise = new Promise<T>((_, reject) => {
       timeoutId = setTimeout(() => {
-        reject(new Error("XMTP connection timed out. Please retry."));
+        reject(new Error(timeoutMessage));
       }, timeoutMs);
     });
 
@@ -76,8 +97,14 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
   /**
    * Create and connect to an XMTP client using a signer
    */
-  const createXMTPClient = useCallback(async () => {
+  const createXMTPClient = useCallback(async (options?: XMTPConnectOptions) => {
+    const updateStage = (stage: XMTPConnectStage) => {
+      setConnectStage(stage);
+      options?.onStage?.(stage);
+    };
+
     if (client) {
+      updateStage("connected");
       return client;
     }
 
@@ -90,20 +117,28 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     }
 
     setConnectingXMTP(true);
+    updateStage("idle");
     dispatch(setInitializing(true));
     dispatch(setError(null));
 
     try {
       const createdClient = await withTimeout(
         (async () => {
+          updateStage("prompt_signature");
           const requestWalletSignature = async (message: string): Promise<Uint8Array> => {
-            const wagmiSignature = await withTimeout(signMessageAsync({ message }), 25000).catch(
-              async () => null
-            );
+            const wagmiSignature = await withTimeout(
+              signMessageAsync({ message }),
+              25000,
+              "Wallet signature timed out."
+            ).catch(async () => null);
             const signature =
               typeof wagmiSignature === "string"
                 ? wagmiSignature
-                : await withTimeout(signWithEthereumProvider(message), 25000);
+                : await withTimeout(
+                    signWithEthereumProvider(message),
+                    25000,
+                    "Wallet signature timed out."
+                  );
             if (!signature) {
               throw new Error("Wallet signature request failed or was cancelled.");
             }
@@ -115,22 +150,68 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
             `Enable XMTP on w3rk\nWallet: ${walletAddress}\nTime: ${new Date().toISOString()}`
           );
 
-          // Build from existing XMTP identity to avoid extra hidden signature/registration loops.
+          updateStage("restore_session");
+          // Fast path for existing XMTP identity.
           const identifier: Identifier = {
             identifier: xmtpAddress,
             identifierKind: IdentifierKind.Ethereum,
           };
-          const builtClient = await withTimeout(Client.build(identifier, { env: getEnv() }), 20000);
-          setClient(builtClient);
-          return builtClient;
+          try {
+            const builtClient = await withTimeout(
+              Client.build(identifier, { env: getEnv() }),
+              15000,
+              "Restoring XMTP session timed out."
+            );
+            setClient(builtClient);
+            updateStage("connected");
+            return builtClient;
+          } catch (buildError) {
+            console.warn("XMTP build failed, falling back to create flow.", buildError);
+            updateStage("build_failed_fallback_create");
+          }
+
+          updateStage("create_client");
+          const signer: EOASigner = {
+            type: "EOA",
+            getIdentifier: () => ({
+              identifier: xmtpAddress,
+              identifierKind: IdentifierKind.Ethereum,
+            }),
+            signMessage: async (message: string): Promise<Uint8Array> => {
+              updateStage("prompt_signature");
+              return await requestWalletSignature(message);
+            },
+          };
+
+          const directClient = await withTimeout(
+            Client.create(signer, { env: getEnv(), disableAutoRegister: true }),
+            30000,
+            "Creating XMTP client timed out."
+          );
+
+          updateStage("check_registration");
+          const isRegistered = await withTimeout(
+            directClient.isRegistered(),
+            10000,
+            "Checking XMTP registration timed out."
+          );
+          if (!isRegistered) {
+            updateStage("register_account");
+            await withTimeout(directClient.register(), 25000, "XMTP registration timed out.");
+          }
+
+          setClient(directClient);
+          updateStage("connected");
+          return directClient;
         })(),
-        35000
+        70000
       );
 
       return createdClient;
     } catch (error) {
       dispatch(setError(error as Error));
       setClient(undefined);
+      updateStage("failed");
       throw error;
     } finally {
       dispatch(setInitializing(false));
@@ -178,6 +259,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     error: xmtpState.error,
     activeUser: xmtpState.activeUser,
     connectingXMTP,
+    connectStage,
     createXMTPClient,
     initXMTPClient,
   };
