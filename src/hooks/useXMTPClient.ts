@@ -33,7 +33,8 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
   const walletAddress = params?.walletAddress;
   const lensAccountAddress = params?.lensAccountAddress;
 
-  const xmtpAddress = (lensAccountAddress ?? walletAddress)?.toLowerCase();
+  // XMTP identity is wallet-based. Use wallet EOA first for reliable signing UX.
+  const xmtpAddress = walletAddress?.toLowerCase();
   const useScwSigner =
     lensAccountAddress !== undefined &&
     walletAddress !== undefined &&
@@ -125,18 +126,18 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
       let createdClient: Client | undefined;
 
-      if (useScwSigner && lensAccountAddress) {
+      if (walletAddress) {
         try {
-          createdClient = await connectWithSigner(lensAccountAddress, "SCW");
-        } catch (scwError) {
-          console.warn("SCW XMTP init failed; retrying with wallet EOA identity.", scwError);
-          if (!walletAddress) {
-            throw scwError;
-          }
           createdClient = await connectWithSigner(walletAddress, "EOA");
+        } catch (eoaError) {
+          console.warn("EOA XMTP init failed.", eoaError);
+          if (useScwSigner && lensAccountAddress) {
+            console.warn("Retrying XMTP init with Lens SCW identity.");
+            createdClient = await connectWithSigner(lensAccountAddress, "SCW");
+          } else {
+            throw eoaError;
+          }
         }
-      } else if (walletAddress) {
-        createdClient = await connectWithSigner(walletAddress, "EOA");
       }
 
       if (createdClient) {

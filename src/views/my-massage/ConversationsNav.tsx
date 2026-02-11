@@ -56,15 +56,16 @@ const ConversationsNav = () => {
   }, [client]);
 
   const handleEnable = async () => {
+    const toastId = toast.loading("Check your wallet to enable XMTP");
     try {
       await createXMTPClient();
-      toast.success("XMTP enabled");
+      toast.success("XMTP enabled", { id: toastId });
     } catch (error) {
       const message =
         error instanceof Error && error.message
           ? error.message
           : "Failed to connect XMTP. Please retry.";
-      toast.error(message);
+      toast.error(message, { id: toastId });
       console.error("Failed to connect XMTP:", error);
     }
   };
