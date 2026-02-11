@@ -9,10 +9,12 @@ import type { activeContractDetails, contractDetails } from "./types/types";
 // import unicrow from "@unicrowio/sdk";
 // All contract data stored on-chain
 import { createNotification, Notification, NotificationType } from "@/utils/notifications";
+import { getCachedContracts, setCachedContracts } from "@/lib/contractCache";
 
 // Lazy-load provider to avoid blocking initial page load
 let provider: ethers.JsonRpcProvider | null = null;
 let contractInstance: ethers.Contract | null = null;
+const tokenDecimalsCache: Record<string, number> = {};
 
 const getProvider = (): ethers.JsonRpcProvider => {
   if (!provider) {
@@ -95,6 +97,14 @@ const getContract = async () => {
   return contract;
 };
 
+const resolveTokenAddress = (tokenAddress?: string): string => {
+  const address = tokenAddress || process.env.NEXT_PUBLIC_TOKEN_ADDRESS;
+  if (!address) {
+    throw new Error("Token address not provided");
+  }
+  return address;
+};
+
 // Standard ERC20 ABI for token interactions (balanceOf, approve, transfer, etc.)
 const ERC20_ABI = [
   "function balanceOf(address owner) view returns (uint256)",
@@ -107,10 +117,10 @@ const ERC20_ABI = [
   "function name() view returns (string)",
 ];
 
-const getTokenContract = async () => {
+const getTokenContract = async (tokenAddress?: string) => {
   const signer = await getSigner();
   const contract = new ethers.Contract(
-    process.env.NEXT_PUBLIC_TOKEN_ADDRESS as string,
+    resolveTokenAddress(tokenAddress),
     ERC20_ABI,
     signer
   );
@@ -134,11 +144,8 @@ const getAddress = async () => {
 
 // Helper function to get token decimals dynamically
 const getTokenDecimals = async (tokenAddress?: string): Promise<number> => {
-  const address = tokenAddress || process.env.NEXT_PUBLIC_TOKEN_ADDRESS;
-  if (!address) {
-    throw new Error("Token address not provided");
-  }
-  const contract = await getTokenContract();
+  const address = resolveTokenAddress(tokenAddress);
+  const contract = new ethers.Contract(address, ERC20_ABI, getProvider());
   try {
     const decimals = await contract.decimals();
     return Number(decimals);
@@ -148,13 +155,23 @@ const getTokenDecimals = async (tokenAddress?: string): Promise<number> => {
   }
 };
 
+const getTokenDecimalsCached = async (tokenAddress?: string): Promise<number> => {
+  const address = resolveTokenAddress(tokenAddress).toLowerCase();
+  if (address in tokenDecimalsCache) {
+    return tokenDecimalsCache[address];
+  }
+  const decimals = await getTokenDecimals(address);
+  tokenDecimalsCache[address] = decimals;
+  return decimals;
+};
+
 // gets the users tokenBalance
 // Fetches decimals dynamically from token contract
 const getTokenBalance = async (sender: any, tokenAddress?: string) => {
   try {
-    const contract = await getTokenContract();
+    const contract = await getTokenContract(tokenAddress);
     const balance = await contract.balanceOf(sender);
-    const tokenDecimals = await getTokenDecimals(tokenAddress);
+    const tokenDecimals = await getTokenDecimalsCached(tokenAddress);
     const balanceFormatted = ethers.formatUnits(balance, tokenDecimals);
     return balanceFormatted;
   } catch (error) {
@@ -185,8 +202,8 @@ const handleTokenApproval = async (
   // Use Lens Account address if provided, otherwise use signer address
   // Lens Accounts can hold tokens directly
   const addressToCheck = lensAccountAddress || await getAddress();
-  const contract = await getTokenContract();
-  const tokenDecimals = await getTokenDecimals(tokenAddress);
+  const contract = await getTokenContract(tokenAddress);
+  const tokenDecimals = await getTokenDecimalsCached(tokenAddress);
   const tokenBalanceString = await getTokenBalance(addressToCheck, tokenAddress);
   const tokenBalance = Number(tokenBalanceString);
 
@@ -336,7 +353,7 @@ const create_proposal = async (
   const contract = await getContract();
 
   // Fetch token decimals dynamically
-  const tokenDecimals = await getTokenDecimals(tokenAddress);
+  const tokenDecimals = await getTokenDecimalsCached(tokenAddress);
   const amountParsed = ethers.parseUnits(amount, tokenDecimals);
 
   // Check balance on Lens Account (if provided), otherwise check signer
@@ -418,70 +435,76 @@ const contractState = ["proposal", "inProgress", "awaitingApproval", "openDisput
 // Updated to read on-chain data directly
 const get_all_contracts = async (userLensAccountAddress: string) => {
   try {
+    const cachedContracts = getCachedContracts(userLensAccountAddress);
+    if (cachedContracts) {
+      return cachedContracts;
+    }
+
     const contract = getContractInstance();
-    
+
     // Get proposal IDs and contract IDs for the user
-    const [proposalIds, contractIds] = await Promise.all([
+    const [proposalIds, contractIds, defaultTokenAddress] = await Promise.all([
       contract.getUserProposalIds(userLensAccountAddress),
       contract.getUserContractIds(userLensAccountAddress),
+      contract.token_address(),
     ]);
 
-    // Get default token address from ContractsManager for decimals
-    const defaultTokenAddress = await contract.token_address();
-    const tokenDecimals = await getTokenDecimals(defaultTokenAddress);
+    const tokenDecimals = await getTokenDecimalsCached(defaultTokenAddress);
 
-    const contracts: any = [];
+    const proposals = (
+      await Promise.all(
+        proposalIds.map(async (proposalId: any) => {
+          try {
+            const proposal = await contract.getProposal(proposalId);
+            return {
+              proposalId: Number(proposal.proposalId),
+              title: proposal.title,
+              description: proposal.description,
+              clientAddress: proposal.clientAccount,
+              freelancerAddress: proposal.freelancerAccount,
+              paymentAmount: Number(ethers.formatUnits(proposal.amount, tokenDecimals)),
+              dueDate: new Date(Number(proposal.dueDate) * 1000),
+              state: proposal.isAccepted ? "inProgress" : proposal.isCancelled ? "cancelled" : "proposal",
+              id: Number(proposal.proposalId),
+              createdAt: new Date(Number(proposal.createdAt) * 1000),
+            };
+          } catch (error) {
+            console.error("Error fetching proposal data:", error);
+            return null;
+          }
+        })
+      )
+    ).filter(Boolean);
 
-    // Process proposals - read on-chain data directly
-    for (let i = 0; i < proposalIds.length; i++) {
-      try {
-        const proposalId = proposalIds[i];
-        const proposal = await contract.getProposal(proposalId);
-        
-        // Convert on-chain data to contract format
-        contracts.push({
-          proposalId: Number(proposal.proposalId),
-          title: proposal.title,              // On-chain
-          description: proposal.description,  // On-chain
-          clientAddress: proposal.clientAccount,      // Lens Account address
-          freelancerAddress: proposal.freelancerAccount, // Lens Account address
-          paymentAmount: Number(ethers.formatUnits(proposal.amount, tokenDecimals)), // Dynamic decimals
-          dueDate: new Date(Number(proposal.dueDate) * 1000), // Convert Unix timestamp to Date
-          state: proposal.isAccepted ? "inProgress" : proposal.isCancelled ? "cancelled" : "proposal",
-          id: Number(proposal.proposalId),
-          createdAt: new Date(Number(proposal.createdAt) * 1000),
-        });
-      } catch (error) {
-        console.error("Error fetching proposal data:", error);
-      }
-    }
+    const activeContracts = (
+      await Promise.all(
+        contractIds.map(async (contractId: any) => {
+          try {
+            const contractData = await contract.getContract(contractId);
+            return {
+              contractId: Number(contractData.contractId),
+              title: contractData.title,
+              description: contractData.description,
+              clientAddress: contractData.clientAccount,
+              freelancerAddress: contractData.freelancerAccount,
+              paymentAmount: Number(ethers.formatUnits(contractData.amount, tokenDecimals)),
+              dueDate: new Date(Number(contractData.dueDate) * 1000),
+              state: contractState[Number(contractData.state)],
+              id: Number(contractData.contractId),
+              escrowId: Number(contractData.escrow_id),
+              data: contractData.data,
+              createdAt: new Date(Number(contractData.createdAt) * 1000),
+            };
+          } catch (error) {
+            console.error("Error fetching contract data:", error);
+            return null;
+          }
+        })
+      )
+    ).filter(Boolean);
 
-    // Process contracts - read on-chain data directly
-    for (let i = 0; i < contractIds.length; i++) {
-      try {
-        const contractId = contractIds[i];
-        const contractData = await contract.getContract(contractId);
-        
-        // Convert on-chain data to contract format
-        contracts.push({
-          contractId: Number(contractData.contractId),
-          title: contractData.title,              // On-chain
-          description: contractData.description,  // On-chain
-          clientAddress: contractData.clientAccount,      // Lens Account address
-          freelancerAddress: contractData.freelancerAccount, // Lens Account address
-          paymentAmount: Number(ethers.formatUnits(contractData.amount, tokenDecimals)), // Dynamic decimals
-          dueDate: new Date(Number(contractData.dueDate) * 1000), // Convert Unix timestamp to Date
-          state: contractState[Number(contractData.state)],
-          id: Number(contractData.contractId),
-          escrowId: Number(contractData.escrow_id),
-          data: contractData.data, // Work updates/notes
-          createdAt: new Date(Number(contractData.createdAt) * 1000),
-        });
-      } catch (error) {
-        console.error("Error fetching contract data:", error);
-      }
-    }
-
+    const contracts = [...proposals, ...activeContracts];
+    setCachedContracts(userLensAccountAddress, contracts);
     return contracts;
   } catch (error) {
     console.error("Error in get_all_contracts:", error);
@@ -507,7 +530,7 @@ const accept_proposal = async (
 
   // Get default token address from ContractsManager and fetch decimals dynamically
   const defaultTokenAddress = await contract.token_address();
-  const tokenDecimals = await getTokenDecimals(defaultTokenAddress);
+  const tokenDecimals = await getTokenDecimalsCached(defaultTokenAddress);
   const amountParsed = ethers.parseUnits(contractDetails.paymentAmount.toString(), tokenDecimals);
   
   // InternalEscrowInput structure:

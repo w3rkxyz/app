@@ -9,6 +9,8 @@ import { useSelector } from "react-redux";
 import { Oval } from "react-loader-spinner";
 import getLensAccountData from "@/utils/getLensProfile";
 import useSearchAccounts from "@/hooks/useSearchAccounts";
+import { SVGBell, SVGGear, SVGLogout, SVGSearch, SVGUser, SVGUserProfile } from "@/assets/list-svg-icon";
+import { Bell, ChevronDown } from "lucide-react";
 
 const SecondNav = () => {
   const { user: profile } = useSelector((state: any) => state.app);
@@ -20,13 +22,17 @@ const SecondNav = () => {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const path = usePathname();
   const [searchText, setSearchText] = useState("");
-  const { data: accounts, loading: accountsLoading } = useSearchAccounts({
-    filter: {
-      searchBy: {
-        localNameQuery: searchText,
-      },
-    },
-  });
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+    
+  
+  // const { data: accounts, loading: accountsLoading } = useSearchAccounts({
+  //   filter: {
+  //     searchBy: {
+  //       localNameQuery: searchText,
+  //     },
+  //   },
+  // });
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -76,14 +82,31 @@ const SecondNav = () => {
       setShowSearchResults(false);
     }
   }, [searchText]);
+  
+
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+          setIsProfileDropdownOpen(false);
+        }
+      };
+  
+      if (isProfileDropdownOpen) {
+        document.addEventListener("mousedown", handleClickOutside);
+      }
+  
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }, [isProfileDropdownOpen]);
 
   return (
     <>
-      <header className="header-section h-[60px] px-[156px] nav-lg:px-[100px] lg:px-[20px] sm:px-[16px] absolute w-screen top-0 left-0 bg-white border-b-[1px] border-b-[#EEEEEE] z-[998]">
+      <header className="header-section h-[60px] mx-auto nav-lg:px-[100px] lg:px-[20px] sm:px-[16px] absolute w-screen top-0 left-0 bg-white border-b-[1px] border-b-[#EEEEEE] z-[998]">
         <div className="custom-container">
           <div className="header-wrapper">
             <nav className="navbar-nav-main h-[60px] flex items-center gap-3 justify-between w-full relative">
-              <div className="header-brand-box sm:flex sm:items-center relative z-10">
+              <div className="header-brand-box flex items-center gap-12">
                 <Link href="/">
                   <Image
                     src="/images/brand-logo.svg"
@@ -93,8 +116,48 @@ const SecondNav = () => {
                     alt="company brand logo"
                   ></Image>
                 </Link>
+                <div className="navbar-right-cont nav-center flex items-center">
+                  <ul className="navbar-nav flex items-center flex-grow-0 sm:hidden mx-auto gap-[7px]">
+                    <li
+                      className={`navbar-nav-items px-[12px] md:px-[3px] py-[5px] ${
+                        path === "/find-work/" ? "text-[#212121] font-semibold" : "text-[#8A8A8A] "
+                      }`}
+                    >
+                      <Link href="/find-work" className="">
+                        Find Work
+                      </Link>
+                    </li>
+                    <li
+                      className={`navbar-nav-items px-[12px] md:px-[5px] py-[7px] ${
+                        path === "/find-talent/" ? "text-[#212121] font-semibold" : "text-[#8A8A8A]"
+                      }`}
+                    >
+                      <Link href="/find-talent" className="">
+                        Find Talent
+                      </Link>
+                    </li>
+                    <li
+                      className={`navbar-nav-items px-[12px] md:px-[5px] py-[7px] ${
+                        path === "/contracts/" ? "text-[#212121] font-semibold" : "text-[#8A8A8A]"
+                      }`}
+                    >
+                      <Link href="/contracts" className="">
+                        My Jobs
+                      </Link>
+                    </li>
+                    <li
+                      className={`navbar-nav-items px-[12px] md:px-[5px] py-[7px] ${
+                        path === "/messages/" ? "text-[#212121] font-semibold" : "text-[#8A8A8A]"
+                      }`}
+                    >
+                      <Link href="/messages" className="">
+                        Messages
+                      </Link>
+                    </li>
+                  </ul>
+                </div>
               </div>
-              <div className="navbar-right-cont nav-center flex items-center absolute md:relative md:w-fit h-full w-full left-0 top-0 z-0">
+              {/* <div className="navbar-right-cont nav-center flex items-center absolute md:relative md:w-fit h-full w-full left-0 top-0 z-0">
                 <ul className="navbar-nav flex items-center flex-grow-0 sm:hidden mx-auto gap-[7px]">
                   <li
                     className={`navbar-nav-items px-[19px] md:px-[3px] py-[5px] ${
@@ -115,10 +178,99 @@ const SecondNav = () => {
                     </Link>
                   </li>
                 </ul>
-              </div>
+              </div> */}
+
+              <div className="navbar-right-cont flex items-center gap-3">
+                              <div className="border border-[#C3C7CE] h-8 w-8 rounded-full flex items-center justify-center cursor-pointer hover:bg-gray-100">
+                                <SVGSearch />
+                              </div>
+                              <div className="border border-[#C3C7CE] h-8 w-8 rounded-full flex items-center justify-center cursor-pointer hover:bg-gray-100">
+                                <Bell strokeWidth={1} size={20} />
+                              </div>
+              
+                              {/* Profile Dropdown */}
+                              <div className="relative" ref={dropdownRef}>
+                                <button
+                                  onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                                  className="flex items-center gap-2 px-3 py-1 rounded-full border border-[#E0E0E0] hover:bg-gray-50 transition-colors"
+                                >
+                                  <div className="w-6 h-6 bg-gray-300 rounded-full flex-shrink-0">
+                                    {profile?.profileImage && (
+                                      <Image
+                                        src={profile.profileImage}
+                                        alt="profile"
+                                        width={24}
+                                        height={24}
+                                        className="w-full h-full rounded-full object-cover"
+                                      />
+                                    )}
+                                  </div>
+                                  <span className="text-sm font-medium text-[#212121]  sm:inline">
+                                    {profile?.username || "@jhondoe"}
+                                  </span>
+                                  <ChevronDown
+                                    size={16}
+                                    className={`text-[#818181] transition-transform ${
+                                      isProfileDropdownOpen ? "rotate-180" : ""
+                                    }`}
+                                  />
+                                </button>
+              
+                                {/* Dropdown Menu */}
+                                {isProfileDropdownOpen && (
+                                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-[#E0E0E0] py-3 z-50">
+                                    {/* User Header */}
+                                    <div className="px-4 pb-3 border-b border-[#E0E0E0] flex items-center gap-3">
+                                      <div className="w-10 h-10 bg-gray-300 rounded-full flex-shrink-0">
+                                        {profile?.profileImage && (
+                                          <Image
+                                            src={profile.profileImage}
+                                            alt="profile"
+                                            width={40}
+                                            height={40}
+                                            className="w-full h-full rounded-full object-cover"
+                                          />
+                                        )}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-base font-semibold text-[#212121] truncate">
+                                          {profile?.name || "User"}
+                                        </p>
+                                        <p className="text-sm text-[#818181] truncate">
+                                          @{profile?.username || "username"}
+                                        </p>
+                                      </div>
+                                    </div>
+              
+                                    {/* Menu Items */}
+                                    <button className="w-full px-4 py-2 text-left text-sm text-[#212121] hover:bg-gray-50 flex items-center gap-3 transition-colors">
+                                      <SVGUser />
+                                      Profile
+                                    </button>
+                                    <button className="w-full px-4 py-2 text-left text-sm text-[#212121] hover:bg-gray-50 flex items-center gap-3 transition-colors">
+                                      <SVGGear />
+                                      Settings
+                                    </button>
+                                    <button className="w-full px-4 py-2 text-left text-sm text-[#212121] hover:bg-gray-50 flex items-center gap-3 transition-colors">
+                                      <SVGUserProfile />
+                                      Switch Profile
+                                    </button>
+              
+                                    {/* Logout */}
+                                    <div className="border-t border-[#E0E0E0] mt-2 pt-2">
+                                      <button className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors font-medium">
+                                        <SVGLogout />
+                                        Log Out
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              {/* <Connect /> */}
+                            </div>
 
               {/* Right Items */}
-              <div className="flex items-center gap-[18px] sm:hidden relative z-10">
+              {/* <div className="flex items-center gap-[18px] sm:hidden relative z-10">
                 <div
                   className="flex justify-start items-center w-[240px] lg:w-[220px] bg-white border-[1px] border-[#E4E4E7] rounded-[12px] pl-[8px] relative"
                   ref={myDivRef}
@@ -242,7 +394,6 @@ const SecondNav = () => {
                     </div>
                   </button>
 
-                  {/* Dropdown */}
                   <div className="absolute right-[0px] top-[55px] z-[9999]" ref={drowdownRef}>
                     {showProfileDropdown && (
                       <>
@@ -251,19 +402,19 @@ const SecondNav = () => {
                     )}
                   </div>
                 </div>
-              </div>
+              </div> */}
               <div className="navbar-trigger hidden sm:block" onClick={handleMobileMenuToggle}>
-                <Image
+                {/* <Image
                   src="/images/header-trigger.svg"
                   alt="navbar trigger"
                   width={20}
                   height={12}
-                />
+                /> */}
               </div>
             </nav>
 
             {/* Mobile Menu */}
-            <MobileProfileDropdown menuOpen={isMobileMenuOpen} closeMenu={handleMobileMenuToggle} />
+            {/* <MobileProfileDropdown menuOpen={isMobileMenuOpen} closeMenu={handleMobileMenuToggle} /> */}
           </div>
         </div>
         {/* Choose Account Modal */}

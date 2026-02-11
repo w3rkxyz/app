@@ -1,6 +1,7 @@
 "use client";
 
 import "./globals.css";
+import { Inter } from "next/font/google";
 import ConditionalNav from "@/components/common/header/conditionalNav";
 import { Toaster } from "react-hot-toast";
 import ClientProvider from "./_clientProvider";
@@ -9,6 +10,8 @@ import Footer from "@/components/common/footer/footer";
 import ExtensionErrorBoundary from "@/components/common/ExtensionErrorBoundary";
 import HydrationFix from "@/components/common/HydrationFix";
 import dynamic from "next/dynamic";
+
+const inter = Inter({ subsets: ["latin"] });
 
 const AppProvider = dynamic(() => import("./AppProvider"), { ssr: false });
 
@@ -225,7 +228,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body>
+      <body className={inter.className}>
         <ExtensionErrorBoundary>
           <HydrationFix>
             <AppProvider>
@@ -236,7 +239,6 @@ export default function RootLayout({
                     {children}
                     <Toaster />
                   </main>
-                  <Footer />
                 </ModalWrapper>
               </ClientProvider>
             </AppProvider>

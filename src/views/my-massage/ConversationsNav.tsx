@@ -1,173 +1,219 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useXMTPClient } from "@/hooks/useXMTPClient";
+import { useEffect, useRef, useState } from "react";
 import { useConversations } from "@/hooks/useConversations";
-import { useAccount, useSignMessage } from "wagmi";
+import { useAccount } from "wagmi";
 import NewConversation from "./newConversation";
-import { AccountData } from "@/utils/getLensProfile";
-import { getLensClient } from "@/client";
 import ConversationsList from "./ConversationList";
-import getCurrentTime from "@/utils/currentTime";
-import toast from "react-hot-toast"; // Get the keys using a valid Signer. Save them somewhere secure.
-import { useEthersSigner } from "@/utils/getSigner";
-import moment from "moment";
-import Link from "next/link";
-import { loadKeys, storeKeys } from "@/utils/xmtpHelpers";
-import { useSearchParams } from "next/navigation";
-import ConversationSkeleton from "@/components/reusable/ConversationSkeleton";
-import {
-  ContentTypeAttachment,
-  AttachmentCodec,
-  RemoteAttachmentCodec,
-  ContentTypeRemoteAttachment,
-} from "@xmtp/content-type-remote-attachment";
-import { fileToDataURI, jsonToDataURI } from "@/utils/dataUriHelpers";
-import axios from "axios";
-import { ContentTypeReadReceipt, ReadReceiptCodec } from "@xmtp/content-type-read-receipt";
-import { SessionClient, useAccount as useLensAccount } from "@lens-protocol/react";
-import { useSelector } from "react-redux";
-import { type Signer, type Identifier, type DecodedMessage, Client, Dm } from "@xmtp/browser-sdk";
-import type { ContentCodec } from "@xmtp/content-type-primitives";
-import { hexToBytes } from "viem";
 import { RootState } from "@/redux/store";
+import { useSelector } from "react-redux";
 import { useXMTP } from "@/app/XMTPContext";
+import { useXMTPClient } from "@/hooks/useXMTPClient";
+import toast from "react-hot-toast";
+
+const stageLabel: Record<string, string> = {
+  idle: "Preparing XMTP...",
+  prompt_signature: "Check your wallet to sign",
+  restore_session: "Restoring XMTP session...",
+  build_failed_fallback_create: "Session restore failed, creating client...",
+  create_client: "Creating XMTP client...",
+  check_registration: "Checking XMTP registration...",
+  register_account: "Registering XMTP account...",
+  connected: "XMTP connected",
+  failed: "XMTP connection failed",
+};
 
 const ConversationsNav = () => {
-  const { list, loading, syncing, conversations, stream, syncAll, activeConversation } =
-    useConversations();
+  const { list, conversations, stream, activeConversation, loading } = useConversations();
   const { client } = useXMTP();
-  const { address } = useAccount();
-  const { createXMTPClient, connectingXMTP } = useXMTPClient(address as string);
+  const { address: walletAddress } = useAccount();
+  const lensProfile = useSelector((state: RootState) => state.app.user);
+  const { createXMTPClient, initXMTPClient, connectingXMTP, connectStage } = useXMTPClient({
+    walletAddress,
+    lensAccountAddress: lensProfile?.address,
+    lensProfileId: lensProfile?.id,
+    lensHandle: lensProfile?.handle,
+  });
+
   const stopStreamRef = useRef<(() => void) | null>(null);
-  const [showMessagesMobile, setShowMessagesMobile] = useState(true);
-  const [showSkeleleton, setShowSkeleton] = useState(true);
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const startStream = useCallback(async () => {
-    stopStreamRef.current = await stream();
-  }, [stream]);
-
-  const stopStream = useCallback(() => {
-    stopStreamRef.current?.();
-    stopStreamRef.current = null;
-  }, []);
-
-  const handleSync = useCallback(async () => {
-    stopStream();
-    await list(undefined, true);
-    await startStream();
-  }, [list, startStream, stopStream]);
-
-  const handleSyncAll = useCallback(async () => {
-    stopStream();
-    await syncAll();
-    await startStream();
-  }, [syncAll, startStream, stopStream]);
-
-  // loading conversations on mount, and start streaming
   useEffect(() => {
+    let mounted = true;
+
     const loadConversations = async () => {
-      if (client) {
-        await list(undefined, true);
-        await startStream();
+      if (!client) {
+        return;
       }
+
+      stopStreamRef.current?.();
+      stopStreamRef.current = null;
+
+      await list(undefined, true);
+      if (!mounted) {
+        return;
+      }
+      stopStreamRef.current = await stream();
     };
+
     void loadConversations();
+
+    return () => {
+      mounted = false;
+      stopStreamRef.current?.();
+      stopStreamRef.current = null;
+    };
+    // `list` and `stream` are recreated by the hook each render; key off `client` to avoid loops.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client]);
 
-  // stop streaming on unmount
   useEffect(() => {
-    return () => {
-      stopStream();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    let cancelled = false;
 
-  // UI MEthods
-
-  const handleCloseNewConversationModal = () => {
-    setIsNewConversationModalOpen(false);
-  };
-
-  const createClient = async () => {
-    try {
-      if (address) {
-        const client = await createXMTPClient();
+    const restoreClient = async () => {
+      if (client || connectingXMTP) {
+        return;
       }
+
+      if (!walletAddress && !lensProfile?.address) {
+        return;
+      }
+
+      try {
+        await initXMTPClient();
+      } catch (error) {
+        if (!cancelled) {
+          console.warn("XMTP auto-restore failed:", error);
+        }
+      }
+    };
+
+    void restoreClient();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [client, connectingXMTP, initXMTPClient, lensProfile?.address, walletAddress]);
+
+  const handleEnable = async () => {
+    const toastId = toast.loading(stageLabel.idle);
+    try {
+      await createXMTPClient({
+        onStage: stage => {
+          const message = stageLabel[stage] ?? "Connecting XMTP...";
+          if (stage === "connected") {
+            toast.success(message, { id: toastId });
+            return;
+          }
+          if (stage === "failed") {
+            toast.error(message, { id: toastId });
+            return;
+          }
+          toast.loading(message, { id: toastId });
+        },
+      });
+      toast.success("XMTP enabled", { id: toastId });
     } catch (error) {
-      console.log("Error: ", error);
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Failed to connect XMTP. Please retry.";
+      toast.error(message, { id: toastId });
+      console.error("Failed to connect XMTP:", error);
     }
   };
 
   return (
     <div
-      className={`horizontal-box px-[12px] w-[367px] sm:w-full flex ${
+      className={`horizontal-box px-[12px] w-[417px] sm:w-full flex bg-white h-screen ${
         activeConversation !== undefined ? "sm:hidden" : "sm:flex"
       } flex-col pb-[10px]`}
     >
       <div className="flex justify-between items-center py-[19px] px-[9px]">
-        <span className="leading-[16.94px] font-medium text-[16px]">Messages</span>
-        {client && (
+        <div className="flex items-center gap-[8px]">
+          <span className="leading-[16.94px] font-semibold text-[24px]">Messages</span>
+          {conversations.length > 0 && (
+            <span className="bg-[#351A6B] text-white text-[12px] font-semibold px-[6px] py-[2px] rounded-full">
+              {conversations.length}
+            </span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsNewConversationModalOpen(true)}
+          disabled={!client}
+          className="disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label="Start new conversation"
+        >
           <Image
-            onClick={() => setIsNewConversationModalOpen(true)}
-            src="/images/new-message.svg"
+            src="/images/NotePencil.svg"
             className="cursor-pointer"
             alt="new message"
             width={26}
             height={26}
           />
-        )}
+        </button>
       </div>
-      <hr className="bg-[#E4E4E7] h-[1px] mb-[0px]" />
+
+      <div className="px-[9px] pb-[10px]">
+        <div className="relative">
+          <svg
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#999]"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-3 py-[8px] border border-[#E4E4E7] rounded-[8px] text-[14px] placeholder-[#999] focus:outline-none focus:border-[#C6AAFF]"
+          />
+        </div>
+      </div>
+
       {client ? (
         <>
-          <ConversationsList conversations={conversations} />
-          {!showMessagesMobile && (
-            <div className="flex items-center justify-center h-full">
-              <div className="hidden sm:flex flex-col gap-[11px] justify-center items-center">
-                <Image
-                  src="/images/discuss.svg"
-                  className="cursor-pointer"
-                  alt="new message"
-                  width={24}
-                  height={21}
-                />
-                <span className="leading-[16.94px] max-w-[174px] text-center font-medium text-[14px] text-black">
-                  Select a conversation to start messaging
-                </span>
-              </div>
+          <ConversationsList conversations={conversations} searchQuery={searchQuery} />
+          {!loading && conversations.length === 0 && (
+            <div className="flex items-center justify-center h-full px-6 text-center text-[#6C6C6C] text-[14px]">
+              No conversations yet. Start one with the compose button.
             </div>
           )}
         </>
       ) : (
-        <div className="flex items-center justify-center h-full">
-          <div className="flex flex-col gap-[11px] justify-center items-center">
-            <Image
-              src="/images/discuss.svg"
-              className="cursor-pointer"
-              alt="new message"
-              width={24}
-              height={21}
-            />
-            <span className="leading-[16.94px] font-medium text-[14px] text-black">
-              Enable Messages
-            </span>
+        <div className="h-screen w-full bg-white flex items-center justify-center">
+          <div className="text-center flex flex-col items-center justify-center">
+            <Image src="/images/ChatsCircle.svg" alt="Enable messages" width={64} height={64} />
+            <p className="text-gray-500 text-lg mb-4">Enable Messages</p>
             <button
-              className="rounded-[8px] bg-[#C6AAFF] hover:bg-[#351A6B] px-[17px] py-[8px] text-white leading-[16.94px] font-medium text-[14px]"
-              onClick={createClient}
+              onClick={handleEnable}
+              disabled={connectingXMTP}
+              className="px-6 py-2 bg-gray-900 text-white text-sm rounded-full hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {connectingXMTP ? "Connecting..." : "Enable"}
             </button>
+            {connectingXMTP && (
+              <p className="text-xs text-gray-500 mt-2">{stageLabel[connectStage] ?? "Connecting..."}</p>
+            )}
           </div>
         </div>
       )}
+
       {isNewConversationModalOpen && (
         <div className="fixed h-screen w-screen top-0 left-0 inset-0 z-[999] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center">
           <div className="w-full flex justify-center align-middle">
-            <NewConversation handleCloseModal={handleCloseNewConversationModal} />
+            <NewConversation handleCloseModal={() => setIsNewConversationModalOpen(false)} />
           </div>
         </div>
       )}

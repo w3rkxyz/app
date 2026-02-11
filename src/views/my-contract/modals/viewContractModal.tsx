@@ -165,11 +165,11 @@ const ViewContractModal = ({ handleCloseModal, contractDetails }: Props) => {
 
   return (
     <div
-      className={`view-job-modal-section sm:w-full rounded-[12px] px-[16px] sm:rounded-none sm:rounded-tl-[12px]  sm:rounded-tr-[12px] bg-white sm:absolute sm:mobile-modal 
+      className={`view-job-modal-section sm:w-full rounded-[12px] px-7 py-3 sm:rounded-none sm:rounded-tl-[12px]  sm:rounded-tr-[12px] bg-white sm:absolute sm:mobile-modal 
       ${showMobile ? "open-modal" : ""} h-fit`}
       ref={myDivRef}
     >
-      <div className="w-[667px] sm:w-full flex justify-between items-center py-[13px] border-b-[1px] border-b-[#E4E4E7] rounded-none sm:rounded-tl-[12px] sm:rounded-tr-[12px]">
+      {/* <div className="w-[667px] sm:w-full flex justify-between items-center py-[13px] border-b-[1px] border-b-[#E4E4E7] rounded-none sm:rounded-tl-[12px] sm:rounded-tr-[12px]">
         <span className="leading-[14.52px] text-[14px] font-semibold text-[black]">
           Contract Proposal Summary - {showClientView ? "Client View" : "Freelancer View"}
         </span>
@@ -181,8 +181,28 @@ const ViewContractModal = ({ handleCloseModal, contractDetails }: Props) => {
           width={20}
           height={20}
         />
+      </div> */}
+      <div className="w-[667px] sm:w-full flex items-start justify-between gap-1 py-[13px] border-b-[1px] border-b-[#E4E4E7] rounded-none sm:rounded-tl-[12px] sm:rounded-tr-[12px]">
+        <div className="flex flex-col gap-2">
+          <span className="leading-[14.52px] text-[20px] font-medium text-[black]">
+            Contract Summary
+          </span>
+          <span className="text-[#83899F] text-base">Review the contract details and confirm next steps.</span>
+        </div>
+        <Image
+          onClick={handleCloseModal}
+          className="cursor-pointer"
+          src="/images/Close.svg"
+          alt="close icon"
+          width={20}
+          height={20}
+        />
       </div>
       <div className="bg-[white] rounded-[12px] sm:rounded-none py-[16px] sm:w-full max-w-[664px] flex flex-col">
+                <div className="border border-[#3E6FC4] text-[#3E6FC4] bg-[#F4F8FF] rounded-lg p-3 flex items-center justify-between mb-3">
+          <span>Deadline: 24 August, 2025</span>
+          <span>5 Days Remaining </span>
+        </div>
         {!loadingUser && userData ? (
           <div className="flex sm:flex-col justify-between gap-[8px] sm:gap-[16px] w-full">
             <div className="flex gap-[6px] items-center">
@@ -219,13 +239,27 @@ const ViewContractModal = ({ handleCloseModal, contractDetails }: Props) => {
         <h3 className="text-[16px] leading-[19.36px] font-semibold mb-[6px]">
           {contractDetails.title}
         </h3>
-        <p className="line-clamp-4 sm:line-clamp-6 text-[12px] leading-[20px] font-normal">
+        <p className="line-clamp-4 sm:line-clamp-6 leading-[20px] font-normal text-sm text-[#6C6C6C]">
           {contractDetails.description}
         </p>
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
         <div className="flex flex-col gap-[6px]">
-          <span className="text-[14px] leading-[16.94px] font-medium">Client Wallet Address</span>
-          <span className="text-[12px] leading-[14.52px] font-normal">
+          <span className="text-[14px] leading-[16.94px] font-medium">Due Date</span>
+          <span className="text-sm text-[#6C6C6C] leading-[14.52px] font-normal">
+            {formatDate(contractDetails.dueDate)}
+          </span>
+        </div>
+        <hr className="w-full bg-[#D9D9D9] my-[16px]" />
+        <div className="flex flex-col gap-[6px]">
+          <span className="text-[14px] leading-[16.94px] font-medium">Payment Amount</span>
+          <span className="text-sm text-[#6C6C6C] leading-[14.52px] font-normal">
+            ${contractDetails.paymentAmount}
+          </span>
+        </div>
+        <hr className="w-full bg-[#D9D9D9] my-[16px]" />
+        <div className="flex flex-col gap-[6px]">
+          <span className="text-[14px] leading-[16.94px] font-medium">Your Wallet Address</span>
+          <span className="text-sm text-[#6C6C6C] leading-[14.52px] font-normal">
             {contractDetails.clientAddress}
           </span>
         </div>
@@ -234,33 +268,19 @@ const ViewContractModal = ({ handleCloseModal, contractDetails }: Props) => {
           <span className="text-[14px] leading-[16.94px] font-medium">
             Freelancer Wallet Address
           </span>
-          <span className="text-[12px] leading-[14.52px] font-normal">
+          <span className="text-sm text-[#6C6C6C] leading-[14.52px] font-normal">
             {contractDetails.freelancerAddress}
           </span>
         </div>
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
-        <div className="flex flex-col gap-[6px]">
-          <span className="text-[14px] leading-[16.94px] font-medium">Payment Amount</span>
-          <span className="text-[12px] leading-[14.52px] font-normal">
-            ${contractDetails.paymentAmount}
-          </span>
-        </div>
-        <hr className="w-full bg-[#D9D9D9] my-[16px]" />
-        <div className="flex flex-col gap-[6px]">
-          <span className="text-[14px] leading-[16.94px] font-medium">Due Date</span>
-          <span className="text-[12px] leading-[14.52px] font-normal">
-            {formatDate(contractDetails.dueDate)}
-          </span>
-        </div>
-        <hr className="w-full bg-[#D9D9D9] my-[16px]" />
-        {!showClientView && (
+        {/* {!showClientView && (
           <div className="flex flex-col gap-[6px] mb-[16px] sm:mb-[16px]">
             <span className="text-[14px] leading-[16.94px] font-medium text-[#351A6B]">
               Please contact the client directly to request any contract modifications.
             </span>
           </div>
-        )}
-        <div className="relative flex sm:flex-col w-full justify-center sm:items-center gap-[16px] sm:gap-[6px]">
+        )} */}
+        {/* <div className="relative flex sm:flex-col w-full justify-center sm:items-center gap-[16px] sm:gap-[6px]">
           {!showClientView ? (
             <>
               <button
@@ -284,6 +304,22 @@ const ViewContractModal = ({ handleCloseModal, contractDetails }: Props) => {
               Cancel Proposal
             </button>
           )}
+        </div> */}
+        <div className="py-[13px] border-t-[1px] border-t-[#E4E4E7] mt-10 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            className="flex gap-[5px] text-sm py-[12px] px-[16px] tx-[14px] leading-[14.5px] text-[#212121] border border-[#212121] bg-transparent rounded-full font-medium mb-[8px]"
+            // onClick={handleSubmit}
+          >
+            Request Extension
+          </button>
+          <button
+            type="button"
+            className="flex gap-[5px] text-sm py-[12px] px-[16px] tx-[14px] leading-[14.5px] text-white bg-[#212121] rounded-full font-medium mb-[8px]"
+            // onClick={handleSubmit}
+          >
+            Release Payment
+          </button>
         </div>
       </div>
     </div>

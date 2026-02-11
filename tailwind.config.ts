@@ -43,15 +43,19 @@ const config: Config = {
         xs: "15px",
       },
     },
-
     fontFamily: {
       primary: ["Inter", "sans-serif"],
       secondary: ["Inter", "sans-serif"],
     },
-    fontSize: {},
+    fontSize: {
+      base: "16px",
+      sm: "14px",
+      md: "16px",
+      lg: "18px",
+    },
     extend: {
       colors: {
-        primary: "#A274FF",
+        primary: "#A274FF",   
         "light-primary": "#A274FF80",
         secondary: "#120037",
         accent: "#A274FF",
@@ -59,6 +63,23 @@ const config: Config = {
         "dark-gray": "#00000080",
         "white-gray": "#F5F5F5",
         white: "#ffffff",
+        "primary-black": "#212121",
+        "secondary-gray": "#83899F",
+      },
+      spacing: {
+        "58.5": "58.5px",
+        "30.5": "30.5px",
+        "33": "33px",
+        "127.75": "127.75px",
+      },
+      height: {
+        "58.5": "58.5px",
+        "30.5": "30.5px",
+        "33": "33px",
+      },
+      width: {
+        "30.5": "30.5px",
+        "127.75": "127.75px",
       },
       backgroundImage: {
         "inner-cta": "linear-gradient(96.34deg,#926AFF 0%,#FF77B0 50%,#FFB367 100%)",

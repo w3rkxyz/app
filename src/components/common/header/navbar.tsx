@@ -1,73 +1,34 @@
 "use client";
-import React, { useEffect, useState } from "react";
+
+import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Connect } from "./connectButton";
-import { useAccount } from "wagmi";
-import { useSelector, useDispatch } from "react-redux";
-import { displayLoginModal, setLensProfile } from "@/redux/app";
-import LoginForm from "./loginForm";
 
 const Navbar = () => {
-  const { loginModal, user: profile } = useSelector((state: any) => state.app);
-  const dispatch = useDispatch();
-  const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showNavbar, setShowNavbar] = useState(true);
-  const { isConnected, address } = useAccount();
-
-  const closeMobileMenu = () => {
-    setMobileMenuOpen(false);
-  };
-  useEffect(() => {
-    const handleClickOutsideModal = (event: MouseEvent) => {
-      if (isMobileMenuOpen && (event.target as HTMLElement).closest(".modal-content") === null) {
-        closeMobileMenu();
-      }
-    };
-
-    document.addEventListener("click", handleClickOutsideModal);
-
-    return () => {
-      document.removeEventListener("click", handleClickOutsideModal);
-    };
-  }, [isMobileMenuOpen]);
-
-  const handleConnectWallet = () => {
-    setShowNavbar(false);
-  };
-
   return (
-    <>
-      {/* {isConnected && profile ? (
-        <SecondNav />
-      ) : ( */}
-      <header className="header-section h-[60px] px-[156px] sm:px-[16px] absolute w-screen top-0 left-0 bg-white border-b-[1px] border-b-[#EEEEEE] z-[98]">
-        <div className="custom-container">
-          <div className="header-wrapper">
-            <nav className="navbar-nav-main flex items-center gap-3 justify-between h-[60px] w-full">
-              <div className="header-brand-box sm:flex sm:items-center">
-                <Link href="/">
-                  <Image
-                    src="/images/brand-logo.svg"
-                    className="relative h-[80px] w-[80px] translate-y-[5px]"
-                    width={80}
-                    height={80}
-                    alt="company brand logo"
-                  ></Image>
-                </Link>
-              </div>
-              <div className="navbar-right-cont">
-                <Connect />
-              </div>
-            </nav>
-          </div>
+    <header className="header-section h-[60px] px-[156px] sm:px-[16px] absolute w-full top-0 left-0 bg-white border-b-[1px] border-b-[#EEEEEE] z-[98]">
+      <div className="custom-container">
+        <div className="header-wrapper">
+          <nav className="navbar-nav-main flex items-center gap-3 justify-between h-[60px] w-full">
+            <div className="header-brand-box sm:flex sm:items-center">
+              <Link href="/">
+                <Image
+                  src="/images/brand-logo.svg"
+                  className="relative h-[80px] w-[80px] translate-y-[5px]"
+                  width={80}
+                  height={80}
+                  alt="company brand logo"
+                />
+              </Link>
+            </div>
+            <div className="navbar-right-cont">
+              <Connect />
+            </div>
+          </nav>
         </div>
-      </header>
-      {/* )} */}
-
-      {/* Choose Account Modal */}
-      {loginModal && address && <LoginForm owner={address} />}
-    </>
+      </div>
+    </header>
   );
 };
 
