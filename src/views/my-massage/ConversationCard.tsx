@@ -84,9 +84,16 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
           const messages = await conversation.messages({ limit: 1 });
           if (messages && messages.length > 0) {
             const lastMsg = messages[0];
-            const msgContent = lastMsg.content as { text?: string };
-            setLastMessage(msgContent?.text || "Enter your message description here...");
-            setLastMessageTime(moment(lastMsg.sentAt).format("h:mmA"));
+            const content = lastMsg.content;
+            if (typeof content === "string") {
+              setLastMessage(content);
+            } else if (content && typeof content === "object" && "text" in content) {
+              const typedContent = content as { text?: string };
+              setLastMessage(typedContent.text || "Enter your message description here...");
+            } else {
+              setLastMessage("Attachment");
+            }
+            setLastMessageTime(moment(new Date(Number(lastMsg.sentAtNs / 1_000_000n))).format("h:mmA"));
           }
         } catch {
           setLastMessage("Enter your message description here...");
