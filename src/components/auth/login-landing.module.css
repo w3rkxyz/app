@@ -59,25 +59,33 @@
   justify-content: center;
   min-height: 100vh;
   background-color: #f7f7f8;
+  background-image: radial-gradient(#ececef 1px, transparent 1px);
+  background-size: 8px 8px;
   padding: var(--desktop-pad);
   min-width: 0;
+  overflow: hidden;
 }
 
 .rightPanel {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   width: 100%;
-  max-width: var(--desktop-right-preview-max-width);
+  max-width: none;
+  height: 100%;
   background: transparent;
   min-width: 0;
+  overflow: hidden;
 }
 
 .rightImage {
-  width: auto;
+  width: clamp(920px, 95vw, 1280px);
   height: auto;
-  max-width: 100%;
+  max-width: none;
   max-height: calc(100vh - (var(--desktop-pad) * 2));
+  transform: translateX(calc(-1 * clamp(280px, 20vw, 420px)));
+  transform-origin: left center;
+  flex-shrink: 0;
 }
 
 .mobileWrap {
@@ -115,7 +123,17 @@
   }
 
   .rightPanel {
+    justify-content: center;
     max-width: 560px;
+    height: auto;
+    overflow: visible;
+  }
+
+  .rightImage {
+    width: min(100%, 560px);
+    max-width: 100%;
+    max-height: none;
+    transform: none;
   }
 }
 
