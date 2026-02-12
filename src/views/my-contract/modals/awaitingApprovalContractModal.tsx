@@ -126,11 +126,11 @@ const AwaitingApprovalContractModal = ({ handleCloseModal, contractDetails }: Pr
 
   return (
     <div
-      className={`view-job-modal-section sm:w-full rounded-[12px] px-[16px] sm:rounded-none sm:rounded-tl-[12px]  sm:rounded-tr-[12px] bg-white sm:absolute sm:mobile-modal 
+      className={`view-job-modal-section sm:w-full rounded-[12px] px-7 py-3 sm:rounded-none sm:rounded-tl-[12px]  sm:rounded-tr-[12px] bg-white sm:absolute sm:mobile-modal 
       ${showMobile ? "open-modal" : ""} h-fit`}
       ref={myDivRef}
     >
-      <div className="w-[667px] sm:w-full flex justify-between items-center py-[13px] border-b-[1px] border-b-[#E4E4E7] rounded-none sm:rounded-tl-[12px] sm:rounded-tr-[12px]">
+      {/* <div className="w-[667px] sm:w-full flex justify-between items-center py-[13px] border-b-[1px] border-b-[#E4E4E7] rounded-none sm:rounded-tl-[12px] sm:rounded-tr-[12px]">
         <span className="leading-[14.52px] text-[14px] font-semibold text-[black]">
           Work Approval - {showClientView ? "Client" : "Freelancer"}
         </span>
@@ -142,8 +142,27 @@ const AwaitingApprovalContractModal = ({ handleCloseModal, contractDetails }: Pr
           width={20}
           height={20}
         />
+      </div> */}
+      <div className="w-[667px] sm:w-full flex items-start justify-between gap-1 py-[13px] border-b-[1px] border-b-[#E4E4E7] rounded-none sm:rounded-tl-[12px] sm:rounded-tr-[12px]">
+        <div className="flex flex-col gap-2">
+          <span className="leading-[14.52px] text-[20px] font-medium text-[black]">
+            Work Approval
+          </span>
+          <span className="text-[#83899F] text-base">The freelancer has submitted work. Review it and release payment or request changes.</span>
+        </div>
+        <Image
+          onClick={handleCloseModal}
+          className="cursor-pointer"
+          src="/images/Close.svg"
+          alt="close icon"
+          width={20}
+          height={20}
+        />
       </div>
       <div className="bg-[white] rounded-[12px] sm:rounded-none py-[16px] sm:w-full max-w-[664px] flex flex-col">
+        <div className="border border-[#984604] bg-[#FFF5ED] rounded-lg py-2 text-center px-4 mb-4">
+          <span className="text-[#984604] font-semibold">Freelancer has requested payment.</span>
+        </div>
         {!loadingUser && userData ? (
           <div className="flex sm:flex-col justify-between gap-[8px] sm:gap-[16px] w-full">
             <div className="flex gap-[6px] items-center">
@@ -183,10 +202,24 @@ const AwaitingApprovalContractModal = ({ handleCloseModal, contractDetails }: Pr
         <p className="line-clamp-4 sm:line-clamp-6 text-[12px] leading-[20px] font-normal">
           {contractDetails.description}
         </p>
+                <hr className="w-full bg-[#D9D9D9] my-[16px]" />
+        <div className="flex flex-col gap-[6px]">
+          <span className="text-[14px] leading-[16.94px] font-medium">Due Date</span>
+          <span className="text-sm text-[#6C6C6C] leading-[14.52px] font-normal">
+            {formatDate(contractDetails.dueDate)}
+          </span>
+        </div>
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
         <div className="flex flex-col gap-[6px]">
-          <span className="text-[14px] leading-[16.94px] font-medium">Client Wallet Address</span>
-          <span className="text-[12px] leading-[14.52px] font-normal">
+          <span className="text-[14px] leading-[16.94px] font-medium">Payment Amount</span>
+          <span className="text-sm text-[#6C6C6C] leading-[14.52px] font-normal">
+            ${contractDetails.paymentAmount}
+          </span>
+        </div>
+        <hr className="w-full bg-[#D9D9D9] my-[16px]" />
+        <div className="flex flex-col gap-[6px]">
+          <span className="text-[14px] leading-[16.94px] font-medium">Your Wallet Address</span>
+          <span className="text-sm text-[#6C6C6C] leading-[14.52px] font-normal">
             {contractDetails.clientAddress}
           </span>
         </div>
@@ -195,53 +228,17 @@ const AwaitingApprovalContractModal = ({ handleCloseModal, contractDetails }: Pr
           <span className="text-[14px] leading-[16.94px] font-medium">
             Freelancer Wallet Address
           </span>
-          <span className="text-[12px] leading-[14.52px] font-normal">
+          <span className="text-sm text-[#6C6C6C] leading-[14.52px] font-normal">
             {contractDetails.freelancerAddress}
           </span>
         </div>
-        <hr className="w-full bg-[#D9D9D9] my-[16px]" />
-        <div className="flex flex-col gap-[6px]">
-          <span className="text-[14px] leading-[16.94px] font-medium">Payment Amount</span>
-          <span className="text-[12px] leading-[14.52px] font-normal">
-            ${contractDetails.paymentAmount}
-          </span>
-        </div>
-        <hr className="w-full bg-[#D9D9D9] my-[16px]" />
-        <div className="flex sm:flex-col w-full justify-between sm:justify-start sm:gap-[6px]">
-          <div className="flex flex-col gap-[6px]">
-            <span className="text-[14px] leading-[16.94px] font-medium">Due Date</span>
-            <span className="text-[12px] leading-[14.52px] font-normal">
-              {formatDate(contractDetails.dueDate)}
-            </span>
-          </div>
-          {showNewDatePicker && (
-            <div className="w-1/2 sm:w-full">
-              <span className={`leading-[14.52px] text-[14px] font-mediumtext-[black]`}>
-                New Due Date
-              </span>
-              <button
-                className="w-full sm:w-full rounded-[8px] border-[1px] border-[#E4E4E7] p-[7px] flex justify-between items-center relative"
-                onClick={() => setShowDatePicker(true)}
-              >
-                <DatePicker
-                  selected={newDueDate}
-                  onSelect={date => handlePickDate(date)}
-                  className="font-normal leading-[14.52px] text-[14px] text-[#707070]"
-                  open={showDatePicker}
-                  onClickOutside={() => setShowDatePicker(false)}
-                />
-                <Image src="/images/calender.svg" alt="drop-down icon" width={20} height={20} />
-              </button>
-            </div>
-          )}
-        </div>
-        <div className="flex flex-col gap-[6px] mt-[16px]">
+        {/* <div className="flex flex-col gap-[6px] mt-[16px]">
           <span className="text-[14px] leading-[16.94px] font-medium text-[#351A6B]">
             {showClientView
               ? "Freelancer has requested payment."
               : "Awaiting client approval and payment release"}
           </span>
-        </div>
+        </div> */}
         <div className="relative flex sm:flex-col w-full justify-center sm:items-center gap-[16px] sm:gap-[6px] mt-[30px] sm:mt-[16px]">
           {showClientView && (
             <>

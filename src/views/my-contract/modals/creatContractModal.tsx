@@ -15,6 +15,10 @@ import { getPublicClient } from "@/client"
 import "react-datepicker/dist/react-datepicker.css";
 import { openAlert, closeAlert } from "@/redux/alerts";
 import { useDispatch, useSelector } from "react-redux";
+import FormInput from "@/components/onboarding/form-input";
+import FormTextarea from "@/components/onboarding/form-textarea";
+import FormSelect from "@/components/onboarding/form-select";
+import RateSelector from "@/components/onboarding/rate-selector";
 
 type Props = {
   handleCloseModal?: () => void;
@@ -285,14 +289,18 @@ const CreateContractModal = ({
 
   return (
     <div
-      className={`view-job-modal-section sm:w-full rounded-[12px] px-[16px] sm:rounded-none sm:rounded-tl-[12px]  sm:rounded-tr-[12px] bg-white nav-space sm:absolute sm:mobile-modal 
+      className={`view-job-modal-section sm:w-full rounded-[12px] px-7 py-3 sm:rounded-none sm:rounded-tl-[12px] h-[90vh] overflow-auto sm:rounded-tr-[12px] bg-white nav-space sm:absolute sm:mobile-modal 
       ${showMobile ? "open-modal" : ""}`}
       ref={myDivRef}
     >
-      <div className="w-[667px] sm:w-full flex justify-between items-center py-[13px] border-b-[1px] border-b-[#E4E4E7] rounded-none sm:rounded-tl-[12px] sm:rounded-tr-[12px]">
-        <span className="leading-[14.52px] text-[14px] font-semibold text-[black]">
-          Create Contract Proposal
-        </span>
+      <div className="w-[667px] sm:w-full flex items-start justify-between gap-1 py-[13px] border-b-[1px] border-b-[#E4E4E7] rounded-none sm:rounded-tl-[12px] sm:rounded-tr-[12px]">
+        <div className="flex flex-col gap-2">
+          <span className="text-[#83899F] text-[13px]">Step 1 of 2</span>
+          <span className="leading-[14.52px] text-[20px] font-medium text-[black]">
+            Create New Contract
+          </span>
+          <span className="text-[#83899F] text-base">Define scope, payment, and due dates to start working securely.</span>
+        </div>
         <Image
           onClick={handleCloseModal}
           className="cursor-pointer"
@@ -303,186 +311,255 @@ const CreateContractModal = ({
         />
       </div>
       <div className="bg-[white] rounded-[12px] sm:rounded-none py-[16px] sm:w-full max-w-[664px] flex flex-col">
-        <div className="flex flex-col gap-[8px] sm:gap-[6px] mb-[16px] sm:w-full">
+        {/* <div className="flex flex-col gap-[8px] sm:gap-[6px] mb-[16px] sm:w-full">
           <span className="leading-[14.52px] text-[14px] font-semibold text-[black]">Step 1/2</span>
           <div className="w-full relative flex items-center justify-center">
             <div className="bg-[#351A6B] w-1/2 h-[4px] rounded-[3px] absolute left-0"></div>
             <div className="bg-[#351A6B] w-[16px] h-[16px] rounded-[16px] absolute"></div>
           </div>
-        </div>
-        <div className="flex flex-col gap-[4px] sm:gap-[6px] mb-[16px] sm:w-full">
-          <span className="leading-[14.52px] text-[14px] font-medium text-[black]">
-            Contract Title
-          </span>
-          <input
-            className="form-input rounded-[12px] p-[11px] border-[1px] border-[#E4E4E7] sm:w-full"
-            placeholder="Title your contract.."
-            onChange={e => setTitle(e.target.value)}
+        </div> */}
+        <div className="space-y-3">
+          <FormInput
+            label="Contract Title"
             value={title}
+            onChange={e => setTitle(e.target.value)}
+            placeholder="Title your contract"
+            required
           />
-        </div>
-        <div className="flex flex-col gap-[4px] sm:gap-[6px] mb-[16px]">
-          <span className="leading-[14.52px] text-[14px] font-medium text-[black]">
-            Description
-          </span>
-          <textarea
-            maxLength={1000}
-            className="form-input rounded-[12px] p-[11px] h-[160px] border-[1px] border-[#E4E4E7] resize-none sm:w-full"
-            placeholder="Type a description.."
-            onChange={e => setDescription(e.target.value)}
+          <FormTextarea
+            label="Description"
             value={description}
+            onChange={e => setDescription(e.target.value)}
+            placeholder="Describe the tasks, deliverables, or goals clearly."
+            required
+            maxLength={800}
+            rows={5}
           />
-        </div>
-        <div className="flex sm:flex-col gap-[16px] mb-[16px]">
-          <div className="flex-1">
-            <label htmlFor="client-address" className={`leading-[14.52px] text-[14px] font-mediumtext-[black]`}>
-              Your Address
-            </label>
-            <input
-              id="client-address"
-              type="text"
-              className="form-input rounded-[8px] px-[11px] py-[7px] border-[1px] border-[#E4E4E7]"
-              value={address || ""}
-              disabled
-              placeholder="Your wallet address"
-              aria-label="Your wallet address"
-              title="Your wallet address"
+          <FormInput
+            label="Due Date"
+            // value={title}
+            // onChange={e => setTitle(e.target.value)}
+            placeholder="Select a Date"
+            required
+            type="date"
+          />
+          <FormSelect
+            label="Payment Token(s)"
+            // value={formState.location}
+            // onChange={handleChange}
+            placeholder="Select Token"
+            required
+            options={[]}
+          />
+            <label className=" block xs:text-[14px] text-sm font-medium text-[#212121]">
+            Payment Amount <span className="text-red-500">*</span>
+          </label>
+          <div className="flex items-center justify-between">
+            <RateSelector
+              // rateType={serviceData.rateType}
+              // rate={serviceData.rate}
+              // onRateTypeChange={onRateTypeChange}
+              // onRateChange={onInputChange}
+              startContent="US Dollar"
+              label=""
+            />
+            <RateSelector
+              // rateType={serviceData.rateType}
+              // rate={serviceData.rate}
+              // onRateTypeChange={onRateTypeChange}
+              // onRateChange={onInputChange}
+              startContent="ETH"
+              label=""
             />
           </div>
-          <div className="flex-1">
-            <span className={`leading-[14.52px] text-[14px] font-medium text-[black]`}>
-              Freelancer Wallet Address
+          <FormInput
+            label="Your Wallet Address"
+            // value={title}
+            // onChange={e => setTitle(e.target.value)}
+            placeholder="Title your contract"
+            required
+          />
+          <FormInput
+            label="Freelancer Wallet Address"
+            // value={title}
+            // onChange={e => setTitle(e.target.value)}
+            placeholder="Enter freelancer wallet address"
+            required
+          />
+          {/* <div className="flex flex-col gap-[4px] sm:gap-[6px] mb-[16px] sm:w-full">
+            <span className="leading-[14.52px] text-[14px] font-medium text-[black]">
+              Contract Title
             </span>
             <input
-              className={`form-input rounded-[8px] px-[11px] py-[7px] border-[1px] border-[#E4E4E7]`}
-              placeholder="Freelancer wallet address"
-              type="text"
-              onChange={e => setFreelancerAddress(e.target.value)}
-              onBlur={validateAddress}
-              value={freelancer ? freelancer.ownedBy.address : freelancerAddress}
-              disabled={freelancer !== undefined}
+              className="form-input rounded-[12px] p-[11px] border-[1px] border-[#E4E4E7] sm:w-full"
+              placeholder="Title your contract.."
+              onChange={e => setTitle(e.target.value)}
+              value={title}
             />
-          </div>
-        </div>
-        <div className="flex sm:flex-col gap-[16px] mb-[16px]">
-          <div className="flex-1">
-            <span className={`leading-[14.52px] text-[14px] font-medium text-[black]`}>
-              Payment Currency
+          </div> */}
+          {/* <div className="flex flex-col gap-[4px] sm:gap-[6px] mb-[16px]">
+            <span className="leading-[14.52px] text-[14px] font-medium text-[black]">
+              Description
             </span>
-            <button
-              type="button"
-              className="w-full sm:w-full rounded-[8px] border-[1px] border-[#E4E4E7] p-[7px] flex justify-between items-center relative"
-              onClick={e => {
-                e.stopPropagation();
-                toggleTokensModal();
-              }}
-              ref={tokenModalRef}
-            >
-              {selectedTokens.length > 0 ? (
-                <span className="flex gap-[3px]">
-                  {selectedTokens.map((tokenIndex, index) => {
-                    return (
-                      <div className="flex gap-[10px] items-center" key={index}>
-                        <Image
-                          src={tokens[tokenIndex].image}
-                          alt="token icon"
-                          width={20}
-                          height={20}
-                          key={tokenIndex}
-                        />
-                        <span className="font-normal leading-[14.52px] text-[12px] text-[#707070]">
-                          {tokens[tokenIndex].text}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </span>
-              ) : (
-                <span className="font-normal leading-[14.52px] text-[12px] text-[#707070]">
-                  Select Tokens
-                </span>
-              )}
-              <Image src="/images/drop-down.svg" alt="drop-down icon" width={20} height={20} />
-              <div
-                className={`find-work-message-section w-[100%] bg-[#FFFFFF] rounded-[8px] p-[16px] sm:items-start gap-[6px] absolute top-[100%] sm:top-[-265px] left-0
-              border-[1px] border-[#E4E4E7] ${showTokens ? "flex" : "hidden"} flex-col z-[999]`}
+            <textarea
+              maxLength={1000}
+              className="form-input rounded-[12px] p-[11px] h-[160px] border-[1px] border-[#E4E4E7] resize-none sm:w-full"
+              placeholder="Type a description.."
+              onChange={e => setDescription(e.target.value)}
+              value={description}
+            />
+          </div> */}
+          {/* <div className="flex sm:flex-col gap-[16px] mb-[16px]">
+            <div className="flex-1">
+              <label htmlFor="client-address" className={`leading-[14.52px] text-[14px] font-mediumtext-[black]`}>
+                Your Address
+              </label>
+              <input
+                id="client-address"
+                type="text"
+                className="form-input rounded-[8px] px-[11px] py-[7px] border-[1px] border-[#E4E4E7]"
+                value={address || ""}
+                disabled
+                placeholder="Your wallet address"
+                aria-label="Your wallet address"
+                title="Your wallet address"
+              />
+            </div>
+            <div className="flex-1">
+              <span className={`leading-[14.52px] text-[14px] font-medium text-[black]`}>
+                Freelancer Wallet Address
+              </span>
+              <input
+                className={`form-input rounded-[8px] px-[11px] py-[7px] border-[1px] border-[#E4E4E7]`}
+                placeholder="Freelancer wallet address"
+                type="text"
+                onChange={e => setFreelancerAddress(e.target.value)}
+                onBlur={validateAddress}
+                value={freelancer ? freelancer.ownedBy.address : freelancerAddress}
+                disabled={freelancer !== undefined}
+              />
+            </div>
+          </div>
+          <div className="flex sm:flex-col gap-[16px] mb-[16px]">
+            <div className="flex-1">
+              <span className={`leading-[14.52px] text-[14px] font-medium text-[black]`}>
+                Payment Currency
+              </span>
+              <button
+                type="button"
+                className="w-full sm:w-full rounded-[8px] border-[1px] border-[#E4E4E7] p-[7px] flex justify-between items-center relative"
                 onClick={e => {
                   e.stopPropagation();
+                  toggleTokensModal();
                 }}
+                ref={tokenModalRef}
               >
-                {tokens.map((token, index) => (
-                  <div
-                    key={index}
-                    className={`flex gap-[8px] items-center rounded-[6px] ${
-                      selectedTokens?.includes(index) ? "border-[1px] border-black" : ""
-                    }`}
-                    onClick={() => onCLickToken(index)}
-                  >
-                    <Image src={token.image} alt="token icon" width={20} height={20} />
-                    <span className="font-medium text-[11px] leading-[20px] text-black">
-                      {token.text}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </button>
-          </div>
-          <div className="flex-1 relative">
-            <span className={`leading-[14.52px] text-[14px] font-mediumtext-[black]`}>
-              Payment Amount
-            </span>
-            <input
-              className="form-input rounded-[8px] px-[11px] py-[7px] border-[1px] border-[#E4E4E7]"
-              value={paymentAmount}
-              placeholder="$Amount in USD"
-              type="number"
-              onChange={e => setPaymentAmount(Number(e.target.value))}
-            />
-            <span className="leading-[14.52px] text-[12px] font-normal text-[#707070] absolute left-0 top-full">
-              Amount in selected cryptocurrency
-            </span>
-          </div>
-        </div>
-        <div className="flex w-full mb-[21px]">
-          <div className="w-1/2 sm:w-full">
-            <span className={`leading-[14.52px] text-[14px] font-mediumtext-[black]`}>
-              Due Date
-            </span>
-            <label htmlFor="due-date-picker" className="sr-only">
-              Due Date
-            </label>
-            <button
-              id="due-date-picker"
-              type="button"
-              name="date picker"
-              aria-label="Select due date"
-              title="Select due date"
-              className="w-full sm:w-full rounded-[8px] border-[1px] border-[#E4E4E7] p-[7px] flex justify-between items-center relative"
-              onClick={() => setShowDatePicker(true)}
-            >
-              <span className="font-normal leading-[14.52px] text-[14px] text-[#707070]">
-                {dueDate.toLocaleDateString() || "Select date"}
+                {selectedTokens.length > 0 ? (
+                  <span className="flex gap-[3px]">
+                    {selectedTokens.map((tokenIndex, index) => {
+                      return (
+                        <div className="flex gap-[10px] items-center" key={index}>
+                          <Image
+                            src={tokens[tokenIndex].image}
+                            alt="token icon"
+                            width={20}
+                            height={20}
+                            key={tokenIndex}
+                          />
+                          <span className="font-normal leading-[14.52px] text-[12px] text-[#707070]">
+                            {tokens[tokenIndex].text}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </span>
+                ) : (
+                  <span className="font-normal leading-[14.52px] text-[12px] text-[#707070]">
+                    Select Tokens
+                  </span>
+                )}
+                <Image src="/images/drop-down.svg" alt="drop-down icon" width={20} height={20} />
+                <div
+                  className={`find-work-message-section w-[100%] bg-[#FFFFFF] rounded-[8px] p-[16px] sm:items-start gap-[6px] absolute top-[100%] sm:top-[-265px] left-0
+                border-[1px] border-[#E4E4E7] ${showTokens ? "flex" : "hidden"} flex-col z-[999]`}
+                  onClick={e => {
+                    e.stopPropagation();
+                  }}
+                >
+                  {tokens.map((token, index) => (
+                    <div
+                      key={index}
+                      className={`flex gap-[8px] items-center rounded-[6px] ${
+                        selectedTokens?.includes(index) ? "border-[1px] border-black" : ""
+                      }`}
+                      onClick={() => onCLickToken(index)}
+                    >
+                      <Image src={token.image} alt="token icon" width={20} height={20} />
+                      <span className="font-medium text-[11px] leading-[20px] text-black">
+                        {token.text}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </button>
+            </div>
+            <div className="flex-1 relative">
+              <span className={`leading-[14.52px] text-[14px] font-mediumtext-[black]`}>
+                Payment Amount
               </span>
-              <DatePicker
-                selected={dueDate}
-                onSelect={date => handlePickDate(date)}
-                className="font-normal leading-[14.52px] text-[14px] text-[#707070]"
-                open={showDatePicker}
-                onClickOutside={() => setShowDatePicker(false)}
+              <input
+                className="form-input rounded-[8px] px-[11px] py-[7px] border-[1px] border-[#E4E4E7]"
+                value={paymentAmount}
+                placeholder="$Amount in USD"
+                type="number"
+                onChange={e => setPaymentAmount(Number(e.target.value))}
               />
-              <Image src="/images/calender.svg" alt="calendar icon" width={20} height={20} aria-hidden="true" />
-            </button>
+              <span className="leading-[14.52px] text-[12px] font-normal text-[#707070] absolute left-0 top-full">
+                Amount in selected cryptocurrency
+              </span>
+            </div>
           </div>
+          <div className="flex w-full mb-[21px]">
+            <div className="w-1/2 sm:w-full">
+              <span className={`leading-[14.52px] text-[14px] font-mediumtext-[black]`}>
+                Due Date
+              </span>
+              <label htmlFor="due-date-picker" className="sr-only">
+                Due Date
+              </label>
+              <button
+                id="due-date-picker"
+                type="button"
+                name="date picker"
+                aria-label="Select due date"
+                title="Select due date"
+                className="w-full sm:w-full rounded-[8px] border-[1px] border-[#E4E4E7] p-[7px] flex justify-between items-center relative"
+                onClick={() => setShowDatePicker(true)}
+              >
+                <span className="font-normal leading-[14.52px] text-[14px] text-[#707070]">
+                  {dueDate.toLocaleDateString() || "Select date"}
+                </span>
+                <DatePicker
+                  selected={dueDate}
+                  onSelect={date => handlePickDate(date)}
+                  className="font-normal leading-[14.52px] text-[14px] text-[#707070]"
+                  open={showDatePicker}
+                  onClickOutside={() => setShowDatePicker(false)}
+                />
+                <Image src="/images/calender.svg" alt="calendar icon" width={20} height={20} aria-hidden="true" />
+              </button>
+            </div>
+          </div> */}
         </div>
-
-        <button
-          type="button"
-          className="mx-auto w-fit flex gap-[5px] py-[10px] px-[23px] tx-[14px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px]"
-          onClick={handleSubmit}
-        >
-          Next
-          <Image src={"/images/arrow-right.svg"} alt="paco pic" width={14} height={14} />
-        </button>
+        <div className="py-[13px] border-t-[1px] border-t-[#E4E4E7] mt-10 flex items-center justify-end">
+          <button
+            type="button"
+            className="flex gap-[5px] text-sm py-[12px] px-[16px] tx-[14px] leading-[14.5px] text-white bg-[#212121] rounded-full font-medium mb-[8px]"
+            onClick={handleSubmit}
+          >
+            Next
+          </button>
+        </div>
       </div>
       {showSelectModal && (
         <SelectProfileModal

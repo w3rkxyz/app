@@ -1,29 +1,19 @@
 "use client";
 
-import { Utils, type Identifier } from "@xmtp/browser-sdk";
-import { useEffect, useRef, useState } from "react";
+import { IdentifierKind, getInboxIdForIdentifier } from "@xmtp/browser-sdk";
+import { useEffect, useState } from "react";
 import { isValidEthereumAddress, isValidInboxId } from "@/utils/strings";
 import { useXMTP } from "@/app/XMTPContext";
 import type { AccountData } from "@/utils/getLensProfile";
+import { getEnv } from "@/utils/xmtpHelpers";
 
 export const useMemberId = () => {
-  const { setNotOnNetwork, setInvalidUser, client } = useXMTP();
+  const { client } = useXMTP();
   const [loading, setLoading] = useState(false);
   const [memberId, setMemberId] = useState<string>("");
-  const [selectedUser, setSelectedUsr] = useState<AccountData | null>(null);
   const [inboxId, setInboxId] = useState<string>("");
-  const [isOn, setIsOn] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const utilsRef = useRef<Utils | null>(null);
-  const environment = "dev";
-
-  useEffect(() => {
-    const utils = new Utils();
-    utilsRef.current = utils;
-    return () => {
-      utils.close();
-    };
-  }, []);
+  const environment = getEnv();
 
   useEffect(() => {
     const checkMemberId = async () => {
@@ -38,23 +28,15 @@ export const useMemberId = () => {
       if (!isValidEthereumAddress(memberId) && !isValidInboxId(memberId)) {
         console.log("Invalid address or inbox ID");
         setError("Invalid address or inbox ID");
-      } else if (isValidEthereumAddress(memberId) && utilsRef.current && client) {
+      } else if (isValidEthereumAddress(memberId) && client) {
         console.log("Started running");
         setLoading(true);
 
         try {
-          const identifiers: Identifier[] = [
+          const inboxId = await getInboxIdForIdentifier(
             {
               identifier: memberId.toLowerCase(),
-              identifierKind: "Ethereum",
-            },
-          ];
-          console.log("Identifiers: ", identifiers);
-
-          const inboxId = await utilsRef.current.getInboxIdForIdentifier(
-            {
-              identifier: memberId.toLowerCase(),
-              identifierKind: "Ethereum",
+              identifierKind: IdentifierKind.Ethereum,
             },
             environment
           );
@@ -73,7 +55,6 @@ export const useMemberId = () => {
           setError((error as Error).message);
         } finally {
           setLoading(false);
-          console.log("user: ", selectedUser);
         }
       } else if (isValidInboxId(memberId)) {
         setInboxId(memberId);
@@ -81,7 +62,7 @@ export const useMemberId = () => {
     };
 
     void checkMemberId();
-  }, [memberId, environment]);
+  }, [client, environment, memberId]);
 
   // useEffect(() => {
   //   const checkMemberId = async () => {
@@ -141,7 +122,6 @@ export const useMemberId = () => {
 
   const selectUser = (user: AccountData) => {
     setMemberId(user.address);
-    setSelectedUsr(user);
   };
 
   return { memberId, setMemberId, error, loading, inboxId, selectUser };

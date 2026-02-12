@@ -1,5 +1,6 @@
 "use client";
-import React, { useEffect, useState } from "react";
+
+import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Connect } from "./connectButton";
@@ -7,6 +8,7 @@ import { useAccount } from "wagmi";
 import { useSelector, useDispatch } from "react-redux";
 import { displayLoginModal, setLensProfile } from "@/redux/app";
 import LoginForm from "./loginForm";
+import { usePathname } from "next/navigation";
 
 const Navbar = () => {
   const { loginModal, user: profile } = useSelector((state: any) => state.app);
@@ -14,6 +16,8 @@ const Navbar = () => {
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNavbar, setShowNavbar] = useState(true);
   const { isConnected, address } = useAccount();
+  const path = usePathname();
+  
 
   const closeMobileMenu = () => {
     setMobileMenuOpen(false);
@@ -41,11 +45,11 @@ const Navbar = () => {
       {/* {isConnected && profile ? (
         <SecondNav />
       ) : ( */}
-      <header className="header-section h-[60px] px-[156px] sm:px-[16px] absolute w-screen top-0 left-0 bg-white border-b-[1px] border-b-[#EEEEEE] z-[98]">
-        <div className="custom-container">
+      <header className="header-section h-[60px] absolute w-full top-0 left-0 bg-white border-b-[1px] mx-auto border-b-[#EEEEEE] z-[98]">
+        <div className="custom-container max-w-[1440px] mx-auto">
           <div className="header-wrapper">
             <nav className="navbar-nav-main flex items-center gap-3 justify-between h-[60px] w-full">
-              <div className="header-brand-box sm:flex sm:items-center">
+              <div className="header-brand-box flex items-center gap-12">
                 <Link href="/">
                   <Image
                     src="/images/brand-logo.svg"
@@ -55,6 +59,7 @@ const Navbar = () => {
                     alt="company brand logo"
                   ></Image>
                 </Link>
+               
               </div>
               <div className="navbar-right-cont">
                 <Connect />
@@ -62,12 +67,8 @@ const Navbar = () => {
             </nav>
           </div>
         </div>
-      </header>
-      {/* )} */}
-
-      {/* Choose Account Modal */}
-      {loginModal && address && <LoginForm owner={address} />}
-    </>
+      </div>
+    </header>
   );
 };
 

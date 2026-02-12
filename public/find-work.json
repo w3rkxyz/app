@@ -1,46 +1,46 @@
 [
 	{
-		"username": "adam.lens",
-		"profileImage": "/images/head-2.png",
-		"jobName": "Job Name",
+		"username": "Acme Labs",
+		"profileImage": "/images/Lenshead_1.png",
+		"jobName": "Smart Contract Developer",
 		"jobIcon": "/images/bagIcon.png",
-		"description": "bla bla bla lbla bla bla bla lbla bla bla lbla bla bla bla lbla bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla",
-		"contractType": "Fixed/Hourly Contract",
-		"paymentAmount": "[amount in USD]",
-		"paidIn": "[insert token logos]",
-		"tags": ["Blockchain Development", "[tag]", "[tag]"]
+		"description": "We're looking for an experienced Solidity developer to review and optimize our DeFi smart contracts. The role involves auditing security risks, reducing gas costs, and improving overall performance.",
+		"contractType": "Fixed Price",
+		"paymentAmount": "$500",
+		"paidIn": "USDC",
+		"tags": ["Design", "Admin Support", "Security & Auditing"]
 	},
 	{
-		"username": "adam.lens",
-		"profileImage": "/images/head-2.png",
-		"jobName": "Job Name",
+		"username": "Blockchain Ventures",
+		"profileImage": "/images/Lenshead_1.png",
+		"jobName": "Frontend Web3 Developer",
 		"jobIcon": "/images/bagIcon.png",
-		"description": "bla bla bla lbla bla bla bla lbla bla bla lbla bla bla bla lbla bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla",
-		"contractType": "Fixed/Hourly Contract",
-		"paymentAmount": "[amount in USD]",
-		"paidIn": "[insert token logos]",
-		"tags": ["Blockchain Development", "[tag]", "[tag]"]
+		"description": "Seeking a skilled React developer with Web3 experience to build user interfaces for our decentralized application. Must be familiar with ethers.js, wallet connections, and smart contract interactions.",
+		"contractType": "Hourly",
+		"paymentAmount": "$75/hr",
+		"paidIn": "ETH",
+		"tags": ["Blockchain", "Security", "web3"]
 	},
 	{
-		"username": "adam.lens",
-		"profileImage": "/images/head-2.png",
-		"jobName": "Job Name",
+		"username": "DeFi Solutions",
+		"profileImage": "/images/Lenshead_1.png",
+		"jobName": "UI/UX Designer",
 		"jobIcon": "/images/bagIcon.png",
-		"description": "bla bla bla lbla bla bla bla lbla bla bla lbla bla bla bla lbla bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla",
-		"contractType": "Fixed/Hourly Contract",
-		"paymentAmount": "[amount in USD]",
-		"paidIn": "[insert token logos]",
-		"tags": ["Blockchain Development", "[tag]", "[tag]"]
+		"description": "We need a creative designer to redesign our DeFi platform's user experience. The ideal candidate should have experience with financial applications and understand Web3 user flows.",
+		"contractType": "Fixed Price",
+		"paymentAmount": "$1,200",
+		"paidIn": "USDT",
+		"tags": ["Design", "Marketing", "Community Building"]
 	},
 	{
-		"username": "adam.lens",
-		"profileImage": "/images/head-2.png",
-		"jobName": "Job Name",
+		"username": "Crypto Analytics",
+		"profileImage": "/images/Lenshead_1.png",
+		"jobName": "Smart Contract Auditor",
 		"jobIcon": "/images/bagIcon.png",
-		"description": "bla bla bla lbla bla bla bla lbla bla bla lbla bla bla bla lbla bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla a bla bla bla lbla",
-		"contractType": "Fixed/Hourly Contract",
-		"paymentAmount": "[amount in USD]",
-		"paidIn": "[insert token logos]",
-		"tags": ["Blockchain Development", "[tag]", "[tag]"]
+		"description": "Looking for an experienced security auditor to perform comprehensive reviews of our smart contract codebase. Must identify vulnerabilities and provide detailed security reports.",
+		"contractType": "Fixed Price",
+		"paymentAmount": "$2,500",
+		"paidIn": "USDC",
+		"tags": ["Security & Auditing", "Blockchain Development", "Consulting & Advisory"]
 	}
 ]

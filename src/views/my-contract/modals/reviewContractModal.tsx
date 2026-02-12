@@ -136,11 +136,11 @@ const ReviewContractModal = ({ handleCloseModal, setCreationStage, contractDetai
 
   return (
     <div
-      className={`view-job-modal-section sm:w-full rounded-[12px] px-[16px] sm:rounded-none sm:rounded-tl-[12px]  sm:rounded-tr-[12px] bg-white sm:absolute sm:mobile-modal 
+      className={`view-job-modal-section sm:w-full rounded-[12px] px-7 py-3 sm:rounded-none sm:rounded-tl-[12px]  sm:rounded-tr-[12px] bg-white sm:absolute sm:mobile-modal 
       ${showMobile ? "open-modal" : ""} h-fit`}
       ref={myDivRef}
     >
-      <div className="w-[667px] sm:w-full flex justify-between items-center py-[13px] border-b-[1px] border-b-[#E4E4E7] rounded-none sm:rounded-tl-[12px] sm:rounded-tr-[12px]">
+      {/* <div className="w-[667px] sm:w-full flex justify-between items-center py-[13px] border-b-[1px] border-b-[#E4E4E7] rounded-none sm:rounded-tl-[12px] sm:rounded-tr-[12px]">
         <span className="leading-[14.52px] text-[14px] font-semibold text-[black]">
           Review & Submit
         </span>
@@ -152,25 +152,60 @@ const ReviewContractModal = ({ handleCloseModal, setCreationStage, contractDetai
           width={20}
           height={20}
         />
+      </div> */}
+      <div className="w-[667px] sm:w-full flex items-start justify-between gap-1 py-[13px] border-b-[1px] border-b-[#E4E4E7] rounded-none sm:rounded-tl-[12px] sm:rounded-tr-[12px]">
+        <div className="flex flex-col gap-2">
+          <span className="text-[#83899F] text-[13px]">Step 2 of 2</span>
+          <span className="leading-[14.52px] text-[20px] font-medium text-[black]">
+            Review & Submit
+          </span>
+          <span className="text-[#83899F] text-base">Review the proposal and submit.</span>
+        </div>
+        <Image
+          onClick={handleCloseModal}
+          className="cursor-pointer"
+          src="/images/Close.svg"
+          alt="close icon"
+          width={20}
+          height={20}
+        />
       </div>
       <div className="bg-[white] rounded-[12px] sm:rounded-none py-[16px] sm:w-full max-w-[664px] flex flex-col">
-        <div className="flex flex-col gap-[8px] sm:gap-[6px] mb-[16px] sm:w-full">
+        {/* <div className="flex flex-col gap-[8px] sm:gap-[6px] mb-[16px] sm:w-full">
           <span className="leading-[14.52px] text-[14px] font-semibold text-[black]">Step 2/2</span>
           <div className="w-full relative flex items-center justify-center">
             <div className="bg-[#351A6B] w-full h-[4px] rounded-[3px] absolute left-0"></div>
-            {/* <div className="bg-[#351A6B] w-[16px] h-[16px] rounded-[16px] absolute"></div> */}
+            <div className="bg-[#351A6B] w-[16px] h-[16px] rounded-[16px] absolute"></div>
           </div>
-        </div>
+        </div> */}
         <h3 className="text-[16px] leading-[19.36px] font-semibold mb-[6px]">
           {contractDetails.title}
         </h3>
-        <p className="line-clamp-4 sm:line-clamp-6 text-[12px] leading-[20px] font-normal">
+        <p className="line-clamp-4 sm:line-clamp-6 text-sm leading-[20px] font-normal text-[#6C6C6C]">
           {contractDetails.description}
         </p>
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
         <div className="flex flex-col gap-[6px]">
-          <span className="text-[14px] leading-[16.94px] font-medium">Client Wallet Address</span>
-          <span className="text-[12px] leading-[14.52px] font-normal">
+          <span className="text-[14px] leading-[16.94px] font-medium">Due Date</span>
+          <span className="text-sm text-[#6C6C6C] leading-[14.52px] font-normal">
+            {contractDetails.dueDate.toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </span>
+        </div>
+        <hr className="w-full bg-[#D9D9D9] my-[16px]" />
+        <div className="flex flex-col gap-[6px]">
+          <span className="text-[14px] leading-[16.94px] font-medium">Payment Amount</span>
+          <span className="text-sm text-[#6C6C6C] leading-[14.52px] font-normal">
+            ${contractDetails.paymentAmount}
+          </span>
+        </div>
+        <hr className="w-full bg-[#D9D9D9] my-[16px]" />
+        <div className="flex flex-col gap-[6px]">
+          <span className="text-[14px] leading-[16.94px] font-medium">Your Wallet Address</span>
+          <span className="text-sm leading-[14.52px] text-[#6C6C6C] font-normal">
             {contractDetails.clientAddress}
           </span>
         </div>
@@ -179,26 +214,8 @@ const ReviewContractModal = ({ handleCloseModal, setCreationStage, contractDetai
           <span className="text-[14px] leading-[16.94px] font-medium">
             Freelancer Wallet Address
           </span>
-          <span className="text-[12px] leading-[14.52px] font-normal">
+          <span className="text-sm leading-[14.52px] text-[#6C6C6C] font-normal">
             {contractDetails.freelancerAddress}
-          </span>
-        </div>
-        <hr className="w-full bg-[#D9D9D9] my-[16px]" />
-        <div className="flex flex-col gap-[6px]">
-          <span className="text-[14px] leading-[16.94px] font-medium">Payment Amount</span>
-          <span className="text-[12px] leading-[14.52px] font-normal">
-            ${contractDetails.paymentAmount}
-          </span>
-        </div>
-        <hr className="w-full bg-[#D9D9D9] my-[16px]" />
-        <div className="flex flex-col gap-[6px]">
-          <span className="text-[14px] leading-[16.94px] font-medium">Due Date</span>
-          <span className="text-[12px] leading-[14.52px] font-normal">
-            {contractDetails.dueDate.toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
           </span>
         </div>
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
@@ -208,16 +225,15 @@ const ReviewContractModal = ({ handleCloseModal, setCreationStage, contractDetai
             Payment is released upon project completion
           </span>
         </div>
-        <div className="relative flex sm:justify-between w-full">
+        <div className="relative flex justify-between w-full border-t-[1px] border-t-[#E4E4E7] pt-8">
           <button
-            className="w-fit flex gap-[5px] py-[10px] px-[24px] tx-[14px] leading-[14.5px] text-black bg-[#E4E4E7] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px] absolute top-0 sm:relative"
+            className="flex gap-[5px] text-sm py-[12px] px-[16px] tx-[14px] leading-[14.5px] text-[#212121] bg-transparent rounded-full font-medium mb-[8px] border border-[#212121]"
             onClick={() => setCreationStage(1)}
           >
-            <Image src={"/images/backArrow.svg"} alt="paco pic" width={14} height={14} />
             Back
           </button>
           <button
-            className="mx-auto sm:mx-0 w-fit py-[10px] px-[25px] sm:px-[58.5px] tx-[14px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[8px]"
+            className="flex gap-[5px] text-sm py-[12px] px-[16px] tx-[14px] leading-[14.5px] text-white bg-[#212121] rounded-full font-medium mb-[8px]"
             onClick={handleSubmit}
           >
             Submit Proposal

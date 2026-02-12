@@ -88,13 +88,13 @@ const ContractCard = ({ onCardClick, contractDetails }: CardProps) => {
 
   return (
     <div
-      className="bg-[white] hover:bg-[#F0F0F0] border-[1px] border-[#E4E4E7] rounded-[12px] p-[16px] cursor-pointer w-full"
+      className="group group-hover:bg-[#fafafa] border-b border-[#8C8C8C33] pb-10"
       onClick={() => {
         onCardClick?.();
       }}
     >
-      <div className="flex sm:flex-col justify-between sm:justify-start align-top mb-[10px]">
-        <div className="flex sm:flex-col gap-[15px]">
+      <div className="bg-white  p-[8px] sm:p-[8px] sm:pb-[16px] md:p-[24px] pb-[16px] md:pb-[24px] grid sm:grid-cols-[92px_1fr] grid-cols-[64px_1fr] gap-x-[12px] md:gap-x-[20px] gap-y-[8px] hover:shadow-sm transition-shadow cursor-pointer">
+        <div className="row-span-2 sm:row-span-3 sm:aspect-square">
           {!loadingUser && userData ? (
             <Image
               src={userData.picture}
@@ -104,18 +104,18 @@ const ContractCard = ({ onCardClick, contractDetails }: CardProps) => {
               alt="paco pic"
               width={46}
               height={46}
-              className="rounded-[8px] w-[46px] h-[46px]"
+              className="rounded-[8px] object-cover sm:h-[92px] sm:w-[92px] w-[64px] h-[64px] md:w-[64px] md:h-[64px] opacity-100"
             />
           ) : (
             <Image
-              src="/images/brand-logo.svg"
+              src="/images/jobimage.svg"
               alt="w3rk logo"
-              className="rounded-[8px] bg-[#FAFAFA] sm:border-[1px] sm: border-[#D9D9D9]"
+              className="rounded-[8px] object-cover sm:h-[92px] sm:w-[92px] w-[64px] h-[64px] md:w-[64px] md:h-[64px] opacity-100"
               width={60}
               height={60}
             />
           )}
-          <div className="flex flex-col gap-[4px]">
+          {/* <div className="flex flex-col gap-[4px]">
             <span className="text-[16px] leading-[19.36px] font-medium">
               {contractDetails.title}
             </span>
@@ -125,9 +125,31 @@ const ContractCard = ({ onCardClick, contractDetails }: CardProps) => {
             <span className="text-[#707070] text-[12px] leading-[14.52px] font-medium">
               {userData?.displayName}
             </span>
-          </div>
+          </div> */}
         </div>
-        <div
+        <div className="flex items-start justify-between sm:gap-[8px] gap-[12px] sm:flex-col flex-row md:gap-[16px] row-span-2">
+          <div className="flex flex-col justify-evenly h-full min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-medium text-[#212121] leading-[22px] md:leading-[24px]">
+                      {contractDetails.clientHandle}
+                  </h3>
+                  <p className="bg-[#FCF4FF] text-[#8F25AE] rounded-full px-3 py-1 text-[13px] font-medium hidden sm:block">New Proposal</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-lg font-medium text-[#212121] leading-[20px] md:leading-[24px]">
+                      {contractDetails.title}
+                  </h4>
+                  <p className="bg-[#FCF4FF] text-[#8F25AE] rounded-full px-3 py-1 text-[13px] font-medium sm:hidden">New Proposal</p>
+                </div>
+            </div>
+            <div className="flex sm:flex-row flex-col justify-end items-end gap-2">
+                <span className="inline-flex items-center justify-center min-w-[84px] h-[40px] py-[8px] px-[16px] border border-[#E8E8E8] rounded-full sm:text-[16px] text-[20px] font-semibold leading-[24px] tracking-[-0.2px] opacity-100 whitespace-nowrap bg-[#F6F6F6] group-hover:bg-white max-w-fit">
+                    ${contractDetails.paymentAmount}
+                </span>
+                <p className="text-base font-medium sm:text-[12px] text-[#212121]">Due Date: 25 Aug, 2025</p>
+            </div>
+        </div>
+        {/* <div
           className={`py-[8px] px-[16px] flex items-center justify-center leading-[14.52px] text-[12px] ${
             contractTypes[contractDetails.state].textColor
           } ${
@@ -137,9 +159,9 @@ const ContractCard = ({ onCardClick, contractDetails }: CardProps) => {
           {contractDetails.state === "inProgress"
             ? daysUntil(contractDetails.dueDate)
             : contractTypes[contractDetails.state].text}
-        </div>
+        </div> */}
       </div>
-      <p className="mt-[16px] w-full line-clamp-4 sm:line-clamp-11 leading-[22px] text-[13px] text-[#5A5A5A] font-normal">
+        <p className="mt-[16px] w-full line-clamp-4 sm:line-clamp-11 leading-[22px] text-base text-[#6C6C6C] font-normal">
         {contractDetails.description}
       </p>
     </div>

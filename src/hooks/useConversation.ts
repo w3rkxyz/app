@@ -1,6 +1,6 @@
 "use client";
 
-import type { DecodedMessage, SafeListMessagesOptions, Dm } from "@xmtp/browser-sdk";
+import type { DecodedMessage, ListMessagesOptions } from "@xmtp/browser-sdk";
 import { useEffect, useState } from "react";
 import { useXMTPClient } from "./useXMTPClient";
 import { ContentTypes } from "@/app/XMTPContext";
@@ -8,13 +8,17 @@ import { useXMTP } from "@/app/XMTPContext";
 import type { AccountData } from "@/utils/getLensProfile";
 import useDatabase from "./useDatabase";
 import { useAccount } from "wagmi";
+import { useSelector } from "react-redux";
+import { RootState } from "@/redux/store";
 import { fetchAccount } from "./useSearchAccounts";
 import getLensAccountData from "@/utils/getLensProfile";
 
 export const useConversation = () => {
   const { client } = useXMTPClient();
   const { activeConversation, setActiveConversation, notOnNetwork, invalidUser } = useXMTP();
-  const { address } = useAccount();
+  const { address: walletAddress } = useAccount();
+  const lensProfile = useSelector((state: RootState) => state.app.user);
+  const activeIdentityAddress = lensProfile?.address ?? walletAddress;
   const { addressToUser } = useDatabase();
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -25,11 +29,13 @@ export const useConversation = () => {
 
   useEffect(() => {
     const fetchOtherUser = async () => {
-      if (address && addressToUser && activeConversation) {
+      if (activeIdentityAddress && addressToUser && activeConversation) {
         const members = await activeConversation.members();
 
         const otherUser = members.find(
-          member => member.accountIdentifiers[0].identifier !== address
+          member =>
+            member.accountIdentifiers[0].identifier.toLowerCase() !==
+            activeIdentityAddress.toLowerCase()
         );
 
         if (otherUser) {
@@ -61,10 +67,10 @@ export const useConversation = () => {
       setLoadingOtherUser(false);
     };
     fetchOtherUser();
-  }, [activeConversation?.id, address, addressToUser, activeConversation]);
+  }, [activeConversation?.id, activeConversation, activeIdentityAddress, addressToUser]);
 
   const getMessages = async (
-    options?: SafeListMessagesOptions,
+    options?: ListMessagesOptions,
     syncFromNetwork: boolean = false
   ) => {
     if (!client) {
@@ -109,7 +115,7 @@ export const useConversation = () => {
     setSending(true);
 
     try {
-      await activeConversation?.send(message);
+      await activeConversation?.sendText(message);
     } finally {
       setSending(false);
     }
@@ -121,17 +127,15 @@ export const useConversation = () => {
       return noop;
     }
 
-    const onMessage = (error: Error | null, message: DecodedMessage<ContentTypes> | undefined) => {
-      if (message) {
+    const stream = await activeConversation?.stream({
+      onValue: message => {
         setMessages(prev => [...prev, message]);
-      }
-    };
-
-    const stream = await activeConversation?.stream(onMessage);
+      },
+    });
 
     return stream
       ? () => {
-          void stream.return(undefined);
+          void stream.return();
         }
       : noop;
   };
