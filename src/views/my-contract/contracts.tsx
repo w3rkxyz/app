@@ -3,7 +3,7 @@
 import Image from "next/image";
 import ContractCard from "@/components/Cards/contractCard";
 import ViewJobModal from "../view-job-modal/view-job-modal";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "react-loading-skeleton/dist/skeleton.css";
 import CreateContractModal from "./modals/creatContractModal";
 import ReviewContractModal from "./modals/reviewContractModal";
@@ -12,13 +12,14 @@ import InProgressContractModal from "./modals/inProgressContractModal";
 import AwaitingApprovalContractModal from "./modals/awaitingApprovalContractModal";
 import CompletedContractModal from "./modals/CompletedContractModal";
 import type { activeContractDetails, contractDetails } from "@/types/types";
-import { get_all_contracts, getContract, getContractInstance } from "@/api";
+import { get_all_contracts, getContractInstance } from "@/api";
 import { useAccount } from "wagmi";
 import { useSelector } from "react-redux";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import { useSearchParams } from "next/navigation";
 import { useAccount as useLensAccount } from "@lens-protocol/react";
+import { invalidateContractsCache } from "@/lib/contractCache";
 
 const contractTypes = [
   "New Proposals",
@@ -121,6 +122,7 @@ const Contracts = () => {
   const [activeTab, setActiveTab] = useState<'active' | 'ended'>('active');
   const [creationStage, setCreationStage] = useState(2);
   const [selectedContract, setSelectedContract] = useState<activeContractDetails | undefined>();
+  const refetchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [newContractDetails, setNewContractDetails] = useState<any>({
     title: "",
     description: "",
@@ -182,28 +184,38 @@ const Contracts = () => {
       // New contract emits: ProposalCreated, ProposalAccepted, PaymentRequested, PaymentReleased, etc.
       const lensAccountAddress = userProfile?.address;
       const contract = getContractInstance();
+
+      const debouncedRefetch = () => {
+        if (refetchTimeoutRef.current) {
+          clearTimeout(refetchTimeoutRef.current);
+        }
+        refetchTimeoutRef.current = setTimeout(() => {
+          invalidateContractsCache(lensAccountAddress);
+          getData();
+        }, 1000);
+      };
       
       const handleProposalCreated = (client: string, freelancer: string, proposalId: any, amount: any, event: any) => {
         if (lensAccountAddress && (client === lensAccountAddress || freelancer === lensAccountAddress)) {
-          getData();
+          debouncedRefetch();
         }
       };
       
       const handleProposalAccepted = (client: string, freelancer: string, contractId: any, event: any) => {
         if (lensAccountAddress && (client === lensAccountAddress || freelancer === lensAccountAddress)) {
-          getData();
+          debouncedRefetch();
         }
       };
       
       const handlePaymentRequested = (freelancer: string, client: string, contractId: any, event: any) => {
         if (lensAccountAddress && (client === lensAccountAddress || freelancer === lensAccountAddress)) {
-          getData();
+          debouncedRefetch();
         }
       };
       
       const handlePaymentReleased = (freelancer: string, client: string, contractId: any, event: any) => {
         if (lensAccountAddress && (client === lensAccountAddress || freelancer === lensAccountAddress)) {
-          getData();
+          debouncedRefetch();
         }
       };
 
@@ -219,6 +231,10 @@ const Contracts = () => {
         contract.off("ProposalAccepted", handleProposalAccepted);
         contract.off("PaymentRequested", handlePaymentRequested);
         contract.off("PaymentReleased", handlePaymentReleased);
+        if (refetchTimeoutRef.current) {
+          clearTimeout(refetchTimeoutRef.current);
+          refetchTimeoutRef.current = null;
+        }
       };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

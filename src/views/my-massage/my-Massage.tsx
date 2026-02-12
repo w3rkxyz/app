@@ -4,15 +4,8 @@ import ConversationsNav from "./ConversationsNav";
 import ConversationBox from "./ConversationBox";
 import { useState } from "react";
 
-// const sortMessages = (messages: ConversationProp[]): ConversationProp[] => {
-//   return messages.sort((a, b) => {
-//     if (a.lastMessageTime === "") return 1; // Move empty to the end
-//     if (b.lastMessageTime === "") return -1; // Move empty to the end
-//     return new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime(); // Sort by most recent
-//   });
-// };
-
 const MyMessageOpenChat = () => {
+<<<<<<< HEAD
   // const processConversations = async (client: Client, session: SessionClient) => {
   //   const conversations = await client.conversations.list();
   //   var conversationsFilteredById: Dm<string | undefined>[] = [];
@@ -246,6 +239,12 @@ const MyMessageOpenChat = () => {
     <div className="h-screen w-screen overflow-hidden pt-[60px] sm:pt-[75px] px-[156px] banner-tablet:px-[80px] settings-xs:px-[30px] sm:px-[16px] flex gap-[5px] mb-[0px]">
       <ConversationsNav setIsMessagesEnabled={setIsMessagesEnabled} setSelectedChat={setSelectedChat} isMessagesEnabled={isMessagesEnabled} selectedChat={selectedChat} contacts={contacts} currentMessages={currentMessages}/>
       <ConversationBox currentContact={currentContact} currentMessages={currentMessages} isMessagesEnabled={isMessagesEnabled} selectedChat={selectedChat} setSelectedChat={setSelectedChat} />
+=======
+  return (
+    <div className="h-screen w-screen overflow-hidden pt-[60px] sm:pt-[75px] px-[156px] banner-tablet:px-[80px] settings-xs:px-[30px] sm:px-[16px] flex gap-[5px] mb-[0px]">
+      <ConversationsNav />
+      <ConversationBox />
+>>>>>>> 967b3a64439f167c2c088d857016e6387d7d8372
     </div>
   );
 };
