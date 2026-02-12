@@ -165,39 +165,41 @@ const LoginLanding = () => {
           <section className={styles.page}>
             <div className={styles.container}>
               <div className={styles.desktopGrid}>
-                <div className={styles.leftPanel}>
-                  <Image
-                    src={loginDesktopLeft}
-                    alt="Login wallet panel"
-                    fill
-                    priority
-                    className={styles.panelImage}
-                    sizes="(max-width: 767px) 0px, (max-width: 1023px) 45vw, 520px"
-                  />
+                <div className={styles.leftColumn}>
+                  <div className={styles.leftPanel}>
+                    <Image
+                      src={loginDesktopLeft}
+                      alt="Login wallet panel"
+                      fill
+                      priority
+                      className={styles.panelImage}
+                      sizes="(max-width: 767px) 0px, (max-width: 1024px) 540px, 600px"
+                    />
 
-                {renderHitButton("Continue with Family", DESKTOP_FAMILY_AREA, onFamilyClick, "24px")}
-                {renderHitButton("Connect MetaMask", DESKTOP_WALLET_AREAS.metamask, () =>
-                  onWalletClick("metamask")
-                )}
-                {renderHitButton("Connect Phantom", DESKTOP_WALLET_AREAS.phantom, () =>
-                  onWalletClick("phantom")
-                )}
-                {renderHitButton("Connect Coinbase Wallet", DESKTOP_WALLET_AREAS.coinbase, () =>
-                  onWalletClick("coinbase")
-                )}
-                {renderHitButton("Connect Other Wallet", DESKTOP_WALLET_AREAS.other, () =>
-                  onWalletClick("other")
-                )}
+                    {renderHitButton("Continue with Family", DESKTOP_FAMILY_AREA, onFamilyClick, "24px")}
+                    {renderHitButton("Connect MetaMask", DESKTOP_WALLET_AREAS.metamask, () =>
+                      onWalletClick("metamask")
+                    )}
+                    {renderHitButton("Connect Phantom", DESKTOP_WALLET_AREAS.phantom, () =>
+                      onWalletClick("phantom")
+                    )}
+                    {renderHitButton("Connect Coinbase Wallet", DESKTOP_WALLET_AREAS.coinbase, () =>
+                      onWalletClick("coinbase")
+                    )}
+                    {renderHitButton("Connect Other Wallet", DESKTOP_WALLET_AREAS.other, () =>
+                      onWalletClick("other")
+                    )}
+                  </div>
                 </div>
 
-                <div className={styles.rightPanel}>
+                <div className={styles.rightColumn}>
                   <Image
                     src={loginDesktopRight}
                     alt="Product preview panel"
                     fill
                     priority
-                    className={styles.panelImage}
-                    sizes="(max-width: 767px) 0px, (max-width: 1023px) 45vw, 620px"
+                    className={styles.rightImage}
+                    sizes="(max-width: 767px) 0px, (max-width: 1024px) 100vw, 50vw"
                   />
                 </div>
               </div>
