@@ -1,0 +1,88 @@
+.page {
+  min-height: 100vh;
+  width: 100%;
+  background: #f7f7f8;
+  overflow: hidden;
+}
+
+.container {
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.desktopGrid {
+  display: grid;
+  grid-template-columns: 520px minmax(0, 1fr);
+  gap: 48px;
+  align-items: center;
+}
+
+.leftPanel {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  aspect-ratio: 1440 / 2048;
+  justify-self: start;
+}
+
+.rightPanel {
+  position: relative;
+  width: 100%;
+  max-width: 620px;
+  aspect-ratio: 1440 / 2048;
+  justify-self: end;
+}
+
+.panelImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.mobileWrap {
+  display: none;
+}
+
+.mobilePanel {
+  position: relative;
+  width: min(100%, 430px);
+  aspect-ratio: 860 / 2184;
+}
+
+@media (max-width: 1023px) and (min-width: 768px) {
+  .container {
+    max-width: 1024px;
+  }
+
+  .desktopGrid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .leftPanel {
+    max-width: 500px;
+  }
+
+  .rightPanel {
+    max-width: 500px;
+    justify-self: start;
+  }
+}
+
+@media (max-width: 767px) {
+  .container {
+    max-width: 430px;
+    padding: 0;
+  }
+
+  .desktopGrid {
+    display: none;
+  }
+
+  .mobileWrap {
+    display: flex;
+    justify-content: center;
+  }
+}

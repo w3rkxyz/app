@@ -2,13 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useDispatch } from "react-redux";
 import { ConnectKitButton } from "connectkit";
 import { useAccount as useWagmiAccount, useConnect } from "wagmi";
 import { useAuthenticatedUser, useAccount as useLensAccount } from "@lens-protocol/react";
 import { displayLoginModal } from "@/redux/app";
-import loginDesktop from "../../../attached_assets/login-desktop.png";
+import loginDesktopLeft from "../../../attached_assets/login-desktop-left.png";
+import loginDesktopRight from "../../../attached_assets/login-desktop-right.png";
 import loginMobile from "../../../attached_assets/login-mobile.png";
+import styles from "./login-landing.module.css";
 
 type WalletOption = "metamask" | "phantom" | "coinbase" | "other";
 
@@ -159,16 +162,19 @@ const LoginLanding = () => {
         };
 
         return (
-          <section className="relative h-screen w-full overflow-hidden bg-[#F7F7F8]">
-            <div className="flex h-full w-full sm:hidden">
-              <div
-                className="relative h-full w-1/2 bg-no-repeat"
-                style={{
-                  backgroundImage: `url(${loginDesktop.src})`,
-                  backgroundSize: "200% 100%",
-                  backgroundPosition: "left top",
-                }}
-              >
+          <section className={styles.page}>
+            <div className={styles.container}>
+              <div className={styles.desktopGrid}>
+                <div className={styles.leftPanel}>
+                  <Image
+                    src={loginDesktopLeft}
+                    alt="Login wallet panel"
+                    fill
+                    priority
+                    className={styles.panelImage}
+                    sizes="(max-width: 767px) 0px, (max-width: 1023px) 45vw, 520px"
+                  />
+
                 {renderHitButton("Continue with Family", DESKTOP_FAMILY_AREA, onFamilyClick, "24px")}
                 {renderHitButton("Connect MetaMask", DESKTOP_WALLET_AREAS.metamask, () =>
                   onWalletClick("metamask")
@@ -182,39 +188,46 @@ const LoginLanding = () => {
                 {renderHitButton("Connect Other Wallet", DESKTOP_WALLET_AREAS.other, () =>
                   onWalletClick("other")
                 )}
+                </div>
+
+                <div className={styles.rightPanel}>
+                  <Image
+                    src={loginDesktopRight}
+                    alt="Product preview panel"
+                    fill
+                    priority
+                    className={styles.panelImage}
+                    sizes="(max-width: 767px) 0px, (max-width: 1023px) 45vw, 620px"
+                  />
+                </div>
               </div>
 
-              <div
-                className="h-full w-1/2 bg-no-repeat"
-                style={{
-                  backgroundImage: `url(${loginDesktop.src})`,
-                  backgroundSize: "200% 100%",
-                  backgroundPosition: "right top",
-                }}
-              />
-            </div>
+              <div className={styles.mobileWrap}>
+                <div className={styles.mobilePanel}>
+                  <Image
+                    src={loginMobile}
+                    alt="Mobile login wallet panel"
+                    fill
+                    priority
+                    className={styles.panelImage}
+                    sizes="100vw"
+                  />
 
-            <div
-              className="relative hidden h-full w-full bg-no-repeat sm:block"
-              style={{
-                backgroundImage: `url(${loginMobile.src})`,
-                backgroundSize: "100% 100%",
-                backgroundPosition: "center top",
-              }}
-            >
-              {renderHitButton("Continue with Family", MOBILE_FAMILY_AREA, onFamilyClick, "24px")}
-              {renderHitButton("Connect MetaMask", MOBILE_WALLET_AREAS.metamask, () =>
-                onWalletClick("metamask")
-              )}
-              {renderHitButton("Connect Phantom", MOBILE_WALLET_AREAS.phantom, () =>
-                onWalletClick("phantom")
-              )}
-              {renderHitButton("Connect Coinbase Wallet", MOBILE_WALLET_AREAS.coinbase, () =>
-                onWalletClick("coinbase")
-              )}
-              {renderHitButton("Connect Other Wallet", MOBILE_WALLET_AREAS.other, () =>
-                onWalletClick("other")
-              )}
+                  {renderHitButton("Continue with Family", MOBILE_FAMILY_AREA, onFamilyClick, "24px")}
+                  {renderHitButton("Connect MetaMask", MOBILE_WALLET_AREAS.metamask, () =>
+                    onWalletClick("metamask")
+                  )}
+                  {renderHitButton("Connect Phantom", MOBILE_WALLET_AREAS.phantom, () =>
+                    onWalletClick("phantom")
+                  )}
+                  {renderHitButton("Connect Coinbase Wallet", MOBILE_WALLET_AREAS.coinbase, () =>
+                    onWalletClick("coinbase")
+                  )}
+                  {renderHitButton("Connect Other Wallet", MOBILE_WALLET_AREAS.other, () =>
+                    onWalletClick("other")
+                  )}
+                </div>
+              </div>
             </div>
           </section>
         );
