@@ -193,14 +193,16 @@ const LoginLanding = () => {
                 </div>
 
                 <div className={styles.rightColumn}>
-                  <Image
-                    src={loginDesktopRight}
-                    alt="Product preview panel"
-                    fill
-                    priority
-                    className={styles.rightImage}
-                    sizes="(max-width: 767px) 0px, (max-width: 1024px) 100vw, 50vw"
-                  />
+                  <div className={styles.rightPanel}>
+                    <Image
+                      src={loginDesktopRight}
+                      alt="Product preview panel"
+                      fill
+                      priority
+                      className={styles.rightImage}
+                      sizes="(max-width: 767px) 0px, (max-width: 1024px) 100vw, 50vw"
+                    />
+                  </div>
                 </div>
               </div>
 

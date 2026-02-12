@@ -26,12 +26,12 @@
   align-items: center;
   justify-content: center;
   background: #ffffff;
-  padding: 32px 36px;
+  padding: 24px;
 }
 
 .leftPanel {
   position: relative;
-  width: min(100%, 600px);
+  width: min(100%, 600px, calc((100vh - 48px) * 0.703125));
   aspect-ratio: 1440 / 2048;
 }
 
@@ -43,14 +43,24 @@
 
 .rightColumn {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-height: 100vh;
   background: #f7f7f8;
+  padding: 24px;
+}
+
+.rightPanel {
+  position: relative;
+  width: min(100%, calc((100vh - 48px) * 0.703125));
+  aspect-ratio: 1440 / 2048;
 }
 
 .rightImage {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   object-position: center;
 }
 
@@ -84,6 +94,11 @@
 
   .rightColumn {
     min-height: 520px;
+    padding: 24px 16px;
+  }
+
+  .rightPanel {
+    width: min(100%, 560px);
   }
 
   .rightImage {
