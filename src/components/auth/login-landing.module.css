@@ -1,9 +1,17 @@
 .page {
+  --panel-ratio: 0.703125; /* 1440 / 2048 */
+  --desktop-pad: 24px;
+
+  margin: 0;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
   width: 100vw;
   min-height: 100vh;
-  margin: 0;
   padding: 0;
-  overflow-x: hidden;
+  overflow: hidden;
   background: #ffffff;
 }
 
@@ -16,7 +24,7 @@
 
 .desktopGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   width: 100%;
   min-height: 100vh;
 }
@@ -26,12 +34,14 @@
   align-items: center;
   justify-content: center;
   background: #ffffff;
-  padding: 24px;
+  padding: var(--desktop-pad);
+  min-width: 0;
+  min-height: 100vh;
 }
 
 .leftPanel {
   position: relative;
-  width: min(100%, 600px, calc((100vh - 48px) * 0.703125));
+  width: min(100%, calc((100vh - (var(--desktop-pad) * 2)) * var(--panel-ratio)));
   aspect-ratio: 1440 / 2048;
 }
 
@@ -47,13 +57,16 @@
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: #f7f7f8;
-  padding: 24px;
+  background-color: #f7f7f8;
+  background-image: radial-gradient(#ececef 1px, transparent 1px);
+  background-size: 8px 8px;
+  padding: var(--desktop-pad);
+  min-width: 0;
 }
 
 .rightPanel {
   position: relative;
-  width: min(100%, calc((100vh - 48px) * 0.703125));
+  width: min(100%, calc((100vh - (var(--desktop-pad) * 2)) * var(--panel-ratio)));
   aspect-ratio: 1440 / 2048;
 }
 
@@ -86,6 +99,7 @@
 
   .leftColumn {
     padding: 24px 16px;
+    min-height: auto;
   }
 
   .leftPanel {
