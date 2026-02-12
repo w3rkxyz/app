@@ -1,6 +1,7 @@
 .page {
   --desktop-pad: 24px;
   --desktop-panel-max-width: 520px;
+  --desktop-right-preview-max-width: 560px;
 
   display: flex;
   margin: 0;
@@ -69,7 +70,8 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  max-width: var(--desktop-panel-max-width);
+  max-width: var(--desktop-right-preview-max-width);
+  background: transparent;
   min-width: 0;
 }
 
