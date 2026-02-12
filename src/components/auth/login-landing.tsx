@@ -9,7 +9,7 @@ import { useAccount as useWagmiAccount, useConnect } from "wagmi";
 import { useAuthenticatedUser, useAccount as useLensAccount } from "@lens-protocol/react";
 import { displayLoginModal } from "@/redux/app";
 import loginDesktopLeft from "../../../attached_assets/login-desktop-left.png";
-import loginDesktopRight from "../../../attached_assets/login-desktop-right.png";
+import loginDesktopBrowser from "../../../attached_assets/login-desktop-browser.png";
 import loginMobile from "../../../attached_assets/login-mobile.png";
 import styles from "./login-landing.module.css";
 
@@ -195,11 +195,11 @@ const LoginLanding = () => {
                 <div className={styles.rightColumn}>
                   <div className={styles.rightPanel}>
                     <Image
-                      src={loginDesktopRight}
+                      src={loginDesktopBrowser}
                       alt="Product preview panel"
                       priority
                       className={styles.rightImage}
-                      sizes="(max-width: 767px) 0px, (max-width: 1024px) 560px, 580px"
+                      sizes="(max-width: 767px) 0px, (max-width: 1024px) 560px, 640px"
                     />
                   </div>
                 </div>
