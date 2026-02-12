@@ -197,10 +197,9 @@ const LoginLanding = () => {
                     <Image
                       src={loginDesktopRight}
                       alt="Product preview panel"
-                      fill
                       priority
                       className={styles.rightImage}
-                      sizes="(max-width: 767px) 0px, (max-width: 1024px) 100vw, 50vw"
+                      sizes="(max-width: 767px) 0px, (max-width: 1024px) 560px, 580px"
                     />
                   </div>
                 </div>

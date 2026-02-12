@@ -1,21 +1,19 @@
 .page {
-  --panel-ratio: 0.703125; /* 1440 / 2048 */
   --desktop-pad: 24px;
+  --desktop-panel-max-width: 520px;
 
+  display: flex;
   margin: 0;
-  position: relative;
-  left: 50%;
-  right: 50%;
-  margin-left: -50vw;
-  margin-right: -50vw;
   width: 100vw;
   min-height: 100vh;
   padding: 0;
-  overflow: hidden;
+  overflow-x: hidden;
   background: #ffffff;
 }
 
 .container {
+  display: flex;
+  flex-direction: column;
   width: 100%;
   min-height: 100vh;
   margin: 0;
@@ -23,13 +21,14 @@
 }
 
 .desktopGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  display: flex;
+  flex: 1;
   width: 100%;
   min-height: 100vh;
 }
 
 .leftColumn {
+  flex: 1 1 50%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -41,7 +40,7 @@
 
 .leftPanel {
   position: relative;
-  width: min(100%, calc((100vh - (var(--desktop-pad) * 2)) * var(--panel-ratio)));
+  width: min(100%, var(--desktop-panel-max-width));
   aspect-ratio: 1440 / 2048;
 }
 
@@ -53,6 +52,7 @@
 
 .rightColumn {
   position: relative;
+  flex: 1 1 50%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -65,16 +65,19 @@
 }
 
 .rightPanel {
-  position: relative;
-  width: min(100%, calc((100vh - (var(--desktop-pad) * 2)) * var(--panel-ratio)));
-  aspect-ratio: 1440 / 2048;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: var(--desktop-panel-max-width);
+  min-width: 0;
 }
 
 .rightImage {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  object-position: center;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: calc(100vh - (var(--desktop-pad) * 2));
 }
 
 .mobileWrap {
@@ -93,7 +96,7 @@
   }
 
   .desktopGrid {
-    grid-template-columns: 1fr;
+    display: block;
     min-height: auto;
   }
 
@@ -112,11 +115,7 @@
   }
 
   .rightPanel {
-    width: min(100%, 560px);
-  }
-
-  .rightImage {
-    object-fit: contain;
+    max-width: 560px;
   }
 }
 
