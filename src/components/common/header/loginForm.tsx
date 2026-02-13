@@ -1,8 +1,7 @@
 import Image from "next/image";
-import { toast } from "react-hot-toast";
 import { useDispatch } from "react-redux";
 import { setLensProfile, displayLoginModal } from "@/redux/app";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import getLensAccountData from "@/utils/getLensProfile";
 import { useAccount, useWalletClient } from "wagmi";
 import { Oval } from "react-loader-spinner";
@@ -12,7 +11,6 @@ import { canCreateUsername, createAccountWithUsername } from "@lens-protocol/cli
 import { signMessageWith, handleOperationWith } from "@lens-protocol/client/viem";
 import { client } from "@/client";
 import { jsonToDataURI } from "@/utils/dataUriHelpers";
-import { openAlert, closeAlert } from "@/redux/alerts";
 
 const LENS_TESTNET_CHAIN_ID = 37111;
 const LENS_TESTNET_APP = "0xC75A89145d765c396fd75CbD16380Eb184Bd2ca7";
@@ -31,6 +29,7 @@ export default function LoginForm({ owner }: { owner: string }) {
   const dispatch = useDispatch();
   const { data: walletClient } = useWalletClient();
   const wallet = useAccount();
+  const autoSelectedAccountRef = useRef<string | null>(null);
 
   const [creatingProfile, setCreatingProfile] = useState(false);
   const [sessionClient, setSessionClient] = useState<SessionClient | null>(null);
@@ -39,6 +38,8 @@ export default function LoginForm({ owner }: { owner: string }) {
   const [handle, setHandle] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
   const [continuing, setContinuing] = useState(false);
+  const [mintSuccessMessage, setMintSuccessMessage] = useState<string | null>(null);
+  const [autoSelecting, setAutoSelecting] = useState(false);
 
   const managedBy = useMemo(
     () => walletClient?.account.address ?? evmAddress(owner),
@@ -56,9 +57,13 @@ export default function LoginForm({ owner }: { owner: string }) {
 
   const { execute: authenticate, loading: authenticateLoading } = useLogin();
   const walletReady = Boolean(walletClient?.account.address);
+  const profileCount = availableAccounts?.items.length ?? 0;
+  const showPrepare = walletReady && !accountsLoading && !availableAccounts && !accountsError;
+  const singleAccount = profileCount === 1 ? availableAccounts?.items[0]?.account : null;
 
-  const ensureLensChain = async () => {
+  const ensureLensChain = useCallback(async () => {
     if (!walletClient) {
+      setAuthError("Wallet not ready. Reconnect and try again.");
       return false;
     }
 
@@ -73,7 +78,7 @@ export default function LoginForm({ owner }: { owner: string }) {
     } catch (error: unknown) {
       const err = error as { code?: number };
       if (err?.code !== 4902) {
-        toast.error("Please switch to Lens Chain Testnet to continue");
+        setAuthError("Please switch to Lens Chain Testnet to continue.");
         return false;
       }
 
@@ -101,19 +106,20 @@ export default function LoginForm({ owner }: { owner: string }) {
         await walletClient.switchChain({ id: LENS_TESTNET_CHAIN_ID });
         return true;
       } catch {
-        toast.error("Could not add Lens Chain Testnet to your wallet");
+        setAuthError("Could not add Lens Chain Testnet to your wallet.");
         return false;
       }
     }
-  };
+  }, [walletClient]);
 
-  const authenticateUser = async () => {
+  const authenticateUser = useCallback(async () => {
     if (!walletClient) {
       setAuthError("Wallet not ready. Reconnect and try again.");
       return;
     }
 
     setAuthError(null);
+    setMintSuccessMessage(null);
     setContinuing(true);
 
     try {
@@ -136,7 +142,6 @@ export default function LoginForm({ owner }: { owner: string }) {
       if (authenticated.isErr()) {
         const msg = getErrMsg(authenticated.error, "Lens login failed");
         setAuthError(msg);
-        toast.error(msg);
         setContinuing(false);
         return;
       }
@@ -145,15 +150,15 @@ export default function LoginForm({ owner }: { owner: string }) {
     } catch (error: unknown) {
       const msg = getErrMsg(error, "Lens login failed");
       setAuthError(msg);
-      toast.error(msg);
     } finally {
       setContinuing(false);
     }
-  };
+  }, [ensureLensChain, walletClient]);
 
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value;
     setHandle(input);
+    setMintSuccessMessage(null);
 
     if (/^\d/.test(input)) {
       setErrorMessage("Sorry, handles cannot start with a number.");
@@ -171,6 +176,9 @@ export default function LoginForm({ owner }: { owner: string }) {
       return;
     }
 
+    setShowError(false);
+    setAuthError(null);
+    setMintSuccessMessage(null);
     setCreatingProfile(true);
 
     const result = await canCreateUsername(sessionClient, {
@@ -207,26 +215,13 @@ export default function LoginForm({ owner }: { owner: string }) {
           );
 
           setCreatingProfile(false);
-          sessionClient.logout();
-
-          dispatch(
-            openAlert({
-              displayAlert: true,
-              data: {
-                id: 1,
-                variant: "Successful",
-                classname: "text-black",
-                title: "Submission Successful",
-                tag1: "Profile minted!",
-                tag2: "View on Lens Explorer",
-              },
-            })
-          );
+          setMintSuccessMessage("Profile minted successfully. Finalizing login...");
+          setSessionClient(null);
+          setHandle("");
 
           setTimeout(() => {
             window.location.reload();
-            dispatch(closeAlert());
-          }, 3000);
+          }, 1500);
         } catch {
           setCreatingProfile(false);
           setErrorMessage("Failed to create profile. Please try again.");
@@ -252,10 +247,12 @@ export default function LoginForm({ owner }: { owner: string }) {
     }
   };
 
-  const handleSelectAccount = async (account: Account) => {
+  const handleSelectAccount = useCallback(async (account: Account) => {
     if (!walletClient) {
       return;
     }
+
+    setAuthError(null);
 
     try {
       const canContinue = await ensureLensChain();
@@ -290,29 +287,48 @@ export default function LoginForm({ owner }: { owner: string }) {
       });
 
       const profile = getLensAccountData(account);
-      toast.success(`Welcome ${profile.handle}`);
       localStorage.setItem("activeHandle", profile.handle);
       dispatch(setLensProfile({ profile }));
       dispatch(displayLoginModal({ display: false }));
     } catch (error: unknown) {
       const msg = getErrMsg(error, "Lens authentication failed");
       setAuthError(msg);
-      toast.error(msg);
     }
-  };
+  }, [authenticate, dispatch, ensureLensChain, wallet.address, walletClient]);
 
   const handleCloseModal = () => {
     dispatch(displayLoginModal({ display: false }));
   };
 
-  const profileCount = availableAccounts?.items.length ?? 0;
-  const showPrepare = walletReady && !accountsLoading && !availableAccounts && !accountsError;
+  useEffect(() => {
+    if (!singleAccount || accountsLoading || authenticateLoading || continuing || !walletReady) {
+      return;
+    }
+
+    if (autoSelectedAccountRef.current === singleAccount.address) {
+      return;
+    }
+
+    autoSelectedAccountRef.current = singleAccount.address;
+    setAutoSelecting(true);
+
+    void handleSelectAccount(singleAccount).finally(() => {
+      setAutoSelecting(false);
+    });
+  }, [
+    accountsLoading,
+    authenticateLoading,
+    continuing,
+    handleSelectAccount,
+    singleAccount,
+    walletReady,
+  ]);
 
   return (
-    <div className="fixed w-screen h-screen top-0 left-0 z-[99] flex items-center justify-center bg-[#80808080]">
-      <div className="w-[360px] flex flex-col rounded-[12px] border-[1px] border-[#E4E4E7] bg-white">
-        <div className="w-[360px] flex justify-between items-center px-[16px] py-[13px] border-b-[1px] border-b-[#E4E4E7] rounded-none sm:rounded-tl-[12px] sm:rounded-tr-[12px]">
-          <span className="leading-[14.52px] text-[16px] font-medium text-[black]">Login</span>
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-[#0F172A80] px-[16px] py-[24px]">
+      <div className="max-h-[92vh] w-full max-w-[460px] overflow-y-auto rounded-[20px] border border-[#E2E8F0] bg-white shadow-[0_22px_65px_rgba(15,23,42,0.26)]">
+        <div className="flex items-center justify-between border-b border-[#E5E7EB] px-[20px] py-[16px]">
+          <span className="text-[18px] font-semibold leading-[1.2] text-[#0F172A]">Complete Login</span>
           <Image
             onClick={handleCloseModal}
             className="cursor-pointer"
@@ -323,21 +339,38 @@ export default function LoginForm({ owner }: { owner: string }) {
           />
         </div>
 
-        <div className="p-[16px] pt-[12px] flex flex-col gap-[8px]">
+        <div className="flex flex-col gap-[12px] p-[20px]">
           {!walletReady && (
-            <span className="text-[14px] leading-[18px]">Connect your wallet first, then click Login again.</span>
+            <span className="rounded-[12px] border border-[#FECACA] bg-[#FEF2F2] px-[12px] py-[10px] text-[13px] leading-[1.4] text-[#B91C1C]">
+              Connect your wallet first, then retry.
+            </span>
           )}
 
-          {accountsLoading && (
-            <span className="text-[14px] leading-[14.52px] font-medium mb-[4px]">Loading...</span>
+          {(accountsLoading || autoSelecting) && (
+            <div className="flex items-center gap-[10px] rounded-[12px] border border-[#DBEAFE] bg-[#EFF6FF] px-[12px] py-[10px] text-[14px] font-medium text-[#1D4ED8]">
+              <Oval
+                visible={true}
+                height="16"
+                width="16"
+                color="#1D4ED8"
+                secondaryColor="#93C5FD"
+                strokeWidth={7}
+                ariaLabel="loading"
+              />
+              {singleAccount
+                ? "Profile found. Completing sign-in..."
+                : "Checking Lens profile availability..."}
+            </div>
           )}
 
           {showPrepare && (
             <>
-              <span className="text-[14px] leading-[16px] font-medium">Preparing your Lens login...</span>
+              <span className="text-[14px] font-medium leading-[1.4] text-[#0F172A]">
+                Preparing Lens authentication.
+              </span>
               <button
                 type="button"
-                className="w-full bg-black rounded-[8px] text-white px-4 py-2 text-[14px]"
+                className="h-[44px] w-full rounded-[12px] bg-[#0F172A] px-[14px] text-[14px] font-semibold text-white transition hover:bg-[#1E293B] disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={authenticateUser}
                 disabled={continuing || authenticateLoading}
               >
@@ -348,12 +381,12 @@ export default function LoginForm({ owner }: { owner: string }) {
 
           {accountsError && (
             <>
-              <span className="text-[12px] leading-[16px] text-[#FF5555]">
+              <span className="rounded-[12px] border border-[#FECACA] bg-[#FEF2F2] px-[12px] py-[10px] text-[12px] leading-[1.4] text-[#B91C1C]">
                 {getErrMsg(accountsError, "Could not load Lens profiles")}
               </span>
               <button
                 type="button"
-                className="w-full bg-black rounded-[8px] text-white px-4 py-2 text-[14px]"
+                className="h-[44px] w-full rounded-[12px] bg-[#0F172A] px-[14px] text-[14px] font-semibold text-white transition hover:bg-[#1E293B] disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={authenticateUser}
                 disabled={continuing || authenticateLoading}
               >
@@ -364,12 +397,15 @@ export default function LoginForm({ owner }: { owner: string }) {
 
           {availableAccounts && profileCount === 0 && sessionClient === null && walletReady && (
             <>
-              <span className="text-[14px] leading-[14.52px] font-medium mb-[12px]">
-                No Lens profiles found, mint yours now!
+              <span className="text-[14px] font-semibold leading-[1.4] text-[#0F172A]">
+                No Lens profile found, mint yours now!
               </span>
+              <p className="text-[13px] leading-[1.4] text-[#64748B]">
+                Continue once to initialize Lens, then choose your handle.
+              </p>
               <button
                 type="button"
-                className="w-full bg-black rounded-[8px] text-white px-4 py-2 text-[14px]"
+                className="h-[44px] w-full rounded-[12px] bg-[#0F172A] px-[14px] text-[14px] font-semibold text-white transition hover:bg-[#1E293B] disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={authenticateUser}
                 disabled={continuing || authenticateLoading}
               >
@@ -380,81 +416,89 @@ export default function LoginForm({ owner }: { owner: string }) {
 
           {availableAccounts && profileCount === 0 && sessionClient !== null && walletReady && (
             <>
-              <span className="text-[14px] leading-[14.52px] font-medium mb-[12px]">
+              <span className="text-[14px] font-semibold leading-[1.4] text-[#0F172A]">
                 No Lens profiles found, mint yours now!
               </span>
-              <div className="w-[272px] rounded-[8px] bg-[#F5F5F5] p-[3px] pl-[5px] flex items-center gap-[4px] box-border">
-                <Image
-                  src="/images/search-handle.svg"
-                  alt="search icon"
-                  width={20}
-                  height={20}
-                  className="w-[20px] h-[20px]"
-                />
-                <input
-                  className="text-[14px] leading-[14.52px] font-normal text-[#ADADAD] flex-1 outline-none bg-transparent"
-                  placeholder="Mint your handle"
-                  onChange={handleInput}
-                />
-                {creatingProfile ? (
-                  <div className="w-[24px] h-[24px] bg-white flex items-center align-middle rounded-[6px] cursor-pointer">
-                    <Oval
-                      visible={true}
-                      height="20"
-                      width="20"
-                      color="#2D2D2D"
-                      secondaryColor="#a2a2a3"
-                      strokeWidth={8}
-                      ariaLabel="oval-loading"
-                      wrapperClass="mx-[auto]"
-                    />
-                  </div>
-                ) : (
-                  <Image
-                    src="/images/arrow-handle.svg"
-                    alt="arrow icon"
-                    width={20}
-                    height={20}
-                    className="w-[24px] h-[24px] bg-white px-[5px] py-[4px] rounded-[6px] cursor-pointer"
-                    onClick={handleSubmit}
+              <div className="w-full rounded-[12px] border border-[#E2E8F0] bg-[#F8FAFC] p-[8px] pl-[10px]">
+                <label htmlFor="mint-handle-input" className="mb-[8px] block text-[12px] text-[#64748B]">
+                  Choose a handle
+                </label>
+                <div className="flex items-center gap-[8px]">
+                  <span className="text-[14px] font-medium text-[#475569]">@</span>
+                  <input
+                    id="mint-handle-input"
+                    value={handle}
+                    className="h-[36px] flex-1 bg-transparent text-[14px] leading-[1.2] font-medium text-[#0F172A] outline-none"
+                    placeholder="yourhandle"
+                    onChange={handleInput}
                   />
-                )}
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={creatingProfile || handle.trim().length === 0 || showError}
+                    className="h-[32px] min-w-[88px] rounded-[10px] bg-[#0F172A] px-[12px] text-[13px] font-semibold text-white transition hover:bg-[#1E293B] disabled:cursor-not-allowed disabled:bg-[#94A3B8]"
+                  >
+                    {creatingProfile ? "Minting..." : "Mint"}
+                  </button>
+                </div>
               </div>
+              {mintSuccessMessage && (
+                <span className="rounded-[12px] border border-[#BBF7D0] bg-[#F0FDF4] px-[12px] py-[10px] text-[12px] leading-[1.4] text-[#15803D]">
+                  {mintSuccessMessage}
+                </span>
+              )}
               {showError && (
-                <span className="text-[12px] leading-[14px] text-[#FF5555] font-normal mt-[6px]">
+                <span className="rounded-[12px] border border-[#FECACA] bg-[#FEF2F2] px-[12px] py-[10px] text-[12px] leading-[1.4] text-[#B91C1C]">
                   {errorMessage}
                 </span>
               )}
             </>
           )}
 
-          {availableAccounts && profileCount > 0 && (
+          {availableAccounts && profileCount > 1 && !autoSelecting && (
             <>
-              <span className="text-[14px] leading-[14.52px] font-medium mb-[4px]">
-                Please sign the message.
+              <span className="text-[14px] font-semibold leading-[1.4] text-[#0F172A]">
+                Select your Lens profile
               </span>
-              {availableAccounts.items.map((acc, index) => (
-                <div
-                  key={index}
-                  className="flex gap-[12px] items-center mt-[8px] cursor-pointer"
-                  onClick={() => handleSelectAccount(acc.account)}
-                >
-                  <Image
-                    src={acc.account.metadata?.picture || "https://static.hey.xyz/images/default.png"}
-                    alt="profile pic"
-                    height={40}
-                    width={40}
-                    className="w-[40px] h-[40px] rounded-[8px] border-[1px] border-[#E4E4E7]"
-                  />
-                  <span className="text-[14px] leading-[14.52px] font-medium">
-                    {acc.account.username?.localName || acc.account.address}
-                  </span>
-                </div>
-              ))}
+              <div className="flex max-h-[280px] flex-col gap-[8px] overflow-y-auto pr-[4px]">
+                {availableAccounts.items.map(item => (
+                  <button
+                    type="button"
+                    key={item.account.address}
+                    className="flex w-full items-center gap-[12px] rounded-[12px] border border-[#E2E8F0] px-[12px] py-[10px] text-left transition hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={() => handleSelectAccount(item.account)}
+                    disabled={authenticateLoading || continuing}
+                  >
+                    <Image
+                      src={item.account.metadata?.picture || "https://static.hey.xyz/images/default.png"}
+                      alt="profile pic"
+                      height={40}
+                      width={40}
+                      className="h-[40px] w-[40px] rounded-[10px] border border-[#E2E8F0] object-cover"
+                    />
+                    <div className="flex min-w-0 flex-col">
+                      <span className="truncate text-[14px] font-semibold text-[#0F172A]">
+                        @{item.account.username?.localName || item.account.address.slice(0, 8)}
+                      </span>
+                      <span className="truncate text-[12px] text-[#64748B]">{item.account.address}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </>
           )}
 
-          {authError && <span className="text-[12px] leading-[16px] text-[#FF5555]">{authError}</span>}
+          {singleAccount && !accountsLoading && !autoSelecting && (
+            <span className="rounded-[12px] border border-[#DBEAFE] bg-[#EFF6FF] px-[12px] py-[10px] text-[12px] leading-[1.4] text-[#1D4ED8]">
+              Profile detected. Completing authentication...
+            </span>
+          )}
+
+          {authError && (
+            <span className="rounded-[12px] border border-[#FECACA] bg-[#FEF2F2] px-[12px] py-[10px] text-[12px] leading-[1.4] text-[#B91C1C]">
+              {authError}
+            </span>
+          )}
         </div>
       </div>
     </div>
