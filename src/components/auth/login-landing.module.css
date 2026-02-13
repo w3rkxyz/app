@@ -83,7 +83,7 @@
   height: auto;
   max-width: none;
   max-height: calc(100vh - (var(--desktop-pad) * 2));
-  transform: translateX(calc(-1 * clamp(280px, 20vw, 420px)));
+  transform: none;
   transform-origin: left center;
   flex-shrink: 0;
 }
