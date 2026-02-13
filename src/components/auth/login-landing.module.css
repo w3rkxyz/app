@@ -79,11 +79,11 @@
 }
 
 .rightImage {
-  width: clamp(920px, 95vw, 1280px);
+  width: clamp(1500px, 200%, 2400px);
   height: auto;
   max-width: none;
-  max-height: calc(100vh - (var(--desktop-pad) * 2));
-  transform: none;
+  max-height: none;
+  transform: scale(1.02);
   transform-origin: left center;
   flex-shrink: 0;
 }
