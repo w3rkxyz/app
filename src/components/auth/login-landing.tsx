@@ -167,6 +167,16 @@ const LoginLanding = () => {
               <div className={styles.desktopGrid}>
                 <div className={styles.leftColumn}>
                   <div className={styles.leftPanel}>
+                    <div className={styles.desktopLogo} aria-hidden="true">
+                      <Image
+                        src="/images/brand-logo.svg"
+                        alt=""
+                        width={214}
+                        height={78}
+                        className={styles.brandLogo}
+                        priority
+                      />
+                    </div>
                     <Image
                       src={loginDesktopLeft}
                       alt="Login wallet panel"
@@ -207,6 +217,16 @@ const LoginLanding = () => {
 
               <div className={styles.mobileWrap}>
                 <div className={styles.mobilePanel}>
+                  <div className={styles.mobileLogo} aria-hidden="true">
+                    <Image
+                      src="/images/brand-logo.svg"
+                      alt=""
+                      width={214}
+                      height={78}
+                      className={styles.brandLogo}
+                      priority
+                    />
+                  </div>
                   <Image
                     src={loginMobile}
                     alt="Mobile login wallet panel"
