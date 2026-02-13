@@ -19,6 +19,7 @@ const ConditionalNav = () => {
   const { user: profile } = useSelector((state: any) => state.app);
   const { isConnected } = useAccount();
   const dispatch = useDispatch();
+  const pathname = usePathname();
 
   useEffect(() => {
     // Don't block navigation - check auth asynchronously
@@ -72,6 +73,10 @@ const ConditionalNav = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  if (pathname === "/") {
+    return null;
+  }
 
   return <>{isConnected && profile ? <SecondNav /> : <Navbar />}</>;
 };
