@@ -47,10 +47,21 @@
 
 .desktopLogo {
   position: absolute;
-  left: 4.7%;
-  top: 3.2%;
+  left: 5.2%;
+  top: 8%;
   z-index: 3;
   width: clamp(106px, 22%, 146px);
+  pointer-events: none;
+}
+
+.desktopLogoMask {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 30%;
+  height: 15%;
+  background: #f7f7f8;
+  z-index: 2;
   pointer-events: none;
 }
 
@@ -114,10 +125,21 @@
 
 .mobileLogo {
   position: absolute;
-  left: 5.1%;
-  top: 2.6%;
+  left: 6%;
+  top: 5.4%;
   z-index: 3;
   width: clamp(86px, 26%, 122px);
+  pointer-events: none;
+}
+
+.mobileLogoMask {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 43%;
+  height: 14%;
+  background: #f7f7f8;
+  z-index: 2;
   pointer-events: none;
 }
 

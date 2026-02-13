@@ -185,6 +185,7 @@ const LoginLanding = () => {
                       className={styles.panelImage}
                       sizes="(max-width: 767px) 0px, (max-width: 1024px) 540px, 600px"
                     />
+                    <div className={styles.desktopLogoMask} aria-hidden="true" />
 
                     {renderHitButton("Continue with Family", DESKTOP_FAMILY_AREA, onFamilyClick, "24px")}
                     {renderHitButton("Connect MetaMask", DESKTOP_WALLET_AREAS.metamask, () =>
@@ -235,6 +236,7 @@ const LoginLanding = () => {
                     className={styles.panelImage}
                     sizes="100vw"
                   />
+                  <div className={styles.mobileLogoMask} aria-hidden="true" />
 
                   {renderHitButton("Continue with Family", MOBILE_FAMILY_AREA, onFamilyClick, "24px")}
                   {renderHitButton("Connect MetaMask", MOBILE_WALLET_AREAS.metamask, () =>
