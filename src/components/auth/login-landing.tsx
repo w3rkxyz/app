@@ -7,6 +7,7 @@ import { useDispatch } from "react-redux";
 import { ConnectKitButton } from "connectkit";
 import { useAccount as useWagmiAccount, useConnect } from "wagmi";
 import { useAuthenticatedUser, useAccount as useLensAccount } from "@lens-protocol/react";
+import { toast } from "react-hot-toast";
 import { displayLoginModal } from "@/redux/app";
 import loginDesktopLeft from "../../../attached_assets/login-desktop-left.png";
 import profilePreviewImage from "../../../attached_assets/profile.preview.image.png.png";
@@ -89,9 +90,10 @@ const LoginLanding = () => {
         return keywords.some(keyword => id.includes(keyword) || name.includes(keyword));
       }) ?? null;
 
+    const injected = pick(["injected"]);
+
     return {
-      // Keep MetaMask explicit so clicking it does not fall back to generic injected modal.
-      metamask: pick(["metamask", "meta mask"]),
+      metamask: pick(["metamask", "meta mask"]) ?? injected,
       phantom: pick(["phantom"]),
       coinbase: pick(["coinbase"]),
     };
@@ -111,6 +113,11 @@ const LoginLanding = () => {
 
       const target = connectorByWallet[wallet];
       if (!target) {
+        if (wallet === "metamask") {
+          toast.error("MetaMask not available");
+          return;
+        }
+
         if (!isConnected) {
           setPendingFamilyConnect(true);
         }
@@ -122,6 +129,11 @@ const LoginLanding = () => {
         await connectAsync({ connector: target });
         triggerLoginFlow();
       } catch {
+        if (wallet === "metamask") {
+          toast.error("Unable to connect MetaMask");
+          return;
+        }
+
         if (!isConnected) {
           setPendingFamilyConnect(true);
         }
