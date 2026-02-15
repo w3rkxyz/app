@@ -2,6 +2,7 @@ import Image from "next/image";
 import { useDispatch } from "react-redux";
 import { setLensProfile, displayLoginModal } from "@/redux/app";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import getLensAccountData from "@/utils/getLensProfile";
 import { useAccount, useWalletClient } from "wagmi";
 import { Oval } from "react-loader-spinner";
@@ -11,6 +12,7 @@ import { canCreateUsername, createAccountWithUsername } from "@lens-protocol/cli
 import { signMessageWith, handleOperationWith } from "@lens-protocol/client/viem";
 import { client } from "@/client";
 import { jsonToDataURI } from "@/utils/dataUriHelpers";
+import { toast } from "react-hot-toast";
 
 const LENS_TESTNET_CHAIN_ID = 37111;
 const LENS_TESTNET_APP = "0xC75A89145d765c396fd75CbD16380Eb184Bd2ca7";
@@ -27,6 +29,7 @@ const getErrMsg = (error: unknown, fallback: string) => {
 
 export default function LoginForm({ owner }: { owner: string }) {
   const dispatch = useDispatch();
+  const router = useRouter();
   const { data: walletClient } = useWalletClient();
   const wallet = useAccount();
   const autoSelectedAccountRef = useRef<string | null>(null);
@@ -290,11 +293,17 @@ export default function LoginForm({ owner }: { owner: string }) {
       localStorage.setItem("activeHandle", profile.handle);
       dispatch(setLensProfile({ profile }));
       dispatch(displayLoginModal({ display: false }));
+
+      toast.success("Login successful", { position: "top-center" });
+
+      if (profile.userLink) {
+        router.push(`/u/${profile.userLink}`);
+      }
     } catch (error: unknown) {
       const msg = getErrMsg(error, "Lens authentication failed");
       setAuthError(msg);
     }
-  }, [authenticate, dispatch, ensureLensChain, wallet.address, walletClient]);
+  }, [authenticate, dispatch, ensureLensChain, router, wallet.address, walletClient]);
 
   const handleCloseModal = () => {
     dispatch(displayLoginModal({ display: false }));
