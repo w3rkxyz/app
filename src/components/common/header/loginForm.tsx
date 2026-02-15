@@ -58,7 +58,6 @@ export default function LoginForm({ owner }: { owner: string }) {
     managedBy,
     includeOwned: true,
     hiddenFilter: ManagedAccountsVisibility.All,
-    pageSize: 50,
   });
 
   const { execute: authenticate, loading: authenticateLoading } = useLogin();

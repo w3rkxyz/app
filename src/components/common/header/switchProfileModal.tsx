@@ -16,7 +16,6 @@ export function SwitchForm() {
     managedBy: walletClient?.account.address,
     includeOwned: true,
     hiddenFilter: ManagedAccountsVisibility.All,
-    pageSize: 50,
   });
 
   const handleProfileClick = async (account: Account) => {
