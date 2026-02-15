@@ -7,7 +7,7 @@ import { useSelector } from "react-redux";
 import getLensAccountData from "@/utils/getLensProfile";
 import useSearchAccounts from "@/hooks/useSearchAccounts";
 import { SVGGear, SVGLogout, SVGSearch, SVGUser, SVGUserProfile } from "@/assets/list-svg-icon";
-import { Bell, ChevronDown } from "lucide-react";
+import { Bell, ChevronDown, X } from "lucide-react";
 
 const SecondNav = () => {
   const { user: profile } = useSelector((state: any) => state.app);
@@ -91,11 +91,14 @@ const SecondNav = () => {
   };
 
   const handleSearchToggle = () => {
-    setIsSearchOpen(prev => !prev);
-    if (isSearchOpen) {
-      setSearchText("");
-      setShowSearchResults(false);
-    }
+    setIsSearchOpen(prev => {
+      const next = !prev;
+      if (!next) {
+        setSearchText("");
+        setShowSearchResults(false);
+      }
+      return next;
+    });
   };
 
   const handleSelectAccount = (handle: string) => {
@@ -213,34 +216,44 @@ const SecondNav = () => {
 
               <div className="navbar-right-cont flex items-center gap-3">
                               <div className="relative" ref={myDivRef}>
-                                {isSearchOpen ? (
-                                  <div className="flex items-center gap-2 rounded-full border border-[#C3C7CE] bg-white px-3 py-1">
-                                    <SVGSearch />
-                                    <input
-                                      className="w-[180px] bg-transparent text-sm text-[#212121] outline-none placeholder:text-[#A3A3A3]"
-                                      placeholder="Search Lens users"
-                                      value={searchText}
-                                      onChange={e => setSearchText(e.target.value)}
-                                      autoFocus
-                                    />
-                                    <button
-                                      type="button"
-                                      className="text-xs font-semibold text-[#818181] hover:text-[#212121]"
-                                      onClick={handleSearchToggle}
-                                    >
-                                      Close
-                                    </button>
-                                  </div>
-                                ) : (
+                                <div
+                                  className={`flex items-center overflow-hidden rounded-full border border-[#C3C7CE] bg-white transition-all duration-300 ease-in-out ${
+                                    isSearchOpen
+                                      ? "h-8 w-[280px] px-3 py-1"
+                                      : "h-8 w-8 cursor-pointer justify-center"
+                                  }`}
+                                  onClick={!isSearchOpen ? handleSearchToggle : undefined}
+                                >
                                   <button
                                     type="button"
                                     aria-label="Search users"
-                                    className="border border-[#C3C7CE] h-8 w-8 rounded-full flex items-center justify-center cursor-pointer hover:bg-gray-100"
-                                    onClick={handleSearchToggle}
+                                    className="flex h-6 w-6 items-center justify-center"
+                                    onClick={!isSearchOpen ? handleSearchToggle : undefined}
                                   >
                                     <SVGSearch />
                                   </button>
-                                )}
+                                  <input
+                                    className={`ml-2 bg-transparent text-sm text-[#212121] outline-none placeholder:text-[#A3A3A3] transition-all duration-200 ${
+                                      isSearchOpen
+                                        ? "w-[200px] opacity-100"
+                                        : "w-0 opacity-0 pointer-events-none"
+                                    }`}
+                                    placeholder="Search Lens users"
+                                    value={searchText}
+                                    onChange={e => setSearchText(e.target.value)}
+                                    autoFocus={isSearchOpen}
+                                  />
+                                  <button
+                                    type="button"
+                                    aria-label="Close search"
+                                    className={`ml-2 flex h-5 w-5 items-center justify-center text-[#818181] transition-all duration-200 hover:text-[#212121] ${
+                                      isSearchOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+                                    }`}
+                                    onClick={handleSearchToggle}
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                </div>
 
                                 {isSearchOpen && searchText !== "" && (
                                   <div className="absolute right-0 mt-2 max-h-[320px] w-[320px] overflow-y-auto rounded-[12px] border border-[#E4E4E7] bg-white py-2 shadow-lg z-[1200]">
