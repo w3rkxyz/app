@@ -90,7 +90,8 @@ const LoginLanding = () => {
       }) ?? null;
 
     return {
-      metamask: pick(["metamask", "meta mask", "injected"]),
+      // Keep MetaMask explicit so clicking it does not fall back to generic injected modal.
+      metamask: pick(["metamask", "meta mask"]),
       phantom: pick(["phantom"]),
       coinbase: pick(["coinbase"]),
     };
