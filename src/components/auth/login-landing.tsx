@@ -1,12 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useDispatch } from "react-redux";
 import { ConnectKitButton } from "connectkit";
 import { useAccount as useWagmiAccount, useConnect } from "wagmi";
-import { useAuthenticatedUser, useAccount as useLensAccount } from "@lens-protocol/react";
 import { toast } from "react-hot-toast";
 import { displayLoginModal } from "@/redux/app";
 import loginDesktopLeft from "../../../attached_assets/login-desktop-left.png";
@@ -52,26 +50,14 @@ const MOBILE_WALLET_AREAS: Record<WalletOption, HitArea> = {
 };
 
 const LoginLanding = () => {
-  const router = useRouter();
   const dispatch = useDispatch();
   const { isConnected } = useWagmiAccount();
   const { connectAsync, connectors } = useConnect();
-  const { data: authenticatedUser } = useAuthenticatedUser();
-  const { data: account } = useLensAccount({
-    address: authenticatedUser?.address,
-  });
   const [pendingFamilyConnect, setPendingFamilyConnect] = useState(false);
 
-  const userHandle = account?.username?.localName;
-
   const triggerLoginFlow = useCallback(() => {
-    if (userHandle) {
-      router.push(`/u/${userHandle}`);
-      return;
-    }
-
     dispatch(displayLoginModal({ display: true }));
-  }, [dispatch, router, userHandle]);
+  }, [dispatch]);
 
   useEffect(() => {
     if (!pendingFamilyConnect || !isConnected) {
