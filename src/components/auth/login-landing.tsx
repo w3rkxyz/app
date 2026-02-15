@@ -55,14 +55,13 @@ const LoginLanding = () => {
   const dispatch = useDispatch();
   const { isConnected } = useWagmiAccount();
   const { connectAsync, connectors } = useConnect();
-  const { data: authenticatedUser, loading: authUserLoading } = useAuthenticatedUser();
-  const { data: account, loading: accountLoading } = useLensAccount({
+  const { data: authenticatedUser } = useAuthenticatedUser();
+  const { data: account } = useLensAccount({
     address: authenticatedUser?.address,
   });
-  const [loginPrompted, setLoginPrompted] = useState(false);
+  const [pendingFamilyConnect, setPendingFamilyConnect] = useState(false);
 
   const userHandle = account?.username?.localName;
-  const checkingSession = authUserLoading || accountLoading;
 
   const triggerLoginFlow = useCallback(() => {
     if (userHandle) {
@@ -74,13 +73,13 @@ const LoginLanding = () => {
   }, [dispatch, router, userHandle]);
 
   useEffect(() => {
-    if (checkingSession || userHandle || loginPrompted || !isConnected) {
+    if (!pendingFamilyConnect || !isConnected) {
       return;
     }
 
-    setLoginPrompted(true);
-    dispatch(displayLoginModal({ display: true }));
-  }, [checkingSession, dispatch, isConnected, loginPrompted, userHandle]);
+    setPendingFamilyConnect(false);
+    triggerLoginFlow();
+  }, [isConnected, pendingFamilyConnect, triggerLoginFlow]);
 
   const connectorByWallet = useMemo(() => {
     const pick = (keywords: string[]) =>
@@ -99,24 +98,36 @@ const LoginLanding = () => {
 
   const connectSpecificWallet = useCallback(
     async (wallet: WalletOption, showWalletModal: () => void) => {
+      setPendingFamilyConnect(false);
+
       if (wallet === "other") {
+        if (!isConnected) {
+          setPendingFamilyConnect(true);
+        }
         showWalletModal();
         return;
       }
 
       const target = connectorByWallet[wallet];
       if (!target) {
+        if (!isConnected) {
+          setPendingFamilyConnect(true);
+        }
         showWalletModal();
         return;
       }
 
       try {
         await connectAsync({ connector: target });
+        triggerLoginFlow();
       } catch {
+        if (!isConnected) {
+          setPendingFamilyConnect(true);
+        }
         showWalletModal();
       }
     },
-    [connectAsync, connectorByWallet]
+    [connectAsync, connectorByWallet, isConnected, triggerLoginFlow]
   );
 
   const renderHitButton = (
@@ -145,19 +156,16 @@ const LoginLanding = () => {
     <ConnectKitButton.Custom>
       {({ show }) => {
         const onFamilyClick = () => {
-          if (isConnected || authenticatedUser?.address || userHandle) {
-            triggerLoginFlow();
-            return;
+          if (!isConnected) {
+            setPendingFamilyConnect(true);
+          } else {
+            setPendingFamilyConnect(false);
           }
+
           show();
         };
 
         const onWalletClick = (wallet: WalletOption) => {
-          if (isConnected || authenticatedUser?.address || userHandle) {
-            triggerLoginFlow();
-            return;
-          }
-
           void connectSpecificWallet(wallet, show);
         };
 
