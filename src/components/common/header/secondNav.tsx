@@ -3,7 +3,7 @@ import React, { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import ProfileDropdown from "@/components/ProfileDropdown/ProfileDropdown";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import MobileProfileDropdown from "./mobileMenu";
 import { useSelector } from "react-redux";
 import { Oval } from "react-loader-spinner";
@@ -14,10 +14,13 @@ import { Bell, ChevronDown } from "lucide-react";
 
 const SecondNav = () => {
   const { user: profile } = useSelector((state: any) => state.app);
+  const router = useRouter();
   const profileImage = profile?.picture || "https://static.hey.xyz/images/default.png";
   const profileHandle = profile?.handle || "@user";
   const profileName =
     profile?.displayName || profile?.handle?.replace(/^@/, "") || "User";
+  const profileLink =
+    profile?.userLink || (profile?.handle ? profile.handle.replace(/^@/, "") : "");
   const myDivRef = useRef<HTMLDivElement>(null);
   const drowdownRef = useRef<HTMLDivElement>(null);
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -77,6 +80,17 @@ const SecondNav = () => {
 
   const handleMobileMenuToggle = () => {
     setMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const handleGoToProfile = () => {
+    if (!profileLink) return;
+    setIsProfileDropdownOpen(false);
+    router.push(`/u/${profileLink}`);
+  };
+
+  const handleGoToSettings = () => {
+    setIsProfileDropdownOpen(false);
+    router.push("/settings");
   };
 
   useEffect(() => {
@@ -243,11 +257,17 @@ const SecondNav = () => {
                                     </div>
               
                                     {/* Menu Items */}
-                                    <button className="w-full px-4 py-2 text-left text-sm text-[#212121] hover:bg-gray-50 flex items-center gap-3 transition-colors">
+                                    <button
+                                      onClick={handleGoToProfile}
+                                      className="w-full px-4 py-2 text-left text-sm text-[#212121] hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                                    >
                                       <SVGUser />
                                       Profile
                                     </button>
-                                    <button className="w-full px-4 py-2 text-left text-sm text-[#212121] hover:bg-gray-50 flex items-center gap-3 transition-colors">
+                                    <button
+                                      onClick={handleGoToSettings}
+                                      className="w-full px-4 py-2 text-left text-sm text-[#212121] hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                                    >
                                       <SVGGear />
                                       Settings
                                     </button>
