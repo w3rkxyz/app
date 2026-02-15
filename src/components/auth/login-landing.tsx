@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useDispatch } from "react-redux";
 import { ConnectKitButton } from "connectkit";
-import { useAccount as useWagmiAccount, useConnect } from "wagmi";
+import { useAccount as useWagmiAccount, useConnect, useDisconnect } from "wagmi";
 import { toast } from "react-hot-toast";
 import { displayLoginModal } from "@/redux/app";
 import loginDesktopLeft from "../../../attached_assets/login-desktop-left.png";
@@ -51,8 +51,9 @@ const MOBILE_WALLET_AREAS: Record<WalletOption, HitArea> = {
 
 const LoginLanding = () => {
   const dispatch = useDispatch();
-  const { isConnected } = useWagmiAccount();
+  const { isConnected, connector: activeConnector } = useWagmiAccount();
   const { connectAsync, connectors } = useConnect();
+  const { disconnectAsync } = useDisconnect();
   const [pendingFamilyConnect, setPendingFamilyConnect] = useState(false);
 
   const triggerLoginFlow = useCallback(() => {
@@ -100,55 +101,69 @@ const LoginLanding = () => {
       setPendingFamilyConnect(false);
 
       if (wallet === "other") {
-        if (!isConnected) {
-          setPendingFamilyConnect(true);
-        }
+        setPendingFamilyConnect(!isConnected);
         showWalletModal();
         return;
       }
 
-      if (wallet === "metamask") {
-        const targets = connectorCandidates.metamask;
-
-        if (targets.length === 0) {
-          toast.error("MetaMask not available");
-          return;
-        }
-
-        for (const target of targets) {
-          try {
-            await connectAsync({ connector: target });
-            triggerLoginFlow();
-            return;
-          } catch {
-            // Try the next MetaMask-compatible connector candidate.
-          }
-        }
-
-        toast.error("Unable to connect MetaMask");
+      const targets = connectorCandidates[wallet];
+      if (!targets.length) {
+        const walletLabel =
+          wallet === "coinbase" ? "Coinbase Wallet" : wallet[0].toUpperCase() + wallet.slice(1);
+        toast.error(`${walletLabel} not available`);
         return;
       }
 
-      const target = connectorCandidates[wallet][0] ?? null;
-      if (!target) {
-        if (!isConnected) {
-          setPendingFamilyConnect(true);
-        }
-        showWalletModal();
-        return;
-      }
+      const walletKeywords: Record<Exclude<WalletOption, "other">, string[]> = {
+        metamask: ["metamask", "meta mask"],
+        phantom: ["phantom"],
+        coinbase: ["coinbase"],
+      };
 
-      try {
-        await connectAsync({ connector: target });
+      const isActiveWalletMatch =
+        isConnected &&
+        activeConnector &&
+        walletKeywords[wallet].some(keyword => {
+          const id = activeConnector.id.toLowerCase();
+          const name = activeConnector.name.toLowerCase();
+          return id.includes(keyword) || name.includes(keyword);
+        });
+
+      if (isActiveWalletMatch) {
         triggerLoginFlow();
-      } catch {
-        if (!isConnected) {
-          setPendingFamilyConnect(true);
-        }
-        showWalletModal();
+        return;
       }
+
+      if (isConnected && !isActiveWalletMatch) {
+        try {
+          await disconnectAsync();
+        } catch {
+          // Best-effort disconnect before switching wallet connectors.
+        }
+      }
+
+      for (const target of targets) {
+        try {
+          await connectAsync({ connector: target });
+          triggerLoginFlow();
+          return;
+        } catch {
+          // Try next connector candidate for this wallet.
+        }
+      }
+
+      const walletLabel =
+        wallet === "coinbase" ? "Coinbase Wallet" : wallet[0].toUpperCase() + wallet.slice(1);
+      toast.error(`Unable to connect ${walletLabel}`);
     },
-    [connectAsync, connectorCandidates, isConnected, triggerLoginFlow]
+    [
+      activeConnector,
+      connectAsync,
+      connectorCandidates,
+      disconnectAsync,
+      isConnected,
+      triggerLoginFlow,
+    ]
   );
 
   const renderHitButton = (
@@ -177,23 +192,11 @@ const LoginLanding = () => {
     <ConnectKitButton.Custom>
       {({ show }) => {
         const onFamilyClick = () => {
-          if (isConnected) {
-            setPendingFamilyConnect(false);
-            triggerLoginFlow();
-            return;
-          }
-
-          setPendingFamilyConnect(true);
+          setPendingFamilyConnect(!isConnected);
           show();
         };
 
         const onWalletClick = (wallet: WalletOption) => {
-          if (isConnected) {
-            setPendingFamilyConnect(false);
-            triggerLoginFlow();
-            return;
-          }
-
           void connectSpecificWallet(wallet, show);
         };
 
