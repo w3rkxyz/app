@@ -38,10 +38,14 @@ export const appSlice = createSlice({
     setLensProfile: (state: any, action: SetProfile) => {
       state.user = action.payload.profile;
     },
+    clearLensProfile: (state: any) => {
+      state.user = undefined;
+    },
   },
 });
 
 // Action creators are generated for each case reducer function
-export const { displayLoginModal, displaySwitchModal, setLensProfile } = appSlice.actions;
+export const { displayLoginModal, displaySwitchModal, setLensProfile, clearLensProfile } =
+  appSlice.actions;
 
 export default appSlice.reducer;
