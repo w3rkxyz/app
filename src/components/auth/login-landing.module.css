@@ -47,10 +47,10 @@
 
 .desktopLogo {
   position: absolute;
-  left: 5.2%;
-  top: 5.8%;
+  left: 4.6%;
+  top: 3.8%;
   z-index: 3;
-  width: clamp(106px, 22%, 146px);
+  width: clamp(98px, 20%, 136px);
   pointer-events: none;
 }
 
@@ -93,7 +93,7 @@
 
 .rightPanel {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: flex-start;
   width: 100%;
   max-width: none;
@@ -104,10 +104,10 @@
 }
 
 .rightImage {
-  width: clamp(920px, 95vw, 1280px);
+  width: clamp(1200px, 122vw, 1680px);
   height: auto;
   max-width: none;
-  max-height: calc(100vh - (var(--desktop-pad) * 2));
+  max-height: none;
   transform: none;
   transform-origin: left center;
   flex-shrink: 0;
@@ -168,6 +168,7 @@
   }
 
   .rightPanel {
+    align-items: center;
     justify-content: center;
     max-width: 560px;
     height: auto;
