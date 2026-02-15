@@ -48,7 +48,7 @@
 .desktopLogo {
   position: absolute;
   left: 5.2%;
-  top: 8%;
+  top: 5.8%;
   z-index: 3;
   width: clamp(106px, 22%, 146px);
   pointer-events: none;
