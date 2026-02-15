@@ -191,16 +191,23 @@ const LoginLanding = () => {
     <ConnectKitButton.Custom>
       {({ show }) => {
         const onFamilyClick = () => {
-          if (!isConnected) {
-            setPendingFamilyConnect(true);
-          } else {
+          if (isConnected) {
             setPendingFamilyConnect(false);
+            triggerLoginFlow();
+            return;
           }
 
+          setPendingFamilyConnect(true);
           show();
         };
 
         const onWalletClick = (wallet: WalletOption) => {
+          if (isConnected) {
+            setPendingFamilyConnect(false);
+            triggerLoginFlow();
+            return;
+          }
+
           void connectSpecificWallet(wallet, show);
         };
 

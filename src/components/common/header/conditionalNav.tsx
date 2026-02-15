@@ -48,8 +48,6 @@ const ConditionalNav = () => {
           const accountData = getLensAccountData(account);
           dispatch(setLensProfile({ profile: accountData }));
           dispatch(displayLoginModal({ display: false }));
-        } else {
-          dispatch(displayLoginModal({ display: true }));
         }
       } catch (error) {
         console.error("Error fetching authenticated account:", error);

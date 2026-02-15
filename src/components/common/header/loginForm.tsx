@@ -349,12 +349,6 @@ export default function LoginForm({ owner }: { owner: string }) {
         </div>
 
         <div className="flex flex-col gap-[12px] p-[20px]">
-          {!walletReady && (
-            <span className="rounded-[12px] border border-[#FECACA] bg-[#FEF2F2] px-[12px] py-[10px] text-[13px] leading-[1.4] text-[#B91C1C]">
-              Connect your wallet first, then retry.
-            </span>
-          )}
-
           {(accountsLoading || autoSelecting) && (
             <div className="flex items-center gap-[10px] rounded-[12px] border border-[#DBEAFE] bg-[#EFF6FF] px-[12px] py-[10px] text-[14px] font-medium text-[#1D4ED8]">
               <Oval
