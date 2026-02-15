@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import getLensAccountData from "@/utils/getLensProfile";
 import { useAccount, useWalletClient } from "wagmi";
 import { Oval } from "react-loader-spinner";
-import { Account, evmAddress, uri } from "@lens-protocol/client";
+import { Account, evmAddress, uri, ManagedAccountsVisibility } from "@lens-protocol/client";
 import { useLogin, useAccountsAvailable, SessionClient } from "@lens-protocol/react";
 import { canCreateUsername, createAccountWithUsername } from "@lens-protocol/client/actions";
 import { signMessageWith, handleOperationWith } from "@lens-protocol/client/viem";
@@ -33,6 +33,7 @@ export default function LoginForm({ owner }: { owner: string }) {
   const { data: walletClient } = useWalletClient();
   const wallet = useAccount();
   const autoSelectedAccountRef = useRef<string | null>(null);
+  const lastWalletAddressRef = useRef<string | null>(null);
 
   const [creatingProfile, setCreatingProfile] = useState(false);
   const [sessionClient, setSessionClient] = useState<SessionClient | null>(null);
@@ -56,10 +57,19 @@ export default function LoginForm({ owner }: { owner: string }) {
   } = useAccountsAvailable({
     managedBy,
     includeOwned: true,
+    hiddenFilter: ManagedAccountsVisibility.All,
+    pageSize: 50,
   });
 
   const { execute: authenticate, loading: authenticateLoading } = useLogin();
   const walletReady = Boolean(walletClient?.account.address);
+  const normalizedWalletAddress =
+    walletClient?.account.address?.toLowerCase() ?? wallet.address?.toLowerCase() ?? null;
+  const isWalletContextReady = Boolean(
+    walletClient?.account.address &&
+      wallet.address &&
+      walletClient.account.address.toLowerCase() === wallet.address.toLowerCase()
+  );
   const profileCount = availableAccounts?.items.length ?? 0;
   const showPrepare = walletReady && !accountsLoading && !availableAccounts && !accountsError;
   const singleAccount = profileCount === 1 ? availableAccounts?.items[0]?.account : null;
@@ -290,7 +300,6 @@ export default function LoginForm({ owner }: { owner: string }) {
       });
 
       const profile = getLensAccountData(account);
-      localStorage.setItem("activeHandle", profile.handle);
       dispatch(setLensProfile({ profile }));
       dispatch(displayLoginModal({ display: false }));
 
@@ -310,7 +319,39 @@ export default function LoginForm({ owner }: { owner: string }) {
   };
 
   useEffect(() => {
-    if (!singleAccount || accountsLoading || authenticateLoading || continuing || !walletReady) {
+    if (!normalizedWalletAddress) {
+      autoSelectedAccountRef.current = null;
+      lastWalletAddressRef.current = null;
+      setSessionClient(null);
+      setHandle("");
+      setShowError(false);
+      setAuthError(null);
+      setMintSuccessMessage(null);
+      return;
+    }
+
+    if (lastWalletAddressRef.current && lastWalletAddressRef.current !== normalizedWalletAddress) {
+      autoSelectedAccountRef.current = null;
+      setSessionClient(null);
+      setHandle("");
+      setShowError(false);
+      setAuthError(null);
+      setMintSuccessMessage(null);
+      localStorage.removeItem("activeHandle");
+    }
+
+    lastWalletAddressRef.current = normalizedWalletAddress;
+  }, [normalizedWalletAddress]);
+
+  useEffect(() => {
+    if (
+      !singleAccount ||
+      accountsLoading ||
+      authenticateLoading ||
+      continuing ||
+      !walletReady ||
+      !isWalletContextReady
+    ) {
       return;
     }
 
@@ -329,6 +370,7 @@ export default function LoginForm({ owner }: { owner: string }) {
     authenticateLoading,
     continuing,
     handleSelectAccount,
+    isWalletContextReady,
     singleAccount,
     walletReady,
   ]);
