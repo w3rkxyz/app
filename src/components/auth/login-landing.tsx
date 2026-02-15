@@ -82,20 +82,30 @@ const LoginLanding = () => {
     triggerLoginFlow();
   }, [isConnected, pendingFamilyConnect, triggerLoginFlow]);
 
-  const connectorByWallet = useMemo(() => {
-    const pick = (keywords: string[]) =>
-      connectors.find(connector => {
+  const connectorCandidates = useMemo(() => {
+    const pickAll = (keywords: string[]) =>
+      connectors.filter(connector => {
         const id = connector.id.toLowerCase();
         const name = connector.name.toLowerCase();
         return keywords.some(keyword => id.includes(keyword) || name.includes(keyword));
-      }) ?? null;
+      });
 
-    const injected = pick(["injected"]);
+    const metamaskPrimary = pickAll(["metamask", "meta mask"]);
+    const injected = pickAll(["injected"]);
+    const metamask = [
+      ...metamaskPrimary,
+      ...injected.filter(
+        connector =>
+          !metamaskPrimary.some(
+            selected => selected.id === connector.id && selected.name === connector.name
+          )
+      ),
+    ];
 
     return {
-      metamask: pick(["metamask", "meta mask"]) ?? injected,
-      phantom: pick(["phantom"]),
-      coinbase: pick(["coinbase"]),
+      metamask,
+      phantom: pickAll(["phantom"]),
+      coinbase: pickAll(["coinbase"]),
     };
   }, [connectors]);
 
@@ -111,13 +121,30 @@ const LoginLanding = () => {
         return;
       }
 
-      const target = connectorByWallet[wallet];
-      if (!target) {
-        if (wallet === "metamask") {
+      if (wallet === "metamask") {
+        const targets = connectorCandidates.metamask;
+
+        if (targets.length === 0) {
           toast.error("MetaMask not available");
           return;
         }
 
+        for (const target of targets) {
+          try {
+            await connectAsync({ connector: target });
+            triggerLoginFlow();
+            return;
+          } catch {
+            // Try the next MetaMask-compatible connector candidate.
+          }
+        }
+
+        toast.error("Unable to connect MetaMask");
+        return;
+      }
+
+      const target = connectorCandidates[wallet][0] ?? null;
+      if (!target) {
         if (!isConnected) {
           setPendingFamilyConnect(true);
         }
@@ -129,18 +156,13 @@ const LoginLanding = () => {
         await connectAsync({ connector: target });
         triggerLoginFlow();
       } catch {
-        if (wallet === "metamask") {
-          toast.error("Unable to connect MetaMask");
-          return;
-        }
-
         if (!isConnected) {
           setPendingFamilyConnect(true);
         }
         showWalletModal();
       }
     },
-    [connectAsync, connectorByWallet, isConnected, triggerLoginFlow]
+    [connectAsync, connectorCandidates, isConnected, triggerLoginFlow]
   );
 
   const renderHitButton = (
