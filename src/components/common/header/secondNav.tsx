@@ -233,10 +233,10 @@ const SecondNav = () => {
                                     <SVGSearch />
                                   </button>
                                   <input
-                                    className={`ml-2 bg-transparent text-sm text-[#212121] outline-none placeholder:text-[#A3A3A3] transition-all duration-200 ${
+                                    className={`bg-transparent text-sm text-[#212121] outline-none placeholder:text-[#A3A3A3] transition-all duration-200 ${
                                       isSearchOpen
-                                        ? "w-[200px] opacity-100"
-                                        : "w-0 opacity-0 pointer-events-none"
+                                        ? "ml-2 w-[200px] opacity-100"
+                                        : "ml-0 w-0 opacity-0 pointer-events-none"
                                     }`}
                                     placeholder="Search Lens users"
                                     value={searchText}
@@ -246,8 +246,10 @@ const SecondNav = () => {
                                   <button
                                     type="button"
                                     aria-label="Close search"
-                                    className={`ml-2 flex h-5 w-5 items-center justify-center text-[#818181] transition-all duration-200 hover:text-[#212121] ${
-                                      isSearchOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+                                    className={`flex items-center justify-center text-[#818181] transition-all duration-200 hover:text-[#212121] ${
+                                      isSearchOpen
+                                        ? "ml-2 h-5 w-5 opacity-100"
+                                        : "ml-0 h-0 w-0 opacity-0 pointer-events-none"
                                     }`}
                                     onClick={handleSearchToggle}
                                   >
