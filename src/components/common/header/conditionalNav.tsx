@@ -19,6 +19,7 @@ const ConditionalNav = () => {
   const { user: profile } = useSelector((state: any) => state.app);
   const { isConnected } = useAccount();
   const dispatch = useDispatch();
+  const pathname = usePathname();
 
   useEffect(() => {
     // Don't block navigation - check auth asynchronously
@@ -47,8 +48,6 @@ const ConditionalNav = () => {
           const accountData = getLensAccountData(account);
           dispatch(setLensProfile({ profile: accountData }));
           dispatch(displayLoginModal({ display: false }));
-        } else {
-          dispatch(displayLoginModal({ display: true }));
         }
       } catch (error) {
         console.error("Error fetching authenticated account:", error);
@@ -72,6 +71,10 @@ const ConditionalNav = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  if (pathname === "/") {
+    return null;
+  }
 
   return <>{isConnected && profile ? <SecondNav /> : <Navbar />}</>;
 };

@@ -14,6 +14,10 @@ import { Bell, ChevronDown } from "lucide-react";
 
 const SecondNav = () => {
   const { user: profile } = useSelector((state: any) => state.app);
+  const profileImage = profile?.picture || "https://static.hey.xyz/images/default.png";
+  const profileHandle = profile?.handle || "@user";
+  const profileName =
+    profile?.displayName || profile?.handle?.replace(/^@/, "") || "User";
   const myDivRef = useRef<HTMLDivElement>(null);
   const drowdownRef = useRef<HTMLDivElement>(null);
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -195,18 +199,16 @@ const SecondNav = () => {
                                   className="flex items-center gap-2 px-3 py-1 rounded-full border border-[#E0E0E0] hover:bg-gray-50 transition-colors"
                                 >
                                   <div className="w-6 h-6 bg-gray-300 rounded-full flex-shrink-0">
-                                    {profile?.profileImage && (
-                                      <Image
-                                        src={profile.profileImage}
-                                        alt="profile"
-                                        width={24}
-                                        height={24}
-                                        className="w-full h-full rounded-full object-cover"
-                                      />
-                                    )}
+                                    <Image
+                                      src={profileImage}
+                                      alt="profile"
+                                      width={24}
+                                      height={24}
+                                      className="w-full h-full rounded-full object-cover"
+                                    />
                                   </div>
                                   <span className="text-sm font-medium text-[#212121]  sm:inline">
-                                    {profile?.username || "@jhondoe"}
+                                    {profileHandle}
                                   </span>
                                   <ChevronDown
                                     size={16}
@@ -222,22 +224,20 @@ const SecondNav = () => {
                                     {/* User Header */}
                                     <div className="px-4 pb-3 border-b border-[#E0E0E0] flex items-center gap-3">
                                       <div className="w-10 h-10 bg-gray-300 rounded-full flex-shrink-0">
-                                        {profile?.profileImage && (
-                                          <Image
-                                            src={profile.profileImage}
-                                            alt="profile"
-                                            width={40}
-                                            height={40}
-                                            className="w-full h-full rounded-full object-cover"
-                                          />
-                                        )}
+                                        <Image
+                                          src={profileImage}
+                                          alt="profile"
+                                          width={40}
+                                          height={40}
+                                          className="w-full h-full rounded-full object-cover"
+                                        />
                                       </div>
                                       <div className="flex-1 min-w-0">
                                         <p className="text-base font-semibold text-[#212121] truncate">
-                                          {profile?.name || "User"}
+                                          {profileName}
                                         </p>
                                         <p className="text-sm text-[#818181] truncate">
-                                          @{profile?.username || "username"}
+                                          {profileHandle}
                                         </p>
                                       </div>
                                     </div>
