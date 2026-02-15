@@ -90,15 +90,14 @@ const SecondNav = () => {
     router.push("/settings");
   };
 
-  const handleSearchToggle = () => {
-    setIsSearchOpen(prev => {
-      const next = !prev;
-      if (!next) {
-        setSearchText("");
-        setShowSearchResults(false);
-      }
-      return next;
-    });
+  const openSearch = () => {
+    setIsSearchOpen(true);
+  };
+
+  const closeSearch = () => {
+    setIsSearchOpen(false);
+    setSearchText("");
+    setShowSearchResults(false);
   };
 
   const handleSelectAccount = (handle: string) => {
@@ -220,15 +219,17 @@ const SecondNav = () => {
                                   className={`flex items-center overflow-hidden rounded-full border border-[#C3C7CE] bg-white transition-all duration-300 ease-in-out ${
                                     isSearchOpen
                                       ? "h-8 w-[280px] px-3 py-1"
-                                      : "h-8 w-8 cursor-pointer justify-center"
+                                      : "h-8 w-8 justify-center"
                                   }`}
-                                  onClick={!isSearchOpen ? handleSearchToggle : undefined}
                                 >
                                   <button
                                     type="button"
                                     aria-label="Search users"
                                     className="flex h-6 w-6 items-center justify-center"
-                                    onClick={!isSearchOpen ? handleSearchToggle : undefined}
+                                    onClick={e => {
+                                      e.stopPropagation();
+                                      if (!isSearchOpen) openSearch();
+                                    }}
                                   >
                                     <SVGSearch />
                                   </button>
@@ -251,7 +252,7 @@ const SecondNav = () => {
                                         ? "ml-2 h-5 w-5 opacity-100"
                                         : "ml-0 h-0 w-0 opacity-0 pointer-events-none"
                                     }`}
-                                    onClick={handleSearchToggle}
+                                    onClick={closeSearch}
                                   >
                                     <X size={14} />
                                   </button>
