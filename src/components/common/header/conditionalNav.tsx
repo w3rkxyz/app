@@ -2,7 +2,7 @@
 
 import React from "react";
 import Navbar from "./navbar";
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import SecondNav from "./secondNav";
 import { usePathname } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
@@ -10,32 +10,44 @@ import { setLensProfile, displayLoginModal, clearLensProfile } from "@/redux/app
 import { fetchAccount } from "@lens-protocol/client/actions";
 import { getLensClient } from "@/client";
 import getLensAccountData from "@/utils/getLensProfile";
+import { useAuthenticatedUser } from "@lens-protocol/react";
 
 const ConditionalNav = () => {
   const { user: profile } = useSelector((state: any) => state.app);
   const dispatch = useDispatch();
   const pathname = usePathname();
-  const [isSessionLoading, setIsSessionLoading] = useState(true);
+  const hydratedProfileForAddressRef = useRef<string | null>(null);
+  const { data: authenticatedUser, loading: sessionLoading } = useAuthenticatedUser();
 
   useEffect(() => {
     let mounted = true;
 
-    const getAuthenticatedAccount = async () => {
+    if (sessionLoading) {
+      return () => {
+        mounted = false;
+      };
+    }
+
+    if (!authenticatedUser) {
+      hydratedProfileForAddressRef.current = null;
+      dispatch(clearLensProfile());
+      return () => {
+        mounted = false;
+      };
+    }
+
+    const authenticatedAddress = authenticatedUser.address.toLowerCase();
+
+    if (hydratedProfileForAddressRef.current === authenticatedAddress) {
+      return () => {
+        mounted = false;
+      };
+    }
+
+    const hydrateProfile = async () => {
       try {
         const lensClient = await getLensClient();
-
-        if (!mounted) {
-          return;
-        }
-
-        if (!lensClient.isSessionClient()) {
-          dispatch(clearLensProfile());
-          return;
-        }
-
-        const authenticatedUser = lensClient.getAuthenticatedUser().unwrapOr(null);
-        if (!authenticatedUser) {
-          dispatch(clearLensProfile());
+        if (!mounted || !lensClient.isSessionClient()) {
           return;
         }
 
@@ -43,42 +55,37 @@ const ConditionalNav = () => {
           address: authenticatedUser.address,
         }).unwrapOr(null);
 
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
 
         if (account) {
+          hydratedProfileForAddressRef.current = authenticatedAddress;
           const accountData = getLensAccountData(account);
           dispatch(setLensProfile({ profile: accountData }));
           dispatch(displayLoginModal({ display: false }));
-        } else {
-          dispatch(clearLensProfile());
         }
       } catch (error) {
-        console.error("Error fetching authenticated account:", error);
-        dispatch(clearLensProfile());
-      } finally {
-        if (mounted) {
-          setIsSessionLoading(false);
-        }
+        console.error("Error hydrating authenticated account:", error);
       }
     };
 
-    void getAuthenticatedAccount();
+    void hydrateProfile();
 
     return () => {
       mounted = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [authenticatedUser, dispatch, sessionLoading]);
 
   if (pathname === "/") {
     return null;
   }
 
-  if (isSessionLoading && !profile) {
+  if (sessionLoading && !profile) {
     return null;
   }
 
-  return <>{profile ? <SecondNav /> : <Navbar />}</>;
+  return <>{profile || authenticatedUser ? <SecondNav /> : <Navbar />}</>;
 };
 
 export default ConditionalNav;
