@@ -250,7 +250,8 @@ const Settings = () => {
         bio: formState.bio !== "" ? formState.bio : undefined,
         picture: pictureUri !== "" ? pictureUri : undefined,
         coverPicture: coverUri !== "" ? coverUri : undefined,
-        attributes: attributes.length !== 0 ? attributes : [],
+        // Lens metadata validation rejects an empty array; omit the field if there are no attributes.
+        attributes: attributes.length !== 0 ? attributes : undefined,
       });
 
       const metadataUriFromLensStorage = await uploadMetadataToLensStorage(metadata);
