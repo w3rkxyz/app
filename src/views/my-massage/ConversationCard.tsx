@@ -131,40 +131,34 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
 
   return (
     <div
-      className={`p-[10px] w-full border ${
-        isSelected
-          ? "bg-[#F4F4F5] border-[#D9D9DE]"
-          : "bg-white border-transparent hover:bg-[#F8F8FA] hover:border-[#ECECF0]"
-      } rounded-[12px] cursor-pointer transition-colors`}
+      className={`flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer transition-colors ${
+        isSelected ? "bg-gray-50" : ""
+      }`}
       onClick={() => selectConversation(conversation)}
     >
-      <div className="flex justify-between items-start gap-[10px]">
-        <div className="flex gap-[12px] flex-1 min-w-0">
-          <Image
-            src={user.picture || "https://static.hey.xyz/images/default.png"}
-            onError={e => {
-              (e.target as HTMLImageElement).src = "https://static.hey.xyz/images/default.png";
-            }}
-            className="rounded-[10px] flex-shrink-0 object-cover"
-            alt="user pic"
-            width={42}
-            height={42}
-          />
-          <div className="flex flex-col gap-[4px] flex-1 min-w-0">
-            <div className="flex justify-between items-baseline gap-[8px]">
-              <span className="text-[14px] leading-[18px] font-semibold text-[#111111] truncate">
-                {user.displayName}
-              </span>
-              <span className="text-[12px] leading-[14px] font-medium text-[#8A8A8F] flex-shrink-0">
-                {lastMessageTime}
-              </span>
-            </div>
-            <p className="line-clamp-1 text-[13px] leading-[16px] text-[#6F6F74]">{lastMessage}</p>
-          </div>
-        </div>
+      <div className="relative">
+        <Image
+          src={user.picture || "https://static.hey.xyz/images/default.png"}
+          onError={e => {
+            (e.target as HTMLImageElement).src = "https://static.hey.xyz/images/default.png";
+          }}
+          className="rounded-full object-cover"
+          alt="user pic"
+          width={44}
+          height={44}
+        />
         {hasUnread && (
-          <div className="w-[8px] h-[8px] bg-[#111111] rounded-full mt-[6px] flex-shrink-0"></div>
+          <div className="absolute -bottom-0.5 -right-0.5 min-w-[20px] h-5 bg-gray-900 rounded-full flex items-center justify-center px-1.5 text-white text-xs font-medium">
+            1
+          </div>
         )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-0.5">
+          <h3 className="text-base font-medium text-gray-900 truncate">{user.displayName}</h3>
+          <span className="text-sm text-gray-500 ml-2 flex-shrink-0">{lastMessageTime}</span>
+        </div>
+        <p className="text-sm text-gray-500 truncate">{lastMessage}</p>
       </div>
     </div>
   );

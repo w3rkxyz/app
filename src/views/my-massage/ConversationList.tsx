@@ -17,7 +17,7 @@ const ConversationsList = ({ conversations, searchQuery = "" }: ConversationList
   const { loading } = useConversations();
 
   return (
-    <div className="flex flex-col gap-[6px] mt-[8px] pr-[2px] pb-[4px] overflow-y-auto flex-1">
+    <div className="flex flex-col mt-[4px] pb-[4px] overflow-y-auto flex-1">
       {loading &&
         [0, 1, 2, 3, 4, 5].map(item => {
           return <ConversationSkeleton key={item} />;

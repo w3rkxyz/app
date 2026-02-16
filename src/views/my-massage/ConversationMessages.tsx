@@ -6,6 +6,7 @@ import { useXMTP } from "@/app/XMTPContext";
 import { DecodedMessage } from "@xmtp/browser-sdk";
 import moment from "moment";
 import axios from "axios";
+import { useConversation } from "@/hooks/useConversation";
 
 export type ConversationProps = {
   messages: DecodedMessage[];
@@ -15,6 +16,28 @@ const ConversationMessages = ({ messages }: ConversationProps) => {
   const [activeMessages, setActiveMessages] = useState<any[]>([]);
   const [activeAttachments, setActiveAttachments] = useState<any>({});
   const { client } = useXMTP();
+  const { otherUser } = useConversation();
+
+  const checkMarks = (tone: "light" | "dark") => (
+    <div className="flex items-center">
+      <svg
+        className={`w-[11px] h-[11px] ${tone === "light" ? "text-[#2563EB]" : "text-[#C4C4C4]"}`}
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M5 13l4 4L19 7" />
+      </svg>
+      <svg
+        className={`w-[11px] h-[11px] -ml-[4px] ${tone === "light" ? "text-[#2563EB]" : "text-[#C4C4C4]"}`}
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M5 13l4 4L19 7" />
+      </svg>
+    </div>
+  );
 
   function groupMessagesByWhatsAppDate(messages: DecodedMessage<any>[]) {
     const groupedMessages: { date: string; messages: DecodedMessage[] }[] = [];
@@ -88,71 +111,99 @@ const ConversationMessages = ({ messages }: ConversationProps) => {
   }, [messages]);
 
   return (
-    <div className="flex-1 flex flex-col sm:justify-start overflow-y-auto pt-[14px] pb-[8px]" id="scrollableDiv">
+    <div className="flex-1 flex flex-col sm:justify-start overflow-y-auto p-[24px] sm:px-[12px] sm:py-[16px]" id="scrollableDiv">
       {loading ? (
-        <div className="flex flex-col gap-[8px]">
-          <div className="self-center h-[24px] w-[62px] bg-[#F4F4F5] rounded-full" />
-          <div className="self-start h-[44px] w-[220px] bg-[#F4F4F5] rounded-[14px]" />
-          <div className="self-end h-[44px] w-[190px] bg-[#E8D8FF] rounded-[14px]" />
-          <div className="self-start h-[44px] w-[250px] bg-[#F4F4F5] rounded-[14px]" />
+        <div className="flex flex-col gap-[10px]">
+          <div className="self-center h-[14px] w-[78px] bg-[#EEF0F3] rounded-full" />
+          <div className="self-start h-[58px] w-[320px] bg-white border border-[#D6D9DF] rounded-[16px]" />
+          <div className="self-end h-[52px] w-[280px] bg-[#212121] rounded-[16px]" />
+          <div className="self-start h-[60px] w-[360px] bg-white border border-[#D6D9DF] rounded-[16px]" />
         </div>
       ) : (
-        activeMessages.map((messages, index: number) => {
+        activeMessages.map((groupedMessages, index: number) => {
           return (
             <div
               key={index}
-              className={`${index === 0 ? "mt-auto" : ""} w-full flex flex-col h-fit`}
+              className={`${index === 0 ? "mt-auto" : ""} w-full flex flex-col h-fit gap-[10px]`}
             >
-              <span className="text-[11px] leading-[13px] font-semibold text-[#7A7A7F] self-center mb-[14px] sm:mt-[12px] bg-[#F4F4F5] px-[10px] py-[5px] rounded-full">
-                {messages.date}
+              <span className="text-[12px] leading-[14px] text-[#6C6C6C] self-center mb-[8px]">
+                {groupedMessages.date}
               </span>
-              {messages.messages.map((message: DecodedMessage, index: number) => {
-                return typeof message.content !== "string" ? null : !isLink(message.content) ? (
-                  <div
-                    key={index}
-                    className={`rounded-[14px] whitespace-pre-wrap w-fit min-w-[120px] max-w-[450px] text-[13px] laptop-x:max-w-[350px] sm:max-w-[262px] mb-[12px] relative font-medium leading-[19px] px-[12px] py-[9px] pr-[52px] sm:pr-[44px] sm:pb-[22px] ${
-                        client?.inboxId === message.senderInboxId
-                          ? "self-end bg-[#C6AAFF] text-white"
-                          : "self-start bg-[#F4F4F5] text-[#1A1A1A]"
-                      } `}
-                  >
-                    {message.content}
-                    <span className="absolute right-[8px] bottom-[3px] text-[10px] leading-[12px] font-medium text-current/70">
-                      {moment(new Date(Number(message.sentAtNs / 1_000_000n))).format("h:mmA")}
-                    </span>
-                  </div>
-                ) : activeAttachments[message.content] ? (
-                  <Link
-                    target="_blank"
-                    href={activeAttachments[message.content].link}
-                    download={activeAttachments[message.content].name}
-                    className={`rounded-[14px] whitespace-pre-wrap w-fit min-w-[140px] max-w-[450px] text-[13px] laptop-x:max-w-[350px] sm:max-w-[262px] mb-[12px] relative font-medium leading-[19px] px-[12px] py-[10px] pr-[52px] sm:pr-[44px] sm:pb-[22px] flex items-center gap-[8px] bg-[#E4E4E7] text-[#1A1A1A] ${
-                        client?.inboxId === message.senderInboxId ? "self-end" : "self-start"
-                      } `}
-                  >
-                    <Image
-                      src="/images/add-photo.svg"
-                      className={`sm:w-[20px] sm:h-[20px]`}
-                      alt="user icon"
-                      width={24}
-                      height={24}
-                    />
-                    <span>{activeAttachments[message.content].name}</span>
-                    <span className="absolute right-[8px] bottom-[3px] text-[10px] leading-[12px] font-medium text-current/70">
-                      {moment(new Date(Number(message.sentAtNs / 1_000_000n))).format("h:mmA")}
-                    </span>
-                  </Link>
-                ) : (
-                  <div
-                    key={index}
-                    className={`rounded-[14px] whitespace-pre-wrap w-fit min-w-[140px] max-w-[450px] text-[13px] laptop-x:max-w-[350px] sm:max-w-[262px] mb-[12px] relative font-medium leading-[19px] px-[12px] py-[10px] pr-[52px] sm:pr-[44px] sm:pb-[22px] flex items-center gap-[8px] bg-[#E4E4E7] text-[#1A1A1A] ${
-                        client?.inboxId === message.senderInboxId ? "self-end" : "self-start"
-                      } `}
-                  >
-                    <span>Loading...</span>
-                    <span className="absolute right-[8px] bottom-[3px] text-[10px] leading-[12px] font-medium text-current/70">
-                      {moment(new Date(Number(message.sentAtNs / 1_000_000n))).format("h:mmA")}
-                    </span>
+              {groupedMessages.messages.map((message: DecodedMessage, messageIndex: number) => {
+                if (typeof message.content !== "string") {
+                  return null;
+                }
+
+                const isOwnMessage = client?.inboxId === message.senderInboxId;
+                const sentTime = moment(new Date(Number(message.sentAtNs / 1_000_000n))).format("h:mmA");
+
+                if (isLink(message.content)) {
+                  const attachment = activeAttachments[message.content];
+
+                  return (
+                    <div key={messageIndex} className={`${isOwnMessage ? "flex justify-end" : "flex gap-3 max-w-[720px] sm:max-w-full"}`}>
+                      {!isOwnMessage && (
+                        <Image
+                          src={otherUser?.picture || "https://static.hey.xyz/images/default.png"}
+                          alt={otherUser?.displayName || "Profile"}
+                          width={32}
+                          height={32}
+                          className="rounded-full object-cover flex-shrink-0 mt-[2px]"
+                        />
+                      )}
+                      <div className={`relative ${isOwnMessage ? "max-w-[640px] sm:max-w-[85%]" : "max-w-[640px] sm:max-w-[85%] flex-1"}`}>
+                        <Link
+                          target="_blank"
+                          href={attachment ? attachment.link : message.content}
+                          download={attachment?.name}
+                          className={`rounded-2xl px-[12px] pt-[10px] pb-[28px] inline-flex items-start gap-[10px] w-full border-[0.5px] ${
+                            isOwnMessage
+                              ? "bg-[#212121] border-[#212121] text-white"
+                              : "bg-white border-[#C3C7CE] text-[#212121]"
+                          }`}
+                        >
+                          <Image src="/images/add-photo.svg" alt="Attachment" width={22} height={22} />
+                          <div className="min-w-0">
+                            <p className="text-[14px] leading-[18px] font-medium truncate">
+                              {attachment?.name || "Attachment"}
+                            </p>
+                          </div>
+                        </Link>
+                        <div className="absolute bottom-[8px] right-[8px] flex items-center gap-[4px]">
+                          <span className={`text-[11px] ${isOwnMessage ? "text-[#C4C4C4]" : "text-[#6C6C6C]"}`}>{sentTime}</span>
+                          {checkMarks(isOwnMessage ? "dark" : "light")}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div key={messageIndex} className={`${isOwnMessage ? "flex justify-end" : "flex gap-3 max-w-[720px] sm:max-w-full"}`}>
+                    {!isOwnMessage && (
+                      <Image
+                        src={otherUser?.picture || "https://static.hey.xyz/images/default.png"}
+                        alt={otherUser?.displayName || "Profile"}
+                        width={32}
+                        height={32}
+                        className="rounded-full object-cover flex-shrink-0 mt-[2px]"
+                      />
+                    )}
+                    <div className={`relative ${isOwnMessage ? "max-w-[640px] sm:max-w-[85%]" : "max-w-[640px] sm:max-w-[85%] flex-1"}`}>
+                      <div
+                        className={`rounded-2xl px-[14px] py-[10px] pb-[28px] whitespace-pre-wrap text-[14px] leading-[20px] ${
+                          isOwnMessage
+                            ? "bg-[#212121] text-white rounded-tr-[6px]"
+                            : "bg-white border-[0.5px] border-[#C3C7CE] text-[#6C6C6C]"
+                        }`}
+                      >
+                        {message.content}
+                      </div>
+                      <div className="absolute bottom-[8px] right-[8px] flex items-center gap-[4px]">
+                        <span className={`text-[11px] ${isOwnMessage ? "text-[#C4C4C4]" : "text-[#6C6C6C]"}`}>{sentTime}</span>
+                        {checkMarks(isOwnMessage ? "dark" : "light")}
+                      </div>
+                    </div>
                   </div>
                 );
               })}

@@ -1,5 +1,4 @@
 "use client";
-import Image from "next/image";
 import { useState, useRef } from "react";
 import { useConversation } from "@/hooks/useConversation";
 import { fileToDataURI, jsonToDataURI } from "@/utils/dataUriHelpers";
@@ -65,19 +64,24 @@ const ConversationInput = () => {
 
   return (
     <div className="flex py-[12px] gap-[8px] w-full items-center">
-      <input
-        className="rounded-[12px] h-[42px] px-[12px] border border-[#E4E4E7] bg-[#FCFCFC] w-full text-[14px] leading-[18px] text-[#111111] placeholder-[#9B9BA1] focus:outline-none focus:border-[#C6AAFF] transition-colors"
-        placeholder="Type your message here.."
-        onChange={e => setMessage(e.target.value)}
-        onKeyDown={handleKeyDown}
-        value={message}
-      />
       <label
         htmlFor="file_upload"
-        className="rounded-[12px] bg-[#F4F4F5] border border-[#E4E4E7] p-[9px] h-fit inline-flex items-center cursor-pointer hover:bg-[#ECECEE] transition-colors"
+        className="h-[40px] w-[40px] rounded-[10px] inline-flex items-center justify-center cursor-pointer hover:bg-[#F3F4F6] transition-colors"
         aria-label="Upload file"
       >
-        <Image src={"/images/share.svg"} alt="Upload file" width={24} height={24} />
+        <svg
+          className="w-[20px] h-[20px] text-[#6B7280]"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.48l10.6-10.6a4 4 0 115.66 5.66l-10.6 10.6a2 2 0 11-2.83-2.83l9.9-9.9"
+          />
+        </svg>
         <input
           id="file_upload"
           type="file"
@@ -88,12 +92,38 @@ const ConversationInput = () => {
         />
       </label>
       <button
-        className="px-[18px] sm:px-[10px] py-[10px] bg-[#C6AAFF] hover:bg-[#B996FC] disabled:bg-[#E2D8F8] rounded-[12px] flex w-fit gap-[7px] h-fit items-center transition-colors"
+        type="button"
+        className="h-[40px] w-[40px] rounded-[10px] inline-flex items-center justify-center hover:bg-[#F3F4F6] transition-colors"
+        aria-label="Emoji"
+      >
+        <svg
+          className="w-[20px] h-[20px] text-[#6B7280]"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <circle cx="12" cy="12" r="9" strokeWidth="2" />
+          <circle cx="9" cy="10" r="1" fill="currentColor" stroke="none" />
+          <circle cx="15" cy="10" r="1" fill="currentColor" stroke="none" />
+          <path strokeLinecap="round" strokeWidth="2" d="M8 14s1.5 2 4 2 4-2 4-2" />
+        </svg>
+      </button>
+      <input
+        className="flex-1 px-[12px] py-[10px] text-[14px] leading-[20px] text-[#111111] placeholder-[#9CA3AF] bg-transparent focus:outline-none"
+        placeholder="Send a message..."
+        onChange={e => setMessage(e.target.value)}
+        onKeyDown={handleKeyDown}
+        value={message}
+      />
+      <button
+        className="h-[42px] w-[42px] rounded-full bg-[#212121] hover:bg-[#111111] disabled:bg-[#D1D5DB] inline-flex items-center justify-center transition-colors"
         onClick={handleSend}
         disabled={message.length === 0 || sending}
+        aria-label="Send message"
       >
-        <span className="text-[15px] text-white leading-none sm:hidden">Send</span>
-        <Image src={"/images/arrow-right.svg"} alt="paco pic" width={16} height={16} />
+        <svg className="w-[18px] h-[18px] text-white" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M3.4 20.4L22 12L3.4 3.6L3.3 10.2L16.6 12L3.3 13.8L3.4 20.4Z" />
+        </svg>
       </button>
     </div>
   );

@@ -4,66 +4,83 @@ import Link from "next/link";
 import { useConversation } from "@/hooks/useConversation";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
+
 const ConversationHeader = () => {
   const { setActiveConversation, otherUser, loadingOtherUser } = useConversation();
 
   if (!otherUser || loadingOtherUser) {
     return (
-      <div className="flex justify-start sm:gap-[18px] items-center py-[12px] px-[0px]">
-        <Skeleton width={24} height={24} circle />
-        <div className="flex w-full justify-between items-center">
-          <div className="flex gap-[10px]">
-            <Skeleton width={43} height={43} borderRadius={10} />
-            <div className="flex flex-col gap-[2px] pt-[5px]">
-              <Skeleton width={100} height={16} />
-              <Skeleton width={100} height={16} />
-            </div>
+      <div className="flex justify-between items-center gap-[12px] w-full">
+        <div className="flex items-center gap-[10px] min-w-0">
+          <Skeleton width={24} height={24} circle className="sm:block hidden" />
+          <Skeleton width={40} height={40} borderRadius={999} />
+          <div className="flex flex-col gap-[3px]">
+            <Skeleton width={140} height={16} />
+            <Skeleton width={90} height={12} />
           </div>
-          <Skeleton width={110} height={36} borderRadius={12} />
+        </div>
+        <div className="sm:hidden">
+          <Skeleton width={140} height={36} borderRadius={999} />
+        </div>
+        <div className="hidden sm:block">
+          <Skeleton width={32} height={32} borderRadius={999} />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex justify-start sm:gap-[18px] items-center py-[12px] px-[0px]">
-      <Image
-        src={"/images/arrow-left.svg"}
-        className="hidden sm:block cursor-pointer"
-        alt="Back"
-        width={24}
-        height={24}
-        onClick={() => setActiveConversation(undefined)}
-      />
-      <div className="flex w-full justify-between items-center">
-        <div className="flex gap-[10px]">
-          <Link href={`/u/${otherUser.userLink}`}>
-            <Image
-              src={otherUser.picture || "https://static.hey.xyz/images/default.png"}
-              onError={e => {
-                (e.target as HTMLImageElement).src = "https://static.hey.xyz/images/default.png";
-              }}
-              alt="Profile"
-              width={43}
-              height={43}
-              className="rounded-[10px] object-cover"
-            />
-          </Link>
-          <div className="flex flex-col gap-[2px] pt-[2px]">
-            <span className="text-[14px] leading-[18px] font-semibold text-[#111111]">
+    <div className="flex justify-between items-center gap-[12px] w-full">
+      <div className="flex items-center gap-[10px] min-w-0">
+        <button
+          type="button"
+          className="hidden sm:block cursor-pointer"
+          aria-label="Back"
+          onClick={() => setActiveConversation(undefined)}
+        >
+          <Image src={"/images/arrow-left.svg"} alt="Back" width={24} height={24} />
+        </button>
+        <Link href={`/u/${otherUser.userLink}`}>
+          <Image
+            src={otherUser.picture || "https://static.hey.xyz/images/default.png"}
+            onError={e => {
+              (e.target as HTMLImageElement).src = "https://static.hey.xyz/images/default.png";
+            }}
+            alt="Profile"
+            width={40}
+            height={40}
+            className="rounded-full object-cover"
+          />
+        </Link>
+        <div className="min-w-0">
+          <div className="flex items-center gap-[8px]">
+            <span className="text-[16px] leading-[20px] font-semibold text-[#212121] truncate">
               {otherUser.displayName}
             </span>
-            <span className="text-[13px] leading-[16px] font-medium text-[#707070]">
-              {otherUser.handle}
+            <span className="px-2 py-0.5 bg-[#F0FDF4] border border-[#38B764] text-[#38B764] text-[12px] rounded-full font-medium items-center gap-1 sm:hidden inline-flex">
+              <span className="w-1.5 h-1.5 bg-[#109A43] rounded-full"></span>
+              Online
             </span>
           </div>
+          <span className="text-[13px] leading-[16px] text-[#6C6C6C] truncate">{otherUser.handle}</span>
         </div>
-        <Link href={`/contracts?freelancer=${otherUser.handle}`}>
-          <button className="px-[14px] py-[8px] bg-[#C6AAFF] hover:bg-[#B996FC] rounded-[12px] w-fit h-fit text-[14px] leading-[18px] text-white font-semibold transition-colors">
-            Create Contract
-          </button>
-        </Link>
       </div>
+
+      <Link href={`/contracts?freelancer=${otherUser.handle}`} className="sm:hidden">
+        <button className="px-[16px] py-[8px] bg-[#212121] text-white text-[14px] leading-[18px] rounded-full hover:bg-[#111111] transition-colors flex items-center gap-[8px]">
+          <Image src={"/images/add.svg"} width={20} height={20} alt="" />
+          Create Contract
+        </button>
+      </Link>
+
+      <button
+        type="button"
+        className="hidden sm:flex p-[6px] rounded-full hover:bg-[#F2F2F2]"
+        onClick={() => setActiveConversation(undefined)}
+        aria-label="Back"
+      >
+        <Image src={"/images/arrow-left.svg"} alt="Back" width={20} height={20} />
+      </button>
     </div>
   );
 };

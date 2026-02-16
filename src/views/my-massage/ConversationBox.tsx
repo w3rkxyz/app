@@ -119,21 +119,19 @@ const ConversationBox = () => {
           </div>
         </div>
       ) : activeConversation !== undefined ? (
-        <div className="flex flex-col h-full w-full bg-white border border-[#E4E4E7] rounded-[16px] overflow-hidden">
-          <div className="px-[16px]">
+        <div className="flex flex-col h-full w-full bg-[#FCFCFC] sm:bg-white overflow-hidden">
+          <div className="h-[64px] bg-white flex items-center justify-between px-[24px] sm:px-[14px] shadow-[0px_2px_9px_0px_#0000000D]">
             <ConversationHeader />
           </div>
-          <hr className="bg-[#E4E4E7] h-[1px]" />
-          <div className="px-[16px] flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden">
             <ConversationMessages messages={messages} />
           </div>
-          <hr className="bg-[#E4E4E7] h-[1px]" />
-          <div className="px-[16px]">
+          <div className="bg-white border-t border-[#E4E4E7] shadow-[0px_4px_6px_-2px_#10182808] px-[16px] sm:px-[12px]">
             <ConversationInput />
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-center h-full w-full bg-white border border-[#E4E4E7] rounded-[16px]">
+        <div className="flex items-center justify-center h-full w-full bg-white sm:rounded-[16px] sm:border sm:border-[#E4E4E7]">
           <div className="flex flex-col gap-[11px] justify-center items-center">
             <Image src="/images/discuss.svg" alt="Discuss" width={24} height={21} />
             <span className="leading-[18px] font-medium text-[14px] text-black">
