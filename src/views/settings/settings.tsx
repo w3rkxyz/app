@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { fileToDataURI, jsonToDataURI } from "@/utils/dataUriHelpers";
 import { MetadataAttributeType, account } from "@lens-protocol/metadata";
@@ -13,10 +13,10 @@ import { fetchAccount, setAccountMetadata } from "@lens-protocol/client/actions"
 import { useRouter } from "next/navigation";
 import { handleOperationWith } from "@lens-protocol/client/viem";
 import { useWalletClient } from "wagmi";
-import { useSelector } from "react-redux";
 import FormInput from "@/components/onboarding/form-input";
 import FormTextarea from "@/components/onboarding/form-textarea";
 import FormSelect from "@/components/onboarding/form-select";
+import { Camera } from "lucide-react";
 
 const Settings = () => {
   const [userId, setUserId] = useState("");
@@ -25,8 +25,8 @@ const Settings = () => {
   });
   const { data: walletClient } = useWalletClient();
   const router = useRouter();
-  const [backgroundImage, setBackgroundImage] = useState<any>(null);
-  const [photo, setPhoto] = useState<any>(null);
+  const coverUploadInputRef = useRef<HTMLInputElement>(null);
+  const photoUploadInputRef = useRef<HTMLInputElement>(null);
   const [savingData, setSavingData] = useState(false);
   const [formState, setFormState] = useState({
     name: "",
@@ -41,12 +41,38 @@ const Settings = () => {
     location: "",
   });
 
+  const countryOptions = useMemo(() => {
+    try {
+      const displayNames = new Intl.DisplayNames(["en"], { type: "region" });
+      const supportedValuesOf = (Intl as any).supportedValuesOf;
+      if (typeof supportedValuesOf !== "function") {
+        return [
+          { value: "United States", label: "United States" },
+          { value: "United Kingdom", label: "United Kingdom" },
+        ];
+      }
+
+      const countries = (supportedValuesOf("region") as string[])
+        .filter(code => code.length === 2)
+        .map(code => displayNames.of(code))
+        .filter((name): name is string => Boolean(name) && name.toUpperCase() !== name)
+        .sort((a, b) => a.localeCompare(b))
+        .map(name => ({ value: name, label: name }));
+
+      return countries;
+    } catch {
+      return [
+        { value: "United States", label: "United States" },
+        { value: "United Kingdom", label: "United Kingdom" },
+      ];
+    }
+  }, []);
+
   async function getAuthenticatedAccount() {
     const client = await getLensClient();
 
     if (client.isSessionClient()) {
       if (userId === "") {
-        console.log('This ran 1')
         const authenticatedUser = client.getAuthenticatedUser().unwrapOr(null);
         if (!authenticatedUser) {
           return null;
@@ -75,8 +101,6 @@ const Settings = () => {
           location: accountData.attributes.location ? accountData.attributes.location : "",
         };
 
-        setBackgroundImage(handle.cover);
-        setPhoto(handle.picture);
         setFormState(handle);
       }
     } else {
@@ -84,16 +108,10 @@ const Settings = () => {
     }
   }
 
-  // useEffect(() => {
-  //   getAuthenticatedAccount();
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, [profileLoading, userId]);
-
-  const linkPrepend: { [key: string]: string } = {
-    X: "https://x.com/",
-    github: "https://github.com/",
-    linkedin: "https://linkedin.com/",
-  };
+  useEffect(() => {
+    void getAuthenticatedAccount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileLoading, userId]);
 
   // Generic change handler for all inputs
   const handleChange = (e: any) => {
@@ -108,8 +126,6 @@ const Settings = () => {
     const file = event.target.files[0];
     const cover = event.target.files;
     if (file) {
-      const imageUrl = URL.createObjectURL(file);
-      setBackgroundImage(imageUrl);
       const coverLink = await fileToDataURI(cover);
       setFormState(prevState => ({
         ...prevState,
@@ -122,8 +138,6 @@ const Settings = () => {
     const file = event.target.files[0];
     const pic = event.target.files;
     if (file) {
-      const imageUrl = URL.createObjectURL(file);
-      setPhoto(imageUrl);
       const pictureLink = await fileToDataURI(pic);
       setFormState(prevState => ({
         ...prevState,
@@ -159,17 +173,17 @@ const Settings = () => {
       },
       {
         key: "x",
-        value: formState.X !== "" ? linkPrepend["X"] + formState.X : "",
+        value: formState.X.trim(),
         type: MetadataAttributeType.STRING,
       },
       {
         key: "linkedin",
-        value: formState.linkedin !== "" ? linkPrepend["linkedin"] + formState.linkedin : "",
+        value: formState.linkedin.trim(),
         type: MetadataAttributeType.STRING,
       },
       {
         key: "github",
-        value: formState.github !== "" ? linkPrepend["github"] + formState.github : "",
+        value: formState.github.trim(),
         type: MetadataAttributeType.STRING,
       },
     ];
@@ -215,6 +229,7 @@ const Settings = () => {
 
     if (result.isErr()) {
       toast.error(result.error.message);
+      setSavingData(false);
       return;
     }
 
@@ -284,7 +299,18 @@ const Settings = () => {
                         sizes="(max-width: 1344px) 100vw, 1344px"
                       />
                   ) : null}
-                  <button className="absolute right-5 z-50 bottom-5 border border-[#212121] rounded-full bg-white px-4 py-2 text-sm flex items-center gap-1"><svg
+                  <input
+                    ref={coverUploadInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleCoverUpload}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => coverUploadInputRef.current?.click()}
+                    className="absolute right-5 z-50 bottom-5 border border-[#212121] rounded-full bg-white px-4 py-2 text-sm flex items-center gap-1"
+                  ><svg
                   width="18"
                   height="18"
                   viewBox="0 0 20 20"
@@ -316,10 +342,21 @@ const Settings = () => {
                       alt="Profile"
                       // onError={handleImageError}
                     />
-                    {/* <div className="absolute bottom-0 right-0 h-5 w-5 rounded-full border-[0.5px] border-[#212121] bg-white">
-                      
-                    o
-                    </div> */}
+                    <input
+                      ref={photoUploadInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handlePhotoUpload}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => photoUploadInputRef.current?.click()}
+                      className="absolute bottom-2 right-2 h-8 w-8 rounded-full bg-white border border-[#D1D5DB] flex items-center justify-center hover:bg-[#F3F4F6]"
+                      aria-label="Change profile picture"
+                    >
+                      <Camera size={16} className="text-[#212121]" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -356,10 +393,7 @@ const Settings = () => {
             onChange={handleChange}
             placeholder="Add your location"
             required
-            options={[
-              { value: 'us', label: 'United States' },
-              { value: 'uk', label: 'United Kingdom' },
-            ]}
+            options={countryOptions}
           />
         <FormInput
         label="Add Website"
@@ -376,7 +410,7 @@ const Settings = () => {
                           />}
         />
         <FormInput
-          name="x"
+          name="X"
           value={formState.X}
           onChange={handleChange}
           placeholder="Add your X URL"
