@@ -2,81 +2,90 @@
 
 import React from "react";
 import Navbar from "./navbar";
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import SecondNav from "./secondNav";
 import { usePathname } from "next/navigation";
-import { useAccount } from "wagmi";
 import { useDispatch, useSelector } from "react-redux";
-import { setLensProfile, displayLoginModal } from "@/redux/app";
-import { evmAddress } from "@lens-protocol/client";
-import { fetchAccount, fetchAccounts } from "@lens-protocol/client/actions";
-import { client } from "@/client";
-import { useAuthenticatedUser } from "@lens-protocol/react";
+import { setLensProfile, displayLoginModal, clearLensProfile } from "@/redux/app";
+import { fetchAccount } from "@lens-protocol/client/actions";
 import { getLensClient } from "@/client";
 import getLensAccountData from "@/utils/getLensProfile";
+import { useAuthenticatedUser } from "@lens-protocol/react";
 
 const ConditionalNav = () => {
   const { user: profile } = useSelector((state: any) => state.app);
-  const { isConnected } = useAccount();
   const dispatch = useDispatch();
   const pathname = usePathname();
+  const hydratedProfileForAddressRef = useRef<string | null>(null);
+  const { data: authenticatedUser, loading: sessionLoading } = useAuthenticatedUser();
 
   useEffect(() => {
-    // Don't block navigation - check auth asynchronously
     let mounted = true;
-    
-    async function getAuthenticatedAccount() {
+
+    if (sessionLoading) {
+      return () => {
+        mounted = false;
+      };
+    }
+
+    if (!authenticatedUser) {
+      hydratedProfileForAddressRef.current = null;
+      dispatch(clearLensProfile());
+      return () => {
+        mounted = false;
+      };
+    }
+
+    const authenticatedAddress = authenticatedUser.address.toLowerCase();
+
+    if (hydratedProfileForAddressRef.current === authenticatedAddress) {
+      return () => {
+        mounted = false;
+      };
+    }
+
+    const hydrateProfile = async () => {
       try {
-        const client = await getLensClient();
-
-        if (!mounted || !client.isSessionClient()) {
+        const lensClient = await getLensClient();
+        if (!mounted || !lensClient.isSessionClient()) {
           return;
         }
 
-        const authenticatedUser = client.getAuthenticatedUser().unwrapOr(null);
-        if (!mounted || !authenticatedUser) {
+        const account = await fetchAccount(lensClient, {
+          address: authenticatedUser.address,
+        }).unwrapOr(null);
+
+        if (!mounted) {
           return;
         }
-
-        const account = await fetchAccount(client, { address: authenticatedUser.address }).unwrapOr(
-          null
-        );
-
-        if (!mounted) return;
 
         if (account) {
+          hydratedProfileForAddressRef.current = authenticatedAddress;
           const accountData = getLensAccountData(account);
           dispatch(setLensProfile({ profile: accountData }));
           dispatch(displayLoginModal({ display: false }));
         }
       } catch (error) {
-        console.error("Error fetching authenticated account:", error);
-        // Don't show login modal on error - let user navigate freely
+        console.error("Error hydrating authenticated account:", error);
       }
-    }
+    };
 
-    // Use requestIdleCallback or setTimeout to defer non-critical work
-    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-      requestIdleCallback(() => {
-        getAuthenticatedAccount();
-      }, { timeout: 2000 });
-    } else {
-      setTimeout(() => {
-        getAuthenticatedAccount();
-      }, 0);
-    }
+    void hydrateProfile();
 
     return () => {
       mounted = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [authenticatedUser, dispatch, sessionLoading]);
 
   if (pathname === "/") {
     return null;
   }
 
-  return <>{isConnected && profile ? <SecondNav /> : <Navbar />}</>;
+  if (sessionLoading && !profile) {
+    return null;
+  }
+
+  return <>{profile || authenticatedUser ? <SecondNav /> : <Navbar />}</>;
 };
 
 export default ConditionalNav;

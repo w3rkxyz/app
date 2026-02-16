@@ -16,7 +16,6 @@ import { useWalletClient } from "wagmi";
 import { useSelector } from "react-redux";
 import FormInput from "@/components/onboarding/form-input";
 import FormTextarea from "@/components/onboarding/form-textarea";
-import { DUMMY_USER } from "@/app/u/[handle]/page";
 import FormSelect from "@/components/onboarding/form-select";
 
 const Settings = () => {
@@ -24,7 +23,6 @@ const Settings = () => {
   const { data: profile, loading: profileLoading } = useAccount({
     username: { localName: userId },
   });
-  const userData = DUMMY_USER;
   const { data: walletClient } = useWalletClient();
   const router = useRouter();
   const [backgroundImage, setBackgroundImage] = useState<any>(null);
@@ -277,9 +275,9 @@ const Settings = () => {
       </div> */}
       <div className="relative w-full rounded-xl pb-16 border-[0.5px] border-[#C3C7CE]">
                 <div className="w-full sm:h-[226] aspect-[1344/201] relative sm:rounded-none rounded-t-[12px] overflow-hidden bg-[#C0E0E7]">
-                  {userData.cover ? (
+                  {formState.cover ? (
                       <Image
-                        src={userData.cover}
+                        src={formState.cover}
                         fill
                         className="object-cover"
                         alt="Cover"
@@ -312,7 +310,7 @@ const Settings = () => {
                 <div className="absolute left-6 sm:left-4 bottom-5 sm:-bottom-[68px] w-[154px] h-[154px] sm:w-[135px] sm:h-[135px] rounded-full border-[3px] border-white overflow-hidden">
                   <div className="relative w-full h-full">
                     <Image
-                      src={userData.picture}
+                      src={formState.picture || "https://static.hey.xyz/images/default.png"}
                       fill
                       className="rounded-full object-cover"
                       alt="Profile"
