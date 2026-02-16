@@ -133,11 +133,11 @@ const NewConversation = ({ handleCloseModal }: Props) => {
 
   return (
     <div
-      className="w-[400px] sm:w-[94%] rounded-[12px] bg-white nav-space absolute px-[16px] sm:h-fit"
+      className="w-[420px] sm:w-[94%] rounded-[16px] border border-[#E4E4E7] bg-white px-[16px] py-[4px] shadow-[0_24px_48px_rgba(0,0,0,0.12)] sm:h-fit"
       ref={myDivRef}
     >
-      <div className="w-full flex justify-between items-center py-[12px] border-b-[1px] border-b-[#E4E4E7]">
-        <span className="leading-[14.52px] text-[14px] font-medium text-[black]">
+      <div className="w-full flex justify-between items-center py-[12px] border-b border-[#E4E4E7]">
+        <span className="leading-[18px] text-[14px] font-semibold text-black">
           New Conversation
         </span>
         <Image
@@ -150,13 +150,13 @@ const NewConversation = ({ handleCloseModal }: Props) => {
         />
       </div>
       <input
-        className="form-input rounded-[8px] p-[9px] border-[1px] border-[#E4E4E7] w-full my-[16px]"
+        className="rounded-[12px] h-[42px] px-[12px] border border-[#E4E4E7] bg-[#FCFCFC] w-full my-[16px] text-[14px] leading-[18px] text-[#111111] placeholder-[#9B9BA1] focus:outline-none focus:border-[#C6AAFF] transition-colors"
         placeholder="Search..."
         onChange={e => setSearchText(e.target.value)}
       />
       {creatingConvo ? (
         <div
-          className={`user-search-box-modal mt-[0px] flex flex-col absolute top-[105px] left-[16px] rounded-[10px] border-[1px] border-[#E4E4E7] bg-white py-[20px] align-middle items-center`}
+          className="w-[calc(100%_-_32px)] flex flex-col absolute top-[106px] left-[16px] rounded-[12px] border border-[#E4E4E7] bg-white py-[20px] align-middle items-center"
           onClick={e => e.stopPropagation()}
         >
           <Oval
@@ -170,39 +170,39 @@ const NewConversation = ({ handleCloseModal }: Props) => {
             wrapperStyle={{}}
             wrapperClass=""
           />
-          <span className="font-bold text-[14px] mt-[6px]">
+          <span className="font-semibold text-[14px] mt-[6px]">
             Creating a new Dm with {selectedUser}
           </span>
         </div>
       ) : accounts && accounts.length > 0 && searchText !== "" ? (
         <div
-          className={`user-search-box-modal mt-[0px] flex flex-col gap-[5px] absolute top-[105px] left-[16px] rounded-[10px] border-[1px] border-[#E4E4E7] bg-white py-[10px]`}
+          className="w-[calc(100%_-_32px)] max-h-[340px] overflow-y-auto mt-[0px] flex flex-col gap-[4px] absolute top-[106px] left-[16px] rounded-[12px] border border-[#E4E4E7] bg-white py-[8px]"
           onClick={e => e.stopPropagation()}
         >
           {accounts.slice(0, 7).map((acc, index) => {
             const profile = getLensAccountData(acc);
             return (
               <div
-                className="text-[14px] hover:bg-[#f1f1f1] w-full gap-[8px] flex items-center cursor-pointer px-[10px] py-[8px]"
+                className="text-[14px] hover:bg-[#F4F4F5] w-full gap-[8px] flex items-center cursor-pointer px-[10px] py-[8px] transition-colors"
                 key={index}
                 onClick={() => handleCreate(acc)}
               >
-                <div className="circle-div relative bg-gray-200 dark:border-gray-700">
+                <div className="w-[28px] h-[28px] rounded-full relative bg-gray-200 dark:border-gray-700 overflow-hidden flex-shrink-0">
                   <Image
-                    src={profile.picture}
+                    src={profile.picture || "https://static.hey.xyz/images/default.png"}
                     onError={e => {
                       (e.target as HTMLImageElement).src =
                         "https://static.hey.xyz/images/default.png";
                     }}
                     fill
-                    className="circle-div relative bg-gray-200 dark:border-gray-700"
+                    className="object-cover"
                     alt="user icon"
                   />
                 </div>
-                <span className="text-[14px] text-black mt-[1px]">
+                <span className="text-[14px] text-black mt-[1px] font-medium">
                   {profile.displayName !== "" ? profile.displayName : `Display Name`}
                 </span>
-                <span className="text-[13px] text-[#c1c0c0] mt-[1px]">
+                <span className="text-[13px] text-[#A0A0A6] mt-[1px]">
                   {profile.handle !== "" ? profile.handle : "@lenshandle"}
                 </span>
               </div>
@@ -211,7 +211,7 @@ const NewConversation = ({ handleCloseModal }: Props) => {
         </div>
       ) : accountsLoading && searchText !== "" ? (
         <div
-          className={`user-search-box-modal mt-[0px] flex flex-col absolute top-[105px] left-[16px] rounded-[10px] border-[1px] border-[#E4E4E7] bg-white py-[20px] align-middle items-center`}
+          className="w-[calc(100%_-_32px)] mt-[0px] flex flex-col absolute top-[106px] left-[16px] rounded-[12px] border border-[#E4E4E7] bg-white py-[20px] align-middle items-center"
           onClick={e => e.stopPropagation()}
         >
           <Oval
@@ -225,7 +225,7 @@ const NewConversation = ({ handleCloseModal }: Props) => {
             wrapperStyle={{}}
             wrapperClass=""
           />
-          <span className="font-bold text-[14px] mt-[6px]">Searching Users</span>
+          <span className="font-semibold text-[14px] mt-[6px]">Searching Users</span>
         </div>
       ) : null}
     </div>

@@ -2,9 +2,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { useConversation } from "@/hooks/useConversation";
 import { useXMTP } from "@/app/XMTPContext";
-import { useAccount } from "wagmi";
 import { DecodedMessage } from "@xmtp/browser-sdk";
 import moment from "moment";
 import axios from "axios";
@@ -63,10 +61,9 @@ const ConversationMessages = ({ messages }: ConversationProps) => {
       var attachments: {
         [key: string]: any;
       } = {};
-      const allPromises = groupMessagesByWhatsAppDate(conversationMessages).map(
-        (messageGroup, groupIndex) => {
+      const allPromises = groupMessagesByWhatsAppDate(conversationMessages).map(messageGroup => {
           return Promise.all(
-            messageGroup.messages.map(async (message, messageIndex) => {
+            messageGroup.messages.map(async message => {
               if (isLink(message.content as string)) {
                 try {
                   const response = await axios.get(message.content as string);
@@ -80,8 +77,7 @@ const ConversationMessages = ({ messages }: ConversationProps) => {
               }
             })
           );
-        }
-      );
+      });
 
       // Wait for all groups and all messages to finish
       await Promise.all(allPromises);
@@ -92,12 +88,14 @@ const ConversationMessages = ({ messages }: ConversationProps) => {
   }, [messages]);
 
   return (
-    <div
-      className="flex-1 flex flex-col sm:justify-start scrollbar-hide pt-[10px]"
-      id="scrollableDiv"
-    >
+    <div className="flex-1 flex flex-col sm:justify-start overflow-y-auto pt-[14px] pb-[8px]" id="scrollableDiv">
       {loading ? (
-        <div>Loading Messages......</div>
+        <div className="flex flex-col gap-[8px]">
+          <div className="self-center h-[24px] w-[62px] bg-[#F4F4F5] rounded-full" />
+          <div className="self-start h-[44px] w-[220px] bg-[#F4F4F5] rounded-[14px]" />
+          <div className="self-end h-[44px] w-[190px] bg-[#E8D8FF] rounded-[14px]" />
+          <div className="self-start h-[44px] w-[250px] bg-[#F4F4F5] rounded-[14px]" />
+        </div>
       ) : (
         activeMessages.map((messages, index: number) => {
           return (
@@ -105,22 +103,21 @@ const ConversationMessages = ({ messages }: ConversationProps) => {
               key={index}
               className={`${index === 0 ? "mt-auto" : ""} w-full flex flex-col h-fit`}
             >
-              <span className="text-[12px] leading-[12.1px] font-medium self-center mb-[15px] sm:mt-[15px]">
+              <span className="text-[11px] leading-[13px] font-semibold text-[#7A7A7F] self-center mb-[14px] sm:mt-[12px] bg-[#F4F4F5] px-[10px] py-[5px] rounded-full">
                 {messages.date}
               </span>
               {messages.messages.map((message: DecodedMessage, index: number) => {
                 return typeof message.content !== "string" ? null : !isLink(message.content) ? (
                   <div
                     key={index}
-                    className={`rounded-[8px] whitespace-pre-wrap min-w-[200px] sm:min-w-[150px] max-w-[450px] text-[12px] laptop-x:max-w-[350px] sm:max-w-[262px] laptop-x:text-[14px] mb-[12px] relative font-normal leading-[20px] p-[11px] py-[9px] 
-                      pr-[48px] sm:px-[8px] sm:pr-[9px] sm:pb-[23px] ${
+                    className={`rounded-[14px] whitespace-pre-wrap w-fit min-w-[120px] max-w-[450px] text-[13px] laptop-x:max-w-[350px] sm:max-w-[262px] mb-[12px] relative font-medium leading-[19px] px-[12px] py-[9px] pr-[52px] sm:pr-[44px] sm:pb-[22px] ${
                         client?.inboxId === message.senderInboxId
                           ? "self-end bg-[#C6AAFF] text-white"
-                          : "self-start bg-[#F4F4F5]"
+                          : "self-start bg-[#F4F4F5] text-[#1A1A1A]"
                       } `}
                   >
                     {message.content}
-                    <span className="absolute right-[6px] bottom-[0px] text-[10px]">
+                    <span className="absolute right-[8px] bottom-[3px] text-[10px] leading-[12px] font-medium text-current/70">
                       {moment(new Date(Number(message.sentAtNs / 1_000_000n))).format("h:mmA")}
                     </span>
                   </div>
@@ -129,33 +126,31 @@ const ConversationMessages = ({ messages }: ConversationProps) => {
                     target="_blank"
                     href={activeAttachments[message.content].link}
                     download={activeAttachments[message.content].name}
-                    className={`rounded-[8px] whitespace-pre-wrap min-w-[200px] sm:min-w-[150px] max-w-[450px] text-[12px] laptop-x:max-w-[350px] sm:max-w-[262px] laptop-x:text-[14px] mb-[12px] relative font-normal leading-[20px] p-[11px] py-[9px] 
-                      pr-[48px] sm:px-[8px] sm:pr-[9px] sm:pb-[23px] flex items-center bg-[#E4E4E7] ${
+                    className={`rounded-[14px] whitespace-pre-wrap w-fit min-w-[140px] max-w-[450px] text-[13px] laptop-x:max-w-[350px] sm:max-w-[262px] mb-[12px] relative font-medium leading-[19px] px-[12px] py-[10px] pr-[52px] sm:pr-[44px] sm:pb-[22px] flex items-center gap-[8px] bg-[#E4E4E7] text-[#1A1A1A] ${
                         client?.inboxId === message.senderInboxId ? "self-end" : "self-start"
                       } `}
                   >
                     <Image
                       src="/images/add-photo.svg"
-                      className={`sm:w-[20px] sm:h-[20px] mr-[10px]`}
+                      className={`sm:w-[20px] sm:h-[20px]`}
                       alt="user icon"
                       width={24}
                       height={24}
                     />
                     <span>{activeAttachments[message.content].name}</span>
-                    <span className="absolute right-[6px] bottom-[0px] text-[10px]">
+                    <span className="absolute right-[8px] bottom-[3px] text-[10px] leading-[12px] font-medium text-current/70">
                       {moment(new Date(Number(message.sentAtNs / 1_000_000n))).format("h:mmA")}
                     </span>
                   </Link>
                 ) : (
                   <div
                     key={index}
-                    className={`rounded-[8px] whitespace-pre-wrap min-w-[200px] sm:min-w-[150px] max-w-[450px] text-[12px] laptop-x:max-w-[350px] sm:max-w-[262px] laptop-x:text-[14px] mb-[12px] relative font-normal leading-[20px] p-[11px] py-[9px] 
-                      pr-[48px] sm:px-[8px] sm:pr-[9px] sm:pb-[23px] flex items-center bg-[#E4E4E7] ${
+                    className={`rounded-[14px] whitespace-pre-wrap w-fit min-w-[140px] max-w-[450px] text-[13px] laptop-x:max-w-[350px] sm:max-w-[262px] mb-[12px] relative font-medium leading-[19px] px-[12px] py-[10px] pr-[52px] sm:pr-[44px] sm:pb-[22px] flex items-center gap-[8px] bg-[#E4E4E7] text-[#1A1A1A] ${
                         client?.inboxId === message.senderInboxId ? "self-end" : "self-start"
                       } `}
                   >
                     <span>Loading...</span>
-                    <span className="absolute right-[6px] bottom-[0px] text-[10px]">
+                    <span className="absolute right-[8px] bottom-[3px] text-[10px] leading-[12px] font-medium text-current/70">
                       {moment(new Date(Number(message.sentAtNs / 1_000_000n))).format("h:mmA")}
                     </span>
                   </div>

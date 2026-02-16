@@ -39,6 +39,7 @@ const ConversationsNav = () => {
   const stopStreamRef = useRef<(() => void) | null>(null);
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const isConnected = Boolean(client);
 
   useEffect(() => {
     let mounted = true;
@@ -127,15 +128,25 @@ const ConversationsNav = () => {
 
   return (
     <div
-      className={`horizontal-box px-[12px] w-[417px] sm:w-full flex bg-white h-screen ${
-        activeConversation !== undefined ? "sm:hidden" : "sm:flex"
-      } flex-col pb-[10px]`}
+      className={`${
+        isConnected
+          ? "w-[417px] sm:w-full flex bg-white border border-[#E4E4E7] rounded-[16px] h-full flex-col px-[12px] py-[12px]"
+          : "horizontal-box px-[12px] w-[417px] sm:w-full flex bg-white h-screen flex-col pb-[10px]"
+      } ${activeConversation !== undefined ? "sm:hidden" : "sm:flex"}`}
     >
-      <div className="flex justify-between items-center py-[19px] px-[9px]">
+      <div
+        className={`flex justify-between items-center ${isConnected ? "px-[8px] pt-[4px] pb-[14px] border-b border-[#E4E4E7]" : "py-[19px] px-[9px]"}`}
+      >
         <div className="flex items-center gap-[8px]">
-          <span className="leading-[16.94px] font-semibold text-[24px]">Messages</span>
+          <span
+            className={`${isConnected ? "leading-[28px] text-[#101010]" : "leading-[16.94px] text-black"} font-semibold text-[24px]`}
+          >
+            Messages
+          </span>
           {conversations.length > 0 && (
-            <span className="bg-[#351A6B] text-white text-[12px] font-semibold px-[6px] py-[2px] rounded-full">
+            <span
+              className={`${isConnected ? "bg-[#101010]" : "bg-[#351A6B]"} text-white text-[12px] font-semibold px-[6px] py-[2px] rounded-full`}
+            >
               {conversations.length}
             </span>
           )}
@@ -144,23 +155,26 @@ const ConversationsNav = () => {
           type="button"
           onClick={() => setIsNewConversationModalOpen(true)}
           disabled={!client}
-          className="disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`${
+            isConnected
+              ? "h-[36px] w-[36px] rounded-[10px] bg-[#F4F4F5] border border-[#E4E4E7] flex items-center justify-center transition-colors hover:bg-[#ECECEE]"
+              : ""
+          } disabled:opacity-50 disabled:cursor-not-allowed`}
           aria-label="Start new conversation"
         >
           <Image
             src="/images/NotePencil.svg"
-            className="cursor-pointer"
             alt="new message"
-            width={26}
-            height={26}
+            width={isConnected ? 20 : 26}
+            height={isConnected ? 20 : 26}
           />
         </button>
       </div>
 
-      <div className="px-[9px] pb-[10px]">
+      <div className={`${isConnected ? "px-[8px] py-[12px] border-b border-[#E4E4E7]" : "px-[9px] pb-[10px]"}`}>
         <div className="relative">
           <svg
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#999]"
+            className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${isConnected ? "text-[#9B9BA1]" : "text-[#999]"}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -177,7 +191,11 @@ const ConversationsNav = () => {
             placeholder="Search"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-[8px] border border-[#E4E4E7] rounded-[8px] text-[14px] placeholder-[#999] focus:outline-none focus:border-[#C6AAFF]"
+            className={`${
+              isConnected
+                ? "w-full h-[38px] pl-9 pr-3 border border-[#E4E4E7] bg-[#FCFCFC] rounded-[10px] text-[14px] text-[#111111] placeholder-[#9B9BA1] focus:outline-none focus:border-[#C6AAFF] transition-colors"
+                : "w-full pl-9 pr-3 py-[8px] border border-[#E4E4E7] rounded-[8px] text-[14px] placeholder-[#999] focus:outline-none focus:border-[#C6AAFF]"
+            }`}
           />
         </div>
       </div>
@@ -211,7 +229,7 @@ const ConversationsNav = () => {
       )}
 
       {isNewConversationModalOpen && (
-        <div className="fixed h-screen w-screen top-0 left-0 inset-0 z-[999] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center">
+        <div className="fixed h-screen w-screen top-0 left-0 inset-0 z-[999] overflow-y-auto bg-black/45 backdrop-blur-[1px] flex justify-center items-center">
           <div className="w-full flex justify-center align-middle">
             <NewConversation handleCloseModal={() => setIsNewConversationModalOpen(false)} />
           </div>

@@ -64,9 +64,9 @@ const ConversationInput = () => {
   };
 
   return (
-    <div className="flex py-[12px] gap-[5px] w-full items-center">
+    <div className="flex py-[12px] gap-[8px] w-full items-center">
       <input
-        className="form-input rounded-[8px] p-[10px] border-[1px] border-[#E4E4E7] w-full"
+        className="rounded-[12px] h-[42px] px-[12px] border border-[#E4E4E7] bg-[#FCFCFC] w-full text-[14px] leading-[18px] text-[#111111] placeholder-[#9B9BA1] focus:outline-none focus:border-[#C6AAFF] transition-colors"
         placeholder="Type your message here.."
         onChange={e => setMessage(e.target.value)}
         onKeyDown={handleKeyDown}
@@ -74,7 +74,7 @@ const ConversationInput = () => {
       />
       <label
         htmlFor="file_upload"
-        className="rounded-[8px] bg-[#F4F4F5] p-[9px] h-fit inline-flex items-center cursor-pointer"
+        className="rounded-[12px] bg-[#F4F4F5] border border-[#E4E4E7] p-[9px] h-fit inline-flex items-center cursor-pointer hover:bg-[#ECECEE] transition-colors"
         aria-label="Upload file"
       >
         <Image src={"/images/share.svg"} alt="Upload file" width={24} height={24} />
@@ -88,8 +88,9 @@ const ConversationInput = () => {
         />
       </label>
       <button
-        className="px-[18px] sm:px-[10px] py-[10px] bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] flex w-fit gap-[7px] h-fit items-center"
+        className="px-[18px] sm:px-[10px] py-[10px] bg-[#C6AAFF] hover:bg-[#B996FC] disabled:bg-[#E2D8F8] rounded-[12px] flex w-fit gap-[7px] h-fit items-center transition-colors"
         onClick={handleSend}
+        disabled={message.length === 0 || sending}
       >
         <span className="text-[15px] text-white leading-none sm:hidden">Send</span>
         <Image src={"/images/arrow-right.svg"} alt="paco pic" width={16} height={16} />
