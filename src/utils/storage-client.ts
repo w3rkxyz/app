@@ -1,4 +1,4 @@
-import { StorageClient } from "@lens-chain/storage-client";
+import { StorageClient, immutable } from "@lens-chain/storage-client";
 
 // Create StorageClient - it defaults to testnet when no environment is specified
 export const storageClient = StorageClient.create();
@@ -15,6 +15,22 @@ export const uploadMetadataToLensStorage = async (metadata: any): Promise<string
     return uri;
   } catch (error) {
     console.error("Failed to upload to Lens Storage:", error);
+    throw error;
+  }
+};
+
+/**
+ * Uploads a file asset (image/video/etc) to Lens Storage and returns the URI.
+ * Uses immutable ACL for the current default chain.
+ */
+export const uploadFileToLensStorage = async (file: File): Promise<string> => {
+  try {
+    const { uri } = await storageClient.uploadFile(file, {
+      acl: immutable(storageClient.env.defaultChainId),
+    });
+    return uri;
+  } catch (error) {
+    console.error("Failed to upload file to Lens Storage:", error);
     throw error;
   }
 };

@@ -2,7 +2,6 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { fileToDataURI, jsonToDataURI } from "@/utils/dataUriHelpers";
 import { MetadataAttributeType, account } from "@lens-protocol/metadata";
 import { useAccount } from "@lens-protocol/react";
 import { uri } from "@lens-protocol/client";
@@ -18,6 +17,7 @@ import FormInput from "@/components/onboarding/form-input";
 import FormTextarea from "@/components/onboarding/form-textarea";
 import FormSelect from "@/components/onboarding/form-select";
 import { Camera } from "lucide-react";
+import { uploadFileToLensStorage, uploadMetadataToLensStorage, storageClient } from "@/utils/storage-client";
 
 const Settings = () => {
   const [userId, setUserId] = useState("");
@@ -28,7 +28,13 @@ const Settings = () => {
   const router = useRouter();
   const coverUploadInputRef = useRef<HTMLInputElement>(null);
   const photoUploadInputRef = useRef<HTMLInputElement>(null);
+  const pendingCoverPreviewRef = useRef<string | null>(null);
+  const pendingPhotoPreviewRef = useRef<string | null>(null);
   const [savingData, setSavingData] = useState(false);
+  const [pendingCoverFile, setPendingCoverFile] = useState<File | null>(null);
+  const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
+  const [pendingCoverPreview, setPendingCoverPreview] = useState("");
+  const [pendingPhotoPreview, setPendingPhotoPreview] = useState("");
   const [formState, setFormState] = useState({
     name: "",
     picture: "",
@@ -41,6 +47,14 @@ const Settings = () => {
     website: "",
     location: "",
   });
+
+  const resolveDisplayMediaUrl = (value: string) => {
+    if (!value) return "";
+    if (value.startsWith("lens://")) {
+      return storageClient.resolve(value);
+    }
+    return value;
+  };
 
   const countryOptions = useMemo(() => {
     try {
@@ -103,6 +117,10 @@ const Settings = () => {
         };
 
         setFormState(handle);
+        setPendingCoverFile(null);
+        setPendingPhotoFile(null);
+        setPendingCoverPreview("");
+        setPendingPhotoPreview("");
       }
     } else {
       router.push("/");
@@ -114,6 +132,17 @@ const Settings = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileLoading, userId]);
 
+  useEffect(() => {
+    return () => {
+      if (pendingCoverPreviewRef.current) {
+        URL.revokeObjectURL(pendingCoverPreviewRef.current);
+      }
+      if (pendingPhotoPreviewRef.current) {
+        URL.revokeObjectURL(pendingPhotoPreviewRef.current);
+      }
+    };
+  }, []);
+
   // Generic change handler for all inputs
   const handleChange = (e: any) => {
     const { name, value } = e.target;
@@ -123,119 +152,144 @@ const Settings = () => {
     }));
   };
 
-  const handleCoverUpload = async (event: any) => {
-    const file = event.target.files[0];
-    const cover = event.target.files;
+  const handleCoverUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (file) {
-      const coverLink = await fileToDataURI(cover);
-      setFormState(prevState => ({
-        ...prevState,
-        ["cover"]: coverLink,
-      }));
+      if (pendingCoverPreviewRef.current) {
+        URL.revokeObjectURL(pendingCoverPreviewRef.current);
+      }
+      const previewUrl = URL.createObjectURL(file);
+      pendingCoverPreviewRef.current = previewUrl;
+      setPendingCoverPreview(previewUrl);
+      setPendingCoverFile(file);
     }
   };
 
-  const handlePhotoUpload = async (event: any) => {
-    const file = event.target.files[0];
-    const pic = event.target.files;
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (file) {
-      const pictureLink = await fileToDataURI(pic);
-      setFormState(prevState => ({
-        ...prevState,
-        ["picture"]: pictureLink,
-      }));
+      if (pendingPhotoPreviewRef.current) {
+        URL.revokeObjectURL(pendingPhotoPreviewRef.current);
+      }
+      const previewUrl = URL.createObjectURL(file);
+      pendingPhotoPreviewRef.current = previewUrl;
+      setPendingPhotoPreview(previewUrl);
+      setPendingPhotoFile(file);
     }
   };
 
   const handleSubmit = async () => {
     const sessionClient = await getLensClient();
-    if (!sessionClient.isSessionClient()) return;
-    setSavingData(true);
-
-    const attributesMap: {
-      key: string;
-      value: string;
-      type: MetadataAttributeType.STRING;
-    }[] = [
-      {
-        key: "location",
-        value: formState.location,
-        type: MetadataAttributeType.STRING,
-      },
-      {
-        key: "website",
-        value: formState.website,
-        type: MetadataAttributeType.STRING,
-      },
-      {
-        key: "job title",
-        value: formState.jobTitle,
-        type: MetadataAttributeType.STRING,
-      },
-      {
-        key: "x",
-        value: formState.X.trim(),
-        type: MetadataAttributeType.STRING,
-      },
-      {
-        key: "linkedin",
-        value: formState.linkedin.trim(),
-        type: MetadataAttributeType.STRING,
-      },
-      {
-        key: "github",
-        value: formState.github.trim(),
-        type: MetadataAttributeType.STRING,
-      },
-    ];
-
-    const attributes = attributesMap.filter(
-      (attribute: { key: string; value: string; type: MetadataAttributeType.STRING }) =>
-        attribute.value !== ""
-    );
-
-    type Attribute = {
-      key: string;
-      value: string | number;
-      type: MetadataAttributeType;
-    };
-
-    function mergeAttributes(original: Attribute[], updates: Attribute[]): Attribute[] {
-      const map = new Map<string, Attribute>();
-
-      for (const attr of original) {
-        map.set(attr.key, attr); // Use `key` instead of `trait_type`
-      }
-
-      for (const attr of updates) {
-        map.set(attr.key, attr); // Updates will override same key
-      }
-
-      return Array.from(map.values());
-    }
-
-    const metadata = account({
-      name: formState.name !== "" ? formState.name : undefined,
-      bio: formState.bio !== "" ? formState.bio : undefined,
-      picture: formState.picture !== "" ? formState.picture : undefined,
-      coverPicture: formState.cover !== "" ? formState.cover : undefined,
-      attributes: attributes.length !== 0 ? attributes : []
-    });
-
-    const metadataURI = await jsonToDataURI(metadata);
-
-    const result = await setAccountMetadata(sessionClient, {
-      metadataUri: uri(metadataURI),
-    }).andThen(handleOperationWith(walletClient));
-
-    if (result.isErr()) {
-      toast.error(result.error.message);
-      setSavingData(false);
+    if (!sessionClient.isSessionClient()) {
+      toast.error("Please login again to update your profile.");
       return;
     }
+    if (!walletClient) {
+      toast.error("Wallet not ready. Please reconnect and try again.");
+      return;
+    }
+    setSavingData(true);
 
-    toast.success("Profile updated");
-    setSavingData(false);
+    try {
+      let coverUri = formState.cover;
+      let pictureUri = formState.picture;
+
+      // Upload selected media files first so account metadata stores proper URIs.
+      if (pendingCoverFile) {
+        coverUri = await uploadFileToLensStorage(pendingCoverFile);
+      }
+
+      if (pendingPhotoFile) {
+        pictureUri = await uploadFileToLensStorage(pendingPhotoFile);
+      }
+
+      const attributesMap: {
+        key: string;
+        value: string;
+        type: MetadataAttributeType.STRING;
+      }[] = [
+        {
+          key: "location",
+          value: formState.location,
+          type: MetadataAttributeType.STRING,
+        },
+        {
+          key: "website",
+          value: formState.website,
+          type: MetadataAttributeType.STRING,
+        },
+        {
+          key: "job title",
+          value: formState.jobTitle,
+          type: MetadataAttributeType.STRING,
+        },
+        {
+          key: "x",
+          value: formState.X.trim(),
+          type: MetadataAttributeType.STRING,
+        },
+        {
+          key: "linkedin",
+          value: formState.linkedin.trim(),
+          type: MetadataAttributeType.STRING,
+        },
+        {
+          key: "github",
+          value: formState.github.trim(),
+          type: MetadataAttributeType.STRING,
+        },
+      ];
+
+      const attributes = attributesMap.filter(
+        (attribute: { key: string; value: string; type: MetadataAttributeType.STRING }) =>
+          attribute.value !== ""
+      );
+
+      const metadata = account({
+        name: formState.name !== "" ? formState.name : undefined,
+        bio: formState.bio !== "" ? formState.bio : undefined,
+        picture: pictureUri !== "" ? pictureUri : undefined,
+        coverPicture: coverUri !== "" ? coverUri : undefined,
+        attributes: attributes.length !== 0 ? attributes : [],
+      });
+
+      const metadataUriFromLensStorage = await uploadMetadataToLensStorage(metadata);
+
+      const result = await setAccountMetadata(sessionClient, {
+        metadataUri: uri(metadataUriFromLensStorage),
+      }).andThen(handleOperationWith(walletClient));
+
+      if (result.isErr()) {
+        toast.error(result.error.message);
+        return;
+      }
+
+      setFormState(prev => ({
+        ...prev,
+        cover: coverUri,
+        picture: pictureUri,
+      }));
+      setPendingCoverFile(null);
+      setPendingPhotoFile(null);
+      setPendingCoverPreview("");
+      setPendingPhotoPreview("");
+      if (pendingCoverPreviewRef.current) {
+        URL.revokeObjectURL(pendingCoverPreviewRef.current);
+        pendingCoverPreviewRef.current = null;
+      }
+      if (pendingPhotoPreviewRef.current) {
+        URL.revokeObjectURL(pendingPhotoPreviewRef.current);
+        pendingPhotoPreviewRef.current = null;
+      }
+
+      toast.success("Profile updated");
+    } catch (error: any) {
+      const msg = error?.message || "Failed to update profile. Please try again.";
+      toast.error(msg);
+      console.error("Failed to update profile settings:", error);
+    } finally {
+      setSavingData(false);
+    }
   };
 
   return (
@@ -291,9 +345,9 @@ const Settings = () => {
       </div> */}
       <div className="relative w-full rounded-xl pb-16 border-[0.5px] border-[#C3C7CE]">
                 <div className="w-full sm:h-[226] aspect-[1344/201] relative sm:rounded-none rounded-t-[12px] overflow-hidden bg-[#C0E0E7]">
-                  {formState.cover ? (
+                  {(pendingCoverPreview || formState.cover) ? (
                       <Image
-                        src={formState.cover}
+                        src={pendingCoverPreview || resolveDisplayMediaUrl(formState.cover)}
                         fill
                         className="object-cover"
                         alt="Cover"
@@ -337,7 +391,11 @@ const Settings = () => {
                 <div className="absolute left-6 sm:left-4 bottom-5 sm:-bottom-[68px] w-[154px] h-[154px] sm:w-[135px] sm:h-[135px] rounded-full border-[3px] border-white overflow-hidden">
                   <div className="relative w-full h-full">
                     <Image
-                      src={formState.picture || "https://static.hey.xyz/images/default.png"}
+                      src={
+                        pendingPhotoPreview ||
+                        resolveDisplayMediaUrl(formState.picture) ||
+                        "https://static.hey.xyz/images/default.png"
+                      }
                       fill
                       className="rounded-full object-cover"
                       alt="Profile"
