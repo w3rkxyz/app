@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { getFirestore } from "firebase/firestore";
 import app from "@/firebase";
 import { collection, doc, getDoc, setDoc } from "firebase/firestore";
@@ -29,16 +29,33 @@ const useDatabase = (): UseDatabase => {
     fetchAddressToUser();
   }, []);
 
-  const addAddressToUser = async (address: string, accountData: AccountData) => {
+  const addAddressToUser = useCallback(async (address: string, accountData: AccountData) => {
+    if (!address) {
+      return;
+    }
+    const normalizedAddress = address.toLowerCase();
     const docSnap = await getDoc(addressToUserDoc);
-    var currentDoc = addressToUser;
+    let currentDoc = {};
     if (docSnap.exists()) {
       currentDoc = docSnap.data();
     }
-    const newAddressToUser = { ...currentDoc, [address]: accountData };
+    const existing = (currentDoc as { [address: string]: AccountData })[normalizedAddress];
+    const unchanged =
+      existing &&
+      existing.displayName === accountData.displayName &&
+      existing.handle === accountData.handle &&
+      existing.picture === accountData.picture &&
+      existing.userLink === accountData.userLink &&
+      existing.address === accountData.address;
+
+    if (unchanged) {
+      return;
+    }
+
+    const newAddressToUser = { ...currentDoc, [normalizedAddress]: accountData };
     await setDoc(addressToUserDoc, newAddressToUser);
     setAddressToUser(newAddressToUser);
-  };
+  }, []);
 
   return { addressToUser, addAddressToUser };
 };

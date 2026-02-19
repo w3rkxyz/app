@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { type Dm, type GroupMember } from "@xmtp/browser-sdk";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useConversations } from "@/hooks/useConversations";
 import ConversationSkeleton from "@/components/reusable/ConversationSkeleton";
 import type { AccountData } from "@/utils/getLensProfile";
@@ -34,55 +34,68 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
   const [lastMessageTime, setLastMessageTime] = useState<string>("");
   const [hasUnread] = useState(false);
 
-  const getOtherUser = useCallback(
-    async (members: GroupMember[]) => {
-      const otherUser = members.find(
-        member =>
-          member.accountIdentifiers[0].identifier.toLowerCase() !==
-          activeIdentityAddress?.toLowerCase()
-      );
-
-      if (otherUser) {
-        const mapped = usersDic[otherUser.accountIdentifiers[0].identifier.toLowerCase()];
-        if (mapped) {
-          return mapped;
-        }
-
-        const acc = await fetchAccount(otherUser.accountIdentifiers[0].identifier);
-        if (acc) {
-          const accountData = getLensAccountData(acc);
-          addAddressToUser(accountData.address.toLowerCase(), accountData);
-          return accountData;
-        }
-
-        const tempUser: AccountData = {
-          address: otherUser.accountIdentifiers[0].identifier,
-          displayName: otherUser.accountIdentifiers[0].identifier,
-          picture: "",
-          coverPicture: "",
-          attributes: {},
-          bio: "",
-          handle: "@ETH",
-          id: "",
-          userLink: "",
-        };
-        return tempUser;
-      }
-      return null;
-    },
-    [activeIdentityAddress, addAddressToUser, usersDic]
-  );
-
   useEffect(() => {
+    let cancelled = false;
+
+    const hasResolvedIdentity = (candidate: AccountData, identifier: string) => {
+      const displayName = candidate.displayName?.trim().toLowerCase() ?? "";
+      const handle = candidate.handle?.trim().toLowerCase() ?? "";
+      return (
+        displayName !== "" &&
+        displayName !== identifier &&
+        handle !== "" &&
+        handle !== "@eth"
+      );
+    };
+
     const getData = async () => {
-      const members = await conversation.members();
-      const participant = await getOtherUser(members);
-      if (participant) {
-        setUser(participant);
+      try {
+        const members = await conversation.members();
+        const otherMember = members.find(
+          (member: GroupMember) =>
+            member.accountIdentifiers[0].identifier.toLowerCase() !==
+            activeIdentityAddress?.toLowerCase()
+        );
+
+        if (!otherMember) {
+          return;
+        }
+
+        const otherIdentifier = otherMember.accountIdentifiers[0].identifier.toLowerCase();
+        const mapped = usersDic[otherIdentifier];
+        const shouldResolveFromLens = !mapped || !hasResolvedIdentity(mapped, otherIdentifier);
+
+        if (mapped && !cancelled) {
+          setUser(mapped);
+        }
+
+        if (shouldResolveFromLens) {
+          const acc = await fetchAccount(otherIdentifier);
+          if (acc) {
+            const accountData = getLensAccountData(acc);
+            if (!cancelled) {
+              setUser(accountData);
+            }
+            addAddressToUser(otherIdentifier, accountData);
+            addAddressToUser(accountData.address.toLowerCase(), accountData);
+          } else if (!mapped && !cancelled) {
+            setUser({
+              address: otherIdentifier,
+              displayName: "Unknown user",
+              picture: "",
+              coverPicture: "",
+              attributes: {},
+              bio: "",
+              handle: "",
+              id: "",
+              userLink: "",
+            });
+          }
+        }
 
         try {
           const messages = await conversation.messages({ limit: 1 });
-          if (messages && messages.length > 0) {
+          if (messages && messages.length > 0 && !cancelled) {
             const lastMsg = messages[0];
             const content = lastMsg.content;
             if (typeof content === "string") {
@@ -93,17 +106,27 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
             } else {
               setLastMessage("Attachment");
             }
-            setLastMessageTime(moment(new Date(Number(lastMsg.sentAtNs / 1_000_000n))).format("h:mmA"));
+            setLastMessageTime(
+              moment(new Date(Number(lastMsg.sentAtNs / 1_000_000n))).format("h:mmA")
+            );
           }
         } catch {
-          setLastMessage("Enter your message description here...");
+          if (!cancelled) {
+            setLastMessage("Enter your message description here...");
+          }
         }
-
-        setLoading(false);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
-    getData();
-  }, [conversation, getOtherUser]);
+    void getData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeIdentityAddress, addAddressToUser, conversation, usersDic]);
 
   useEffect(() => {
     if (activeConversation && activeConversation.id === conversation.id) {
@@ -128,8 +151,12 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
     return <ConversationSkeleton key={conversation.id} />;
   }
 
-  const displayName = user.displayName?.trim() || user.address;
-  const displayHandle = user.handle?.trim() || "";
+  const displayNameCandidate = user.displayName?.trim() || "";
+  const isAddressAsName =
+    displayNameCandidate !== "" &&
+    displayNameCandidate.toLowerCase() === user.address.toLowerCase();
+  const displayName = isAddressAsName || displayNameCandidate === "" ? "Unknown user" : displayNameCandidate;
+  const displayHandle = user.handle?.trim().toLowerCase() === "@eth" ? "" : user.handle?.trim() || "";
 
   return (
     <div

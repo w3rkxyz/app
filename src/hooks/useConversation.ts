@@ -19,7 +19,7 @@ export const useConversation = () => {
   const { address: walletAddress } = useAccount();
   const lensProfile = useSelector((state: RootState) => state.app.user);
   const activeIdentityAddress = lensProfile?.address ?? walletAddress;
-  const { addressToUser } = useDatabase();
+  const { addressToUser, addAddressToUser } = useDatabase();
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [sending, setSending] = useState(false);
@@ -28,46 +28,76 @@ export const useConversation = () => {
   const [loadingOtherUser, setLoadingOtherUser] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const hasResolvedIdentity = (candidate: AccountData, identifier: string) => {
+      const displayName = candidate.displayName?.trim().toLowerCase() ?? "";
+      const handle = candidate.handle?.trim().toLowerCase() ?? "";
+      return (
+        displayName !== "" &&
+        displayName !== identifier &&
+        handle !== "" &&
+        handle !== "@eth"
+      );
+    };
+
     const fetchOtherUser = async () => {
-      if (activeIdentityAddress && addressToUser && activeConversation) {
-        const members = await activeConversation.members();
+      try {
+        if (activeIdentityAddress && addressToUser && activeConversation) {
+          const members = await activeConversation.members();
+          const otherUser = members.find(
+            member =>
+              member.accountIdentifiers[0].identifier.toLowerCase() !==
+              activeIdentityAddress.toLowerCase()
+          );
 
-        const otherUser = members.find(
-          member =>
-            member.accountIdentifiers[0].identifier.toLowerCase() !==
-            activeIdentityAddress.toLowerCase()
-        );
+          if (otherUser) {
+            const otherIdentifier = otherUser.accountIdentifiers[0].identifier.toLowerCase();
+            const mappedUser = addressToUser[otherIdentifier];
+            const shouldResolveFromLens =
+              !mappedUser || !hasResolvedIdentity(mappedUser, otherIdentifier);
 
-        if (otherUser) {
-          const user = addressToUser[otherUser.accountIdentifiers[0].identifier];
-          if (user) {
-            setOtherUser(user);
-          } else {
-            const acc = await fetchAccount(otherUser.accountIdentifiers[0].identifier);
-            if (acc) {
-              const accountData = getLensAccountData(acc);
-              setOtherUser(accountData);
-            } else {
-              const tempUser: AccountData = {
-                address: otherUser.accountIdentifiers[0].identifier,
-                displayName: otherUser.accountIdentifiers[0].identifier,
-                picture: "",
-                coverPicture: "",
-                attributes: {},
-                bio: "",
-                handle: "@ETH",
-                id: "",
-                userLink: "",
-              };
-              setOtherUser(tempUser);
+            if (mappedUser && !cancelled) {
+              setOtherUser(mappedUser);
+            }
+
+            if (shouldResolveFromLens) {
+              const acc = await fetchAccount(otherIdentifier);
+              if (acc) {
+                const accountData = getLensAccountData(acc);
+                if (!cancelled) {
+                  setOtherUser(accountData);
+                }
+                addAddressToUser(otherIdentifier, accountData);
+                addAddressToUser(accountData.address.toLowerCase(), accountData);
+              } else if (!mappedUser && !cancelled) {
+                setOtherUser({
+                  address: otherIdentifier,
+                  displayName: "Unknown user",
+                  picture: "",
+                  coverPicture: "",
+                  attributes: {},
+                  bio: "",
+                  handle: "",
+                  id: "",
+                  userLink: "",
+                });
+              }
             }
           }
         }
+      } finally {
+        if (!cancelled) {
+          setLoadingOtherUser(false);
+        }
       }
-      setLoadingOtherUser(false);
     };
-    fetchOtherUser();
-  }, [activeConversation?.id, activeConversation, activeIdentityAddress, addressToUser]);
+    setLoadingOtherUser(true);
+    void fetchOtherUser();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeConversation?.id, activeConversation, activeIdentityAddress, addAddressToUser, addressToUser]);
 
   const getMessages = async (
     options?: ListMessagesOptions,

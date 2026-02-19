@@ -5,6 +5,7 @@ import { Account, evmAddress } from "@lens-protocol/client";
 import {
   fetchAccount as fetchLensAccount,
   fetchAccounts as fetchLensAccounts,
+  fetchUsernames,
 } from "@lens-protocol/client/actions";
 import { getPublicClient } from "@/client";
 
@@ -88,11 +89,45 @@ const fetchAccount = async (address: string) => {
       address: evmAddress(normalizedAddress),
     });
 
-    if (result.isErr()) {
+    if (result.isOk() && result.value) {
+      return result.value;
+    }
+
+    const usernamesResult = await fetchUsernames(client, {
+      filter: {
+        owner: evmAddress(normalizedAddress),
+      },
+    });
+
+    if (usernamesResult.isErr()) {
       return null;
     }
 
-    return result.value;
+    const firstUsername = usernamesResult.value.items[0];
+    if (!firstUsername) {
+      return null;
+    }
+
+    if (firstUsername.linkedTo) {
+      const linkedAccountResult = await fetchLensAccount(client, {
+        address: evmAddress(firstUsername.linkedTo.toLowerCase()),
+      });
+      if (linkedAccountResult.isOk() && linkedAccountResult.value) {
+        return linkedAccountResult.value;
+      }
+    }
+
+    const byUsernameResult = await fetchLensAccount(client, {
+      username: {
+        localName: firstUsername.localName,
+      },
+    });
+
+    if (byUsernameResult.isErr()) {
+      return null;
+    }
+
+    return byUsernameResult.value;
   } catch (error) {
     console.error("Failed to fetch Lens account:", error);
     return null;
