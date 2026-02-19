@@ -53,9 +53,7 @@ const ConversationBox = () => {
 
   return (
     <div
-      className={`${
-        client ? "bg-white" : "horizontal-box bg-[#FCFCFC] px-[12px]"
-      } ${
+      className={`horizontal-box bg-[#FCFCFC] px-[12px] ${
         activeConversation !== undefined || (notOnNetwork && invalidUser) ? "" : "sm:hidden"
       } flex-1 min-w-0`}
     >
@@ -119,13 +117,13 @@ const ConversationBox = () => {
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-center h-full w-full bg-[#F6F6F8]">
+        <div className="flex items-center justify-center h-full w-full">
           <div className="flex flex-col justify-center items-center px-[24px] text-center">
             <Image
               src="/images/discuss-grey.svg"
               alt="Discuss"
-              width={64}
-              height={64}
+              width={56}
+              height={56}
               className="object-contain"
             />
             <span className="mt-[12px] leading-[20px] font-medium text-[14px] text-[#6C6C6C]">
