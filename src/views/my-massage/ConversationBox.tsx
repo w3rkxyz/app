@@ -54,7 +54,7 @@ const ConversationBox = () => {
   return (
     <div
       className={`${
-        client ? "" : "horizontal-box bg-[#FCFCFC] px-[12px]"
+        client ? "bg-white" : "horizontal-box bg-[#FCFCFC] px-[12px]"
       } ${
         activeConversation !== undefined || (notOnNetwork && invalidUser) ? "" : "sm:hidden"
       } flex-1 min-w-0`}
@@ -115,12 +115,16 @@ const ConversationBox = () => {
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-center h-full w-full bg-white rounded-[16px] border border-[#E4E4E7]">
-          <div className="flex flex-col gap-[6px] justify-center items-center px-[24px] text-center">
-            <div className="w-[56px] h-[56px] rounded-full bg-[#F6F6F8] border border-[#ECECF0] flex items-center justify-center mb-[4px]">
-              <Image src="/images/ChatsCircle.svg" alt="Discuss" width={28} height={28} />
-            </div>
-            <span className="leading-[20px] font-semibold text-[16px] text-black">
+        <div className="flex items-center justify-center h-full w-full bg-white">
+          <div className="flex flex-col gap-[8px] justify-center items-center px-[24px] text-center">
+            <Image
+              src="/images/discuss.svg"
+              alt="Discuss"
+              width={52}
+              height={52}
+              className="object-contain mb-[6px]"
+            />
+            <span className="leading-[24px] font-semibold text-[20px] text-black">
               No conversation selected
             </span>
             <span className="leading-[20px] font-medium text-[14px] text-[#6C6C6C]">
