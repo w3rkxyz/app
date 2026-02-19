@@ -1,7 +1,8 @@
 import { StorageClient, immutable } from "@lens-chain/storage-client";
 
-// Create StorageClient - it defaults to testnet when no environment is specified
+// Storage client used by settings/profile uploads.
 export const storageClient = StorageClient.create();
+const LENS_TESTNET_CHAIN_ID = Number(process.env.NEXT_PUBLIC_LENS_CHAIN_ID || 37111);
 
 /**
  * Uploads JSON metadata to Lens Storage and returns the URI
@@ -11,7 +12,9 @@ export const storageClient = StorageClient.create();
 export const uploadMetadataToLensStorage = async (metadata: any): Promise<string> => {
   try {
     // Use uploadAsJson method for JSON metadata
-    const { uri } = await storageClient.uploadAsJson(metadata);
+    const { uri } = await storageClient.uploadAsJson(metadata, {
+      acl: immutable(LENS_TESTNET_CHAIN_ID),
+    });
     return uri;
   } catch (error) {
     console.error("Failed to upload to Lens Storage:", error);
@@ -26,7 +29,7 @@ export const uploadMetadataToLensStorage = async (metadata: any): Promise<string
 export const uploadFileToLensStorage = async (file: File): Promise<string> => {
   try {
     const { uri } = await storageClient.uploadFile(file, {
-      acl: immutable(storageClient.env.defaultChainId),
+      acl: immutable(LENS_TESTNET_CHAIN_ID),
     });
     return uri;
   } catch (error) {

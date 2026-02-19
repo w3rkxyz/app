@@ -16,14 +16,13 @@ import { useWalletClient } from "wagmi";
 import { useSelector } from "react-redux";
 import FormInput from "@/components/onboarding/form-input";
 import FormTextarea from "@/components/onboarding/form-textarea";
-import FormSelect from "@/components/onboarding/form-select";
-import { Camera } from "lucide-react";
+import { Camera, ChevronDown } from "lucide-react";
 import {
   uploadFileToLensStorage,
-  uploadMetadataToLensStorage,
   storageClient,
 } from "@/utils/storage-client";
 import type { RootState } from "@/redux/store";
+import { jsonToDataURI } from "@/utils/dataUriHelpers";
 
 const COUNTRY_NAMES = [
   "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina",
@@ -64,6 +63,7 @@ const Settings = () => {
   const photoUploadInputRef = useRef<HTMLInputElement>(null);
   const pendingCoverPreviewRef = useRef<string | null>(null);
   const pendingPhotoPreviewRef = useRef<string | null>(null);
+  const locationDropdownRef = useRef<HTMLDivElement | null>(null);
 
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [savingData, setSavingData] = useState(false);
@@ -71,6 +71,7 @@ const Settings = () => {
   const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
   const [pendingCoverPreview, setPendingCoverPreview] = useState("");
   const [pendingPhotoPreview, setPendingPhotoPreview] = useState("");
+  const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
 
   const [formState, setFormState] = useState({
     name: "",
@@ -119,6 +120,25 @@ const Settings = () => {
       if (pendingPhotoPreviewRef.current) {
         URL.revokeObjectURL(pendingPhotoPreviewRef.current);
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    const onPointerDown = (event: MouseEvent | TouchEvent) => {
+      if (
+        locationDropdownRef.current &&
+        !locationDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsLocationDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
     };
   }, []);
 
@@ -285,10 +305,11 @@ const Settings = () => {
         attributes: attributes.length !== 0 ? attributes : undefined,
       });
 
-      const metadataUriFromLensStorage = await uploadMetadataToLensStorage(metadata);
+      // Use data URI metadata to avoid network storage upload failures during settings save.
+      const metadataUriFromDataUri = await jsonToDataURI(metadata);
 
       const result = await setAccountMetadata(sessionClient, {
-        metadataUri: uri(metadataUriFromLensStorage),
+        metadataUri: uri(metadataUriFromDataUri),
       }).andThen(handleOperationWith(walletClient));
 
       if (result.isErr()) {
@@ -447,14 +468,45 @@ const Settings = () => {
           rows={5}
         />
 
-        <FormSelect
-          label="Location"
-          name="location"
-          value={formState.location}
-          onChange={handleChange}
-          placeholder="Add your location"
-          options={countryOptions}
-        />
+        <div ref={locationDropdownRef} className="relative">
+          <label className="mb-2 block xs:text-[14px] text-sm font-medium text-[#212121]">
+            Location
+          </label>
+          <button
+            type="button"
+            className="w-full xs:rounded-[8px] rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-left text-gray-900 placeholder-gray-400 focus:border-gray-600 focus:outline-none flex items-center justify-between"
+            onClick={() => setIsLocationDropdownOpen(prev => !prev)}
+            aria-haspopup="listbox"
+            aria-expanded={isLocationDropdownOpen}
+          >
+            <span className={formState.location ? "text-gray-900" : "text-[#9CA3AF]"}>
+              {formState.location || "Add your location"}
+            </span>
+            <ChevronDown size={16} className="text-[#707070]" />
+          </button>
+
+          {isLocationDropdownOpen ? (
+            <div className="absolute top-full left-0 right-0 z-30 mt-2 max-h-64 overflow-y-auto rounded-lg border border-gray-300 bg-white shadow-md">
+              {countryOptions.map(option => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 ${
+                    formState.location === option.value ? "bg-gray-50 text-[#212121]" : "text-[#4B5563]"
+                  }`}
+                  onClick={() => {
+                    setFormState(prev => ({ ...prev, location: option.value }));
+                    setIsLocationDropdownOpen(false);
+                  }}
+                  role="option"
+                  aria-selected={formState.location === option.value}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
 
         <FormInput
           label="Add Links"
