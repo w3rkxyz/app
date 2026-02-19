@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "deploy": "next build && rsync -avzhe ssh out/* w3rk:/var/www/testnet.w3rk.xyz/html",
     "deploy-prod": "next build && rsync -avzhe ssh out/* w3rk:/var/www/w3rk.xyz/html",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,scss,md}\"",

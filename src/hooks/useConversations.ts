@@ -6,8 +6,7 @@ import {
   SafeListConversationsOptions,
   Dm,
 } from "@xmtp/browser-sdk";
-import { Utils } from "@xmtp/browser-sdk";
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { useXMTPClient } from "./useXMTPClient";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "@/redux/store";
@@ -20,7 +19,6 @@ export const useConversations = () => {
   const { client } = useXMTPClient();
   const { activeConversation, setActiveConversation, setNotOnNetwork, setInvalidUser } = useXMTP();
   const { addAddressToUser } = useDatabase();
-  const utilsRef = useRef<Utils | null>(null);
   const xmtpState = useSelector((state: RootState) => state.xmtp);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -29,14 +27,6 @@ export const useConversations = () => {
   function isValidDm(convo: any): convo is Dm<ContentTypes> {
     return convo && typeof convo === "object";
   }
-
-  useEffect(() => {
-    const utils = new Utils();
-    utilsRef.current = utils;
-    return () => {
-      utils.close();
-    };
-  }, [client]);
 
   const list = async (options?: SafeListConversationsOptions, syncFromNetwork: boolean = false) => {
     if (!client) throw new Error("XMTP client not initialized");

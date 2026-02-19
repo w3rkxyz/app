@@ -1,7 +1,7 @@
 "use client";
 
-import { Utils, type Identifier } from "@xmtp/browser-sdk";
-import { useEffect, useRef, useState } from "react";
+import { getInboxIdForIdentifier, type Identifier } from "@xmtp/browser-sdk";
+import { useEffect, useState } from "react";
 import { isValidEthereumAddress, isValidInboxId } from "@/utils/strings";
 import { useXMTP } from "@/app/XMTPContext";
 import type { AccountData } from "@/utils/getLensProfile";
@@ -14,16 +14,7 @@ export const useMemberId = () => {
   const [inboxId, setInboxId] = useState<string>("");
   const [isOn, setIsOn] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const utilsRef = useRef<Utils | null>(null);
   const environment = "dev";
-
-  useEffect(() => {
-    const utils = new Utils();
-    utilsRef.current = utils;
-    return () => {
-      utils.close();
-    };
-  }, []);
 
   useEffect(() => {
     const checkMemberId = async () => {
@@ -38,7 +29,7 @@ export const useMemberId = () => {
       if (!isValidEthereumAddress(memberId) && !isValidInboxId(memberId)) {
         console.log("Invalid address or inbox ID");
         setError("Invalid address or inbox ID");
-      } else if (isValidEthereumAddress(memberId) && utilsRef.current && client) {
+      } else if (isValidEthereumAddress(memberId) && client) {
         console.log("Started running");
         setLoading(true);
 
@@ -51,7 +42,7 @@ export const useMemberId = () => {
           ];
           console.log("Identifiers: ", identifiers);
 
-          const inboxId = await utilsRef.current.getInboxIdForIdentifier(
+          const inboxId = await getInboxIdForIdentifier(
             {
               identifier: memberId.toLowerCase(),
               identifierKind: "Ethereum",
