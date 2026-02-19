@@ -4,15 +4,14 @@ import React, { useRef, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Post, TextOnlyMetadata, postId } from "@lens-protocol/react";
-import getLensAccountData from "@/utils/getLensProfile";
+import getLensAccountData from "@/utils/getLensProfile"
 import { useAccount } from "wagmi";
 import { deletePost } from "@lens-protocol/client/actions";
-import { getLensClient } from "@/client";
-import type { JobData } from "@/types/job";
+import {getLensClient} from "@/client";
 
 // Extend the Post interface to ensure metadata is properly typed
 interface ExtendedPost extends Post {
-  metadata: TextOnlyMetadata;
+  metadata: TextOnlyMetadata
 }
 
 type Props = {
@@ -20,7 +19,6 @@ type Props = {
   type: string;
   closeJobCardModal?: () => void;
   publication: ExtendedPost;
-  onGetStarted?: (jobData: JobData) => void;
 };
 
 const tokenImages: { [key: string]: string } = {
@@ -52,28 +50,23 @@ function splitTokens(tokenString: string) {
   return tokenString.split(",").map(token => token.trim());
 }
 
-const ViewJobModal = ({
-  handleCloseModal,
-  closeJobCardModal,
-  type,
-  publication,
-  onGetStarted,
-}: Props) => {
+const ViewJobModal = ({ handleCloseModal, closeJobCardModal, type, publication }: Props) => {
   const { address } = useAccount();
   const myDivRef = useRef<HTMLDivElement>(null);
   const [showMobile, setShowMobile] = useState(false);
 
   var attributes: any = {};
   var tokens: string[] = [];
-  publication.metadata.attributes?.map(attribute => {
-    attributes[attribute.key] = attribute.value;
+    publication.metadata.attributes?.map(attribute => {
+      attributes[attribute.key] = attribute.value;
 
-    if (attribute.key === "paid in") {
-      tokens = splitTokens(attribute.value);
-    }
-  });
+      if (attribute.key === "paid in") {
+        tokens = splitTokens(attribute.value);
+      }
+    });
 
-  const profileData = getLensAccountData(publication.author);
+  var profileData;
+    profileData = getLensAccountData(publication.author);
 
   const handleDelete = async () => {
     const client = await getLensClient();
@@ -97,24 +90,12 @@ const ViewJobModal = ({
 
         case "PostOperationValidationUnknown":
           // Validation outcome is unknown
-          alert("Unknown error");
+          alert('Unknown error')
           break;
       }
-
+      
       handleCloseModal?.();
     }
-  };
-
-  const handleGetStartedClick = () => {
-    onGetStarted?.({
-      title: attributes["title"] || "",
-      description: attributes["content"] || "",
-      paymentAmount:
-        attributes["payement type"] === "hourly" ? attributes["hourly"] || "0" : attributes["fixed"] || "0",
-      paymentType: attributes["payement type"] || "fixed",
-      freelancerAddress: profileData?.address || "",
-      freelancerHandle: profileData?.handle || "",
-    });
   };
 
   useEffect(() => {
@@ -418,20 +399,6 @@ const ViewJobModal = ({
           >
             Delete
           </button>
-        ) : address && address !== profileData.address && onGetStarted && type === "job" ? (
-          <div className="flex gap-[10px] mx-auto">
-            <button
-              className="w-fit py-[9px] px-[26px] text-white bg-[#351A6B] hover:bg-[#1a0d35] rounded-[9px] font-semibold mb-[8px]"
-              onClick={handleGetStartedClick}
-            >
-              Get Started
-            </button>
-            <Link href={`/messages?handle=${profileData.handle}`}>
-              <button className="w-fit py-[9px] px-[26px] tx-[18px] Sm:py-[8px] sm:px-[23px] tx-[14px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[9px] sm:rounded-[8px] font-semibold mb-[8px]">
-                Contact
-              </button>
-            </Link>
-          </div>
         ) : (
           <Link href={`/messages?handle=${profileData.handle}`} className="mx-auto ">
             <button className="w-fit py-[9px] px-[26px] tx-[18px] Sm:py-[8px] sm:px-[23px] tx-[14px] leading-[14.5px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[9px] sm:rounded-[8px] font-semibold mb-[8px]">

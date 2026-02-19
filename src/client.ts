@@ -1,16 +1,11 @@
-import { PublicClient, testnet } from "@lens-protocol/client";
-import { url } from "@lens-protocol/types";
+import { PublicClient, mainnet, testnet } from "@lens-protocol/client";
 import { clientCookieStorage } from "./storage";
-
-const lensTestnetEnvironment = {
-  ...testnet,
-  // Avoid 301 redirect from .dev -> .xyz that breaks Lens SDK requests in browser.
-  backend: url(process.env.NEXT_PUBLIC_LENS_API_URL || "https://api.testnet.lens.xyz/graphql"),
-};
+import { fragments } from "./fragments";
 
 export const client = PublicClient.create({
-  // Use direct Lens testnet API endpoint to prevent redirect-related request failures.
-  environment: lensTestnetEnvironment,
+  // Use Lens Protocol testnet environment for Lens Chain Testnet
+  environment: testnet,
+  // fragments,
   storage: clientCookieStorage,
 });
 

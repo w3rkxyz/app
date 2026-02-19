@@ -3,7 +3,7 @@
 import Image from "next/image";
 import ContractCard from "@/components/Cards/contractCard";
 import ViewJobModal from "../view-job-modal/view-job-modal";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import "react-loading-skeleton/dist/skeleton.css";
 import CreateContractModal from "./modals/creatContractModal";
 import ReviewContractModal from "./modals/reviewContractModal";
@@ -12,14 +12,13 @@ import InProgressContractModal from "./modals/inProgressContractModal";
 import AwaitingApprovalContractModal from "./modals/awaitingApprovalContractModal";
 import CompletedContractModal from "./modals/CompletedContractModal";
 import type { activeContractDetails, contractDetails } from "@/types/types";
-import { get_all_contracts, getContractInstance } from "@/api";
+import { get_all_contracts, getContract, getContractInstance } from "@/api";
 import { useAccount } from "wagmi";
 import { useSelector } from "react-redux";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import { useSearchParams } from "next/navigation";
 import { useAccount as useLensAccount } from "@lens-protocol/react";
-import { invalidateContractsCache } from "@/lib/contractCache";
 
 const contractTypes = [
   "New Proposals",
@@ -113,16 +112,15 @@ const Contracts = () => {
   });
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<number | null>(null);
   const { address } = useAccount();
-  const [isModalOpen, setIsModalOpen] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [contracts, setContracts] = useState<activeContractDetails[]>([]);
   const [loadingContracts, setLoadingContracts] = useState(false);
   const [showTypesMobile, setShowTypesMobile] = useState(false);
   const [type, setType] = useState("awaitingApproval");
   const [showCreateContractModal, setShowCreateContractModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'active' | 'ended'>('active');
-  const [creationStage, setCreationStage] = useState(2);
+  const [creationStage, setCreationStage] = useState(1);
   const [selectedContract, setSelectedContract] = useState<activeContractDetails | undefined>();
-  const refetchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [newContractDetails, setNewContractDetails] = useState<any>({
     title: "",
     description: "",
@@ -184,38 +182,28 @@ const Contracts = () => {
       // New contract emits: ProposalCreated, ProposalAccepted, PaymentRequested, PaymentReleased, etc.
       const lensAccountAddress = userProfile?.address;
       const contract = getContractInstance();
-
-      const debouncedRefetch = () => {
-        if (refetchTimeoutRef.current) {
-          clearTimeout(refetchTimeoutRef.current);
-        }
-        refetchTimeoutRef.current = setTimeout(() => {
-          invalidateContractsCache(lensAccountAddress);
-          getData();
-        }, 1000);
-      };
       
       const handleProposalCreated = (client: string, freelancer: string, proposalId: any, amount: any, event: any) => {
         if (lensAccountAddress && (client === lensAccountAddress || freelancer === lensAccountAddress)) {
-          debouncedRefetch();
+          getData();
         }
       };
       
       const handleProposalAccepted = (client: string, freelancer: string, contractId: any, event: any) => {
         if (lensAccountAddress && (client === lensAccountAddress || freelancer === lensAccountAddress)) {
-          debouncedRefetch();
+          getData();
         }
       };
       
       const handlePaymentRequested = (freelancer: string, client: string, contractId: any, event: any) => {
         if (lensAccountAddress && (client === lensAccountAddress || freelancer === lensAccountAddress)) {
-          debouncedRefetch();
+          getData();
         }
       };
       
       const handlePaymentReleased = (freelancer: string, client: string, contractId: any, event: any) => {
         if (lensAccountAddress && (client === lensAccountAddress || freelancer === lensAccountAddress)) {
-          debouncedRefetch();
+          getData();
         }
       };
 
@@ -231,10 +219,6 @@ const Contracts = () => {
         contract.off("ProposalAccepted", handleProposalAccepted);
         contract.off("PaymentRequested", handlePaymentRequested);
         contract.off("PaymentReleased", handlePaymentReleased);
-        if (refetchTimeoutRef.current) {
-          clearTimeout(refetchTimeoutRef.current);
-          refetchTimeoutRef.current = null;
-        }
       };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -258,24 +242,26 @@ const Contracts = () => {
             {/* <h4 className="text-[20px] font-semibold font-secondary leading-[20px] tracking-[-1%] text-center pb-[17px] sm:pb-[10px] md:pb-[10px]">
               Contracts
             </h4> */}
-              <div className="bg-[#F2F2F2] rounded-full p-1.5 inline-flex shadow-inner w-full mb-4">
+              <div className="bg-[#F2F2F2] rounded-full p-1 inline-flex w-full mb-4">
                 <button
                   onClick={() => setActiveTab('active')}
-                  className={`px-4 py-1 rounded-full text-xl font-semibold transition-all duration-300 w-full ${
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 w-full ${
                     activeTab === 'active'
-                      ? 'bg-white text-gray-900 shadow-lg'
+                      ? 'bg-white text-gray-900'
                       : 'bg-transparent text-gray-600 hover:text-gray-900'
                   }`}
+                  style={{ boxShadow: activeTab === 'active' ? '0px 1px 2px -1px #0000001A' : '' }}
                 >
                   Active
                 </button>
                 <button
                   onClick={() => setActiveTab('ended')}
-                  className={`px-4 py-2 rounded-full text-xl font-semibold transition-all duration-300 w-full ${
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 w-full ${
                     activeTab === 'ended'
-                      ? 'bg-white text-gray-900 shadow-lg'
+                      ? 'bg-white text-gray-900'
                       : 'bg-transparent text-gray-600 hover:text-gray-900'
                   }`}
+                  style={{ boxShadow: activeTab === 'ended' ? '0px 1px 2px -1px #0000001A' : '' }}
                 >
                   Ended
                 </button>
@@ -297,7 +283,7 @@ const Contracts = () => {
                 );
               })}
             <button
-              className={`w-full py-[12px] flex items-center justify-center leading-[14.52px] mt-6 text-sm text-white font-medium bg-[#212121] rounded-full`}
+              className={`w-full py-[10px] flex items-center justify-center gap-1 leading-[14.52px] mt-6 text-sm text-white font-medium bg-[#212121] rounded-full`}
               onClick={() => {
                 setFreelancerId("");
                 setShowCreateContractModal(true);

@@ -1,134 +1,111 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
-import { useConversations } from "@/hooks/useConversations";
-import { useAccount } from "wagmi";
-import NewConversation from "./newConversation";
-import ConversationsList from "./ConversationList";
-import { RootState } from "@/redux/store";
-import { useSelector } from "react-redux";
-import { useXMTP } from "@/app/XMTPContext";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useXMTPClient } from "@/hooks/useXMTPClient";
-import toast from "react-hot-toast";
-
-const stageLabel: Record<string, string> = {
-  idle: "Preparing XMTP...",
-  prompt_signature: "Check your wallet to sign",
-  restore_session: "Restoring XMTP session...",
-  build_failed_fallback_create: "Session restore failed, creating client...",
-  create_client: "Creating XMTP client...",
-  check_registration: "Checking XMTP registration...",
-  register_account: "Registering XMTP account...",
-  connected: "XMTP connected",
-  failed: "XMTP connection failed",
-};
+import { useConversations } from "@/hooks/useConversations";
+import { useAccount, useSignMessage } from "wagmi";
+import NewConversation from "./newConversation";
+import { AccountData } from "@/utils/getLensProfile";
+import { getLensClient } from "@/client";
+import ConversationsList from "./ConversationList";
+import getCurrentTime from "@/utils/currentTime";
+import toast from "react-hot-toast"; // Get the keys using a valid Signer. Save them somewhere secure.
+import { useEthersSigner } from "@/utils/getSigner";
+import moment from "moment";
+import Link from "next/link";
+import { loadKeys, storeKeys } from "@/utils/xmtpHelpers";
+import { useSearchParams } from "next/navigation";
+import ConversationSkeleton from "@/components/reusable/ConversationSkeleton";
+import {
+  ContentTypeAttachment,
+  AttachmentCodec,
+  RemoteAttachmentCodec,
+  ContentTypeRemoteAttachment,
+} from "@xmtp/content-type-remote-attachment";
+import { fileToDataURI, jsonToDataURI } from "@/utils/dataUriHelpers";
+import axios from "axios";
+import { ContentTypeReadReceipt, ReadReceiptCodec } from "@xmtp/content-type-read-receipt";
+import { SessionClient, useAccount as useLensAccount } from "@lens-protocol/react";
+import { useSelector } from "react-redux";
+import { type Signer, type Identifier, type DecodedMessage, Client, Dm } from "@xmtp/browser-sdk";
+import type { ContentCodec } from "@xmtp/content-type-primitives";
+import { hexToBytes } from "viem";
+import { RootState } from "@/redux/store";
+import { useXMTP } from "@/app/XMTPContext";
 
 const ConversationsNav = ({ setIsMessagesEnabled, isMessagesEnabled, selectedChat, setSelectedChat, contacts }) => {
   const { list, loading, syncing, conversations, stream, syncAll, activeConversation } =
     useConversations();
   const { client } = useXMTP();
-  const { address: walletAddress } = useAccount();
-  const lensProfile = useSelector((state: RootState) => state.app.user);
-  const { createXMTPClient, initXMTPClient, connectingXMTP, connectStage } = useXMTPClient({
-    walletAddress,
-    lensAccountAddress: lensProfile?.address,
-    lensProfileId: lensProfile?.id,
-    lensHandle: lensProfile?.handle,
-  });
-
+  const { address } = useAccount();
+  const { createXMTPClient, connectingXMTP } = useXMTPClient(address as string);
   const stopStreamRef = useRef<(() => void) | null>(null);
+  const [showMessagesMobile, setShowMessagesMobile] = useState(true);
+  const [showSkeleleton, setShowSkeleton] = useState(true);
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const startStream = useCallback(async () => {
+    stopStreamRef.current = await stream();
+  }, [stream]);
+
+  const stopStream = useCallback(() => {
+    stopStreamRef.current?.();
+    stopStreamRef.current = null;
+  }, []);
+
+  const handleSync = useCallback(async () => {
+    stopStream();
+    await list(undefined, true);
+    await startStream();
+  }, [list, startStream, stopStream]);
+
+  const handleSyncAll = useCallback(async () => {
+    stopStream();
+    await syncAll();
+    await startStream();
+  }, [syncAll, startStream, stopStream]);
+
+  // loading conversations on mount, and start streaming
   useEffect(() => {
-    let mounted = true;
-
     const loadConversations = async () => {
-      if (!client) {
-        return;
+      if (client) {
+        await list(undefined, true);
+        await startStream();
       }
-
-      stopStreamRef.current?.();
-      stopStreamRef.current = null;
-
-      await list(undefined, true);
-      if (!mounted) {
-        return;
-      }
-      stopStreamRef.current = await stream();
     };
-
     void loadConversations();
-
-    return () => {
-      mounted = false;
-      stopStreamRef.current?.();
-      stopStreamRef.current = null;
-    };
-    // `list` and `stream` are recreated by the hook each render; key off `client` to avoid loops.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client]);
 
+  // stop streaming on unmount
   useEffect(() => {
-    let cancelled = false;
-
-    const restoreClient = async () => {
-      if (client || connectingXMTP) {
-        return;
-      }
-
-      if (!walletAddress && !lensProfile?.address) {
-        return;
-      }
-
-      try {
-        await initXMTPClient();
-      } catch (error) {
-        if (!cancelled) {
-          console.warn("XMTP auto-restore failed:", error);
-        }
-      }
-    };
-
-    void restoreClient();
-
     return () => {
-      cancelled = true;
+      stopStream();
     };
-  }, [client, connectingXMTP, initXMTPClient, lensProfile?.address, walletAddress]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const handleEnable = async () => {
-    const toastId = toast.loading(stageLabel.idle);
+  // UI MEthods
+
+  const handleCloseNewConversationModal = () => {
+    setIsNewConversationModalOpen(false);
+  };
+
+  const createClient = async () => {
     try {
-      await createXMTPClient({
-        onStage: stage => {
-          const message = stageLabel[stage] ?? "Connecting XMTP...";
-          if (stage === "connected") {
-            toast.success(message, { id: toastId });
-            return;
-          }
-          if (stage === "failed") {
-            toast.error(message, { id: toastId });
-            return;
-          }
-          toast.loading(message, { id: toastId });
-        },
-      });
-      toast.success("XMTP enabled", { id: toastId });
+      if (address) {
+        const client = await createXMTPClient();
+      }
     } catch (error) {
-      const message =
-        error instanceof Error && error.message
-          ? error.message
-          : "Failed to connect XMTP. Please retry.";
-      toast.error(message, { id: toastId });
-      console.error("Failed to connect XMTP:", error);
+      console.log("Error: ", error);
     }
   };
 
   return (
     <div
-      className={`horizontal-box px-[12px] w-[417px] sm:w-full flex bg-white h-screen ${selectedChat && isMessagesEnabled && 'sm:hidden'} ${
+      className={`horizontal-box w-[517px] sm:w-full flex bg-white h-screen ${selectedChat && isMessagesEnabled && 'sm:hidden'} ${
         activeConversation !== undefined ? "sm:hidden" : "sm:flex"
       } flex-col pb-[10px]`}
     >
@@ -225,7 +202,7 @@ const ConversationsNav = ({ setIsMessagesEnabled, isMessagesEnabled, selectedCha
               <div
                 key={contact.id}
                 onClick={() => setSelectedChat(contact.id)}
-                className="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                className="flex items-center gap-3 border-b border-[#C3C7CE] p-3 hover:bg-gray-50 cursor-pointer transition-colors"
               >
                 <div className="relative">
                   <img 
@@ -290,7 +267,7 @@ const ConversationsNav = ({ setIsMessagesEnabled, isMessagesEnabled, selectedCha
             <div
               key={contact.id}
               onClick={() => setSelectedChat(contact.id)}
-              className={`flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer transition-colors ${
+              className={`flex items-center gap-3 p-3 border-b border-[#C3C7CE] hover:bg-gray-50 cursor-pointer transition-colors ${
                 selectedChat === contact.id ? 'bg-gray-50' : ''
               }`}
             >
@@ -318,11 +295,10 @@ const ConversationsNav = ({ setIsMessagesEnabled, isMessagesEnabled, selectedCha
         </div>
       </div>
       )}
-
       {isNewConversationModalOpen && (
         <div className="fixed h-screen w-screen top-0 left-0 inset-0 z-[999] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center">
           <div className="w-full flex justify-center align-middle">
-            <NewConversation handleCloseModal={() => setIsNewConversationModalOpen(false)} />
+            <NewConversation handleCloseModal={handleCloseNewConversationModal} />
           </div>
         </div>
       )}

@@ -142,7 +142,7 @@ const ContractCard = ({ onCardClick, contractDetails }: CardProps) => {
                   <p className="bg-[#FCF4FF] text-[#8F25AE] rounded-full px-3 py-1 text-[13px] font-medium sm:hidden">New Proposal</p>
                 </div>
             </div>
-            <div className="flex sm:flex-row flex-col justify-end items-end gap-2">
+            <div className="flex sm:flex-row flex-col justify-end items-end gap-2 sm:items-center">
                 <span className="inline-flex items-center justify-center min-w-[84px] h-[40px] py-[8px] px-[16px] border border-[#E8E8E8] rounded-full sm:text-[16px] text-[20px] font-semibold leading-[24px] tracking-[-0.2px] opacity-100 whitespace-nowrap bg-[#F6F6F6] group-hover:bg-white max-w-fit">
                     ${contractDetails.paymentAmount}
                 </span>

@@ -3,15 +3,19 @@ import Link from "next/link";
 import { useDispatch } from "react-redux";
 import { displayLoginModal } from "@/redux/app";
 import { useAuthenticatedUser, useAccount } from "@lens-protocol/react";
+import { usePathname, useRouter } from "next/navigation";
 
 export const Connect = () => {
   const dispatch = useDispatch();
+  const router = useRouter();
+  const pathname = usePathname();
   const { data: authenticatedUser, loading: authUserLoading } = useAuthenticatedUser();
   
   // Get the account details for the authenticated user
   const { data: account, loading: accountLoading } = useAccount({
     address: authenticatedUser?.address,
   });
+  
 
   return (
     <ConnectKitButton.Custom>
@@ -45,8 +49,11 @@ export const Connect = () => {
             </button>
           );
         } else {
+          if (pathname === '/sign-in/') {
+            return null;
+          }
           return (
-            <button type="button" className=" bg-black rounded-full text-white px-5 py-2" onClick={show}>
+            <button type="button" className=" bg-black rounded-full text-white px-5 py-2" onClick={() => router.push('/sign-in')}>
               Sign In
             </button>
           );

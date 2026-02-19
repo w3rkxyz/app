@@ -16,8 +16,8 @@ import { useWalletClient } from "wagmi";
 import { useSelector } from "react-redux";
 import FormInput from "@/components/onboarding/form-input";
 import FormTextarea from "@/components/onboarding/form-textarea";
-import { DUMMY_USER } from "@/app/u/[handle]/page";
 import FormSelect from "@/components/onboarding/form-select";
+import { DUMMY_USER } from "../profile-handle/profile-handle";
 
 const Settings = () => {
   const [userId, setUserId] = useState("");

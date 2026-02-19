@@ -7,7 +7,7 @@ export function getApolloClient() {
   if (_client) return _client;
 
   _client = new ApolloClient({
-    uri: process.env.NEXT_PUBLIC_LENS_API_URL || "https://api.testnet.lens.xyz/graphql",
+    uri: "https://api.lens.xyz/graphql",
     cache: new InMemoryCache(),
     ssrMode: typeof window === "undefined",
   });

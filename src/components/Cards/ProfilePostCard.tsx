@@ -66,7 +66,7 @@ const ProfilePostCard = ({
         </div>
 
         <div className="col-span-2 mt-[8px]">
-          <div className="flex flex-wrap gap-[4px]">
+          <div className="flex flex-wrap gap-3">
             {tags
               .filter((tag) => tag.trim() !== "")
               .slice(0, 3)

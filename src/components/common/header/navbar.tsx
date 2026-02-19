@@ -1,6 +1,5 @@
 "use client";
-
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Connect } from "./connectButton";
@@ -67,8 +66,12 @@ const Navbar = () => {
             </nav>
           </div>
         </div>
-      </div>
-    </header>
+      </header>
+      {/* )} */}
+
+      {/* Choose Account Modal */}
+      {loginModal && address && <LoginForm owner={address} />}
+    </>
   );
 };
 

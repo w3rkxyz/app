@@ -158,12 +158,22 @@
 import React, { useState } from 'react';
 import { Search, Edit, MoreVertical, Send, Smile, Paperclip, Check, ArrowLeft, MessageCircle } from 'lucide-react';
 import Image from 'next/image';
+import { SVGEmojis, SVGLink, SVGSend } from '@/assets/list-svg-icon';
 
 const ConversationBox = ({ currentContact, currentMessages, selectedChat, setSelectedChat, isMessagesEnabled }) => {
   // App states
   // const [isMessagesEnabled, setIsMessagesEnabled] = useState(false);
   // const [selectedChat, setSelectedChat] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (message.trim()) {
+      console.log('Sending message:', message);
+      setMessage('');
+    }
+  };
 
   // Dummy data from images
   const contacts = [
@@ -335,7 +345,7 @@ const ConversationBox = ({ currentContact, currentMessages, selectedChat, setSel
   // STATE 1: Messages not enabled (Image 5)
   if (!isMessagesEnabled) {
     return (
-      <div className="h-screen flex items-center justify-center bg-[#FCFCFC]">
+      <div className="h-screen flex items-center justify-center w-full bg-[#FCFCFC]">
       </div>
     );
   }
@@ -401,11 +411,11 @@ const ConversationBox = ({ currentContact, currentMessages, selectedChat, setSel
         {/* Empty state - Desktop only */}
         {!isMobile && (
           <div className="flex-1 flex items-center justify-center bg-white">
-            <div className="text-center">
-              <div className="w-20 h-20 mx-auto mb-4 relative">
+            <div className="text-center flex flex-col items-center justify-center">
+              {/* <div className="w-20 h-20 mx-auto mb-4 relative">
                 <div className="w-20 h-20 border-4 border-gray-200 rounded-full"></div>
-                <MessageCircle className="w-10 h-10 text-gray-400 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
-              </div>
+              </div> */}
+                <Image src={'/images/ChatsCircle.svg'} alt="" width={64} height={64} />
               <p className="text-gray-500 text-sm">Select a conversation to</p>
               <p className="text-gray-500 text-sm">start messaging</p>
             </div>
@@ -419,7 +429,7 @@ const ConversationBox = ({ currentContact, currentMessages, selectedChat, setSel
   if (isMobile) {
     // MOBILE VIEW
     return (
-      <div className="h-screen bg-[#FCFCFC] flex flex-col">
+      <div className="h-screen bg-[#FCFCFC] flex flex-col w-full">
         {/* Mobile Header */}
         <div className="h-16 bg-white border-b border-gray-200 flex items-center px-4 gap-3">
           <button 
@@ -773,8 +783,8 @@ const ConversationBox = ({ currentContact, currentMessages, selectedChat, setSel
           </div> */}
         </div>
 
-        <div style={{ boxShadow: '0px 4px 6px -2px #10182808' }} className="bg-white border-t border-gray-200 p-4 rounded-2xl pb-10">
-          <div className="flex items-center gap-3">
+        <div style={{ boxShadow: '0px 12px 16px -4px #10182814' }} className="bg-[#FCFCFC] p-4 pb-10">
+          {/* <div className="flex items-center gap-3">
             <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
               <Paperclip size={20} className="text-gray-500" />
             </button>
@@ -789,7 +799,54 @@ const ConversationBox = ({ currentContact, currentMessages, selectedChat, setSel
             <button className="p-3 bg-gray-900 hover:bg-gray-800 rounded-full transition-colors">
               <Send size={18} className="text-white" />
             </button>
+          </div> */}
+          <div className="w-full max-w-[980px] mx-auto">
+      <form onSubmit={handleSubmit}>
+        {/* Input Container */}
+        <div className="bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.08)] border border-gray-200/80 p-6 flex flex-col gap-6">
+          {/* Text Input */}
+          <input
+            type="text"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Send a message..."
+            className="w-full outline-none text-gray-700 placeholder-gray-400 bg-transparent text-[15px] leading-relaxed"
+          />
+
+          {/* Bottom Row: Icons and Send Button */}
+          <div className="flex items-center justify-between">
+            {/* Left Icons */}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+                aria-label="Attach file"
+              >
+                <SVGLink />
+              </button>
+
+              <button
+                type="button"
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+                aria-label="Add emoji"
+              >
+                <SVGEmojis />
+              </button>
+            </div>
+
+            {/* Send Button */}
+            <button
+              type="submit"
+              disabled={!message.trim()}
+              className="bg-black text-white rounded-full px-6 py-2.5 flex items-center gap-2.5 hover:bg-gray-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <span className="font-medium text-[15px]">Send</span>
+              <SVGSend />
+            </button>
           </div>
+        </div>
+      </form>
+    </div>
         </div>
       </div>
     </div>

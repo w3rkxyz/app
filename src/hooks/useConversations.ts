@@ -2,15 +2,14 @@
 
 import {
   Identifier,
-  ListConversationsOptions,
-  CreateGroupOptions,
+  SafeCreateGroupOptions,
+  SafeListConversationsOptions,
   Dm,
-  Group,
-  ConversationType,
 } from "@xmtp/browser-sdk";
-import { useState } from "react";
+import { Utils } from "@xmtp/browser-sdk";
+import { useState, useRef, useEffect } from "react";
 import { useXMTPClient } from "./useXMTPClient";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "@/redux/store";
 import type { AccountData } from "@/utils/getLensProfile";
 import useDatabase from "./useDatabase";
@@ -21,14 +20,25 @@ export const useConversations = () => {
   const { client } = useXMTPClient();
   const { activeConversation, setActiveConversation, setNotOnNetwork, setInvalidUser } = useXMTP();
   const { addAddressToUser } = useDatabase();
+  const utilsRef = useRef<Utils | null>(null);
   const xmtpState = useSelector((state: RootState) => state.xmtp);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [conversations, setConversations] = useState<Dm<ContentTypes>[]>([]);
-  const isDm = (conversation: Group<ContentTypes> | Dm<ContentTypes>): conversation is Dm<ContentTypes> =>
-    conversation instanceof Dm;
 
-  const list = async (options?: ListConversationsOptions, syncFromNetwork: boolean = false) => {
+  function isValidDm(convo: any): convo is Dm<ContentTypes> {
+    return convo && typeof convo === "object";
+  }
+
+  useEffect(() => {
+    const utils = new Utils();
+    utilsRef.current = utils;
+    return () => {
+      utils.close();
+    };
+  }, [client]);
+
+  const list = async (options?: SafeListConversationsOptions, syncFromNetwork: boolean = false) => {
     if (!client) throw new Error("XMTP client not initialized");
     if (syncFromNetwork) {
       await sync();
@@ -37,7 +47,7 @@ export const useConversations = () => {
     setLoading(true);
     try {
       const convos = await client.conversations.list(options);
-      const addedConvos = convos.filter(isDm);
+      const addedConvos = convos.filter(convo => isValidDm(convo));
       setConversations(addedConvos);
     } finally {
       setLoading(false);
@@ -86,11 +96,11 @@ export const useConversations = () => {
     }
   };
 
-  const newGroup = async (inboxIds: string[], options?: CreateGroupOptions) => {
+  const newGroup = async (inboxIds: string[], options?: SafeCreateGroupOptions) => {
     if (!client) throw new Error("XMTP client not initialized");
     setLoading(true);
     try {
-      const conversation = await client.conversations.createGroup(inboxIds, options);
+      const conversation = await client.conversations.newGroup(inboxIds, options);
       return conversation;
     } finally {
       setLoading(false);
@@ -99,12 +109,12 @@ export const useConversations = () => {
 
   const newGroupWithIdentifiers = async (
     identifiers: Identifier[],
-    options?: CreateGroupOptions
+    options?: SafeCreateGroupOptions
   ) => {
     if (!client) throw new Error("XMTP client not initialized");
     setLoading(true);
     try {
-      const conversation = await client.conversations.createGroupWithIdentifiers(identifiers, options);
+      const conversation = await client.conversations.newGroupWithIdentifiers(identifiers, options);
       return conversation;
     } finally {
       setLoading(false);
@@ -119,7 +129,7 @@ export const useConversations = () => {
     if (!client) throw new Error("XMTP client not initialized");
     setLoading(true);
     try {
-      const conversation = await client.conversations.createDm(inboxId);
+      const conversation = await client.conversations.newDm(inboxId);
       addAddressToUser(user.address, user);
       return conversation;
     } finally {
@@ -131,7 +141,7 @@ export const useConversations = () => {
     if (!client) throw new Error("XMTP client not initialized");
     setLoading(true);
     try {
-      const conversation = await client.conversations.createDmWithIdentifier(identifier);
+      const conversation = await client.conversations.newDmWithIdentifier(identifier);
       addAddressToUser(user.address.toLowerCase(), user);
       return conversation;
     } catch (e) {
@@ -145,20 +155,21 @@ export const useConversations = () => {
 
   const stream = async () => {
     if (!client) throw new Error("XMTP client not initialized");
-    const stream = await client.conversations.stream({
-      conversationType: ConversationType.Dm,
-      onValue: conversation => {
-        if (conversation instanceof Dm) {
-          setConversations(prev => {
-            const alreadyExists = prev.some(existing => existing.id === conversation.id);
-            return alreadyExists ? prev : [conversation, ...prev];
-          });
+    const onConversation = (error: Error | null, conversation: Dm<ContentTypes> | undefined) => {
+      if (conversation) {
+        const shouldAdd =
+          conversation.metadata?.conversationType === "dm" ||
+          conversation.metadata?.conversationType === "group";
+        if (shouldAdd) {
+          setConversations(prev => [conversation, ...prev]);
         }
-      },
-    });
+      }
+    };
+
+    const stream = await client.conversations.stream(onConversation);
 
     return () => {
-      void stream.return();
+      void stream.return(undefined);
     };
   };
 

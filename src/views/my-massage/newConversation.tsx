@@ -3,11 +3,15 @@
 import React, { useRef, useEffect, useState } from "react";
 import Image from "next/image";
 import { Oval } from "react-loader-spinner";
-import { type Account } from "@lens-protocol/client";
+import { err, useAccounts } from "@lens-protocol/react";
 import getLensAccountData, { AccountData } from "@/utils/getLensProfile";
 import { useConversations } from "@/hooks/useConversations";
+import { fetchAccounts } from "@lens-protocol/client/actions";
+import { getPublicClient } from "@/client";
 import useSearchAccounts from "@/hooks/useSearchAccounts";
-import { IdentifierKind, type Identifier } from "@xmtp/browser-sdk";
+import { useMemberId } from "@/hooks/useMemberId";
+import { isValidEthereumAddress } from "@/utils/strings";
+import { type Identifier } from "@xmtp/browser-sdk";
 import { useXMTP } from "@/app/XMTPContext";
 
 type Props = {
@@ -17,8 +21,10 @@ type Props = {
 const NewConversation = ({ handleCloseModal }: Props) => {
   const { client, setNotOnNetwork, setInvalidUser } = useXMTP();
   const { newDmWithIdentifier, selectConversation } = useConversations();
+  const { inboxId, error, selectUser, memberId } = useMemberId();
   const myDivRef = useRef<HTMLDivElement>(null);
   const [searchText, setSearchText] = useState("");
+  const [selectedprofile, setSelectedProfile] = useState<AccountData | null>(null);
   const { data: accounts, loading: accountsLoading } = useSearchAccounts({
     filter: {
       searchBy: {
@@ -69,51 +75,43 @@ const NewConversation = ({ handleCloseModal }: Props) => {
   const [creatingConvo, setCreatingConvo] = useState(false);
   const [selectedUser, setSelectedUser] = useState("");
 
-  const handleCreate = async (account: Account) => {
+  const handleCreate = async (profile: AccountData) => {
     if (!client) return;
 
-    const profile = getLensAccountData(account);
+    setSelectedProfile(profile);
     setSelectedUser(profile.displayName);
     setCreatingConvo(true);
-    try {
-      const identityCandidates = Array.from(
-        new Set(
-          [account.address, account.owner]
-            .filter((value): value is string => typeof value === "string" && value.length > 0)
-            .map(value => value.toLowerCase())
-        )
+    // selectUser(profile);
+
+    const identifiers: Identifier[] = [
+      {
+        identifier: profile.address.toLowerCase(),
+        identifierKind: "Ethereum",
+      },
+    ];
+
+    const isActive = await client.canMessage(identifiers);
+
+    if (isActive.get(profile.address.toLowerCase())) {
+      const conversation = await newDmWithIdentifier(
+        {
+          identifier: profile.address.toLowerCase(),
+          identifierKind: "Ethereum",
+        },
+        profile
       );
 
-      const identifiers: Identifier[] = identityCandidates.map(identifier => ({
-        identifier,
-        identifierKind: IdentifierKind.Ethereum,
-      }));
-
-      const canMessageResult = await client.canMessage(identifiers);
-      const activeIdentifier = identityCandidates.find(identifier =>
-        Boolean(canMessageResult.get(identifier))
-      );
-
-      if (activeIdentifier) {
-        const conversation = await newDmWithIdentifier(
-          {
-            identifier: activeIdentifier,
-            identifierKind: IdentifierKind.Ethereum,
-          },
-          profile
-        );
-
-        if (conversation !== "Failed") {
-          selectConversation(conversation);
-        }
-      } else {
-        setInvalidUser(profile);
-        setNotOnNetwork(true);
+      if (conversation !== "Failed") {
+        selectConversation(conversation);
       }
-    } finally {
-      setCreatingConvo(false);
-      handleCloseModal();
+
+      console.log("Coversation Created: ", conversation);
+    } else {
+      setInvalidUser(profile);
+      setNotOnNetwork(true);
     }
+    setCreatingConvo(false);
+    handleCloseModal();
   };
 
   useEffect(() => {
@@ -185,7 +183,7 @@ const NewConversation = ({ handleCloseModal }: Props) => {
               <div
                 className="text-[14px] hover:bg-[#f1f1f1] w-full gap-[8px] flex items-center cursor-pointer px-[10px] py-[8px]"
                 key={index}
-                onClick={() => handleCreate(acc)}
+                onClick={() => handleCreate(profile)}
               >
                 <div className="circle-div relative bg-gray-200 dark:border-gray-700">
                   <Image

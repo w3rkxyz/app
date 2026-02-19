@@ -3,13 +3,19 @@
 import {
   Client,
   type ClientOptions,
+  type ExtractCodecContentTypes,
   type Signer,
   Dm,
 } from "@xmtp/browser-sdk";
+import { ReactionCodec } from "@xmtp/content-type-reaction";
+import { RemoteAttachmentCodec } from "@xmtp/content-type-remote-attachment";
+import { ReplyCodec } from "@xmtp/content-type-reply";
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import type { AccountData } from "@/utils/getLensProfile";
 
-export type ContentTypes = unknown;
+export type ContentTypes = ExtractCodecContentTypes<
+  [ReactionCodec, ReplyCodec, RemoteAttachmentCodec]
+>;
 
 export type InitializeClientOptions = {
   dbEncryptionKey?: Uint8Array;
@@ -101,6 +107,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children, client: in
             env,
             loggingLevel,
             dbEncryptionKey,
+            codecs: [new ReactionCodec(), new ReplyCodec(), new RemoteAttachmentCodec()],
           });
           setClient(xmtpClient);
         } catch (e) {

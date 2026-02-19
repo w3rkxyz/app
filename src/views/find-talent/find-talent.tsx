@@ -30,18 +30,11 @@ interface Category {
   icon: React.ComponentType<{ size?: number; className?: string }>;
 }
 
-// const categories: Category[] = [
-//   { name: "Blockchain Development", icon: LinkIcon },
-//   { name: "Programming & Development", icon: Code },
-//   { name: "Design", icon: Palette },
-//   { name: "Consulting & Advisory", icon: MessageCircle },
-//   { name: "Marketing", icon: TrendingUp },
-//   { name: "Admin Support", icon: Headphones },
-//   { name: "Customer Service", icon: ShoppingBag },
-//   { name: "Security & Auditing", icon: Shield },
-//   { name: "Community Building", icon: Users },
-//   { name: "Other", icon: HelpCircle },
-// ];
+interface HourlyRate {
+  label: string;
+  min: number;
+  max: number | null;
+}
 
 const categories: Category[] = [
   { name: "Blockchain Development", icon: SVGBlockChain },
@@ -56,16 +49,26 @@ const categories: Category[] = [
   { name: "Other", icon: SVGInfo },
 ];
 
+const hourlyRates: HourlyRate[] = [
+  // { label: "All Rates", min: 0, max: null },
+  { label: "$10 - $25", min: 10, max: 25 },
+  { label: "$25 - $50", min: 25, max: 50 },
+  { label: "$50+", min: 50, max: null },
+];
+
 const FindTalent = () => {
   const [jobs, setJobs] = useState<JobData[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("Design");
+  const [selectedHourlyRate, setSelectedHourlyRate] = useState<string>("All Rates");
   const [searchText, setSearchText] = useState("");
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const [isHourlyRateDropdownOpen, setIsHourlyRateDropdownOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<JobData | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
+  const hourlyRateDropdownRef = useRef<HTMLDivElement>(null);
   const [isCreateServiceModalOpen, setIsCreateServiceModalOpen] = useState(false);
 
   useEffect(() => {
@@ -96,19 +99,28 @@ const FindTalent = () => {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
         setIsCategoryDropdownOpen(false);
+      }
+      if (hourlyRateDropdownRef.current && !hourlyRateDropdownRef.current.contains(event.target as Node)) {
+        setIsHourlyRateDropdownOpen(false);
       }
     };
 
-    if (isCategoryDropdownOpen) {
+    if (isCategoryDropdownOpen || isHourlyRateDropdownOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isCategoryDropdownOpen]);
+  }, [isCategoryDropdownOpen, isHourlyRateDropdownOpen]);
+
+  // Parse payment amount to get numeric value
+  const parsePaymentAmount = (paymentAmount: string): number => {
+    const match = paymentAmount.match(/\$(\d+)/);
+    return match ? parseInt(match[1], 10) : 0;
+  };
 
   const filteredJobs = jobs.filter(job => {
     const matchesSearch =
@@ -120,18 +132,27 @@ const FindTalent = () => {
     const matchesCategory =
       selectedCategory === "All" || job.tags.some(tag => tag === selectedCategory);
 
-    return matchesSearch && matchesCategory;
+    // Filter by hourly rate
+    const selectedRate = hourlyRates.find(rate => rate.label === selectedHourlyRate);
+    let matchesRate = true;
+    if (selectedRate && selectedRate.label !== "All Rates") {
+      const jobRate = parsePaymentAmount(job.paymentAmount);
+      matchesRate = jobRate >= selectedRate.min && (selectedRate.max === null || jobRate <= selectedRate.max);
+    }
+
+    return matchesSearch && matchesCategory && matchesRate;
   });
 
   const selectedCategoryData = categories.find(cat => cat.name === selectedCategory);
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="pt-[60px] sm:pt-[20px] custom-container max-w-[1440px] mx-auto">
+      <div className="pt-[64px] sm:pt-[36px] custom-container max-w-[1440px] mx-auto">
         <div className="flex sm:flex-col md:flex-row gap-[16px] md:gap-[32px] sm:pt-[48px] md:pt-[32px] pb-[80px] md:pb-[32px] px-[8px] md:px-0">
-          <div className="hidden md:flex flex-col gap-[12px]" ref={dropdownRef}>
+          {/* Category Dropdown - Desktop */}
+          <div className="hidden md:flex flex-col gap-[12px]" ref={categoryDropdownRef}>
             <h3 className="text-[12px] font-medium text-[#AEAEAE] uppercase leading-[150%] tracking-[1%] align-middle">
-              CATEGORY
+              Category
             </h3>
             <div className="relative">
               <button
@@ -192,8 +213,61 @@ const FindTalent = () => {
             </div>
           </div>
 
-          <div className="md:hidden w-[320px] flex-shrink-0">
-            <div className="bg-white rounded-[8px] p-[24px] flex flex-col gap-[12px] h-fit">
+          {/* Hourly Rate Dropdown - Desktop */}
+          <div className="hidden md:flex flex-col gap-[12px]" ref={hourlyRateDropdownRef}>
+            <h3 className="text-[12px] font-medium text-[#AEAEAE] uppercase leading-[150%] tracking-[1%] align-middle">
+              Hourly Rate
+            </h3>
+            <div className="relative">
+              <button
+                onClick={() => setIsHourlyRateDropdownOpen(!isHourlyRateDropdownOpen)}
+                className="w-full h-[44px] border border-[#E0E0E0] rounded-[8px] px-[16px] flex items-center justify-between bg-white"
+              >
+                <span className="text-[16px] font-medium text-[#212121]">
+                  {selectedHourlyRate}
+                </span>
+                <ChevronDown
+                  size={20}
+                  className={`text-[#818181] transition-transform ${
+                    isHourlyRateDropdownOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+              {isHourlyRateDropdownOpen && (
+                <div className="absolute z-10 w-full mt-[4px] bg-white border border-[#E0E0E0] rounded-[8px] shadow-lg max-h-[300px] overflow-y-auto">
+                  {hourlyRates.map(rate => {
+                    const isSelected = selectedHourlyRate === rate.label;
+                    return (
+                      <button
+                        key={rate.label}
+                        onClick={() => {
+                          setSelectedHourlyRate(rate.label);
+                          setIsHourlyRateDropdownOpen(false);
+                        }}
+                        className={`w-full flex items-center gap-[12px] px-[12px] py-[10px] rounded-[8px] text-left transition-colors ${
+                          isSelected ? "bg-[#EEEEEE]" : "hover:bg-[#F5F5F5]"
+                        }`}
+                      >
+                        <span
+                          className={`text-[16px] leading-[24px] tracking-[0px] align-middle ${
+                            isSelected
+                              ? "font-semibold text-[#212121]"
+                              : "font-medium text-[#818181]"
+                          }`}
+                        >
+                          {rate.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Mobile Sidebar */}
+          <div className="md:hidden w-[320px] mt-6 flex-shrink-0">
+            <div className="bg-white rounded-[8px] p-[24px] flex flex-col h-fit">
               <div className="relative">
                 <Search
                   className="absolute left-[16px] top-1/2 transform -translate-y-1/2 text-[#A0A0A0]"
@@ -208,8 +282,8 @@ const FindTalent = () => {
                 />
               </div>
 
-              <div className="flex flex-col gap-[12px]">
-                <h3 className="text-[12px] font-medium text-[#AEAEAE] uppercase leading-[150%] tracking-[1%] align-middle">
+              <div className="flex flex-col">
+                <h3 className="text-[12px] font-medium mt-5 mb-4 text-[#AEAEAE] uppercase leading-[150%] tracking-[1%] align-middle">
                   CATEGORY
                 </h3>
                 <div className="flex flex-col gap-[12px]">
@@ -238,25 +312,36 @@ const FindTalent = () => {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-[8px] mt-[8px]">
-                <h3 className="text-[12px] font-medium text-[#AEAEAE] uppercase leading-[150%] tracking-[1%]">
+              <div className="flex flex-col">
+                <h3 className="text-[12px] mt-5 mb-4 font-medium text-[#AEAEAE] uppercase leading-[150%] tracking-[1%]">
                   HOURLY RATE
                 </h3>
-                <div className="flex flex-col gap-[4px]">
-                  <span className="text-[16px] leading-[24px] tracking-[0px] align-middle font-medium text-[#818181]">
-                    $10 - $25
-                  </span>
-                  <span className="text-[16px] leading-[24px] tracking-[0px] align-middle font-medium text-[#818181]">
-                    $25 - $50
-                  </span>
-                  <span className="text-[16px] leading-[24px] tracking-[0px] align-middle font-medium text-[#818181]">
-                    $50+
-                  </span>
+                <div className="flex flex-col gap-4">
+                  {hourlyRates.map(rate => {
+                    const isSelected = selectedHourlyRate === rate.label;
+                    return (
+                      <button
+                        key={rate.label}
+                        onClick={() => setSelectedHourlyRate(rate.label)}
+                        className="text-left"
+                      >
+                        <span
+                          className={`text-[16px] leading-[24px] tracking-[0px] align-middle ${
+                            isSelected
+                              ? "font-semibold text-[#212121]"
+                              : "font-medium text-[#818181]"
+                          }`}
+                        >
+                          {rate.label}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               <button
-                className="md:hidden w-full bg-[#212121] text-white rounded-full flex items-center justify-center gap-[8px] font-medium text-[14px] py-[8px] px-[16px] hover:bg-[#333333] transition-colors mt-auto"
+                className="md:hidden w-full bg-[#212121] text-white rounded-full flex items-center justify-center gap-[8px] font-medium text-[14px] py-[8px] px-[16px] hover:bg-[#333333] transition-colors mt-8"
                 onClick={() => setIsCreateServiceModalOpen(true)}
               >
                 <Plus size={20} />
@@ -265,6 +350,7 @@ const FindTalent = () => {
             </div>
           </div>
 
+          {/* Jobs List */}
           <div className="flex-1 flex flex-col w-full mt-5 md:w-auto sm:gap-[16px] md:gap-0">
             {filteredJobs.length === 0 ? (
               <div className="bg-white rounded-[8px] p-[32px] text-center text-[#7A7A7A] text-[15px]">
@@ -275,7 +361,7 @@ const FindTalent = () => {
                 <div key={index} className=" group group-hover:bg-[#fafafa]">
                   <div
                     onClick={() => handleJobCardClick(job)}
-                    className="bg-white group-hover:bg-[#fafafa] p-[8px] sm:p-[8px] sm:pb-[16px] md:p-[24px] pb-[16px] md:pb-[24px] grid sm:grid-cols-[92px_1fr] grid-cols-[64px_1fr] gap-x-[12px] md:gap-x-[20px] gap-y-[8px] hover:shadow-sm transition-shadow cursor-pointer"
+                    className="bg-white group-hover:bg-[#fafafa] p-6 sm:p-[8px] sm:pb-[16px] md:p-[24px] pb-[16px] md:pb-[24px] grid sm:grid-cols-[92px_1fr] grid-cols-[64px_1fr] gap-x-[12px] md:gap-x-[20px] gap-y-[8px] hover:shadow-sm transition-shadow cursor-pointer"
                   >
                     <div className="row-span-2 sm:row-span-3 sm:aspect-square">
                       <Image
@@ -312,7 +398,7 @@ const FindTalent = () => {
                     </div>
 
                     <div className="col-span-2 mt-[8px]">
-                      <div className="flex flex-wrap gap-[4px]">
+                      <div className="flex flex-wrap gap-3">
                         {job.tags
                           .filter(tag => tag !== "[tag]" && tag.trim() !== "")
                           .slice(0, 3)
@@ -328,7 +414,7 @@ const FindTalent = () => {
                     </div>
                   </div>
                   {index < filteredJobs.length - 1 && (
-                    <hr className=" border-0 h-[1px] bg-[#8C8C8C] my-0" />
+                    <hr className=" border-0 h-[1px] bg-[#E8E8E8] my-0" />
                   )}
                 </div>
               ))

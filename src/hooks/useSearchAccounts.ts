@@ -1,12 +1,77 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Account, evmAddress } from "@lens-protocol/client";
-import {
-  fetchAccount as fetchLensAccount,
-  fetchAccounts as fetchLensAccounts,
-} from "@lens-protocol/client/actions";
-import { getPublicClient } from "@/client";
+import { gql, useQuery } from "@apollo/client";
+import { Account, Paginated } from "@lens-protocol/client";
+import { getApolloClient } from "@/apolloClient";
+
+const SEARCH_ACCOUNTS_QUERY = gql`
+  query SearchAccounts($localNameQuery: String!) {
+    accounts(
+      request: { filter: { searchBy: { localNameQuery: $localNameQuery } }, orderBy: BEST_MATCH }
+    ) {
+      items {
+        address
+        username {
+          id
+          value
+          localName
+          namespace
+          ownedBy
+          linkedTo
+          timestamp
+        }
+        metadata {
+          id
+          name
+          bio
+          picture
+          coverPicture
+          attributes {
+            key
+            value
+          }
+        }
+        owner
+        __typename
+      }
+      pageInfo {
+        prev
+        next
+      }
+    }
+  }
+`;
+
+const ACCOUNTS_AVAILABLE_QUERY = gql`
+  query AccountsAvailable($request: AccountsAvailableRequest!) {
+    accountsAvailable(request: $request) {
+      items {
+        ... on AccountOwned {
+          account {
+            address
+            owner
+            metadata {
+              attributes {
+                type
+                key
+                value
+              }
+              picture
+              name
+              id
+              bio
+            }
+            username {
+              localName
+              ownedBy
+              id
+            }
+          }
+        }
+      }
+    }
+  }
+`;
 
 type UseSearchAccountsProps = {
   filter: {
@@ -22,79 +87,42 @@ type UseMyAccountsResult = {
 };
 
 const useSearchAccounts = (options: UseSearchAccountsProps): UseMyAccountsResult => {
-  const [data, setData] = useState<Account[]>([]);
-  const [loading, setLoading] = useState(false);
-  const query = options.filter.searchBy.localNameQuery.trim();
+  const { data, loading, error } = useQuery(SEARCH_ACCOUNTS_QUERY, {
+    variables: {
+      localNameQuery: options.filter.searchBy.localNameQuery,
+    },
+    skip: !options.filter.searchBy.localNameQuery, // skip if empty string
+  });
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadAccounts = async () => {
-      if (!query) {
-        setData([]);
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      try {
-        const client = getPublicClient();
-        const result = await fetchLensAccounts(client, {
-          filter: {
-            searchBy: {
-              localNameQuery: query,
-            },
-          },
-        });
-
-        if (cancelled) {
-          return;
-        }
-
-        if (result.isErr()) {
-          console.error("Failed to fetch Lens accounts:", result.error);
-          setData([]);
-          return;
-        }
-
-        setData(result.value.items);
-      } catch (error) {
-        if (!cancelled) {
-          console.error("Failed to fetch Lens accounts:", error);
-          setData([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-
-    void loadAccounts();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [query]);
-
-  return { data, loading };
+  return {
+    data: data?.accounts.items ?? [],
+    loading,
+  };
 };
 
 const fetchAccount = async (address: string) => {
+  const client = getApolloClient();
+
   try {
-    const normalizedAddress = address.trim().toLowerCase();
-    const client = getPublicClient();
-    const result = await fetchLensAccount(client, {
-      address: evmAddress(normalizedAddress),
+    const { data } = await client.query({
+      query: ACCOUNTS_AVAILABLE_QUERY,
+      variables: {
+        request: {
+          includeOwned: true,
+          managedBy: address,
+        },
+      },
     });
 
-    if (result.isErr()) {
-      return null;
+    const firstItem = data?.accountsAvailable?.items?.[0];
+
+    if (firstItem && "account" in firstItem) {
+      return firstItem.account;
     }
 
-    return result.value;
+    return null;
   } catch (error) {
-    console.error("Failed to fetch Lens account:", error);
+    console.error("GraphQL error:", error);
     return null;
   }
 };
