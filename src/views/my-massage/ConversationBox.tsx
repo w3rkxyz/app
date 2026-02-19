@@ -53,15 +53,17 @@ const ConversationBox = () => {
 
   return (
     <div
-      className={`${client ? "" : "horizontal-box bg-[#FCFCFC] px-[12px]"} ${
+      className={`${
+        client ? "" : "horizontal-box bg-[#FCFCFC] px-[12px]"
+      } ${
         activeConversation !== undefined || (notOnNetwork && invalidUser) ? "" : "sm:hidden"
-      } flex-1`}
+      } flex-1 min-w-0`}
     >
       {!client ? (
         <div className="flex-1" />
       ) : notOnNetwork && invalidUser ? (
         <div className="flex flex-col h-full w-full bg-white border border-[#E4E4E7] rounded-[16px] overflow-hidden">
-          <div className="px-[16px] py-[14px] flex items-center gap-[10px]">
+          <div className="h-[64px] px-[24px] sm:px-[14px] border-b border-[#ECECF0] flex items-center gap-[10px]">
             <button
               type="button"
               className="sm:block hidden"
@@ -73,49 +75,31 @@ const ConversationBox = () => {
             <Image
               src={invalidUser.picture || "https://static.hey.xyz/images/default.png"}
               alt={invalidUser.displayName}
-              width={43}
-              height={43}
-              className="rounded-[8px]"
+              width={40}
+              height={40}
+              className="rounded-full object-cover"
             />
             <div className="flex flex-col gap-[2px]">
               <span className="text-[14px] leading-[18px] font-semibold text-[#111111]">
-                {invalidUser.displayName}
+                {invalidUser.displayName?.trim() || invalidUser.handle || "Unknown user"}
               </span>
-              <span className="text-[13px] leading-[16px] font-medium text-[#707070]">
-                {invalidUser.handle}
-              </span>
+              {invalidUser.handle && (
+                <span className="text-[13px] leading-[16px] font-medium text-[#707070]">
+                  {invalidUser.handle}
+                </span>
+              )}
             </div>
           </div>
-          <hr className="bg-[#E4E4E7] h-[1px]" />
-          <div className="flex-1 flex flex-col justify-center items-center align-middle">
-            <Image src="/images/mail.svg" alt="Mail" width={28} height={28} className="opacity-90" />
-            <span className="leading-[18px] text-center font-semibold text-[14px] text-black mt-[8px]">
+          <div className="flex-1 flex flex-col justify-center items-center px-[24px]">
+            <div className="w-[56px] h-[56px] rounded-full bg-[#F6F6F8] border border-[#ECECF0] flex items-center justify-center">
+              <Image src="/images/ChatsCircle.svg" alt="Message state" width={28} height={28} />
+            </div>
+            <span className="leading-[20px] text-center font-semibold text-[16px] text-black mt-[14px]">
               User is not on XMTP
             </span>
-          </div>
-          <hr className="bg-[#E4E4E7] h-[1px]" />
-          <div className="px-[16px]">
-            <div className="flex py-[12px] gap-[8px] w-full items-center">
-              <input
-                className="rounded-[12px] px-[12px] py-[10px] border border-[#E4E4E7] bg-[#FCFCFC] w-full text-[14px] leading-[18px] text-[#6F6F74]"
-                placeholder="Type your message here.."
-                disabled
-              />
-              <button
-                className="rounded-[12px] bg-[#F4F4F5] border border-[#E4E4E7] p-[9px] h-fit"
-                disabled
-                aria-label="Share"
-              >
-                <Image src="/images/share.svg" alt="Share" width={24} height={24} />
-              </button>
-              <button
-                className="px-[18px] sm:px-[10px] py-[10px] bg-[#C6AAFF] rounded-[12px] flex w-fit gap-[7px] h-fit items-center"
-                disabled
-              >
-                <span className="text-[15px] text-white leading-none sm:hidden">Send</span>
-                <Image src="/images/arrow-right.svg" alt="Send" width={16} height={16} />
-              </button>
-            </div>
+            <span className="leading-[20px] text-center font-medium text-[14px] text-[#6C6C6C] mt-[6px]">
+              They need to enable Messages before you can chat.
+            </span>
           </div>
         </div>
       ) : activeConversation !== undefined ? (
@@ -131,11 +115,16 @@ const ConversationBox = () => {
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-center h-full w-full bg-white sm:rounded-[16px] sm:border sm:border-[#E4E4E7]">
-          <div className="flex flex-col gap-[11px] justify-center items-center">
-            <Image src="/images/discuss.svg" alt="Discuss" width={24} height={21} />
-            <span className="leading-[18px] font-medium text-[14px] text-black">
-              Select a conversation to start messaging
+        <div className="flex items-center justify-center h-full w-full bg-white rounded-[16px] border border-[#E4E4E7]">
+          <div className="flex flex-col gap-[6px] justify-center items-center px-[24px] text-center">
+            <div className="w-[56px] h-[56px] rounded-full bg-[#F6F6F8] border border-[#ECECF0] flex items-center justify-center mb-[4px]">
+              <Image src="/images/ChatsCircle.svg" alt="Discuss" width={28} height={28} />
+            </div>
+            <span className="leading-[20px] font-semibold text-[16px] text-black">
+              No conversation selected
+            </span>
+            <span className="leading-[20px] font-medium text-[14px] text-[#6C6C6C]">
+              Choose a chat from the left sidebar to start messaging
             </span>
           </div>
         </div>

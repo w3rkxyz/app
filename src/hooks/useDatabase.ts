@@ -16,6 +16,20 @@ interface UseDatabase {
   addAddressToUser: (address: string, accountData: AccountData) => void;
 }
 
+const normalizeAddressMap = (rawMap: { [address: string]: AccountData } | undefined) => {
+  if (!rawMap) {
+    return {};
+  }
+
+  return Object.entries(rawMap).reduce(
+    (acc, [key, value]) => {
+      acc[key.toLowerCase()] = value;
+      return acc;
+    },
+    {} as { [address: string]: AccountData }
+  );
+};
+
 const useDatabase = (): UseDatabase => {
   const [addressToUser, setAddressToUser] = useState<{ [address: string]: AccountData }>({});
 
@@ -23,7 +37,8 @@ const useDatabase = (): UseDatabase => {
     const fetchAddressToUser = async () => {
       const docSnap = await getDoc(addressToUserDoc);
       if (docSnap.exists()) {
-        setAddressToUser(docSnap.data());
+        const normalized = normalizeAddressMap(docSnap.data() as { [address: string]: AccountData });
+        setAddressToUser(normalized);
       }
     };
     fetchAddressToUser();
@@ -37,7 +52,7 @@ const useDatabase = (): UseDatabase => {
     const docSnap = await getDoc(addressToUserDoc);
     let currentDoc = {};
     if (docSnap.exists()) {
-      currentDoc = docSnap.data();
+      currentDoc = normalizeAddressMap(docSnap.data() as { [address: string]: AccountData });
     }
     const existing = (currentDoc as { [address: string]: AccountData })[normalizedAddress];
     const unchanged =

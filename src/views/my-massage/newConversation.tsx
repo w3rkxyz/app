@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { Oval } from "react-loader-spinner";
 import { type Account } from "@lens-protocol/client";
@@ -9,6 +9,9 @@ import { useConversations } from "@/hooks/useConversations";
 import useSearchAccounts from "@/hooks/useSearchAccounts";
 import { IdentifierKind, type Identifier } from "@xmtp/browser-sdk";
 import { useXMTP } from "@/app/XMTPContext";
+import { useAccount } from "wagmi";
+import { useSelector } from "react-redux";
+import { RootState } from "@/redux/store";
 
 type Props = {
   handleCloseModal: () => void;
@@ -17,6 +20,8 @@ type Props = {
 const NewConversation = ({ handleCloseModal }: Props) => {
   const { client, setNotOnNetwork, setInvalidUser } = useXMTP();
   const { newDmWithIdentifier, selectConversation } = useConversations();
+  const { address: walletAddress } = useAccount();
+  const lensProfile = useSelector((state: RootState) => state.app.user);
   const myDivRef = useRef<HTMLDivElement>(null);
   const [searchText, setSearchText] = useState("");
   const { data: accounts, loading: accountsLoading } = useSearchAccounts({
@@ -26,6 +31,35 @@ const NewConversation = ({ handleCloseModal }: Props) => {
       },
     },
   });
+  const selfAddresses = useMemo(
+    () =>
+      [walletAddress, lensProfile?.address]
+        .filter((value): value is string => Boolean(value))
+        .map(value => value.toLowerCase()),
+    [walletAddress, lensProfile?.address]
+  );
+  const selfHandle = useMemo(
+    () => lensProfile?.handle?.replace(/^@/, "").toLowerCase() || "",
+    [lensProfile?.handle]
+  );
+  const filteredAccounts = useMemo(() => {
+    if (!accounts) {
+      return [];
+    }
+
+    return accounts.filter(account => {
+      const accountAddress = account.address?.toLowerCase() || "";
+      const ownerAddress = account.owner?.toLowerCase() || "";
+      const localName = account.username?.localName?.toLowerCase() || "";
+
+      const isOwnAddress =
+        (accountAddress && selfAddresses.includes(accountAddress)) ||
+        (ownerAddress && selfAddresses.includes(ownerAddress));
+      const isOwnHandle = selfHandle !== "" && localName === selfHandle;
+
+      return !isOwnAddress && !isOwnHandle;
+    });
+  }, [accounts, selfAddresses, selfHandle]);
 
   // useEffect(() => {
   //   const getAccounts = async () => {
@@ -178,12 +212,12 @@ const NewConversation = ({ handleCloseModal }: Props) => {
                 Creating a new DM with {selectedUser}
               </span>
             </div>
-          ) : accounts && accounts.length > 0 && searchText !== "" ? (
+          ) : filteredAccounts.length > 0 && searchText !== "" ? (
             <div
               className="absolute top-full left-0 right-0 mt-[8px] z-[20] max-h-[320px] overflow-y-auto flex flex-col gap-[2px] rounded-[12px] border border-[#E4E4E7] bg-white py-[8px]"
               onClick={e => e.stopPropagation()}
             >
-              {accounts.slice(0, 7).map((acc, index) => {
+              {filteredAccounts.slice(0, 7).map((acc, index) => {
                 const profile = getLensAccountData(acc);
                 return (
                   <div
@@ -214,6 +248,15 @@ const NewConversation = ({ handleCloseModal }: Props) => {
                   </div>
                 );
               })}
+            </div>
+          ) : searchText !== "" && !accountsLoading ? (
+            <div
+              className="absolute top-full left-0 right-0 mt-[8px] z-[20] rounded-[12px] border border-[#E4E4E7] bg-white py-[16px] px-[12px] text-center"
+              onClick={e => e.stopPropagation()}
+            >
+              <span className="text-[13px] leading-[18px] text-[#7C7C82]">
+                No users found
+              </span>
             </div>
           ) : accountsLoading && searchText !== "" ? (
             <div

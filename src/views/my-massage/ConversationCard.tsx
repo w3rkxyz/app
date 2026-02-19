@@ -71,26 +71,48 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
           return;
         }
 
-        const otherIdentifier = otherMember.accountIdentifiers[0].identifier.toLowerCase();
-        const mapped = usersDic[otherIdentifier];
-        const shouldResolveFromLens = !mapped || !hasResolvedIdentity(mapped, otherIdentifier);
+        const otherIdentifiers = Array.from(
+          new Set(otherMember.accountIdentifiers.map(identifier => identifier.identifier.toLowerCase()))
+        );
+        const mapped =
+          otherIdentifiers
+            .map(identifier => usersDic[identifier])
+            .find(
+              (candidate, index) =>
+                candidate &&
+                hasResolvedIdentity(candidate, otherIdentifiers[index])
+            ) ||
+          otherIdentifiers.map(identifier => usersDic[identifier]).find(Boolean);
+        const primaryIdentifier = otherIdentifiers[0] ?? "";
+        const shouldResolveFromLens =
+          !mapped ||
+          !otherIdentifiers.some(identifier => hasResolvedIdentity(mapped, identifier));
 
         if (mapped && !cancelled) {
           setUser(mapped);
         }
 
         if (shouldResolveFromLens) {
-          const acc = await fetchAccount(otherIdentifier);
+          let acc = null;
+          for (const identifier of otherIdentifiers) {
+            // Resolve against all identifiers (owner/scw) to avoid false "Unknown user".
+            acc = await fetchAccount(identifier);
+            if (acc) {
+              break;
+            }
+          }
           if (acc) {
             const accountData = getLensAccountData(acc);
             if (!cancelled) {
               setUser(accountData);
             }
-            addAddressToUser(otherIdentifier, accountData);
+            for (const identifier of otherIdentifiers) {
+              addAddressToUser(identifier, accountData);
+            }
             addAddressToUser(accountData.address.toLowerCase(), accountData);
           } else if (!mapped && !cancelled) {
             setUser({
-              address: otherIdentifier,
+              address: primaryIdentifier,
               displayName: "Unknown user",
               picture: "",
               coverPicture: "",

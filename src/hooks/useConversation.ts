@@ -62,27 +62,49 @@ export const useConversation = () => {
           );
 
           if (otherUser) {
-            const otherIdentifier = otherUser.accountIdentifiers[0].identifier.toLowerCase();
-            const mappedUser = addressToUser[otherIdentifier];
+            const otherIdentifiers = Array.from(
+              new Set(
+                otherUser.accountIdentifiers.map(identifier => identifier.identifier.toLowerCase())
+              )
+            );
+            const mappedUser =
+              otherIdentifiers
+                .map(identifier => addressToUser[identifier])
+                .find(
+                  (candidate, index) =>
+                    candidate &&
+                    hasResolvedIdentity(candidate, otherIdentifiers[index])
+                ) ||
+              otherIdentifiers.map(identifier => addressToUser[identifier]).find(Boolean);
+            const primaryIdentifier = otherIdentifiers[0] ?? "";
             const shouldResolveFromLens =
-              !mappedUser || !hasResolvedIdentity(mappedUser, otherIdentifier);
+              !mappedUser ||
+              !otherIdentifiers.some(identifier => hasResolvedIdentity(mappedUser, identifier));
 
             if (mappedUser && !cancelled) {
               setOtherUser(mappedUser);
             }
 
             if (shouldResolveFromLens) {
-              const acc = await fetchAccount(otherIdentifier);
+              let acc = null;
+              for (const identifier of otherIdentifiers) {
+                acc = await fetchAccount(identifier);
+                if (acc) {
+                  break;
+                }
+              }
               if (acc) {
                 const accountData = getLensAccountData(acc);
                 if (!cancelled) {
                   setOtherUser(accountData);
                 }
-                addAddressToUser(otherIdentifier, accountData);
+                for (const identifier of otherIdentifiers) {
+                  addAddressToUser(identifier, accountData);
+                }
                 addAddressToUser(accountData.address.toLowerCase(), accountData);
               } else if (!mappedUser && !cancelled) {
                 setOtherUser({
-                  address: otherIdentifier,
+                  address: primaryIdentifier,
                   displayName: "Unknown user",
                   picture: "",
                   coverPicture: "",

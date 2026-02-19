@@ -83,7 +83,18 @@ const useSearchAccounts = (options: UseSearchAccountsProps): UseMyAccountsResult
 
 const fetchAccount = async (address: string) => {
   try {
-    const normalizedAddress = address.trim().toLowerCase();
+    const normalizedInput = address.trim().toLowerCase();
+    const caipSegments = normalizedInput.split(":");
+    const inferredAddress = caipSegments[caipSegments.length - 1];
+    const normalizedAddress =
+      inferredAddress.startsWith("0x") && inferredAddress.length === 42
+        ? inferredAddress
+        : normalizedInput;
+
+    if (!normalizedAddress.startsWith("0x") || normalizedAddress.length !== 42) {
+      return null;
+    }
+
     const client = getPublicClient();
     const result = await fetchLensAccount(client, {
       address: evmAddress(normalizedAddress),
