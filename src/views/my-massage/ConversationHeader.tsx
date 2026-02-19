@@ -53,15 +53,9 @@ const ConversationHeader = () => {
           />
         </Link>
         <div className="min-w-0">
-          <div className="flex items-center gap-[8px]">
-            <span className="text-[16px] leading-[20px] font-semibold text-[#212121] truncate">
-              {otherUser.displayName}
-            </span>
-            <span className="px-2 py-0.5 bg-[#F0FDF4] border border-[#38B764] text-[#38B764] text-[12px] rounded-full font-medium items-center gap-1 sm:hidden inline-flex">
-              <span className="w-1.5 h-1.5 bg-[#109A43] rounded-full"></span>
-              Online
-            </span>
-          </div>
+          <span className="text-[16px] leading-[20px] font-semibold text-[#212121] truncate block">
+            {otherUser.displayName}
+          </span>
           <span className="text-[13px] leading-[16px] text-[#6C6C6C] truncate">{otherUser.handle}</span>
         </div>
       </div>

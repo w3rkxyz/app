@@ -117,8 +117,7 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
     const query = searchQuery.toLowerCase();
     const matches =
       user.displayName.toLowerCase().includes(query) ||
-      user.handle.toLowerCase().includes(query) ||
-      lastMessage.toLowerCase().includes(query);
+      user.handle.toLowerCase().includes(query);
 
     if (!matches) {
       return null;
@@ -129,9 +128,12 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
     return <ConversationSkeleton key={conversation.id} />;
   }
 
+  const displayName = user.displayName?.trim() || user.address;
+  const displayHandle = user.handle?.trim() || "";
+
   return (
     <div
-      className={`flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer transition-colors ${
+      className={`flex items-start gap-3 p-3 hover:bg-gray-50 cursor-pointer transition-colors ${
         isSelected ? "bg-gray-50" : ""
       }`}
       onClick={() => selectConversation(conversation)}
@@ -154,11 +156,16 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-0.5">
-          <h3 className="text-base font-medium text-gray-900 truncate">{user.displayName}</h3>
-          <span className="text-sm text-gray-500 ml-2 flex-shrink-0">{lastMessageTime}</span>
+        <div className="flex items-center justify-between">
+          <h3 className="text-[15px] leading-[20px] font-semibold text-gray-900 truncate">{displayName}</h3>
+          <span className="text-xs text-gray-500 ml-2 flex-shrink-0">{lastMessageTime}</span>
         </div>
-        <p className="text-sm text-gray-500 truncate">{lastMessage}</p>
+        {displayHandle && (
+          <p className="text-xs leading-[16px] text-[#8C8C8C] truncate mt-0.5">{displayHandle}</p>
+        )}
+        <div className="mt-0.5">
+          <p className="text-sm leading-[18px] text-gray-500 truncate">{lastMessage}</p>
+        </div>
       </div>
     </div>
   );

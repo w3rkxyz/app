@@ -181,7 +181,7 @@ const ConversationsNav = () => {
           <ConversationsList conversations={conversations} searchQuery={searchQuery} />
           {!loading && conversations.length === 0 && (
             <div className="flex items-center justify-center h-full px-6 text-center text-[#6C6C6C] text-[14px]">
-              No conversations yet. Start one with the compose button.
+              No conversations yet
             </div>
           )}
         </>
