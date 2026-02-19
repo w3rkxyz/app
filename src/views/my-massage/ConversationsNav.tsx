@@ -183,7 +183,7 @@ const ConversationsNav = () => {
             <div className="flex items-center justify-center h-full px-6 text-center text-[#6C6C6C] text-[14px]">
               No conversations yet
             </div>
-          )} */}
+          )}
         </>
       ) : (
         <div className="h-screen w-full bg-white flex items-center justify-center">
@@ -201,74 +201,7 @@ const ConversationsNav = () => {
               <p className="text-xs text-gray-500 mt-2">{stageLabel[connectStage] ?? "Connecting..."}</p>
             )}
           </div>
-        </div> : !isMessagesEnabled ? <div className="h-screen w-full bg-white flex items-center justify-center">
-        <div className="text-center flex flex-col items-center justify-center">
-          <Image src={'/images/ChatsCircle.svg'} alt="" width={64} height={64} />
-          <p className="text-gray-500 text-lg mb-4">Enable Messages</p>
-          <button
-            onClick={() => setIsMessagesEnabled(true)}
-            className="px-6 py-2 bg-gray-900 text-white text-sm rounded-full hover:bg-gray-800 transition-colors"
-          >
-            Enable
-          </button>
         </div>
-        <button className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-lg transition-colors">
-          {/* <Edit size={18} className="text-gray-700" /> */}
-        </button>
-      </div> : <div className="w-full bg-white flex flex-col sm:hidden">
-        {/* <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold text-gray-900">Messages</h1>
-            <span className="text-sm text-gray-500">39</span>
-          </div>
-          <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <Edit size={18} className="text-gray-700" />
-          </button>
-        </div>
-
-        <div className="p-3">
-          <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search"
-              className="w-full pl-9 pr-3 py-2 bg-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div> */}
-
-        <div className="flex-1 w-full overflow-y-auto">
-          {contacts.map((contact) => (
-            <div
-              key={contact.id}
-              onClick={() => setSelectedChat(contact.id)}
-              className={`flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer transition-colors ${
-                selectedChat === contact.id ? 'bg-gray-50' : ''
-              }`}
-            >
-              <div className="relative">
-                <img 
-                  src={contact.avatar} 
-                  alt={contact.name}
-                  className="w-11 h-11 rounded-full object-cover"
-                />
-                {contact.unread > 0 && (
-                  <div className={`absolute -bottom-0.5 -right-0.5 min-w-[20px] h-5 ${contact.badgeColor || 'bg-gray-900'} rounded-full flex items-center justify-center px-1.5 text-white text-xs font-medium`}>
-                    {contact.unread}
-                  </div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-0.5">
-                  <h3 className="text-base font-semibold text-[#212121] truncate">{contact.name}</h3>
-                  <span className="text-sm text-gray-500 ml-2">{contact.time}</span>
-                </div>
-                <p className="text-sm text-gray-500 truncate">{contact.message}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
       )}
 
       {isNewConversationModalOpen && (

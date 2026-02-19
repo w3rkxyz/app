@@ -20,7 +20,7 @@ const ConversationBox = () => {
   } = useConversation();
   const { client } = useXMTP();
 
-//   const stopStreamRef = useRef<(() => void) | null>(null);
+  const stopStreamRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -128,7 +128,7 @@ const ConversationBox = () => {
             </span>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
