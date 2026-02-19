@@ -6,18 +6,27 @@ import { useConversations } from "@/hooks/useConversations";
 import ConversationSkeleton from "@/components/reusable/ConversationSkeleton";
 import useDatabase from "@/hooks/useDatabase";
 import ConversationCard from "./ConversationCard";
+import DummyConversationCard from "./DummyConversationCard";
+import { dummyConversations } from "./dummyConversations";
 import type { ContentTypes } from "@/app/XMTPContext";
 
 type ConversationListProps = {
   conversations: Dm<ContentTypes>[];
+  searchQuery?: string;
 };
 
-const ConversationsList = ({ conversations }: ConversationListProps) => {
+const ConversationsList = ({ conversations, searchQuery = "" }: ConversationListProps) => {
   const { addressToUser } = useDatabase();
   const { loading } = useConversations();
   const [name, setName] = useState("");
   const [isSelected, setIsSelected] = useState(false);
   const [showMessagesMobile, setShowMessagesMobile] = useState(true);
+
+  const filteredConversations = conversations.filter((conversation) => {
+    if (!searchQuery.trim()) return true;
+    // The filtering will be done in ConversationCard since we have access to user data there
+    return true;
+  });
 
   return (
     <div
@@ -27,12 +36,25 @@ const ConversationsList = ({ conversations }: ConversationListProps) => {
         ? [0, 1, 2, 3, 4, 5].map(item => {
             return <ConversationSkeleton key={item} />;
           })
-        : conversations.length > 0 &&
-          conversations.map((conversation, index) => {
-            return (
-              <ConversationCard key={index} conversation={conversation} usersDic={addressToUser} />
-            );
-          })}
+        : conversations.length > 0
+          ? conversations.map((conversation, index) => {
+              return (
+                <ConversationCard 
+                  key={index} 
+                  conversation={conversation} 
+                  usersDic={addressToUser}
+                  searchQuery={searchQuery}
+                />
+              );
+            })
+          : dummyConversations.map((dummyConv) => {
+              return (
+                <DummyConversationCard 
+                  key={dummyConv.id} 
+                  conversation={dummyConv}
+                />
+              );
+            })}
     </div>
   );
 };

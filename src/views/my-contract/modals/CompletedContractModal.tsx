@@ -30,11 +30,11 @@ const CompletedContractModal = ({ handleCloseModal, contractDetails }: Props) =>
   const myDivRef = useRef<HTMLDivElement>(null);
   const [showMobile, setShowMobile] = useState(false);
   const [showClientView, setShowClientView] = useState(
-    (address as string) === contractDetails.clientAddress
+    (address as string) === contractDetails?.clientAddress
   );
   const [userData, setUserData] = useState<AccountData>();
   const { data: profile, loading: profileLoading } = useLensAccount({
-    username: { localName: showClientView ? contractDetails.freelancerHandle : contractDetails.clientHandle },
+    username: { localName: showClientView ? contractDetails?.freelancerHandle : contractDetails.clientHandle },
   })
   const [loadingUser, setLoadingUser] = useState(true);
 
@@ -75,11 +75,11 @@ const CompletedContractModal = ({ handleCloseModal, contractDetails }: Props) =>
 
   return (
     <div
-      className={`view-job-modal-section sm:w-full rounded-[12px] px-[16px] sm:rounded-none sm:rounded-tl-[12px]  sm:rounded-tr-[12px] bg-white sm:absolute sm:mobile-modal 
+      className={`view-job-modal-section sm:w-full rounded-[12px] px-7 py-3 sm:rounded-none sm:rounded-tl-[12px]  sm:rounded-tr-[12px] bg-white sm:absolute sm:mobile-modal 
       ${showMobile ? "open-modal" : ""} h-fit`}
       ref={myDivRef}
     >
-      <div className="w-[667px] sm:w-full flex justify-between items-center py-[13px] border-b-[1px] border-b-[#E4E4E7] rounded-none sm:rounded-tl-[12px] sm:rounded-tr-[12px]">
+      {/* <div className="w-[667px] sm:w-full flex justify-between items-center py-[13px] border-b-[1px] border-b-[#E4E4E7] rounded-none sm:rounded-tl-[12px] sm:rounded-tr-[12px]">
         <span className="leading-[14.52px] text-[14px] font-semibold text-[black]">
           Contract Completion
         </span>
@@ -91,8 +91,27 @@ const CompletedContractModal = ({ handleCloseModal, contractDetails }: Props) =>
           width={20}
           height={20}
         />
+      </div> */}
+      <div className="w-[667px] sm:w-full flex items-start justify-between gap-1 py-[13px] border-b-[1px] border-b-[#E4E4E7] rounded-none sm:rounded-tl-[12px] sm:rounded-tr-[12px]">
+        <div className="flex flex-col gap-2">
+          <span className="leading-[14.52px] text-[20px] font-medium text-[black]">
+            Contract Completion
+          </span>
+          <span className="text-[#83899F] text-base">The contract has been completed and payment has been released.</span>
+        </div>
+        <Image
+          onClick={handleCloseModal}
+          className="cursor-pointer"
+          src="/images/Close.svg"
+          alt="close icon"
+          width={20}
+          height={20}
+        />
       </div>
       <div className="bg-[white] rounded-[12px] sm:rounded-none py-[16px] sm:w-full max-w-[664px] flex flex-col">
+        <div className="border border-[#087531] bg-[#F1FFF5] rounded-lg py-5 px-4 mb-4">
+          <span className="text-[#087531]">Contract has been completed successfully and payment has been released.</span>
+        </div>
         {!loadingUser && userData ? (
           <div className="flex sm:flex-col justify-between gap-[8px] sm:gap-[16px] w-full">
             <div className="flex gap-[6px] items-center">
@@ -129,13 +148,27 @@ const CompletedContractModal = ({ handleCloseModal, contractDetails }: Props) =>
         <h3 className="text-[16px] leading-[19.36px] font-semibold mb-[6px]">
           {contractDetails.title}
         </h3>
-        <p className="line-clamp-4 sm:line-clamp-6 text-[12px] leading-[20px] font-normal">
+        <p className="line-clamp-4 sm:line-clamp-6 leading-[20px] font-normal text-sm text-[#6C6C6C]">
           {contractDetails.description}
         </p>
         <hr className="w-full bg-[#D9D9D9] my-[16px]" />
         <div className="flex flex-col gap-[6px]">
-          <span className="text-[14px] leading-[16.94px] font-medium">Client Wallet Address</span>
-          <span className="text-[12px] leading-[14.52px] font-normal">
+          <span className="text-[14px] leading-[16.94px] font-medium">Due Date</span>
+          <span className="text-sm text-[#6C6C6C] leading-[14.52px] font-normal">
+            {formatDate(contractDetails.dueDate)}
+          </span>
+        </div>
+        <hr className="w-full bg-[#D9D9D9] my-[16px]" />
+        <div className="flex flex-col gap-[6px]">
+          <span className="text-[14px] leading-[16.94px] font-medium">Payment Amount</span>
+          <span className="text-sm text-[#6C6C6C] leading-[14.52px] font-normal">
+            ${contractDetails.paymentAmount}
+          </span>
+        </div>
+        <hr className="w-full bg-[#D9D9D9] my-[16px]" />
+        <div className="flex flex-col gap-[6px]">
+          <span className="text-[14px] leading-[16.94px] font-medium">Your Wallet Address</span>
+          <span className="text-sm text-[#6C6C6C] leading-[14.52px] font-normal">
             {contractDetails.clientAddress}
           </span>
         </div>
@@ -144,29 +177,25 @@ const CompletedContractModal = ({ handleCloseModal, contractDetails }: Props) =>
           <span className="text-[14px] leading-[16.94px] font-medium">
             Freelancer Wallet Address
           </span>
-          <span className="text-[12px] leading-[14.52px] font-normal">
+          <span className="text-sm text-[#6C6C6C] leading-[14.52px] font-normal">
             {contractDetails.freelancerAddress}
           </span>
         </div>
-        <hr className="w-full bg-[#D9D9D9] my-[16px]" />
-        <div className="flex flex-col gap-[6px]">
-          <span className="text-[14px] leading-[16.94px] font-medium">Payment Amount</span>
-          <span className="text-[12px] leading-[14.52px] font-normal">
-            ${contractDetails.paymentAmount}
-          </span>
-        </div>
-        <hr className="w-full bg-[#D9D9D9] my-[16px]" />
-        <div className="flex flex-col gap-[6px]">
-          <span className="text-[14px] leading-[16.94px] font-medium">Due Date</span>
-          <span className="text-[12px] leading-[14.52px] font-normal">
-            {formatDate(contractDetails.dueDate)}
-          </span>
-        </div>
+        {/* <hr className="w-full bg-[#D9D9D9] my-[16px]" />
         <div className="w-full bg-[#F5F5F5] rounded-[20px] py-[20px] gap-[7px] flex flex-col items-center mt-[29px] sm:mt-[16px]">
           <Image src="/images/completed.svg" alt="tick icon" width={34} height={34} />
           <p className="text-[14px] leading-[22px] font-semibold max-w-[300px] text-center">
             Contract has been completed successfully and payment has been released.
           </p>
+        </div> */}
+        <div className="py-[13px] border-t-[1px] border-t-[#E4E4E7] mt-10 flex items-center justify-end">
+          <button
+            type="button"
+            className="flex gap-[5px] text-sm py-[12px] px-[16px] tx-[14px] leading-[14.5px] text-white bg-[#212121] rounded-full font-medium"
+            // onClick={handleSubmit}
+          >
+            Re-Hire Freelancer
+          </button>
         </div>
       </div>
     </div>

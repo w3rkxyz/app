@@ -32,12 +32,13 @@ const ConditionalNav = () => {
           return;
         }
 
-        const authenticatedUser = client.getAuthenticatedUser().unwrapOr(null);
+        const authenticatedUserResult = await client.getAuthenticatedUser();
+        const authenticatedUser = authenticatedUserResult.unwrapOr(null);
         if (!mounted || !authenticatedUser) {
           return;
         }
 
-        const account = await fetchAccount(client, { address: authenticatedUser.address }).unwrapOr(
+        const account = await fetchAccount(client, { address: authenticatedUser?.address }).unwrapOr(
           null
         );
 

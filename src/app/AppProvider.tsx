@@ -23,7 +23,7 @@ export default function AppProvider({ children }: { children: React.ReactNode })
     <ClientApolloProvider>
       <QueryClientProvider client={qcRef.current!}>
         <WagmiProvider config={wagmiConfig}>
-          <ConnectKitProvider>
+          <ConnectKitProvider theme="auto" mode="light" >
             <LensProvider client={publicClient}>
               <XMTPProvider>{children}</XMTPProvider>
             </LensProvider>
