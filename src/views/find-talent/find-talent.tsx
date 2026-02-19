@@ -148,9 +148,9 @@ const FindTalent = () => {
   return (
     <div className="min-h-screen bg-white">
       <div className="pt-[64px] sm:pt-[36px] custom-container max-w-[1440px] mx-auto">
-        <div className="flex sm:flex-col md:flex-row md:max-lg:flex-col gap-[16px] md:gap-[32px] md:max-lg:gap-[16px] sm:pt-[48px] md:pt-[32px] pb-[80px] md:pb-[32px] px-[8px] md:px-0">
+        <div className="flex sm:flex-col md:flex-row gap-[16px] md:gap-[20px] lg:gap-[32px] sm:pt-[48px] md:pt-[32px] pb-[80px] md:pb-[32px] px-[8px] md:px-0">
           {/* Category Dropdown - Desktop */}
-          <div className="hidden md:flex flex-col gap-[12px] md:max-lg:w-full" ref={categoryDropdownRef}>
+          <div className="hidden md:flex flex-col gap-[12px] md:max-lg:min-w-[180px] md:max-lg:max-w-[180px] md:max-lg:flex-shrink-0" ref={categoryDropdownRef}>
             <h3 className="text-[12px] font-medium text-[#AEAEAE] uppercase leading-[150%] tracking-[1%] align-middle">
               Category
             </h3>
@@ -214,7 +214,7 @@ const FindTalent = () => {
           </div>
 
           {/* Hourly Rate Dropdown - Desktop */}
-          <div className="hidden md:flex flex-col gap-[12px] md:max-lg:w-full" ref={hourlyRateDropdownRef}>
+          <div className="hidden md:flex flex-col gap-[12px] md:max-lg:min-w-[180px] md:max-lg:max-w-[180px] md:max-lg:flex-shrink-0" ref={hourlyRateDropdownRef}>
             <h3 className="text-[12px] font-medium text-[#AEAEAE] uppercase leading-[150%] tracking-[1%] align-middle">
               Hourly Rate
             </h3>
@@ -351,7 +351,7 @@ const FindTalent = () => {
           </div>
 
           {/* Jobs List */}
-          <div className="flex-1 flex flex-col w-full mt-5 md:w-auto sm:gap-[16px] md:gap-0 md:max-lg:w-full md:max-lg:mt-0 md:max-lg:min-w-0">
+          <div className="flex-1 flex flex-col w-full mt-5 md:w-auto sm:gap-[16px] md:gap-0 md:min-w-0">
             {filteredJobs.length === 0 ? (
               <div className="bg-white rounded-[8px] p-[32px] text-center text-[#7A7A7A] text-[15px]">
                 No jobs found
