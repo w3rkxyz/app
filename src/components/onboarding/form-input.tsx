@@ -12,7 +12,8 @@ const FormInput: React.FC<FormInputProps> = ({
   type = 'text',
   required = false,
   className = '',
-  startContent =  false
+  startContent =  false,
+  autoComplete = 'off'
 }) => {
   const [isFocused, setIsFocused] = useState(false)
 
@@ -31,11 +32,12 @@ const FormInput: React.FC<FormInputProps> = ({
         name={name}
         value={value}
         onChange={onChange}
+        autoComplete={autoComplete}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
         placeholder={placeholder}
         required={required}
-        className={`w-full xs:rounded-[8px] rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:border-gray-600 focus:outline-none ${startContent && 'border-l-0 xs:rounded-s-none rounded-s-none'} ${className}`}
+        className={`form-input w-full xs:rounded-[8px] rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:border-gray-600 focus:outline-none ${startContent && 'border-l-0 xs:rounded-s-none rounded-s-none'} ${className}`}
         />
         </div>
     </div>
@@ -43,4 +45,3 @@ const FormInput: React.FC<FormInputProps> = ({
 }
 
 export default FormInput
-
