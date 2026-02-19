@@ -131,39 +131,34 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
 
   return (
     <div
-      key={conversation.id}
-      className={`p-[8px] w-full ${
-        isSelected ? "bg-[#E4E4E7]" : "hover:bg-[#F3F3F3]"
-      } rounded-[8px] cursor-pointer transition-colors`}
+      className={`flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer transition-colors ${
+        isSelected ? "bg-gray-50" : ""
+      }`}
       onClick={() => selectConversation(conversation)}
     >
-      <div className="flex justify-between align-start gap-[10px]">
-        <div className="flex gap-[12px] flex-1 min-w-0">
-          <Image
-            src={user.picture}
-            onError={e => {
-              (e.target as HTMLImageElement).src = "https://static.hey.xyz/images/default.png";
-            }}
-            className="rounded-[8px] flex-shrink-0"
-            alt="user pic"
-            width={40}
-            height={40}
-          />
-          <div className="flex flex-col gap-[4px] flex-1 min-w-0">
-            <div className="flex justify-between items-baseline gap-[8px]">
-              <span className="text-[14px] leading-[16.94px] font-medium text-black">
-                {user.displayName}
-              </span>
-              <span className="text-[12px] leading-[14px] font-medium text-[#999] flex-shrink-0">
-                {lastMessageTime}
-              </span>
-            </div>
-            <p className="line-clamp-1 text-[13px] leading-[15px] text-[#707070]">{lastMessage}</p>
-          </div>
-        </div>
+      <div className="relative">
+        <Image
+          src={user.picture || "https://static.hey.xyz/images/default.png"}
+          onError={e => {
+            (e.target as HTMLImageElement).src = "https://static.hey.xyz/images/default.png";
+          }}
+          className="rounded-full object-cover"
+          alt="user pic"
+          width={44}
+          height={44}
+        />
         {hasUnread && (
-          <div className="w-[8px] h-[8px] bg-black rounded-full mt-[6px] flex-shrink-0"></div>
+          <div className="absolute -bottom-0.5 -right-0.5 min-w-[20px] h-5 bg-gray-900 rounded-full flex items-center justify-center px-1.5 text-white text-xs font-medium">
+            1
+          </div>
         )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-0.5">
+          <h3 className="text-base font-medium text-gray-900 truncate">{user.displayName}</h3>
+          <span className="text-sm text-gray-500 ml-2 flex-shrink-0">{lastMessageTime}</span>
+        </div>
+        <p className="text-sm text-gray-500 truncate">{lastMessage}</p>
       </div>
     </div>
   );
