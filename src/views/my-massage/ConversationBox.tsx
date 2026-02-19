@@ -62,7 +62,7 @@ const ConversationBox = () => {
       {!client ? (
         <div className="flex-1" />
       ) : notOnNetwork && invalidUser ? (
-        <div className="flex flex-col h-full w-full bg-white border border-[#E4E4E7] rounded-[16px] overflow-hidden">
+        <div className="flex flex-col h-full w-full bg-white overflow-hidden">
           <div className="h-[64px] px-[24px] sm:px-[14px] border-b border-[#ECECF0] flex items-center gap-[10px]">
             <button
               type="button"
@@ -90,10 +90,14 @@ const ConversationBox = () => {
               )}
             </div>
           </div>
-          <div className="flex-1 flex flex-col justify-center items-center px-[24px]">
-            <div className="w-[56px] h-[56px] rounded-full bg-[#F6F6F8] border border-[#ECECF0] flex items-center justify-center">
-              <Image src="/images/ChatsCircle.svg" alt="Message state" width={28} height={28} />
-            </div>
+          <div className="flex-1 flex flex-col justify-center items-center px-[24px] bg-[#F6F6F8]">
+            <Image
+              src="/images/discuss-grey.svg"
+              alt="Message state"
+              width={56}
+              height={56}
+              className="object-contain"
+            />
             <span className="leading-[20px] text-center font-semibold text-[16px] text-black mt-[14px]">
               User is not on XMTP
             </span>
@@ -103,32 +107,29 @@ const ConversationBox = () => {
           </div>
         </div>
       ) : activeConversation !== undefined ? (
-        <div className="flex flex-col h-full w-full bg-[#FCFCFC] sm:bg-white overflow-hidden">
+        <div className="flex flex-col h-full w-full bg-white overflow-hidden">
           <div className="h-[64px] bg-white flex items-center justify-between px-[24px] sm:px-[14px] shadow-[0px_2px_9px_0px_#0000000D]">
             <ConversationHeader />
           </div>
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden bg-[#F6F6F8]">
             <ConversationMessages messages={messages} />
           </div>
-          <div className="bg-white border-t border-[#E4E4E7] shadow-[0px_4px_6px_-2px_#10182808] px-[16px] sm:px-[12px]">
+          <div className="bg-[#F6F6F8] border-t border-[#E4E4E7] px-[16px] sm:px-[12px]">
             <ConversationInput />
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-center h-full w-full bg-white">
-          <div className="flex flex-col gap-[8px] justify-center items-center px-[24px] text-center">
+        <div className="flex items-center justify-center h-full w-full bg-[#F6F6F8]">
+          <div className="flex flex-col justify-center items-center px-[24px] text-center">
             <Image
-              src="/images/discuss.svg"
+              src="/images/discuss-grey.svg"
               alt="Discuss"
-              width={52}
-              height={52}
-              className="object-contain mb-[6px]"
+              width={64}
+              height={64}
+              className="object-contain"
             />
-            <span className="leading-[24px] font-semibold text-[20px] text-black">
-              No conversation selected
-            </span>
-            <span className="leading-[20px] font-medium text-[14px] text-[#6C6C6C]">
-              Choose a chat from the left sidebar to start messaging
+            <span className="mt-[12px] leading-[20px] font-medium text-[14px] text-[#6C6C6C]">
+              Select a conversation to start messaging
             </span>
           </div>
         </div>
