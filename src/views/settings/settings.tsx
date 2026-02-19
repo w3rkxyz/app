@@ -22,6 +22,7 @@ import {
   uploadMetadataToLensStorage,
   storageClient,
 } from "@/utils/storage-client";
+import { fileToDataURI, jsonToDataURI } from "@/utils/dataUriHelpers";
 import type { RootState } from "@/redux/store";
 
 const COUNTRY_NAMES = [
@@ -97,6 +98,26 @@ const Settings = () => {
       return storageClient.resolve(value);
     }
     return value;
+  };
+
+  const normalizeUri = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return trimmed;
+
+    if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed)) {
+      return trimmed;
+    }
+
+    const ipfsPathMatch = trimmed.match(/^\/?ipfs\/(.+)$/i);
+    if (ipfsPathMatch?.[1]) {
+      return `ipfs://${ipfsPathMatch[1]}`;
+    }
+
+    if (/^(Qm[1-9A-HJ-NP-Za-km-z]{44}|bafy[1-9A-HJ-NP-Za-km-z]+)$/i.test(trimmed)) {
+      return `ipfs://${trimmed}`;
+    }
+
+    return trimmed;
   };
 
   const accountDataToFormState = (accountData: ReturnType<typeof getLensAccountData>) => ({
@@ -275,11 +296,21 @@ const Settings = () => {
       let pictureUri = formState.picture;
 
       if (pendingCoverFile) {
-        coverUri = await uploadFileToLensStorage(pendingCoverFile);
+        try {
+          coverUri = await uploadFileToLensStorage(pendingCoverFile);
+        } catch (uploadError) {
+          console.warn("Cover upload to Lens Storage failed, using data URI fallback:", uploadError);
+          coverUri = await fileToDataURI(pendingCoverFile);
+        }
       }
 
       if (pendingPhotoFile) {
-        pictureUri = await uploadFileToLensStorage(pendingPhotoFile);
+        try {
+          pictureUri = await uploadFileToLensStorage(pendingPhotoFile);
+        } catch (uploadError) {
+          console.warn("Profile image upload to Lens Storage failed, using data URI fallback:", uploadError);
+          pictureUri = await fileToDataURI(pendingPhotoFile);
+        }
       }
 
       const attributesMap: {
@@ -305,10 +336,16 @@ const Settings = () => {
         attributes: attributes.length !== 0 ? attributes : undefined,
       });
 
-      const metadataUriFromLensStorage = await uploadMetadataToLensStorage(metadata);
+      let metadataUriValue: string;
+      try {
+        metadataUriValue = await uploadMetadataToLensStorage(metadata);
+      } catch (uploadError) {
+        console.warn("Metadata upload to Lens Storage failed, using data URI fallback:", uploadError);
+        metadataUriValue = await jsonToDataURI(metadata);
+      }
 
       const result = await setAccountMetadata(sessionClient, {
-        metadataUri: uri(metadataUriFromLensStorage),
+        metadataUri: uri(normalizeUri(metadataUriValue)),
       }).andThen(handleOperationWith(walletClient));
 
       if (result.isErr()) {
