@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { type Dm, type GroupMember } from "@xmtp/browser-sdk";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useConversations } from "@/hooks/useConversations";
 import ConversationSkeleton from "@/components/reusable/ConversationSkeleton";
 import type { AccountData } from "@/utils/getLensProfile";
@@ -25,6 +25,13 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
   const { address: walletAddress } = useAccount();
   const lensProfile = useSelector((state: RootState) => state.app.user);
   const activeIdentityAddress = lensProfile?.address ?? walletAddress;
+  const selfIdentityAddresses = useMemo(
+    () =>
+      [lensProfile?.address, walletAddress]
+        .filter((value): value is string => Boolean(value))
+        .map(value => value.toLowerCase()),
+    [lensProfile?.address, walletAddress]
+  );
   const { addAddressToUser } = useDatabase();
   const { activeConversation, selectConversation } = useConversations();
   const [loading, setLoading] = useState(true);
@@ -34,55 +41,93 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
   const [lastMessageTime, setLastMessageTime] = useState<string>("");
   const [hasUnread] = useState(false);
 
-  const getOtherUser = useCallback(
-    async (members: GroupMember[]) => {
-      const otherUser = members.find(
-        member =>
-          member.accountIdentifiers[0].identifier.toLowerCase() !==
-          activeIdentityAddress?.toLowerCase()
-      );
-
-      if (otherUser) {
-        const mapped = usersDic[otherUser.accountIdentifiers[0].identifier.toLowerCase()];
-        if (mapped) {
-          return mapped;
-        }
-
-        const acc = await fetchAccount(otherUser.accountIdentifiers[0].identifier);
-        if (acc) {
-          const accountData = getLensAccountData(acc);
-          addAddressToUser(accountData.address.toLowerCase(), accountData);
-          return accountData;
-        }
-
-        const tempUser: AccountData = {
-          address: otherUser.accountIdentifiers[0].identifier,
-          displayName: otherUser.accountIdentifiers[0].identifier,
-          picture: "",
-          coverPicture: "",
-          attributes: {},
-          bio: "",
-          handle: "@ETH",
-          id: "",
-          userLink: "",
-        };
-        return tempUser;
-      }
-      return null;
-    },
-    [activeIdentityAddress, addAddressToUser, usersDic]
-  );
-
   useEffect(() => {
+    let cancelled = false;
+
+    const hasResolvedIdentity = (candidate: AccountData, identifier: string) => {
+      const displayName = candidate.displayName?.trim().toLowerCase() ?? "";
+      const handle = candidate.handle?.trim().toLowerCase() ?? "";
+      const hasDisplayName = displayName !== "" && displayName !== identifier && displayName !== "unknown user";
+      const hasHandle = handle !== "" && handle !== "@eth";
+      return (
+        hasDisplayName || hasHandle
+      );
+    };
+
     const getData = async () => {
-      const members = await conversation.members();
-      const participant = await getOtherUser(members);
-      if (participant) {
-        setUser(participant);
+      try {
+        const members = await conversation.members();
+        const otherMember = members.find(
+          (member: GroupMember) => {
+            const memberIdentifier = member.accountIdentifiers[0].identifier.toLowerCase();
+            if (selfIdentityAddresses.length > 0) {
+              return !selfIdentityAddresses.includes(memberIdentifier);
+            }
+            return memberIdentifier !== activeIdentityAddress?.toLowerCase();
+          }
+        );
+
+        if (!otherMember) {
+          return;
+        }
+
+        const otherIdentifiers = Array.from(
+          new Set(otherMember.accountIdentifiers.map(identifier => identifier.identifier.toLowerCase()))
+        );
+        const mapped =
+          otherIdentifiers
+            .map(identifier => usersDic[identifier])
+            .find(
+              (candidate, index) =>
+                candidate &&
+                hasResolvedIdentity(candidate, otherIdentifiers[index])
+            ) ||
+          otherIdentifiers.map(identifier => usersDic[identifier]).find(Boolean);
+        const primaryIdentifier = otherIdentifiers[0] ?? "";
+        const shouldResolveFromLens =
+          !mapped ||
+          !otherIdentifiers.some(identifier => hasResolvedIdentity(mapped, identifier));
+
+        if (mapped && !cancelled) {
+          setUser(mapped);
+        }
+
+        if (shouldResolveFromLens) {
+          let acc = null;
+          for (const identifier of otherIdentifiers) {
+            // Resolve against all identifiers (owner/scw) to avoid false "Unknown user".
+            acc = await fetchAccount(identifier);
+            if (acc) {
+              break;
+            }
+          }
+          if (acc) {
+            const accountData = getLensAccountData(acc);
+            if (!cancelled) {
+              setUser(accountData);
+            }
+            for (const identifier of otherIdentifiers) {
+              addAddressToUser(identifier, accountData);
+            }
+            addAddressToUser(accountData.address.toLowerCase(), accountData);
+          } else if (!mapped && !cancelled) {
+            setUser({
+              address: primaryIdentifier,
+              displayName: "Unknown user",
+              picture: "",
+              coverPicture: "",
+              attributes: {},
+              bio: "",
+              handle: "",
+              id: "",
+              userLink: "",
+            });
+          }
+        }
 
         try {
           const messages = await conversation.messages({ limit: 1 });
-          if (messages && messages.length > 0) {
+          if (messages && messages.length > 0 && !cancelled) {
             const lastMsg = messages[0];
             const content = lastMsg.content;
             if (typeof content === "string") {
@@ -93,17 +138,27 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
             } else {
               setLastMessage("Attachment");
             }
-            setLastMessageTime(moment(new Date(Number(lastMsg.sentAtNs / 1_000_000n))).format("h:mmA"));
+            setLastMessageTime(
+              moment(new Date(Number(lastMsg.sentAtNs / 1_000_000n))).format("h:mmA")
+            );
           }
         } catch {
-          setLastMessage("Enter your message description here...");
+          if (!cancelled) {
+            setLastMessage("Enter your message description here...");
+          }
         }
-
-        setLoading(false);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
-    getData();
-  }, [conversation, getOtherUser]);
+    void getData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeIdentityAddress, addAddressToUser, conversation, selfIdentityAddresses, usersDic]);
 
   useEffect(() => {
     if (activeConversation && activeConversation.id === conversation.id) {
@@ -117,8 +172,7 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
     const query = searchQuery.toLowerCase();
     const matches =
       user.displayName.toLowerCase().includes(query) ||
-      user.handle.toLowerCase().includes(query) ||
-      lastMessage.toLowerCase().includes(query);
+      user.handle.toLowerCase().includes(query);
 
     if (!matches) {
       return null;
@@ -129,41 +183,56 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
     return <ConversationSkeleton key={conversation.id} />;
   }
 
+  const displayNameCandidate = user.displayName?.trim() || "";
+  const displayHandleCandidate = user.handle?.trim() || "";
+  const hasValidName =
+    displayNameCandidate !== "" &&
+    displayNameCandidate.toLowerCase() !== user.address.toLowerCase() &&
+    displayNameCandidate.toLowerCase() !== "unknown user";
+  const hasValidHandle =
+    displayHandleCandidate !== "" && displayHandleCandidate.toLowerCase() !== "@eth";
+  const displayName = hasValidName
+    ? displayNameCandidate
+    : hasValidHandle
+      ? displayHandleCandidate
+      : "Unknown user";
+  const displayHandle = hasValidName && hasValidHandle ? displayHandleCandidate : "";
+
   return (
     <div
-      key={conversation.id}
-      className={`p-[8px] w-full ${
-        isSelected ? "bg-[#E4E4E7]" : "hover:bg-[#F3F3F3]"
-      } rounded-[8px] cursor-pointer transition-colors`}
+      className={`flex items-start gap-3 p-3 hover:bg-gray-50 cursor-pointer transition-colors ${
+        isSelected ? "bg-gray-50" : ""
+      }`}
       onClick={() => selectConversation(conversation)}
     >
-      <div className="flex justify-between align-start gap-[10px]">
-        <div className="flex gap-[12px] flex-1 min-w-0">
-          <Image
-            src={user.picture}
-            onError={e => {
-              (e.target as HTMLImageElement).src = "https://static.hey.xyz/images/default.png";
-            }}
-            className="rounded-[8px] flex-shrink-0"
-            alt="user pic"
-            width={40}
-            height={40}
-          />
-          <div className="flex flex-col gap-[4px] flex-1 min-w-0">
-            <div className="flex justify-between items-baseline gap-[8px]">
-              <span className="text-[14px] leading-[16.94px] font-medium text-black">
-                {user.displayName}
-              </span>
-              <span className="text-[12px] leading-[14px] font-medium text-[#999] flex-shrink-0">
-                {lastMessageTime}
-              </span>
-            </div>
-            <p className="line-clamp-1 text-[13px] leading-[15px] text-[#707070]">{lastMessage}</p>
-          </div>
-        </div>
+      <div className="relative">
+        <Image
+          src={user.picture || "https://static.hey.xyz/images/default.png"}
+          onError={e => {
+            (e.target as HTMLImageElement).src = "https://static.hey.xyz/images/default.png";
+          }}
+          className="rounded-full object-cover"
+          alt="user pic"
+          width={44}
+          height={44}
+        />
         {hasUnread && (
-          <div className="w-[8px] h-[8px] bg-black rounded-full mt-[6px] flex-shrink-0"></div>
+          <div className="absolute -bottom-0.5 -right-0.5 min-w-[20px] h-5 bg-gray-900 rounded-full flex items-center justify-center px-1.5 text-white text-xs font-medium">
+            1
+          </div>
         )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between">
+          <h3 className="text-[15px] leading-[20px] font-semibold text-gray-900 truncate">{displayName}</h3>
+          <span className="text-xs text-gray-500 ml-2 flex-shrink-0">{lastMessageTime}</span>
+        </div>
+        {displayHandle && (
+          <p className="text-xs leading-[16px] text-[#8C8C8C] truncate mt-0.5">{displayHandle}</p>
+        )}
+        <div className="mt-0.5">
+          <p className="text-sm leading-[18px] text-gray-500 truncate">{lastMessage}</p>
+        </div>
       </div>
     </div>
   );

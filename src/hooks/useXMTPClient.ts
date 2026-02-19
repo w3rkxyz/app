@@ -5,6 +5,7 @@ import { useCallback, useState } from "react";
 import {
   Client,
   IdentifierKind,
+  getInboxIdForIdentifier,
   type SCWSigner,
   type EOASigner,
   type Identifier,
@@ -45,6 +46,8 @@ export type XMTPConnectStage =
 type XMTPConnectOptions = {
   onStage?: (stage: XMTPConnectStage) => void;
 };
+
+const XMTP_MAX_INSTALLATIONS = 10;
 
 export function useXMTPClient(params?: UseXMTPClientParams) {
   const dispatch = useDispatch();
@@ -442,6 +445,27 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
       let failedMethod: "Client.create" | "client.isRegistered" | "client.register" =
         "Client.create";
+      const isInstallationLimitError = (error: unknown) => {
+        if (!(error instanceof Error)) {
+          return false;
+        }
+        const message = error.message?.toLowerCase() ?? "";
+        return (
+          message.includes("cannot register a new installation") &&
+          message.includes("installations")
+        );
+      };
+
+      const extractInboxIdFromError = (error: unknown) => {
+        if (!(error instanceof Error)) {
+          return undefined;
+        }
+        const match =
+          error.message.match(/inboxid\s+([a-f0-9]{64})/i) ??
+          error.message.match(/inbox\s+([a-f0-9]{64})/i);
+        return match?.[1]?.toLowerCase();
+      };
+
       const connectAndRegister = async (
         activeSigner: EOASigner | SCWSigner,
         mode: "primary" | "eoa_fallback"
@@ -497,6 +521,80 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         return createdClient;
       };
 
+      const recoverInstallationLimit = async (
+        activeSigner: EOASigner | SCWSigner,
+        mode: "primary" | "eoa_fallback",
+        sourceError: unknown
+      ) => {
+        const signerIdentifier = await activeSigner.getIdentifier();
+        const inboxId =
+          (await withTimeout(
+            getInboxIdForIdentifier(signerIdentifier, env),
+            15000,
+            "Resolving XMTP inbox timed out."
+          ).catch(() => undefined)) ?? extractInboxIdFromError(sourceError);
+
+        if (!inboxId) {
+          throw new Error(
+            "XMTP installation limit reached, but inbox ID could not be resolved for auto-recovery."
+          );
+        }
+
+        logDebug("create:installation_limit_recovery:start", {
+          mode,
+          inboxId,
+          identifier: signerIdentifier.identifier,
+        });
+
+        const [inboxState] = await withTimeout(
+          Client.fetchInboxStates([inboxId], env),
+          20000,
+          "Fetching XMTP inbox state timed out."
+        );
+
+        const installations = inboxState?.installations ?? [];
+        if (!installations.length) {
+          throw new Error("XMTP installation limit reached, but no installations were found to revoke.");
+        }
+
+        const sortedInstallations = [...installations].sort((a, b) => {
+          const aTs = a.clientTimestampNs ?? 0n;
+          const bTs = b.clientTimestampNs ?? 0n;
+          if (aTs < bTs) return -1;
+          if (aTs > bTs) return 1;
+          return 0;
+        });
+
+        const revokeCount = Math.max(
+          1,
+          installations.length - (XMTP_MAX_INSTALLATIONS - 1)
+        );
+        const installationIdsToRevoke = sortedInstallations
+          .slice(0, revokeCount)
+          .map(installation => installation.bytes);
+
+        logDebug("create:installation_limit_recovery:revoke", {
+          mode,
+          inboxId,
+          installationCount: installations.length,
+          revokeCount,
+        });
+
+        await withTimeout(
+          Client.revokeInstallations(activeSigner, inboxId, installationIdsToRevoke, env),
+          90000,
+          "Revoking old XMTP installations timed out."
+        );
+
+        logDebug("create:installation_limit_recovery:revoke:success", {
+          mode,
+          inboxId,
+          revoked: revokeCount,
+        });
+
+        return await connectAndRegister(activeSigner, mode);
+      };
+
       try {
         const directClient = await connectAndRegister(signer, "primary");
 
@@ -516,6 +614,28 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           `XMTP create failed for ${xmtpAddress} (${isScwIdentity ? "SCW" : "EOA"}) on ${env}.`,
           createError
         );
+
+        if (isInstallationLimitError(createError)) {
+          try {
+            updateStage("register_account");
+            const recoveredClient = await recoverInstallationLimit(
+              signer,
+              "primary",
+              createError
+            );
+            setClient(recoveredClient);
+            updateStage("connected");
+            logDebug("create:connected", { mode: "primary_installation_limit_recovery" });
+            return recoveredClient;
+          } catch (recoveryError) {
+            lastError = recoveryError;
+            logError("create:installation_limit_recovery:failed", recoveryError, {
+              env,
+              failedMethod,
+              signerType: signer.type,
+            });
+          }
+        }
 
         const shouldTryEoaFallback =
           isScwIdentity &&
@@ -558,12 +678,55 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
               env,
               walletAddress: walletAddress?.toLowerCase() ?? null,
             });
+
+            if (isInstallationLimitError(fallbackError)) {
+              try {
+                updateStage("register_account");
+                const fallbackSigner: EOASigner = {
+                  type: "EOA",
+                  getIdentifier: () =>
+                    ({
+                      identifier: walletAddress!.toLowerCase(),
+                      identifierKind: IdentifierKind.Ethereum,
+                    }) as Identifier,
+                  signMessage: async (message: string): Promise<Uint8Array> => {
+                    updateStage("prompt_signature");
+                    return requestWalletSignature(
+                      message,
+                      "xmtp_signer_eoa_fallback",
+                      (walletAddress ?? walletClient?.account?.address ?? null) as Address | null
+                    );
+                  },
+                };
+
+                const recoveredClient = await recoverInstallationLimit(
+                  fallbackSigner,
+                  "eoa_fallback",
+                  fallbackError
+                );
+                setClient(recoveredClient);
+                updateStage("connected");
+                logDebug("create:connected", { mode: "eoa_fallback_installation_limit_recovery" });
+                return recoveredClient;
+              } catch (recoveryError) {
+                lastError = recoveryError;
+                logError("create:eoa_fallback_installation_limit_recovery:failed", recoveryError, {
+                  env,
+                  walletAddress: walletAddress?.toLowerCase() ?? null,
+                });
+              }
+            }
           }
         }
       }
 
       if (lastError instanceof Error) {
         logError("create:final_error", lastError);
+        if (isInstallationLimitError(lastError)) {
+          throw new Error(
+            "XMTP installation limit reached and automatic cleanup failed. Please revoke old XMTP installations and try again."
+          );
+        }
         throw lastError;
       }
 

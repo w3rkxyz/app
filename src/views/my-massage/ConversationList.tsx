@@ -25,7 +25,7 @@ const ConversationsList = ({ conversations, searchQuery = "" }: ConversationList
   });
 
   return (
-    <div className="flex sm:flex flex-col gap-[5px] mt-[8px] overflow-y-auto">
+    <div className="flex flex-col mt-[4px] pb-[4px] overflow-y-auto flex-1">
       {loading &&
         [0, 1, 2, 3, 4, 5].map(item => {
           return <ConversationSkeleton key={item} />;

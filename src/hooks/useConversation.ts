@@ -1,7 +1,7 @@
 "use client";
 
 import type { DecodedMessage, ListMessagesOptions } from "@xmtp/browser-sdk";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useXMTPClient } from "./useXMTPClient";
 import { ContentTypes } from "@/app/XMTPContext";
 import { useXMTP } from "@/app/XMTPContext";
@@ -19,7 +19,14 @@ export const useConversation = () => {
   const { address: walletAddress } = useAccount();
   const lensProfile = useSelector((state: RootState) => state.app.user);
   const activeIdentityAddress = lensProfile?.address ?? walletAddress;
-  const { addressToUser } = useDatabase();
+  const selfIdentityAddresses = useMemo(
+    () =>
+      [lensProfile?.address, walletAddress]
+        .filter((value): value is string => Boolean(value))
+        .map(value => value.toLowerCase()),
+    [lensProfile?.address, walletAddress]
+  );
+  const { addressToUser, addAddressToUser } = useDatabase();
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [sending, setSending] = useState(false);
@@ -28,46 +35,108 @@ export const useConversation = () => {
   const [loadingOtherUser, setLoadingOtherUser] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const hasResolvedIdentity = (candidate: AccountData, identifier: string) => {
+      const displayName = candidate.displayName?.trim().toLowerCase() ?? "";
+      const handle = candidate.handle?.trim().toLowerCase() ?? "";
+      const hasDisplayName = displayName !== "" && displayName !== identifier && displayName !== "unknown user";
+      const hasHandle = handle !== "" && handle !== "@eth";
+      return (
+        hasDisplayName || hasHandle
+      );
+    };
+
     const fetchOtherUser = async () => {
-      if (activeIdentityAddress && addressToUser && activeConversation) {
-        const members = await activeConversation.members();
+      try {
+        if (activeIdentityAddress && addressToUser && activeConversation) {
+          const members = await activeConversation.members();
+          const otherUser = members.find(
+            member => {
+              const memberIdentifier = member.accountIdentifiers[0].identifier.toLowerCase();
+              if (selfIdentityAddresses.length > 0) {
+                return !selfIdentityAddresses.includes(memberIdentifier);
+              }
+              return memberIdentifier !== activeIdentityAddress.toLowerCase();
+            }
+          );
 
-        const otherUser = members.find(
-          member =>
-            member.accountIdentifiers[0].identifier.toLowerCase() !==
-            activeIdentityAddress.toLowerCase()
-        );
+          if (otherUser) {
+            const otherIdentifiers = Array.from(
+              new Set(
+                otherUser.accountIdentifiers.map(identifier => identifier.identifier.toLowerCase())
+              )
+            );
+            const mappedUser =
+              otherIdentifiers
+                .map(identifier => addressToUser[identifier])
+                .find(
+                  (candidate, index) =>
+                    candidate &&
+                    hasResolvedIdentity(candidate, otherIdentifiers[index])
+                ) ||
+              otherIdentifiers.map(identifier => addressToUser[identifier]).find(Boolean);
+            const primaryIdentifier = otherIdentifiers[0] ?? "";
+            const shouldResolveFromLens =
+              !mappedUser ||
+              !otherIdentifiers.some(identifier => hasResolvedIdentity(mappedUser, identifier));
 
-        if (otherUser) {
-          const user = addressToUser[otherUser.accountIdentifiers[0].identifier];
-          if (user) {
-            setOtherUser(user);
-          } else {
-            const acc = await fetchAccount(otherUser.accountIdentifiers[0].identifier);
-            if (acc) {
-              const accountData = getLensAccountData(acc);
-              setOtherUser(accountData);
-            } else {
-              const tempUser: AccountData = {
-                address: otherUser.accountIdentifiers[0].identifier,
-                displayName: otherUser.accountIdentifiers[0].identifier,
-                picture: "",
-                coverPicture: "",
-                attributes: {},
-                bio: "",
-                handle: "@ETH",
-                id: "",
-                userLink: "",
-              };
-              setOtherUser(tempUser);
+            if (mappedUser && !cancelled) {
+              setOtherUser(mappedUser);
+            }
+
+            if (shouldResolveFromLens) {
+              let acc = null;
+              for (const identifier of otherIdentifiers) {
+                acc = await fetchAccount(identifier);
+                if (acc) {
+                  break;
+                }
+              }
+              if (acc) {
+                const accountData = getLensAccountData(acc);
+                if (!cancelled) {
+                  setOtherUser(accountData);
+                }
+                for (const identifier of otherIdentifiers) {
+                  addAddressToUser(identifier, accountData);
+                }
+                addAddressToUser(accountData.address.toLowerCase(), accountData);
+              } else if (!mappedUser && !cancelled) {
+                setOtherUser({
+                  address: primaryIdentifier,
+                  displayName: "Unknown user",
+                  picture: "",
+                  coverPicture: "",
+                  attributes: {},
+                  bio: "",
+                  handle: "",
+                  id: "",
+                  userLink: "",
+                });
+              }
             }
           }
         }
+      } finally {
+        if (!cancelled) {
+          setLoadingOtherUser(false);
+        }
       }
-      setLoadingOtherUser(false);
     };
-    fetchOtherUser();
-  }, [activeConversation?.id, activeConversation, activeIdentityAddress, addressToUser]);
+    setLoadingOtherUser(true);
+    void fetchOtherUser();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    activeConversation?.id,
+    activeConversation,
+    activeIdentityAddress,
+    addAddressToUser,
+    addressToUser,
+    selfIdentityAddresses,
+  ]);
 
   const getMessages = async (
     options?: ListMessagesOptions,
@@ -85,9 +154,15 @@ export const useConversation = () => {
     }
 
     try {
-      const msgs = (await activeConversation?.messages(options)) ?? [];
-      setMessages(msgs);
-      return msgs;
+      const resolvedOptions = options ?? { limit: 200 };
+      const msgs = (await activeConversation?.messages(resolvedOptions)) ?? [];
+      const sortedMessages = [...msgs].sort((a, b) => {
+        if (a.sentAtNs < b.sentAtNs) return -1;
+        if (a.sentAtNs > b.sentAtNs) return 1;
+        return 0;
+      });
+      setMessages(sortedMessages);
+      return sortedMessages;
     } finally {
       setLoading(false);
     }
@@ -129,7 +204,12 @@ export const useConversation = () => {
 
     const stream = await activeConversation?.stream({
       onValue: message => {
-        setMessages(prev => [...prev, message]);
+        setMessages(prev => {
+          if (prev.some(existing => existing.id === message.id)) {
+            return prev;
+          }
+          return [...prev, message];
+        });
       },
     });
 
