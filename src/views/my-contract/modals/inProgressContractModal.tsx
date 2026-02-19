@@ -5,7 +5,7 @@ import Image from "next/image";
 import MyButton from "@/components/reusable/Button/Button";
 import { useAccount } from "wagmi";
 import { activeContractDetails, contractDetails } from "@/types/types";
-import {useAccount as useLensAccount} from "@lens-protocol/react";
+import { evmAddress } from "@lens-protocol/react";
 import getLensAccountData, { AccountData } from "@/utils/getLensProfile";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
@@ -14,6 +14,9 @@ import { request_payement, release_payement, request_extension } from "@/api";
 import { useDispatch } from "react-redux";
 import { openAlert, closeAlert, openLoader } from "@/redux/alerts";
 import DatePicker from "react-datepicker";
+import { fetchAccount } from "@lens-protocol/client/actions";
+import { getPublicClient } from "@/client";
+import { isAddress } from "ethers";
 
 import "react-datepicker/dist/react-datepicker.css";
 
@@ -44,6 +47,11 @@ function daysUntil(targetDateString: Date) {
   return `${daysLeft} Days Remaining`;
 }
 
+function shortenAddress(address: string) {
+  if (!address) return "";
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
 const InProgressContractModal = ({ handleCloseModal, contractDetails }: Props) => {
   const { address } = useAccount();
   const dispatch = useDispatch();
@@ -55,11 +63,11 @@ const InProgressContractModal = ({ handleCloseModal, contractDetails }: Props) =
     (address as string) === contractDetails.clientAddress
   );
   const [userData, setUserData] = useState<AccountData>();
-  const { data: profile, loading: profileLoading } = useLensAccount({
-    username: { localName: showClientView ? contractDetails.freelancerHandle : contractDetails.clientHandle },
-  })
   const [loadingUser, setLoadingUser] = useState(true);
   const [showNewDatePicker, setShowNewDatePicker] = useState(false);
+  const counterpartyAddress = showClientView
+    ? contractDetails.freelancerAddress
+    : contractDetails.clientAddress;
 
   useEffect(() => {
     setShowMobile(true);
@@ -183,16 +191,50 @@ const InProgressContractModal = ({ handleCloseModal, contractDetails }: Props) =
   };
 
   useEffect(() => {
-    console.log('This ran')
-    if (profile) {
-      console.log('This ran 2')
-      const profileData = getLensAccountData(profile);
-      setUserData(profileData);
+    let active = true;
 
-      setLoadingUser(false);
+    async function loadCounterpartyProfile() {
+      if (!counterpartyAddress || !isAddress(counterpartyAddress)) {
+        if (active) {
+          setUserData(undefined);
+          setLoadingUser(false);
+        }
+        return;
+      }
+
+      setLoadingUser(true);
+
+      try {
+        const client = getPublicClient();
+        const profile = await fetchAccount(client, {
+          address: evmAddress(counterpartyAddress),
+        }).unwrapOr(null);
+
+        if (!active) return;
+
+        if (profile) {
+          setUserData(getLensAccountData(profile));
+        } else {
+          setUserData(undefined);
+        }
+      } catch (error) {
+        if (active) {
+          setUserData(undefined);
+        }
+        console.error("Error fetching contract counterparty profile:", error);
+      } finally {
+        if (active) {
+          setLoadingUser(false);
+        }
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profileLoading, profile]);
+
+    void loadCounterpartyProfile();
+
+    return () => {
+      active = false;
+    };
+  }, [counterpartyAddress]);
 
   useEffect(() => {
     document.body.style.overflowY = "hidden";
@@ -221,7 +263,9 @@ const InProgressContractModal = ({ handleCloseModal, contractDetails }: Props) =
         />
       </div>
       <div className="bg-[white] rounded-[12px] sm:rounded-none py-[16px] sm:w-full max-w-[664px] flex flex-col">
-        {!loadingUser && userData ? (
+        {loadingUser ? (
+          <Skeleton className="w-full h-[80px]" baseColor="#E4E4E7" borderRadius={"12px"} />
+        ) : userData ? (
           <div className="flex sm:flex-col justify-between gap-[8px] sm:gap-[16px] w-full">
             <div className="flex gap-[6px] items-center">
               <Image
@@ -251,7 +295,25 @@ const InProgressContractModal = ({ handleCloseModal, contractDetails }: Props) =
             </Link>
           </div>
         ) : (
-          <Skeleton className="w-full h-[80px]" baseColor="#E4E4E7" borderRadius={"12px"} />
+          <div className="flex sm:flex-col justify-between gap-[8px] sm:gap-[16px] w-full">
+            <div className="flex gap-[6px] items-center">
+              <Image
+                src="https://static.hey.xyz/images/default.png"
+                alt="profile fallback"
+                width={46}
+                height={46}
+                className="rounded-[8px] w-[46px] h-[46px]"
+              />
+              <div className="flex flex-col gap-[0px]">
+                <span className="text-[14px] leading-[16.94px] font-semibold">
+                  {showClientView ? "Freelancer" : "Client"}
+                </span>
+                <span className="text-[14px] leading-[20px] font-normal text-[#5A5A5A]">
+                  {shortenAddress(counterpartyAddress)}
+                </span>
+              </div>
+            </div>
+          </div>
         )}
         <div className="w-full flex sm:flex-col bg-[#351A6B] rounded-[6px] sm:gap-[6px] justify-between my-[16px] p-[14px]">
           <span className="text-[14px] leading-[16.94px] text-white font-semibold">
