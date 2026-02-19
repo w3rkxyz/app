@@ -37,6 +37,22 @@ const uploadWithChainFallback = async <T>(
   }
 };
 
+const uploadMetadataAsFile = async (
+  metadata: unknown,
+  chainId: number
+): Promise<{ uri: string }> => {
+  const metadataFile = new File(
+    [JSON.stringify(metadata)],
+    "metadata.json",
+    // Use text/plain for broader compatibility in strict CORS/proxy environments.
+    { type: "text/plain;charset=utf-8" }
+  );
+
+  return storageClient.uploadFile(metadataFile, {
+    acl: immutable(chainId),
+  });
+};
+
 /**
  * Uploads JSON metadata to Lens Storage and returns the URI
  * @param metadata - The metadata object to upload
@@ -51,8 +67,20 @@ export const uploadMetadataToLensStorage = async (metadata: any): Promise<string
     );
     return uri;
   } catch (error) {
-    console.error("Failed to upload to Lens Storage:", error);
-    throw error;
+    console.warn(
+      "JSON metadata upload failed; retrying with file-based upload:",
+      error
+    );
+
+    try {
+      const { uri } = await uploadWithChainFallback(chainId =>
+        uploadMetadataAsFile(metadata, chainId)
+      );
+      return uri;
+    } catch (fallbackError) {
+      console.error("Failed to upload metadata to Lens Storage:", fallbackError);
+      throw fallbackError;
+    }
   }
 };
 
