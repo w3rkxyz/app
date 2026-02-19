@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { type Dm, type GroupMember } from "@xmtp/browser-sdk";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useConversations } from "@/hooks/useConversations";
 import ConversationSkeleton from "@/components/reusable/ConversationSkeleton";
 import type { AccountData } from "@/utils/getLensProfile";
@@ -25,6 +25,13 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
   const { address: walletAddress } = useAccount();
   const lensProfile = useSelector((state: RootState) => state.app.user);
   const activeIdentityAddress = lensProfile?.address ?? walletAddress;
+  const selfIdentityAddresses = useMemo(
+    () =>
+      [lensProfile?.address, walletAddress]
+        .filter((value): value is string => Boolean(value))
+        .map(value => value.toLowerCase()),
+    [lensProfile?.address, walletAddress]
+  );
   const { addAddressToUser } = useDatabase();
   const { activeConversation, selectConversation } = useConversations();
   const [loading, setLoading] = useState(true);
@@ -40,11 +47,10 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
     const hasResolvedIdentity = (candidate: AccountData, identifier: string) => {
       const displayName = candidate.displayName?.trim().toLowerCase() ?? "";
       const handle = candidate.handle?.trim().toLowerCase() ?? "";
+      const hasDisplayName = displayName !== "" && displayName !== identifier && displayName !== "unknown user";
+      const hasHandle = handle !== "" && handle !== "@eth";
       return (
-        displayName !== "" &&
-        displayName !== identifier &&
-        handle !== "" &&
-        handle !== "@eth"
+        hasDisplayName || hasHandle
       );
     };
 
@@ -52,9 +58,13 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
       try {
         const members = await conversation.members();
         const otherMember = members.find(
-          (member: GroupMember) =>
-            member.accountIdentifiers[0].identifier.toLowerCase() !==
-            activeIdentityAddress?.toLowerCase()
+          (member: GroupMember) => {
+            const memberIdentifier = member.accountIdentifiers[0].identifier.toLowerCase();
+            if (selfIdentityAddresses.length > 0) {
+              return !selfIdentityAddresses.includes(memberIdentifier);
+            }
+            return memberIdentifier !== activeIdentityAddress?.toLowerCase();
+          }
         );
 
         if (!otherMember) {
@@ -126,7 +136,7 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
     return () => {
       cancelled = true;
     };
-  }, [activeIdentityAddress, addAddressToUser, conversation, usersDic]);
+  }, [activeIdentityAddress, addAddressToUser, conversation, selfIdentityAddresses, usersDic]);
 
   useEffect(() => {
     if (activeConversation && activeConversation.id === conversation.id) {
@@ -152,11 +162,19 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
   }
 
   const displayNameCandidate = user.displayName?.trim() || "";
-  const isAddressAsName =
+  const displayHandleCandidate = user.handle?.trim() || "";
+  const hasValidName =
     displayNameCandidate !== "" &&
-    displayNameCandidate.toLowerCase() === user.address.toLowerCase();
-  const displayName = isAddressAsName || displayNameCandidate === "" ? "Unknown user" : displayNameCandidate;
-  const displayHandle = user.handle?.trim().toLowerCase() === "@eth" ? "" : user.handle?.trim() || "";
+    displayNameCandidate.toLowerCase() !== user.address.toLowerCase() &&
+    displayNameCandidate.toLowerCase() !== "unknown user";
+  const hasValidHandle =
+    displayHandleCandidate !== "" && displayHandleCandidate.toLowerCase() !== "@eth";
+  const displayName = hasValidName
+    ? displayNameCandidate
+    : hasValidHandle
+      ? displayHandleCandidate
+      : "Unknown user";
+  const displayHandle = hasValidName && hasValidHandle ? displayHandleCandidate : "";
 
   return (
     <div

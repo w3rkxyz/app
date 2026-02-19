@@ -1,7 +1,7 @@
 "use client";
 
 import type { DecodedMessage, ListMessagesOptions } from "@xmtp/browser-sdk";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useXMTPClient } from "./useXMTPClient";
 import { ContentTypes } from "@/app/XMTPContext";
 import { useXMTP } from "@/app/XMTPContext";
@@ -19,6 +19,13 @@ export const useConversation = () => {
   const { address: walletAddress } = useAccount();
   const lensProfile = useSelector((state: RootState) => state.app.user);
   const activeIdentityAddress = lensProfile?.address ?? walletAddress;
+  const selfIdentityAddresses = useMemo(
+    () =>
+      [lensProfile?.address, walletAddress]
+        .filter((value): value is string => Boolean(value))
+        .map(value => value.toLowerCase()),
+    [lensProfile?.address, walletAddress]
+  );
   const { addressToUser, addAddressToUser } = useDatabase();
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -33,11 +40,10 @@ export const useConversation = () => {
     const hasResolvedIdentity = (candidate: AccountData, identifier: string) => {
       const displayName = candidate.displayName?.trim().toLowerCase() ?? "";
       const handle = candidate.handle?.trim().toLowerCase() ?? "";
+      const hasDisplayName = displayName !== "" && displayName !== identifier && displayName !== "unknown user";
+      const hasHandle = handle !== "" && handle !== "@eth";
       return (
-        displayName !== "" &&
-        displayName !== identifier &&
-        handle !== "" &&
-        handle !== "@eth"
+        hasDisplayName || hasHandle
       );
     };
 
@@ -46,9 +52,13 @@ export const useConversation = () => {
         if (activeIdentityAddress && addressToUser && activeConversation) {
           const members = await activeConversation.members();
           const otherUser = members.find(
-            member =>
-              member.accountIdentifiers[0].identifier.toLowerCase() !==
-              activeIdentityAddress.toLowerCase()
+            member => {
+              const memberIdentifier = member.accountIdentifiers[0].identifier.toLowerCase();
+              if (selfIdentityAddresses.length > 0) {
+                return !selfIdentityAddresses.includes(memberIdentifier);
+              }
+              return memberIdentifier !== activeIdentityAddress.toLowerCase();
+            }
           );
 
           if (otherUser) {
@@ -97,7 +107,14 @@ export const useConversation = () => {
     return () => {
       cancelled = true;
     };
-  }, [activeConversation?.id, activeConversation, activeIdentityAddress, addAddressToUser, addressToUser]);
+  }, [
+    activeConversation?.id,
+    activeConversation,
+    activeIdentityAddress,
+    addAddressToUser,
+    addressToUser,
+    selfIdentityAddresses,
+  ]);
 
   const getMessages = async (
     options?: ListMessagesOptions,

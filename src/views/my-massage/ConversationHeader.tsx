@@ -29,6 +29,21 @@ const ConversationHeader = () => {
     );
   }
 
+  const displayNameCandidate = otherUser.displayName?.trim() || "";
+  const displayHandleCandidate = otherUser.handle?.trim() || "";
+  const hasValidName =
+    displayNameCandidate !== "" &&
+    displayNameCandidate.toLowerCase() !== otherUser.address.toLowerCase() &&
+    displayNameCandidate.toLowerCase() !== "unknown user";
+  const hasValidHandle =
+    displayHandleCandidate !== "" && displayHandleCandidate.toLowerCase() !== "@eth";
+  const headerName = hasValidName
+    ? displayNameCandidate
+    : hasValidHandle
+      ? displayHandleCandidate
+      : "Unknown user";
+  const headerHandle = hasValidName && hasValidHandle ? displayHandleCandidate : "";
+
   return (
     <div className="flex justify-between items-center gap-[12px] w-full">
       <div className="flex items-center gap-[10px] min-w-0">
@@ -54,9 +69,11 @@ const ConversationHeader = () => {
         </Link>
         <div className="min-w-0">
           <span className="text-[16px] leading-[20px] font-semibold text-[#212121] truncate block">
-            {otherUser.displayName}
+            {headerName}
           </span>
-          <span className="text-[13px] leading-[16px] text-[#6C6C6C] truncate">{otherUser.handle}</span>
+          {headerHandle && (
+            <span className="text-[13px] leading-[16px] text-[#6C6C6C] truncate">{headerHandle}</span>
+          )}
         </div>
       </div>
 
