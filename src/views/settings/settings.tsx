@@ -22,7 +22,6 @@ import {
   uploadMetadataToLensStorage,
   storageClient,
 } from "@/utils/storage-client";
-import { fileToDataURI, jsonToDataURI } from "@/utils/dataUriHelpers";
 import type { RootState } from "@/redux/store";
 
 const COUNTRY_NAMES = [
@@ -296,21 +295,11 @@ const Settings = () => {
       let pictureUri = formState.picture;
 
       if (pendingCoverFile) {
-        try {
-          coverUri = await uploadFileToLensStorage(pendingCoverFile);
-        } catch (uploadError) {
-          console.warn("Cover upload to Lens Storage failed, using data URI fallback:", uploadError);
-          coverUri = await fileToDataURI(pendingCoverFile);
-        }
+        coverUri = await uploadFileToLensStorage(pendingCoverFile);
       }
 
       if (pendingPhotoFile) {
-        try {
-          pictureUri = await uploadFileToLensStorage(pendingPhotoFile);
-        } catch (uploadError) {
-          console.warn("Profile image upload to Lens Storage failed, using data URI fallback:", uploadError);
-          pictureUri = await fileToDataURI(pendingPhotoFile);
-        }
+        pictureUri = await uploadFileToLensStorage(pendingPhotoFile);
       }
 
       const attributesMap: {
@@ -336,13 +325,7 @@ const Settings = () => {
         attributes: attributes.length !== 0 ? attributes : undefined,
       });
 
-      let metadataUriValue: string;
-      try {
-        metadataUriValue = await uploadMetadataToLensStorage(metadata);
-      } catch (uploadError) {
-        console.warn("Metadata upload to Lens Storage failed, using data URI fallback:", uploadError);
-        metadataUriValue = await jsonToDataURI(metadata);
-      }
+      const metadataUriValue = await uploadMetadataToLensStorage(metadata);
 
       const result = await setAccountMetadata(sessionClient, {
         metadataUri: uri(normalizeUri(metadataUriValue)),
