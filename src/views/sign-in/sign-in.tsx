@@ -115,7 +115,7 @@ export const LoginPage = () => {
 
             {/* Footer */}
             <div className="text-center mt-6 text-[#85868C] text-base font-bold cursor-pointer hover:text-gray-700 transition">
-              I don't have a wallet
+              I don&apos;t have a wallet
             </div>
           </div>
         </div>
