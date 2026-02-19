@@ -1,48 +1,176 @@
 import Image from "next/image";
-import { toast } from "react-hot-toast";
-import style from "./form.module.css";
 import { useDispatch } from "react-redux";
 import { setLensProfile, displayLoginModal } from "@/redux/app";
-import { useEffect, useState } from "react";
-import getLensAccountData, { AccountData } from "@/utils/getLensProfile";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import getLensAccountData from "@/utils/getLensProfile";
 import { useAccount, useWalletClient } from "wagmi";
 import { Oval } from "react-loader-spinner";
-import { Account, evmAddress, uri, nonNullable } from "@lens-protocol/client";
+import { Account, evmAddress, uri, ManagedAccountsVisibility } from "@lens-protocol/client";
 import { useLogin, useAccountsAvailable, SessionClient } from "@lens-protocol/react";
-import {
-  canCreateUsername,
-  createAccountWithUsername,
-  fetchAccount,
-} from "@lens-protocol/client/actions";
+import { canCreateUsername, createAccountWithUsername } from "@lens-protocol/client/actions";
 import { signMessageWith, handleOperationWith } from "@lens-protocol/client/viem";
 import { client } from "@/client";
 import { jsonToDataURI } from "@/utils/dataUriHelpers";
-import { openAlert, closeAlert } from "@/redux/alerts";
+import { toast } from "react-hot-toast";
 
-export default function LoginForm({
-  owner,
-}: // setProfile,
-// onClose,
-{
-  owner: string;
-}) {
+const LENS_TESTNET_CHAIN_ID = 37111;
+const LENS_TESTNET_APP = "0xC75A89145d765c396fd75CbD16380Eb184Bd2ca7";
+
+const getErrMsg = (error: unknown, fallback: string) => {
+  if (error && typeof error === "object" && "message" in error) {
+    const msg = (error as { message?: unknown }).message;
+    if (typeof msg === "string" && msg.trim().length > 0) {
+      return msg;
+    }
+  }
+  return fallback;
+};
+
+export default function LoginForm({ owner }: { owner: string }) {
   const dispatch = useDispatch();
-  const [creatingProfile, setCreatingProfile] = useState(false);
+  const router = useRouter();
   const { data: walletClient } = useWalletClient();
-  const [sessionClient, setSessionClient] = useState<SessionClient | null>(null);
-  const { data: availableAccounts, loading: accountsLoading } = useAccountsAvailable({
-    managedBy: walletClient?.account.address,
-    includeOwned: true,
-  });
-  const { execute: authenticate, loading: authenticateLoading } = useLogin();
   const wallet = useAccount();
+  const autoSelectedAccountRef = useRef<string | null>(null);
+  const lastWalletAddressRef = useRef<string | null>(null);
+
+  const [creatingProfile, setCreatingProfile] = useState(false);
+  const [sessionClient, setSessionClient] = useState<SessionClient | null>(null);
   const [errorMessage, setErrorMessage] = useState("Sorry, handles cannot start with a number.");
   const [showError, setShowError] = useState(false);
   const [handle, setHandle] = useState("");
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [continuing, setContinuing] = useState(false);
+  const [mintSuccessMessage, setMintSuccessMessage] = useState<string | null>(null);
+  const [autoSelecting, setAutoSelecting] = useState(false);
 
-  const handleInput = (e: any) => {
-    const input: string = e.target.value;
+  const managedBy = useMemo(
+    () => walletClient?.account.address ?? evmAddress(owner),
+    [walletClient?.account.address, owner]
+  );
+
+  const {
+    data: availableAccounts,
+    loading: accountsLoading,
+    error: accountsError,
+  } = useAccountsAvailable({
+    managedBy,
+    includeOwned: true,
+    hiddenFilter: ManagedAccountsVisibility.All,
+  });
+
+  const { execute: authenticate, loading: authenticateLoading } = useLogin();
+  const walletReady = Boolean(walletClient?.account.address);
+  const normalizedWalletAddress =
+    walletClient?.account.address?.toLowerCase() ?? wallet.address?.toLowerCase() ?? null;
+  const isWalletContextReady = Boolean(
+    walletClient?.account.address &&
+      wallet.address &&
+      walletClient.account.address.toLowerCase() === wallet.address.toLowerCase()
+  );
+  const profileCount = availableAccounts?.items.length ?? 0;
+  const showPrepare = walletReady && !accountsLoading && !availableAccounts && !accountsError;
+  const singleAccount = profileCount === 1 ? availableAccounts?.items[0]?.account : null;
+
+  const ensureLensChain = useCallback(async () => {
+    if (!walletClient) {
+      setAuthError("Wallet not ready. Reconnect and try again.");
+      return false;
+    }
+
+    const currentChainId = walletClient.chain?.id;
+    if (currentChainId === LENS_TESTNET_CHAIN_ID) {
+      return true;
+    }
+
+    try {
+      await walletClient.switchChain({ id: LENS_TESTNET_CHAIN_ID });
+      return true;
+    } catch (error: unknown) {
+      const err = error as { code?: number };
+      if (err?.code !== 4902) {
+        setAuthError("Please switch to Lens Chain Testnet to continue.");
+        return false;
+      }
+
+      try {
+        await walletClient.addChain({
+          chain: {
+            id: LENS_TESTNET_CHAIN_ID,
+            name: "Lens Chain Testnet",
+            nativeCurrency: {
+              name: "GHO",
+              symbol: "GHO",
+              decimals: 18,
+            },
+            rpcUrls: {
+              default: { http: ["https://rpc.testnet.lens.xyz"] },
+            },
+            blockExplorers: {
+              default: {
+                name: "Lens Explorer",
+                url: "https://block-explorer.testnet.lens.xyz",
+              },
+            },
+          },
+        });
+        await walletClient.switchChain({ id: LENS_TESTNET_CHAIN_ID });
+        return true;
+      } catch {
+        setAuthError("Could not add Lens Chain Testnet to your wallet.");
+        return false;
+      }
+    }
+  }, [walletClient]);
+
+  const authenticateUser = useCallback(async () => {
+    if (!walletClient) {
+      setAuthError("Wallet not ready. Reconnect and try again.");
+      return;
+    }
+
+    setAuthError(null);
+    setMintSuccessMessage(null);
+    setContinuing(true);
+
+    try {
+      const canContinue = await ensureLensChain();
+      if (!canContinue) {
+        setContinuing(false);
+        return;
+      }
+
+      const appAddress = process.env.NEXT_PUBLIC_APP_ADDRESS_TESTNET || LENS_TESTNET_APP;
+
+      const authenticated = await client.login({
+        onboardingUser: {
+          app: evmAddress(appAddress),
+          wallet: walletClient.account.address,
+        },
+        signMessage: signMessageWith(walletClient),
+      });
+
+      if (authenticated.isErr()) {
+        const msg = getErrMsg(authenticated.error, "Lens login failed");
+        setAuthError(msg);
+        setContinuing(false);
+        return;
+      }
+
+      setSessionClient(authenticated.value);
+    } catch (error: unknown) {
+      const msg = getErrMsg(error, "Lens login failed");
+      setAuthError(msg);
+    } finally {
+      setContinuing(false);
+    }
+  }, [ensureLensChain, walletClient]);
+
+  const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target.value;
     setHandle(input);
+    setMintSuccessMessage(null);
 
     if (/^\d/.test(input)) {
       setErrorMessage("Sorry, handles cannot start with a number.");
@@ -56,305 +184,97 @@ export default function LoginForm({
   };
 
   const handleSubmit = async () => {
-    if (sessionClient !== null && handle !== "" && walletClient) {
-      setCreatingProfile(true);
+    if (sessionClient === null || handle.trim() === "" || !walletClient) {
+      return;
+    }
 
-      const result = await canCreateUsername(sessionClient, {
-        localName: handle,
-      });
+    setShowError(false);
+    setAuthError(null);
+    setMintSuccessMessage(null);
+    setCreatingProfile(true);
 
-      if (result.isErr()) {
+    const result = await canCreateUsername(sessionClient, {
+      localName: handle,
+    });
+
+    if (result.isErr()) {
+      setErrorMessage("Sorry, that handle is not available.");
+      setShowError(true);
+      setCreatingProfile(false);
+      return;
+    }
+
+    switch (result.value.__typename) {
+      case "NamespaceOperationValidationPassed": {
+        const metadata = {
+          name: handle,
+          bio: "",
+          picture: "",
+          coverPicture: "",
+          attributes: [],
+        };
+
+        const metadataURI = await jsonToDataURI(metadata);
+
+        const accountParams = {
+          username: { localName: handle },
+          metadataUri: uri(metadataURI),
+        };
+
+        try {
+          await createAccountWithUsername(sessionClient, accountParams).andThen(
+            handleOperationWith(walletClient)
+          );
+
+          setCreatingProfile(false);
+          setMintSuccessMessage("Profile minted successfully. Finalizing login...");
+          setSessionClient(null);
+          setHandle("");
+
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        } catch {
+          setCreatingProfile(false);
+          setErrorMessage("Failed to create profile. Please try again.");
+          setShowError(true);
+        }
+        break;
+      }
+      case "NamespaceOperationValidationFailed":
+        setErrorMessage(result.value.reason);
+        setShowError(true);
+        setCreatingProfile(false);
+        break;
+      case "NamespaceOperationValidationUnknown":
+        setErrorMessage("Sorry, something went wrong. Please try again.");
+        setShowError(true);
+        setCreatingProfile(false);
+        break;
+      case "UsernameTaken":
         setErrorMessage("Sorry, that handle is not available.");
         setShowError(true);
         setCreatingProfile(false);
+        break;
+    }
+  };
+
+  const handleSelectAccount = useCallback(async (account: Account) => {
+    if (!walletClient) {
+      return;
+    }
+
+    setAuthError(null);
+
+    try {
+      const canContinue = await ensureLensChain();
+      if (!canContinue) {
         return;
       }
 
-      switch (result.value.__typename) {
-        case "NamespaceOperationValidationPassed":
-          // Creating a username is allowed
+      const appAddress = process.env.NEXT_PUBLIC_APP_ADDRESS_TESTNET || LENS_TESTNET_APP;
+      const isOwner = wallet.address?.toLowerCase() === account.owner.toLowerCase();
 
-          const metadata = {
-            name: handle,
-            bio: "",
-            picture: "",
-            coverPicture: "",
-            attributes: [],
-          };
-
-          // Convert metadata to data URI
-          const metadataURI = await jsonToDataURI(metadata);
-
-          // Always provide metadataUri (required by Lens Protocol)
-          const accountParams: any = {
-            username: { localName: handle },
-            metadataUri: uri(metadataURI),
-          };
-
-          try {
-            const accountResult = await createAccountWithUsername(sessionClient, accountParams)
-              .andThen(handleOperationWith(walletClient));
-
-            setCreatingProfile(false);
-            sessionClient.logout();
-              dispatch(
-                openAlert({
-                  displayAlert: true,
-                  data: {
-                    id: 1,
-                    variant: "Successful",
-                    classname: "text-black",
-                    title: "Submission Successful",
-                    tag1: "Profile minted!",
-                  tag2: "View on Lens Explorer",
-                  },
-                })
-              );
-              setTimeout(() => {
-                window.location.reload();
-                dispatch(closeAlert());
-              }, 3000);
-          } catch (error) {
-            console.error("Failed to create account:", error);
-            setCreatingProfile(false);
-            setErrorMessage("Failed to create profile. Please try again.");
-            setShowError(true);
-          }
-          break;
-
-        case "NamespaceOperationValidationFailed":
-          // Creating a username is not allowed
-          setErrorMessage(result.value.reason);
-          setShowError(true);
-          setCreatingProfile(false);
-          break;
-
-        case "NamespaceOperationValidationUnknown":
-          // Validation outcome is unknown
-          setErrorMessage("Sorry, something went wrong. Please try again.");
-          setShowError(true);
-          setCreatingProfile(false);
-          break;
-
-        case "UsernameTaken":
-          // The desired username is not available
-          setErrorMessage("Sorry, that handle is not available.");
-          setShowError(true);
-          setCreatingProfile(false);
-          break;
-      }
-
-      // const hash = await create_profile(handle, address as string, dispatch);
-      // if (hash) {
-      //   console.log("Success: ", hash);
-      // } else {
-      //   console.log("error dey");
-      // }
-
-      // console.log("Name: ", handle);
-      // console.log("address: ", address as string);
-
-      // const client = new LensClient({
-      //   environment: development,
-      // });
-
-      // const result2 = await client.wallet.createProfileWithHandle({
-      //   handle: handle,
-      //   to: address as string,
-      // });
-
-      // setLoadingProfiles(true);
-      // setTimeout(() => {
-      //   execute({
-      //     where: {
-      //       ownedBy: [owner],
-      //     },
-      //   });
-      //   setInterval(() => {
-      //     execute({
-      //       where: {
-      //         ownedBy: [owner],
-      //       },
-      //     });
-      //   }, 2000);
-      // }, 5000);
-
-      // setOwner("0x");
-      // setTimeout(() => {
-      //   setOwner(address as string);
-      // }, 1000);
-
-      // const paginatedAccounts = await client.wallet.ownedHandles({
-      //   for: address as string,
-      // });
-      // const firstResult = paginatedAccounts.items[0];
-      // console.log("Id: ", firstResult.id);
-
-      // Uncomment
-      // dispatch(
-      //   openAlert({
-      //     displayAlert: true,
-      //     data: {
-      //       id: 1,
-      //       variant: "Successful",
-      //       classname: "text-black",
-      //       title: "Submission Successful",
-      //       tag1: "Profile minted!",
-      //       tag2: "View on etherscan",
-      //     },
-      //   })
-      // );
-      // setTimeout(() => {
-      //   // window.location.reload();
-      //   dispatch(closeAlert());
-      // }, 3000);
-      // Stop here
-
-      // dispatch(displayLoginModal({ display: false }));
-      // const result2 = await createProfile({
-      //   localName: handle,
-      //   to: address as string,
-      // });
-
-      // if (result2.isFailure()) {
-      //   window.alert(result2.error.message);
-      //   setCreatingProfile(false);
-      //   return;
-      // }
-
-      // const profile = result.value;
-      // console.log("Profile: ", profile);
-      // setCreatingProfile(false);
-    }
-  };
-
-  // const isNameAvailable = async (name: string) => {
-  //   if(sessionClient) {
-  //     const result = await canCreateUsername(sessionClient, {
-  //       localName: name,
-  //     });
-
-  //     if (result.isErr()) {
-  //       return console.error(result.error);
-  //     }
-
-  //     return result.value;
-  //   }
-  // }
-
-  // useEffect(() => {
-  //   if (handle !== "" && sessionClient) {
-
-  //   }
-  // }, [handle]);
-
-  const authenticateUser = async () => {
-    if (sessionClient === null && walletClient) {
-      // Ensure wallet is on Lens Chain Testnet before authentication
-      // Chain ID: 37111 (0x9117)
-      const currentChainId = walletClient.chain?.id;
-      if (currentChainId !== 37111) {
-        try {
-          await walletClient.switchChain({ id: 37111 });
-        } catch (error: any) {
-          if (error.code === 4902) {
-            // Chain not added, add it
-            await walletClient.addChain({
-              chain: {
-                id: 37111,
-                name: "Lens Chain Testnet",
-                nativeCurrency: {
-                  name: "GHO",
-                  symbol: "GHO",
-                  decimals: 18,
-                },
-                rpcUrls: {
-                  default: { http: ["https://rpc.testnet.lens.xyz"] },
-                },
-                blockExplorers: {
-                  default: {
-                    name: "Lens Explorer",
-                    url: "https://block-explorer.testnet.lens.xyz",
-                  },
-                },
-              },
-            });
-            await walletClient.switchChain({ id: 37111 });
-          } else {
-            console.error("Failed to switch to Lens Chain Testnet:", error);
-            return;
-          }
-        }
-      }
-
-      // Use official Lens testnet test app if environment variable is not set
-      // Official test app: 0xC75A89145d765c396fd75CbD16380Eb184Bd2ca7
-      const appAddress = process.env.NEXT_PUBLIC_APP_ADDRESS_TESTNET || "0xC75A89145d765c396fd75CbD16380Eb184Bd2ca7";
-      
-      const authenticated = await client.login({
-        onboardingUser: {
-          app: evmAddress(appAddress),
-          wallet: walletClient.account.address,
-        },
-        signMessage: signMessageWith(walletClient),
-      });
-
-      if (authenticated.isErr()) {
-        return console.error(authenticated.error);
-      }
-
-      const newSessionClient = authenticated.value;
-      setSessionClient(newSessionClient);
-    }
-  };
-
-  const handleSelectAccount = async (account: Account) => {
-    if (!walletClient) return;
-    try {
-      // Ensure wallet is on Lens Chain Testnet before authentication
-      // Chain ID: 37111 (0x9117)
-      const currentChainId = walletClient.chain?.id;
-      if (currentChainId !== 37111) {
-        try {
-          await walletClient.switchChain({ id: 37111 });
-        } catch (error: any) {
-          if (error.code === 4902) {
-            // Chain not added, add it
-            await walletClient.addChain({
-              chain: {
-                id: 37111,
-                name: "Lens Chain Testnet",
-                nativeCurrency: {
-                  name: "GHO",
-                  symbol: "GHO",
-                  decimals: 18,
-                },
-                rpcUrls: {
-                  default: { http: ["https://rpc.testnet.lens.xyz"] },
-                },
-                blockExplorers: {
-                  default: {
-                    name: "Lens Explorer",
-                    url: "https://block-explorer.testnet.lens.xyz",
-                  },
-                },
-              },
-            });
-            await walletClient.switchChain({ id: 37111 });
-          } else {
-            console.error("Failed to switch to Lens Chain Testnet:", error);
-            toast.error("Please switch to Lens Chain Testnet to continue");
-            return;
-          }
-        }
-      }
-
-      // Use official Lens testnet test app (since we're on Lens Chain Testnet)
-      // Official test app: 0xC75A89145d765c396fd75CbD16380Eb184Bd2ca7
-      // Always use testnet app address for Lens Chain Testnet
-      const appAddress = process.env.NEXT_PUBLIC_APP_ADDRESS_TESTNET || "0xC75A89145d765c396fd75CbD16380Eb184Bd2ca7";
-
-      const isOwner = wallet.address === account.owner;
       const authRequest = isOwner
         ? {
             accountOwner: {
@@ -378,36 +298,87 @@ export default function LoginForm({
         },
       });
 
-      const selectedAccount = availableAccounts?.items.find(
-        acc => acc.account.address === account.address
-      )?.account;
-      const profile = getLensAccountData(selectedAccount!);
-
-      console.log("Profile: ", profile);
-
-      toast.success(`Welcome ${profile.handle}`);
-      localStorage.setItem("activeHandle", profile.handle);
-      dispatch(setLensProfile({ profile: profile }));
+      const profile = getLensAccountData(account);
+      dispatch(setLensProfile({ profile }));
       dispatch(displayLoginModal({ display: false }));
-    } catch (error) {
-      console.error("Lens authentication failed:", error);
+
+      toast.success("Login successful", { position: "top-center" });
+
+      if (profile.userLink) {
+        router.push(`/u/${profile.userLink}`);
+      }
+    } catch (error: unknown) {
+      const msg = getErrMsg(error, "Lens authentication failed");
+      setAuthError(msg);
     }
-  };
+  }, [authenticate, dispatch, ensureLensChain, router, wallet.address, walletClient]);
 
   const handleCloseModal = () => {
     dispatch(displayLoginModal({ display: false }));
   };
 
   useEffect(() => {
-    
-  }, [availableAccounts])
+    if (!normalizedWalletAddress) {
+      autoSelectedAccountRef.current = null;
+      lastWalletAddressRef.current = null;
+      setSessionClient(null);
+      setHandle("");
+      setShowError(false);
+      setAuthError(null);
+      setMintSuccessMessage(null);
+      return;
+    }
 
-  // Shows list of available profiles associated with the connected wallet
+    if (lastWalletAddressRef.current && lastWalletAddressRef.current !== normalizedWalletAddress) {
+      autoSelectedAccountRef.current = null;
+      setSessionClient(null);
+      setHandle("");
+      setShowError(false);
+      setAuthError(null);
+      setMintSuccessMessage(null);
+      localStorage.removeItem("activeHandle");
+    }
+
+    lastWalletAddressRef.current = normalizedWalletAddress;
+  }, [normalizedWalletAddress]);
+
+  useEffect(() => {
+    if (
+      !singleAccount ||
+      accountsLoading ||
+      authenticateLoading ||
+      continuing ||
+      !walletReady ||
+      !isWalletContextReady
+    ) {
+      return;
+    }
+
+    if (autoSelectedAccountRef.current === singleAccount.address) {
+      return;
+    }
+
+    autoSelectedAccountRef.current = singleAccount.address;
+    setAutoSelecting(true);
+
+    void handleSelectAccount(singleAccount).finally(() => {
+      setAutoSelecting(false);
+    });
+  }, [
+    accountsLoading,
+    authenticateLoading,
+    continuing,
+    handleSelectAccount,
+    isWalletContextReady,
+    singleAccount,
+    walletReady,
+  ]);
+
   return (
-    <div className="fixed w-screen h-screen top-0 left-0 z-[99] flex items-center justify-center bg-[#80808080]">
-      <div className="w-[360px] flex flex-col rounded-[12px] border-[1px] border-[#E4E4E7] bg-white">
-        <div className="w-[360px] flex justify-between items-center px-[16px] py-[13px] border-b-[1px] border-b-[#E4E4E7] rounded-none sm:rounded-tl-[12px] sm:rounded-tr-[12px]">
-          <span className="leading-[14.52px] text-[16px] font-medium text-[black]">Login</span>
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-[#0F172A80] px-[16px] py-[24px]">
+      <div className="max-h-[92vh] w-full max-w-[460px] overflow-y-auto rounded-[20px] border border-[#E2E8F0] bg-white shadow-[0_22px_65px_rgba(15,23,42,0.26)]">
+        <div className="flex items-center justify-between border-b border-[#E5E7EB] px-[20px] py-[16px]">
+          <span className="text-[18px] font-semibold leading-[1.2] text-[#0F172A]">Complete Login</span>
           <Image
             onClick={handleCloseModal}
             className="cursor-pointer"
@@ -417,107 +388,160 @@ export default function LoginForm({
             height={20}
           />
         </div>
-        <div className="p-[16px] pt-[12px] flex flex-col">
-          {accountsLoading && (
-            <span className="text-[14px] leading-[14.52px] font-medium mb-[4px]">Loading...</span>
+
+        <div className="flex flex-col gap-[12px] p-[20px]">
+          {(accountsLoading || autoSelecting) && (
+            <div className="flex items-center gap-[10px] rounded-[12px] border border-[#DBEAFE] bg-[#EFF6FF] px-[12px] py-[10px] text-[14px] font-medium text-[#1D4ED8]">
+              <Oval
+                visible={true}
+                height="16"
+                width="16"
+                color="#1D4ED8"
+                secondaryColor="#93C5FD"
+                strokeWidth={7}
+                ariaLabel="loading"
+              />
+              {singleAccount
+                ? "Profile found. Completing sign-in..."
+                : "Checking Lens profile availability..."}
+            </div>
           )}
-          {availableAccounts && availableAccounts.items.length === 0 && sessionClient === null && (
+
+          {showPrepare && (
             <>
-              <span className="text-[14px] leading-[14.52px] font-medium mb-[12px]">
-                No Lens profiles found, mint yours now!
+              <span className="text-[14px] font-medium leading-[1.4] text-[#0F172A]">
+                Preparing Lens authentication.
               </span>
-              <div className="w-[272px] flex items-center space-between gap-[20px] box-border">
-                <span className="text-[14px] leading-[14.52px] font-medium">
-                  Create your first lens account now
-                </span>
-                <Image
-                  src={"/images/arrow-handle.svg"}
-                  alt="arrow icon"
-                  width={20}
-                  height={20}
-                  className="w-[24px] h-[24px] bg-[#F5F5F5] px-[5px] py-[4px] rounded-[6px] cursor-pointer"
-                  onClick={authenticateUser}
-                />
-              </div>
+              <button
+                type="button"
+                className="h-[44px] w-full rounded-[12px] bg-[#0F172A] px-[14px] text-[14px] font-semibold text-white transition hover:bg-[#1E293B] disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={authenticateUser}
+                disabled={continuing || authenticateLoading}
+              >
+                {continuing || authenticateLoading ? "Waiting for signature..." : "Continue"}
+              </button>
             </>
           )}
-          {availableAccounts && availableAccounts.items.length === 0 && sessionClient !== null && (
+
+          {accountsError && (
             <>
-              <span className="text-[14px] leading-[14.52px] font-medium mb-[12px]">
+              <span className="rounded-[12px] border border-[#FECACA] bg-[#FEF2F2] px-[12px] py-[10px] text-[12px] leading-[1.4] text-[#B91C1C]">
+                {getErrMsg(accountsError, "Could not load Lens profiles")}
+              </span>
+              <button
+                type="button"
+                className="h-[44px] w-full rounded-[12px] bg-[#0F172A] px-[14px] text-[14px] font-semibold text-white transition hover:bg-[#1E293B] disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={authenticateUser}
+                disabled={continuing || authenticateLoading}
+              >
+                {continuing || authenticateLoading ? "Retrying..." : "Continue"}
+              </button>
+            </>
+          )}
+
+          {availableAccounts && profileCount === 0 && sessionClient === null && walletReady && (
+            <>
+              <span className="text-[14px] font-semibold leading-[1.4] text-[#0F172A]">
+                No Lens profile found, mint yours now!
+              </span>
+              <p className="text-[13px] leading-[1.4] text-[#64748B]">
+                Continue once to initialize Lens, then choose your handle.
+              </p>
+              <button
+                type="button"
+                className="h-[44px] w-full rounded-[12px] bg-[#0F172A] px-[14px] text-[14px] font-semibold text-white transition hover:bg-[#1E293B] disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={authenticateUser}
+                disabled={continuing || authenticateLoading}
+              >
+                {continuing || authenticateLoading ? "Waiting for signature..." : "Continue"}
+              </button>
+            </>
+          )}
+
+          {availableAccounts && profileCount === 0 && sessionClient !== null && walletReady && (
+            <>
+              <span className="text-[14px] font-semibold leading-[1.4] text-[#0F172A]">
                 No Lens profiles found, mint yours now!
               </span>
-              <div className="w-[272px] rounded-[8px] bg-[#F5F5F5] p-[3px] pl-[5px] flex items-center gap-[4px] box-border">
-                <Image
-                  src={"/images/search-handle.svg"}
-                  alt="search icon"
-                  width={20}
-                  height={20}
-                  className="w-[20px] h-[20px]"
-                />
-                <input
-                  className="text-[14px] leading-[14.52px] font-normal text-[#ADADAD] flex-1 outline-none bg-transparent"
-                  placeholder="Mint your handle"
-                  onChange={handleInput}
-                />
-                {creatingProfile ? (
-                  <div className="w-[24px] h-[24px] bg-white flex items-center align-middle  rounded-[6px] cursor-pointer">
-                    <Oval
-                      visible={true}
-                      height="20"
-                      width="20"
-                      color="#2D2D2D"
-                      secondaryColor="#a2a2a3"
-                      strokeWidth={8}
-                      ariaLabel="oval-loading"
-                      wrapperClass="mx-[auto]"
-                    />
-                  </div>
-                ) : (
-                  <Image
-                    src={"/images/arrow-handle.svg"}
-                    alt="arrow icon"
-                    width={20}
-                    height={20}
-                    className="w-[24px] h-[24px] bg-white px-[5px] py-[4px] rounded-[6px] cursor-pointer"
-                    onClick={handleSubmit}
+              <div className="w-full rounded-[12px] border border-[#E2E8F0] bg-[#F8FAFC] p-[8px] pl-[10px]">
+                <label htmlFor="mint-handle-input" className="mb-[8px] block text-[12px] text-[#64748B]">
+                  Choose a handle
+                </label>
+                <div className="flex items-center gap-[8px]">
+                  <span className="text-[14px] font-medium text-[#475569]">@</span>
+                  <input
+                    id="mint-handle-input"
+                    value={handle}
+                    className="h-[36px] flex-1 bg-transparent text-[14px] leading-[1.2] font-medium text-[#0F172A] outline-none"
+                    placeholder="yourhandle"
+                    onChange={handleInput}
                   />
-                )}
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={creatingProfile || handle.trim().length === 0 || showError}
+                    className="h-[32px] min-w-[88px] rounded-[10px] bg-[#0F172A] px-[12px] text-[13px] font-semibold text-white transition hover:bg-[#1E293B] disabled:cursor-not-allowed disabled:bg-[#94A3B8]"
+                  >
+                    {creatingProfile ? "Minting..." : "Mint"}
+                  </button>
+                </div>
               </div>
+              {mintSuccessMessage && (
+                <span className="rounded-[12px] border border-[#BBF7D0] bg-[#F0FDF4] px-[12px] py-[10px] text-[12px] leading-[1.4] text-[#15803D]">
+                  {mintSuccessMessage}
+                </span>
+              )}
               {showError && (
-                <span className="text-[12px] leading-[14px] text-[#FF5555] font-normal mt-[6px]">
+                <span className="rounded-[12px] border border-[#FECACA] bg-[#FEF2F2] px-[12px] py-[10px] text-[12px] leading-[1.4] text-[#B91C1C]">
                   {errorMessage}
                 </span>
               )}
             </>
           )}
-          {availableAccounts && availableAccounts.items.length > 0 && (
+
+          {availableAccounts && profileCount > 1 && !autoSelecting && (
             <>
-              <span className="text-[14px] leading-[14.52px] font-medium mb-[4px]">
-                Please sign the message.
+              <span className="text-[14px] font-semibold leading-[1.4] text-[#0F172A]">
+                Select your Lens profile
               </span>
-              {availableAccounts.items.map((acc, index) => {
-                return (
-                  <div
-                    key={index}
-                    className="flex gap-[12px] items-center mt-[8px] cursor-pointer"
-                    onClick={() => handleSelectAccount(acc.account)}
+              <div className="flex max-h-[280px] flex-col gap-[8px] overflow-y-auto pr-[4px]">
+                {availableAccounts.items.map(item => (
+                  <button
+                    type="button"
+                    key={item.account.address}
+                    className="flex w-full items-center gap-[12px] rounded-[12px] border border-[#E2E8F0] px-[12px] py-[10px] text-left transition hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={() => handleSelectAccount(item.account)}
+                    disabled={authenticateLoading || continuing}
                   >
                     <Image
-                      src={
-                        acc.account.metadata?.picture || "https://static.hey.xyz/images/default.png"
-                      }
+                      src={item.account.metadata?.picture || "https://static.hey.xyz/images/default.png"}
                       alt="profile pic"
                       height={40}
                       width={40}
-                      className="w-[40px] h-[40px] rounded-[8px] border-[1px] border-[#E4E4E7]"
+                      className="h-[40px] w-[40px] rounded-[10px] border border-[#E2E8F0] object-cover"
                     />
-                    <span className="text-[14px] leading-[14.52px] font-medium">
-                      {acc.account.username?.localName || acc.account.address}
-                    </span>
-                  </div>
-                );
-              })}
+                    <div className="flex min-w-0 flex-col">
+                      <span className="truncate text-[14px] font-semibold text-[#0F172A]">
+                        @{item.account.username?.localName || item.account.address.slice(0, 8)}
+                      </span>
+                      <span className="truncate text-[12px] text-[#64748B]">{item.account.address}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </>
+          )}
+
+          {singleAccount && !accountsLoading && !autoSelecting && (
+            <span className="rounded-[12px] border border-[#DBEAFE] bg-[#EFF6FF] px-[12px] py-[10px] text-[12px] leading-[1.4] text-[#1D4ED8]">
+              Profile detected. Completing authentication...
+            </span>
+          )}
+
+          {authError && (
+            <span className="rounded-[12px] border border-[#FECACA] bg-[#FEF2F2] px-[12px] py-[10px] text-[12px] leading-[1.4] text-[#B91C1C]">
+              {authError}
+            </span>
           )}
         </div>
       </div>

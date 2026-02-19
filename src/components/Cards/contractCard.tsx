@@ -1,11 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Image from "next/image";
 import type { contractDetails } from "@/types/types";
-import { useAccount } from "wagmi";
-import {useAccount as useLensAccount} from "@lens-protocol/react";
-import getLensAccountData, { AccountData } from "@/utils/getLensProfile";
 
 interface CardProps {
   type: string;
@@ -67,25 +63,6 @@ const contractTypes: ContractTypes = {
 };
 
 const ContractCard = ({ onCardClick, contractDetails }: CardProps) => {
-  const { address } = useAccount();
-  const [showClientView, setShowClientView] = useState(
-    (address as string) === contractDetails.clientAddress
-  );
-  const [userData, setUserData] = useState<AccountData>();
-  const { data: profile, loading: profileLoading } = useLensAccount({
-    username: { localName: showClientView ? contractDetails.freelancerHandle : contractDetails.clientHandle },
-  })
-  const [loadingUser, setLoadingUser] = useState(true);
-
-  useEffect(() => {
-    if (profile) {
-      const profileData = getLensAccountData(profile);
-      setUserData(profileData);
-      setLoadingUser(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profileLoading]);
-
   return (
     <div
       className="group group-hover:bg-[#fafafa] border-b border-[#8C8C8C33] pb-10"
@@ -95,26 +72,13 @@ const ContractCard = ({ onCardClick, contractDetails }: CardProps) => {
     >
       <div className="bg-white  p-[8px] sm:p-[8px] sm:pb-[16px] md:p-[24px] pb-[16px] md:pb-[24px] grid sm:grid-cols-[92px_1fr] grid-cols-[64px_1fr] gap-x-[12px] md:gap-x-[20px] gap-y-[8px] hover:shadow-sm transition-shadow cursor-pointer">
         <div className="row-span-2 sm:row-span-3 sm:aspect-square">
-          {!loadingUser && userData ? (
-            <Image
-              src={userData.picture}
-              onError={e => {
-                (e.target as HTMLImageElement).src = 'https://static.hey.xyz/images/default.png';
-              }}
-              alt="paco pic"
-              width={46}
-              height={46}
-              className="rounded-[8px] object-cover sm:h-[92px] sm:w-[92px] w-[64px] h-[64px] md:w-[64px] md:h-[64px] opacity-100"
-            />
-          ) : (
-            <Image
-              src="/images/jobimage.svg"
-              alt="w3rk logo"
-              className="rounded-[8px] object-cover sm:h-[92px] sm:w-[92px] w-[64px] h-[64px] md:w-[64px] md:h-[64px] opacity-100"
-              width={60}
-              height={60}
-            />
-          )}
+          <Image
+            src="/images/jobimage.svg"
+            alt="w3rk logo"
+            className="rounded-[8px] object-cover sm:h-[92px] sm:w-[92px] w-[64px] h-[64px] md:w-[64px] md:h-[64px] opacity-100"
+            width={60}
+            height={60}
+          />
           {/* <div className="flex flex-col gap-[4px]">
             <span className="text-[16px] leading-[19.36px] font-medium">
               {contractDetails.title}

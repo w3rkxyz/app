@@ -1,0 +1,209 @@
+.page {
+  --desktop-pad: 24px;
+  --desktop-panel-max-width: 520px;
+  --desktop-right-preview-max-width: 560px;
+
+  display: flex;
+  margin: 0;
+  width: 100vw;
+  min-height: 100vh;
+  padding: 0;
+  overflow-x: hidden;
+  background: #ffffff;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+.desktopGrid {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  min-height: 100vh;
+}
+
+.leftColumn {
+  flex: 1 1 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  padding: var(--desktop-pad);
+  min-width: 0;
+  min-height: 100vh;
+}
+
+.leftPanel {
+  position: relative;
+  width: min(100%, var(--desktop-panel-max-width));
+  aspect-ratio: 1440 / 2048;
+}
+
+.desktopLogo {
+  position: absolute;
+  left: 5.2%;
+  top: 5.8%;
+  z-index: 3;
+  width: clamp(106px, 22%, 146px);
+  pointer-events: none;
+}
+
+.desktopLogoMask {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 30%;
+  height: 15%;
+  background: #ffffff;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.brandLogo {
+  width: 100%;
+  height: auto;
+}
+
+.panelImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.rightColumn {
+  position: relative;
+  flex: 1 1 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: #f7f7f8;
+  background-image: radial-gradient(#ececef 1px, transparent 1px);
+  background-size: 8px 8px;
+  padding: var(--desktop-pad);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.rightPanel {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  background: transparent;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.rightImage {
+  width: clamp(920px, 95vw, 1280px);
+  height: auto;
+  max-width: none;
+  max-height: calc(100vh - (var(--desktop-pad) * 2));
+  transform: none;
+  transform-origin: left center;
+  flex-shrink: 0;
+}
+
+.mobileWrap {
+  display: none;
+}
+
+.mobilePanel {
+  position: relative;
+  width: min(100vw, 430px);
+  aspect-ratio: 860 / 2184;
+}
+
+.mobileLogo {
+  position: absolute;
+  left: 6%;
+  top: 5.4%;
+  z-index: 3;
+  width: clamp(86px, 26%, 122px);
+  pointer-events: none;
+}
+
+.mobileLogoMask {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 43%;
+  height: 14%;
+  background: #ffffff;
+  z-index: 2;
+  pointer-events: none;
+}
+
+@media (max-width: 1024px) {
+  .container {
+    min-height: auto;
+  }
+
+  .desktopGrid {
+    display: block;
+    min-height: auto;
+  }
+
+  .leftColumn {
+    padding: 24px 16px;
+    min-height: auto;
+  }
+
+  .leftPanel {
+    width: min(100%, 560px);
+  }
+
+  .rightColumn {
+    min-height: 520px;
+    padding: 24px 16px;
+  }
+
+  .rightPanel {
+    justify-content: center;
+    max-width: 560px;
+    height: auto;
+    overflow: visible;
+  }
+
+  .rightImage {
+    width: min(100%, 560px);
+    max-width: 100%;
+    max-height: none;
+    transform: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .desktopGrid {
+    display: none;
+  }
+
+  .mobileWrap {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    background: #ffffff;
+  }
+
+  .mobilePanel::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4.8%;
+    background: #ffffff;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+}

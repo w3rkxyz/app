@@ -18,8 +18,9 @@ import { useSelector } from "react-redux";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import { useSearchParams } from "next/navigation";
-import { useAccount as useLensAccount } from "@lens-protocol/react";
 import { invalidateContractsCache } from "@/lib/contractCache";
+import { fetchAccount } from "@lens-protocol/client/actions";
+import { getPublicClient } from "@/client";
 
 const contractTypes = [
   "New Proposals",
@@ -105,12 +106,7 @@ const Contracts = () => {
   const searchParams = useSearchParams();
   const freelancer = searchParams.get("freelancer");
   const [freelancerId, setFreelancerId] = useState(freelancer !== null ? freelancer : "");
-  // const { data: profile, loading: loadingProfile } = useProfile({
-  //   forHandle: `lens/${freelancerId as string}`,
-  // });
-  const { data: profile, loading: loadingProfile } = useLensAccount({
-    legacyProfileId: freelancerId, 
-  });
+  const [profile, setProfile] = useState<any>(null);
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<number | null>(null);
   const { address } = useAccount();
   const [isModalOpen, setIsModalOpen] = useState(true);
@@ -177,6 +173,45 @@ const Contracts = () => {
   };
 
   useEffect(() => {
+    setFreelancerId(freelancer ?? "");
+  }, [freelancer]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadFreelancerProfile() {
+      if (!freelancerId) {
+        if (mounted) {
+          setProfile(null);
+        }
+        return;
+      }
+
+      try {
+        const client = getPublicClient();
+        const result = await fetchAccount(client, {
+          legacyProfileId: freelancerId,
+        }).unwrapOr(null);
+
+        if (mounted) {
+          setProfile(result);
+        }
+      } catch (error) {
+        if (mounted) {
+          setProfile(null);
+        }
+        console.error("Error fetching freelancer Lens profile:", error);
+      }
+    }
+
+    void loadFreelancerProfile();
+
+    return () => {
+      mounted = false;
+    };
+  }, [freelancerId]);
+
+  useEffect(() => {
     if (userProfile?.address) {
       getData();
 
@@ -241,11 +276,11 @@ const Contracts = () => {
   }, [userProfile?.address]);
 
   useEffect(() => {
-    if (profile) {
+    if (freelancerId && profile) {
       console.log("Profile: ", profile);
       setShowCreateContractModal(true);
     }
-  }, [profile]);
+  }, [freelancerId, profile]);
 
   return (
     <div className="find-work-section pt-10 mb-[20px] bg-white">

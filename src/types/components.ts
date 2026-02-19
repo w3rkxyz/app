@@ -8,6 +8,7 @@ export interface FormInputProps {
   required?: boolean
   className?: string,
   startContent?: React.ReactNode
+  autoComplete?: string
 }
 
 export interface FormTextareaProps {
@@ -32,4 +33,3 @@ export interface FormSelectProps {
   required?: boolean
   className?: string
 }
-

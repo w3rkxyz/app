@@ -2,42 +2,46 @@
 import React, { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import ProfileDropdown from "@/components/ProfileDropdown/ProfileDropdown";
-import { usePathname } from "next/navigation";
-import MobileProfileDropdown from "./mobileMenu";
+import { usePathname, useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
-import { Oval } from "react-loader-spinner";
 import getLensAccountData from "@/utils/getLensProfile";
 import useSearchAccounts from "@/hooks/useSearchAccounts";
-import { SVGBell, SVGGear, SVGLogout, SVGSearch, SVGUser, SVGUserProfile } from "@/assets/list-svg-icon";
-import { Bell, ChevronDown } from "lucide-react";
+import { SVGGear, SVGLogout, SVGSearch, SVGUser, SVGUserProfile } from "@/assets/list-svg-icon";
+import { Bell, ChevronDown, X } from "lucide-react";
 
 const SecondNav = () => {
   const { user: profile } = useSelector((state: any) => state.app);
+  const router = useRouter();
+  const profileImage = profile?.picture || "https://static.hey.xyz/images/default.png";
+  const profileHandle = profile?.handle || "@user";
+  const profileName =
+    profile?.displayName || profile?.handle?.replace(/^@/, "") || "User";
+  const profileLink =
+    profile?.userLink || (profile?.handle ? profile.handle.replace(/^@/, "") : "");
   const myDivRef = useRef<HTMLDivElement>(null);
   const drowdownRef = useRef<HTMLDivElement>(null);
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const path = usePathname();
   const [searchText, setSearchText] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-    
-  
-  // const { data: accounts, loading: accountsLoading } = useSearchAccounts({
-  //   filter: {
-  //     searchBy: {
-  //       localNameQuery: searchText,
-  //     },
-  //   },
-  // });
+  const { data: accounts, loading: accountsLoading } = useSearchAccounts({
+    filter: {
+      searchBy: {
+        localNameQuery: searchText,
+      },
+    },
+  });
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (myDivRef.current && !myDivRef.current.contains(event.target as Node)) {
         setShowSearchResults(false);
+        setIsSearchOpen(false);
       }
     }
 
@@ -73,6 +77,35 @@ const SecondNav = () => {
 
   const handleMobileMenuToggle = () => {
     setMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const handleGoToProfile = () => {
+    if (!profileLink) return;
+    setIsProfileDropdownOpen(false);
+    router.push(`/u/${profileLink}`);
+  };
+
+  const handleGoToSettings = () => {
+    setIsProfileDropdownOpen(false);
+    router.push("/settings");
+  };
+
+  const openSearch = () => {
+    setIsSearchOpen(true);
+  };
+
+  const closeSearch = () => {
+    setIsSearchOpen(false);
+    setSearchText("");
+    setShowSearchResults(false);
+  };
+
+  const handleSelectAccount = (handle: string) => {
+    if (!handle) return;
+    setShowSearchResults(false);
+    setSearchText("");
+    setIsSearchOpen(false);
+    router.push(`/u/${handle}`);
   };
 
   useEffect(() => {
@@ -181,12 +214,96 @@ const SecondNav = () => {
               </div> */}
 
               <div className="navbar-right-cont flex items-center gap-3">
-                              <div className="border border-[#C3C7CE] h-8 w-8 rounded-full flex items-center justify-center cursor-pointer hover:bg-gray-100">
-                                <SVGSearch />
+                              <div className="relative" ref={myDivRef}>
+                                <div
+                                  className={`flex items-center overflow-hidden rounded-full border border-[#C3C7CE] bg-white transition-all duration-300 ease-in-out ${
+                                    isSearchOpen
+                                      ? "h-8 w-[280px] px-3 py-1"
+                                      : "h-8 w-8 justify-center"
+                                  }`}
+                                >
+                                  <button
+                                    type="button"
+                                    aria-label="Search users"
+                                    className="flex h-6 w-6 items-center justify-center"
+                                    onClick={e => {
+                                      e.stopPropagation();
+                                      if (!isSearchOpen) openSearch();
+                                    }}
+                                  >
+                                    <SVGSearch />
+                                  </button>
+                                  <input
+                                    className={`bg-transparent text-sm text-[#212121] outline-none placeholder:text-[#A3A3A3] transition-all duration-200 ${
+                                      isSearchOpen
+                                        ? "ml-2 w-[200px] opacity-100"
+                                        : "ml-0 w-0 opacity-0 pointer-events-none"
+                                    }`}
+                                    placeholder="Search Lens users"
+                                    value={searchText}
+                                    onChange={e => setSearchText(e.target.value)}
+                                    autoFocus={isSearchOpen}
+                                  />
+                                  <button
+                                    type="button"
+                                    aria-label="Close search"
+                                    className={`flex items-center justify-center text-[#818181] transition-all duration-200 hover:text-[#212121] ${
+                                      isSearchOpen
+                                        ? "ml-2 h-5 w-5 opacity-100"
+                                        : "ml-0 h-0 w-0 opacity-0 pointer-events-none"
+                                    }`}
+                                    onClick={closeSearch}
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                </div>
+
+                                {isSearchOpen && searchText !== "" && (
+                                  <div className="absolute right-0 mt-2 max-h-[320px] w-[320px] overflow-y-auto rounded-[12px] border border-[#E4E4E7] bg-white py-2 shadow-lg z-[1200]">
+                                    {accountsLoading ? (
+                                      <div className="px-3 py-2 text-sm text-[#818181]">Searching users...</div>
+                                    ) : accounts.length > 0 ? (
+                                      accounts.slice(0, 8).map(acc => {
+                                        const accountProfile = getLensAccountData(acc);
+                                        return (
+                                          <button
+                                            type="button"
+                                            key={acc.address}
+                                            className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-[#F5F5F5]"
+                                            onClick={() => handleSelectAccount(accountProfile.userLink)}
+                                          >
+                                            <Image
+                                              src={accountProfile.picture || "https://static.hey.xyz/images/default.png"}
+                                              alt="user"
+                                              width={32}
+                                              height={32}
+                                              className="h-8 w-8 rounded-full object-cover"
+                                            />
+                                            <div className="min-w-0">
+                                              <p className="truncate text-sm font-semibold text-[#212121]">
+                                                {accountProfile.displayName || accountProfile.userLink}
+                                              </p>
+                                              <p className="truncate text-xs text-[#818181]">
+                                                {accountProfile.handle || "@user"}
+                                              </p>
+                                            </div>
+                                          </button>
+                                        );
+                                      })
+                                    ) : (
+                                      <div className="px-3 py-2 text-sm text-[#818181]">No users found</div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                              <div className="border border-[#C3C7CE] h-8 w-8 rounded-full flex items-center justify-center cursor-pointer hover:bg-gray-100">
+                              <button
+                                type="button"
+                                aria-label="Notifications"
+                                onClick={() => router.push("/notifications")}
+                                className="border border-[#C3C7CE] h-8 w-8 rounded-full flex items-center justify-center cursor-pointer hover:bg-gray-100"
+                              >
                                 <Bell strokeWidth={1} size={20} />
-                              </div>
+                              </button>
               
                               {/* Profile Dropdown */}
                               <div className="relative" ref={dropdownRef}>
@@ -195,18 +312,16 @@ const SecondNav = () => {
                                   className="flex items-center gap-2 px-3 py-1 rounded-full border border-[#E0E0E0] hover:bg-gray-50 transition-colors"
                                 >
                                   <div className="w-6 h-6 bg-gray-300 rounded-full flex-shrink-0">
-                                    {profile?.profileImage && (
-                                      <Image
-                                        src={profile.profileImage}
-                                        alt="profile"
-                                        width={24}
-                                        height={24}
-                                        className="w-full h-full rounded-full object-cover"
-                                      />
-                                    )}
+                                    <Image
+                                      src={profileImage}
+                                      alt="profile"
+                                      width={24}
+                                      height={24}
+                                      className="w-full h-full rounded-full object-cover"
+                                    />
                                   </div>
                                   <span className="text-sm font-medium text-[#212121]  sm:inline">
-                                    {profile?.username || "@jhondoe"}
+                                    {profileHandle}
                                   </span>
                                   <ChevronDown
                                     size={16}
@@ -222,32 +337,36 @@ const SecondNav = () => {
                                     {/* User Header */}
                                     <div className="px-4 pb-3 border-b border-[#E0E0E0] flex items-center gap-3">
                                       <div className="w-10 h-10 bg-gray-300 rounded-full flex-shrink-0">
-                                        {profile?.profileImage && (
-                                          <Image
-                                            src={profile.profileImage}
-                                            alt="profile"
-                                            width={40}
-                                            height={40}
-                                            className="w-full h-full rounded-full object-cover"
-                                          />
-                                        )}
+                                        <Image
+                                          src={profileImage}
+                                          alt="profile"
+                                          width={40}
+                                          height={40}
+                                          className="w-full h-full rounded-full object-cover"
+                                        />
                                       </div>
                                       <div className="flex-1 min-w-0">
                                         <p className="text-base font-semibold text-[#212121] truncate">
-                                          {profile?.name || "User"}
+                                          {profileName}
                                         </p>
                                         <p className="text-sm text-[#818181] truncate">
-                                          @{profile?.username || "username"}
+                                          {profileHandle}
                                         </p>
                                       </div>
                                     </div>
               
                                     {/* Menu Items */}
-                                    <button className="w-full px-4 py-2 text-left text-sm text-[#212121] hover:bg-gray-50 flex items-center gap-3 transition-colors">
+                                    <button
+                                      onClick={handleGoToProfile}
+                                      className="w-full px-4 py-2 text-left text-sm text-[#212121] hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                                    >
                                       <SVGUser />
                                       Profile
                                     </button>
-                                    <button className="w-full px-4 py-2 text-left text-sm text-[#212121] hover:bg-gray-50 flex items-center gap-3 transition-colors">
+                                    <button
+                                      onClick={handleGoToSettings}
+                                      className="w-full px-4 py-2 text-left text-sm text-[#212121] hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                                    >
                                       <SVGGear />
                                       Settings
                                     </button>

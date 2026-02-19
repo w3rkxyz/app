@@ -2,7 +2,7 @@ import Image from "next/image";
 import { toast } from "react-hot-toast";
 import { useDispatch } from "react-redux";
 import { setLensProfile, displaySwitchModal } from "@/redux/app";
-import { Account, evmAddress } from '@lens-protocol/client'
+import { Account, evmAddress, ManagedAccountsVisibility } from '@lens-protocol/client'
 import { useAccountsAvailable, useLogin } from '@lens-protocol/react'
 import getLensAccountData, { AccountData } from "@/utils/getLensProfile";
 import { useWalletClient, useAccount } from "wagmi";
@@ -15,6 +15,7 @@ export function SwitchForm() {
   const { data: availableAccounts, loading: loadingProfiles } = useAccountsAvailable({
     managedBy: walletClient?.account.address,
     includeOwned: true,
+    hiddenFilter: ManagedAccountsVisibility.All,
   });
 
   const handleProfileClick = async (account: Account) => {
@@ -95,7 +96,6 @@ export function SwitchForm() {
       console.log("Profile: ", profile);
 
       toast.success(`Welcome ${profile.handle}`);
-      localStorage.setItem("activeHandle", profile.handle);
       dispatch(setLensProfile({ profile: profile }));
       dispatch(displaySwitchModal({ display: false }));
     } catch (error) {
