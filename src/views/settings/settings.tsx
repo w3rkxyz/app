@@ -19,10 +19,10 @@ import FormTextarea from "@/components/onboarding/form-textarea";
 import { Camera, ChevronDown } from "lucide-react";
 import {
   uploadFileToLensStorage,
+  uploadMetadataToLensStorage,
   storageClient,
 } from "@/utils/storage-client";
 import type { RootState } from "@/redux/store";
-import { jsonToDataURI } from "@/utils/dataUriHelpers";
 
 const COUNTRY_NAMES = [
   "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina",
@@ -305,11 +305,10 @@ const Settings = () => {
         attributes: attributes.length !== 0 ? attributes : undefined,
       });
 
-      // Use data URI metadata to avoid network storage upload failures during settings save.
-      const metadataUriFromDataUri = await jsonToDataURI(metadata);
+      const metadataUriFromLensStorage = await uploadMetadataToLensStorage(metadata);
 
       const result = await setAccountMetadata(sessionClient, {
-        metadataUri: uri(metadataUriFromDataUri),
+        metadataUri: uri(metadataUriFromLensStorage),
       }).andThen(handleOperationWith(walletClient));
 
       if (result.isErr()) {
