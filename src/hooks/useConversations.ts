@@ -31,7 +31,7 @@ export const useConversations = () => {
   const list = async (options?: ListConversationsOptions, syncFromNetwork: boolean = false) => {
     if (!client) throw new Error("XMTP client not initialized");
     if (syncFromNetwork) {
-      await sync();
+      await syncAll();
     }
 
     setLoading(true);

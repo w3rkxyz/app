@@ -26,7 +26,7 @@ const stageLabel: Record<string, string> = {
 
 const ConversationsNav = () => {
   const { list, conversations, stream, activeConversation, loading } = useConversations();
-  const { client } = useXMTP();
+  const { client, setClient, setActiveConversation } = useXMTP();
   const { address: walletAddress } = useAccount();
   const lensProfile = useSelector((state: RootState) => state.app.user);
   const { createXMTPClient, initXMTPClient, connectingXMTP, connectStage } = useXMTPClient({
@@ -96,6 +96,30 @@ const ConversationsNav = () => {
       cancelled = true;
     };
   }, [client, connectingXMTP, initXMTPClient, lensProfile?.address, walletAddress]);
+
+  useEffect(() => {
+    if (!client || !lensProfile?.address) {
+      return;
+    }
+
+    const currentClientIdentifier = client.accountIdentifier?.identifier?.toLowerCase();
+    const expectedIdentifier = lensProfile.address.toLowerCase();
+
+    if (!currentClientIdentifier || currentClientIdentifier === expectedIdentifier) {
+      return;
+    }
+
+    console.warn("XMTP client identity mismatch detected. Rebinding XMTP client.", {
+      currentClientIdentifier,
+      expectedIdentifier,
+    });
+
+    stopStreamRef.current?.();
+    stopStreamRef.current = null;
+    setActiveConversation(undefined);
+    client.close();
+    setClient(undefined);
+  }, [client, lensProfile?.address, setActiveConversation, setClient]);
 
   const handleEnable = async () => {
     const toastId = toast.loading(stageLabel.idle);

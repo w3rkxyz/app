@@ -85,9 +85,15 @@ export const useConversation = () => {
     }
 
     try {
-      const msgs = (await activeConversation?.messages(options)) ?? [];
-      setMessages(msgs);
-      return msgs;
+      const resolvedOptions = options ?? { limit: 200 };
+      const msgs = (await activeConversation?.messages(resolvedOptions)) ?? [];
+      const sortedMessages = [...msgs].sort((a, b) => {
+        if (a.sentAtNs < b.sentAtNs) return -1;
+        if (a.sentAtNs > b.sentAtNs) return 1;
+        return 0;
+      });
+      setMessages(sortedMessages);
+      return sortedMessages;
     } finally {
       setLoading(false);
     }
@@ -129,7 +135,12 @@ export const useConversation = () => {
 
     const stream = await activeConversation?.stream({
       onValue: message => {
-        setMessages(prev => [...prev, message]);
+        setMessages(prev => {
+          if (prev.some(existing => existing.id === message.id)) {
+            return prev;
+          }
+          return [...prev, message];
+        });
       },
     });
 
