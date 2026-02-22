@@ -232,7 +232,7 @@ const Contracts = () => {
   }, [profile]);
 
   return (
-    <div className="find-work-section pt-10 mb-[20px] bg-white">
+    <div className="find-work-section pt-10 mb-[20px] h-screen bg-white">
       <div className="custom-container">
         <div className="tags-section w-full flex md:justify-center md:flex-col gap-[45px] mt-[50px] md:mt-[0px] sm:mt-[16px]">
           <div
@@ -250,7 +250,7 @@ const Contracts = () => {
                       ? 'bg-white text-gray-900'
                       : 'bg-transparent text-gray-600 hover:text-gray-900'
                   }`}
-                  style={{ boxShadow: activeTab === 'active' ? '0px 1px 2px -1px #0000001A' : '' }}
+                  style={{ boxShadow: activeTab === 'active' ? '0px 1px 3px 0px #0000001A' : '' }}
                 >
                   Active
                 </button>
@@ -261,7 +261,7 @@ const Contracts = () => {
                       ? 'bg-white text-gray-900'
                       : 'bg-transparent text-gray-600 hover:text-gray-900'
                   }`}
-                  style={{ boxShadow: activeTab === 'ended' ? '0px 1px 2px -1px #0000001A' : '' }}
+                  style={{ boxShadow: activeTab === 'ended' ? '0px 1px 3px 0px #0000001A' : '' }}
                 >
                   Ended
                 </button>
@@ -273,7 +273,7 @@ const Contracts = () => {
                     key={index}
                     className={`w-full py-[12px] flex items-center text-[#818181] justify-center leading-[14.52px] text-base font-medium border-[0.5px] rounded-full ${
                       selectedTypeFilter === index
-                        ? "bg-[#E4E4E7] border-[#000000]"
+                        ? "bg-[#FFFFFF] border-[#000000]"
                         : "bg-[#FFFFFF] border-[#C3C7CE]"
                     }`}
                     onClick={() => setSelectedTypeFilter(index)}
@@ -339,7 +339,7 @@ const Contracts = () => {
             </button>
           </div> */}
 
-          <div className=" p-[16px] flex flex-1 flex-col gap-[16px]">
+          <div className=" flex flex-1 flex-col gap-[16px]">
             {/* {contractTypes.map((type: string, index: number) => {
               return (
                 <ContractCard

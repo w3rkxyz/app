@@ -9,7 +9,9 @@ interface RateSelectorProps {
   onRateChange: (e: React.ChangeEvent<HTMLInputElement>) => void,
   label?: string,
   startContent?: string,
-  required?: boolean
+  required?: boolean,
+  bgcolor?: string,
+  inputClasses?: string
 }
 
 const RateSelector: React.FC<RateSelectorProps> = ({
@@ -19,7 +21,9 @@ const RateSelector: React.FC<RateSelectorProps> = ({
   onRateChange,
   label="What&apos;s Your Rate?",
   startContent="Hourly",
-  required = false
+  required = false,
+  bgcolor,
+  inputClasses
 }) => {
   return (
     <div>
@@ -34,7 +38,7 @@ const RateSelector: React.FC<RateSelectorProps> = ({
             className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-all sm:px-6 sm:text-base ${
               rateType === 'Hourly'
                 ? 'bg-[#FAFAFA] text-[#777A82]'
-                : 'text-gray-700 hover:bg-gray-50'
+                : `text-gray-700 bg-[${bgcolor}] hover:bg-gray-50`
             }`}
           >
             {startContent}
@@ -46,7 +50,7 @@ const RateSelector: React.FC<RateSelectorProps> = ({
           value={rate}
           onChange={onRateChange}
           placeholder="Amount"
-          className="flex-1 rounded-r-lg border border-gray-300 border-l-0 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:border-gray-600 focus:outline-none sm:text-base"
+          className={`flex-1 rounded-r-lg border border-gray-300 border-l-0 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:border-gray-600 focus:outline-none sm:text-base ${inputClasses}`}
         />
       </div>
     </div>

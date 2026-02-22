@@ -88,12 +88,12 @@ const ContractCard = ({ onCardClick, contractDetails }: CardProps) => {
 
   return (
     <div
-      className="group group-hover:bg-[#fafafa] border-b border-[#8C8C8C33] pb-10"
+      className={`group group-hover:bg-[#fafafa] border-b border-[#8C8C8C33] pt-3 pb-6`}
       onClick={() => {
         onCardClick?.();
       }}
     >
-      <div className="bg-white  p-[8px] sm:p-[8px] sm:pb-[16px] md:p-[24px] pb-[16px] md:pb-[24px] grid sm:grid-cols-[92px_1fr] grid-cols-[64px_1fr] gap-x-[12px] md:gap-x-[20px] gap-y-[8px] hover:shadow-sm transition-shadow cursor-pointer">
+      <div className="bg-white  p-[8px] sm:p-[8px] sm:pb-[16px] md:p-[24px] pb-[18px] md:pb-[24px] grid sm:grid-cols-[92px_1fr] grid-cols-[64px_1fr] gap-x-[12px] md:gap-x-[20px] gap-y-[8px] hover:shadow-sm transition-shadow cursor-pointer">
         <div className="row-span-2 sm:row-span-3 sm:aspect-square">
           {!loadingUser && userData ? (
             <Image
@@ -161,7 +161,7 @@ const ContractCard = ({ onCardClick, contractDetails }: CardProps) => {
             : contractTypes[contractDetails.state].text}
         </div> */}
       </div>
-        <p className="mt-[16px] w-full line-clamp-4 sm:line-clamp-11 leading-[22px] text-base text-[#6C6C6C] font-normal">
+        <p className=" w-full line-clamp-4 sm:line-clamp-11 leading-[22px] text-base text-[#6C6C6C] font-normal">
         {contractDetails.description}
       </p>
     </div>

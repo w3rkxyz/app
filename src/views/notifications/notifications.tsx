@@ -7,7 +7,7 @@ import { Notification, getNotifications } from "@/utils/notifications";
 import { formatDistanceToNow } from "date-fns";
 
 const DUMMY_NOTIFICATIONS: Partial<Notification>[] = [
-  { id: "dummy-1", message: "@imran007 just followed you.", read: false, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3), icon: '/images/UserCirclePlus.svg' },
+  { id: "dummy-1", message: "@imran007 just followed you.", read: true, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3), icon: '/images/UserCirclePlus.svg' },
   { id: "dummy-2", message: "You've received a new contract proposal from @imran007", read: true, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5), icon: '/images/FilePlus.svg'},
   { id: "dummy-3", message: "Your contract with @imran007 has started.", read: true, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 8), icon: '/images/Handshake.svg'},
   { id: "dummy-4", message: "@imran007 has requested payment for your contract.", read: true, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 12), icon: '/images/HandCoins.svg' },
@@ -98,10 +98,10 @@ const Notifications = () => {
                   />
                   <div className="flex-1">
                     <div className="flex items-start justify-between">
-                      <div className="text-[14px] font-medium text-[#111827]">{getNotificationMessage(notification as any)}</div>
+                      <div className="text-[14px] font-medium text-[#212121]">{getNotificationMessage(notification as any)}</div>
                       {/* <div className="text-[12px] text-gray-400 hidden sm:block">{formatDistanceToNow(createdAt, { addSuffix: true })}</div> */}
                     </div>
-                    <div className="text-[12px] text-gray-400 mt-[6px]">{formatDistanceToNow(createdAt, { addSuffix: true })}</div>
+                    <div className="text-[12px] text-[#AFAFAF] mt-[6px]">3h ago</div>
                   </div>
                 </div>
               </li>

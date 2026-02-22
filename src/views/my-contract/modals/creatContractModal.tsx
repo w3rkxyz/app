@@ -19,6 +19,8 @@ import FormInput from "@/components/onboarding/form-input";
 import FormTextarea from "@/components/onboarding/form-textarea";
 import FormSelect from "@/components/onboarding/form-select";
 import RateSelector from "@/components/onboarding/rate-selector";
+import PaymentTokensDropdown from "@/components/onboarding/payment-tokens-dropdown";
+import { SVGArrowLeftRight } from "@/assets/list-svg-icon";
 
 type Props = {
   handleCloseModal?: () => void;
@@ -125,7 +127,7 @@ const CreateContractModal = ({
   const tokenModalRef = useRef<HTMLButtonElement>(null);
   const [showMobile, setShowMobile] = useState(false);
   const [showTokens, setShowTokens] = useState(false);
-  const [selectedTokens, setSelectedTokens] = useState<number[]>([]);
+  // const [selectedTokens, setSelectedTokens] = useState<number[]>([]);
   const [title, setTitle] = useState(contractDetails.title);
   const [description, setDescription] = useState(contractDetails.description);
   const [clientAddress, setClientAddress] = useState(contractDetails.clientAddress);
@@ -137,14 +139,15 @@ const CreateContractModal = ({
   const [dueDate, setDueDate] = useState(contractDetails.dueDate);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [profiles, setProfiles] = useState<AccountData[]>([]);
+  const [selectedTokens, setSelectedTokens] = React.useState<string[]>(["Ethereum (ETH)"]);
 
   const toggleTokensModal = () => {
     setShowTokens(!showTokens);
   };
 
-  const onCLickToken = (index: number) => {
-    setSelectedTokens([index]);
-  };
+  // const onCLickToken = (index: number) => {
+  //   setSelectedTokens([index]);
+  // };
 
   useEffect(() => {
     setShowMobile(true);
@@ -287,6 +290,22 @@ const CreateContractModal = ({
   //   }
   // }, [profile]);
 
+  const handleJobAddToken = () => {
+    setSelectedTokens((prev) => [...prev, 'Ethereum (ETH)']);
+  }
+
+  const handleJobTokenUpdate = (index: number, tokenName: string, tokenSymbol: string) => {
+    setSelectedTokens(prev => {
+      const newTokens = [...prev]
+      newTokens[index] = `${tokenName} (${tokenSymbol})`
+      return newTokens
+    })
+  }
+
+  const handleJobRemoveToken = (index: number) => {
+    setSelectedTokens((prev) => prev.filter((_, i) => i !== index));
+  }
+
   return (
     <div
       className={`view-job-modal-section sm:w-full rounded-[12px] px-7 py-3 sm:rounded-none sm:rounded-tl-[12px] h-[90vh] overflow-auto sm:rounded-tr-[12px] bg-white nav-space sm:absolute sm:mobile-modal 
@@ -318,7 +337,7 @@ const CreateContractModal = ({
             <div className="bg-[#351A6B] w-[16px] h-[16px] rounded-[16px] absolute"></div>
           </div>
         </div> */}
-        <div className="space-y-3">
+        <div className="space-y-4">
           <FormInput
             label="Contract Title"
             value={title}
@@ -343,18 +362,25 @@ const CreateContractModal = ({
             required
             type="date"
           />
-          <FormSelect
+          {/* <FormSelect
             label="Payment Token(s)"
             // value={formState.location}
             // onChange={handleChange}
             placeholder="Select Token"
             required
             options={[]}
+          /> */}
+          <PaymentTokensDropdown
+            tokens={selectedTokens}
+            onUpdateToken={handleJobTokenUpdate}
+            onAddToken={handleJobAddToken}
+            onRemoveToken={handleJobRemoveToken}
+            button={false}
           />
             <label className=" block xs:text-[14px] text-sm font-medium text-[#212121]">
             Payment Amount <span className="text-red-500">*</span>
           </label>
-          <div className="flex items-center justify-between">
+          <div className="flex sm:flex-col md:flex-row lg:flex-row items-center justify-between mt-0">
             <RateSelector
               // rateType={serviceData.rateType}
               // rate={serviceData.rate}
@@ -362,7 +388,10 @@ const CreateContractModal = ({
               // onRateChange={onInputChange}
               startContent="US Dollar"
               label=""
+              bgcolor="#FAFAFA"
+              inputClasses="w-full"
             />
+            <SVGArrowLeftRight />
             <RateSelector
               // rateType={serviceData.rateType}
               // rate={serviceData.rate}
@@ -370,6 +399,10 @@ const CreateContractModal = ({
               // onRateChange={onInputChange}
               startContent="ETH"
               label=""
+              bgcolor="#FAFAFA"
+              inputClasses="w-full"
+
+
             />
           </div>
           <FormInput

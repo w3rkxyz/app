@@ -16,7 +16,8 @@ interface PaymentTokensDropdownProps {
   tokens: string[]
   onUpdateToken: (index: number, tokenName: string, tokenSymbol: string) => void
   onAddToken: () => void
-  onRemoveToken: (index: number) => void
+  onRemoveToken: (index: number) => void,
+  button?: boolean
 }
 
 const PaymentTokensDropdown: React.FC<PaymentTokensDropdownProps> = ({
@@ -24,6 +25,7 @@ const PaymentTokensDropdown: React.FC<PaymentTokensDropdownProps> = ({
   onUpdateToken,
   onAddToken,
   onRemoveToken,
+  button=true
 }) => {
   const [showTokenDropdown, setShowTokenDropdown] = useState<number | null>(null)
   const [tokenSearch, setTokenSearch] = useState('')
@@ -51,6 +53,7 @@ const PaymentTokensDropdown: React.FC<PaymentTokensDropdownProps> = ({
       }
     }
   }, [showTokenDropdown])
+  
 
   return (
     <div className="w-full">
@@ -139,14 +142,14 @@ const PaymentTokensDropdown: React.FC<PaymentTokensDropdownProps> = ({
             </div>
           )
         })}
-        <button
+        {button && <button
           type="button"
           onClick={onAddToken}
           className="flex mt-2  items-center justify-center gap-1 rounded-full border border-[#212121]  bg-white px-4 py-2 text-sm font-medium text-[#212121] transition-colors"
         >
           <Plus size={15} />
           <span>Add another</span>
-        </button>
+        </button>}
       </div>
     </div>
   )

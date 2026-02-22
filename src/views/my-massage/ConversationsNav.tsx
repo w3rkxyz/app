@@ -112,11 +112,12 @@ const ConversationsNav = ({ setIsMessagesEnabled, isMessagesEnabled, selectedCha
       <div className="flex justify-between items-center py-[19px] px-[9px]">
         <div className="flex items-center gap-[8px]">
           <span className="leading-[16.94px] font-semibold text-[24px]">Messages</span>
-          {conversations.length > 0 && (
-            <span className="bg-[#351A6B] text-white text-[12px] font-semibold px-[6px] py-[2px] rounded-full">
-              {conversations.length}
+          {/* {conversations.length > 0 && ( */}
+            <span className="bg-[#F8F8F8] text-[#212121] text-[12px] font-semibold px-[8px] py-[4px] rounded-full">
+              {/* {conversations.length} */}
+              29
             </span>
-          )}
+          {/* )} */}
         </div>
         {/* {client && ( */}
           <Image
@@ -202,7 +203,7 @@ const ConversationsNav = ({ setIsMessagesEnabled, isMessagesEnabled, selectedCha
               <div
                 key={contact.id}
                 onClick={() => setSelectedChat(contact.id)}
-                className="flex items-center gap-3 border-b border-[#C3C7CE] p-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                className={`flex items-center gap-3 border-b-[0.5px] border-[#C3C7CE] p-3 hover:bg-gray-50 cursor-pointer transition-colors ${selectedChat === contact.id ? 'bg-[#F8F8F8] border-l-2 border-l-[#212121]' : ''} `}
               >
                 <div className="relative">
                   <img 
@@ -210,18 +211,21 @@ const ConversationsNav = ({ setIsMessagesEnabled, isMessagesEnabled, selectedCha
                     alt={contact.name}
                     className="w-11 h-11 rounded-full object-cover"
                   />
-                  {contact.unread > 0 && (
-                    <div className={`absolute -bottom-0.5 -right-0.5 min-w-[20px] h-5 ${contact.badgeColor || 'bg-gray-900'} rounded-full flex items-center justify-center px-1.5 text-white text-xs font-medium`}>
-                      {contact.unread}
-                    </div>
-                  )}
+                  
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-0.5">
                     <h3 className="text-base font-medium text-gray-900 truncate">{contact.name}</h3>
                     <span className="text-sm text-gray-500 ml-2">{contact.time}</span>
                   </div>
-                  <p className="text-sm text-gray-500 truncate">{contact.message}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-gray-500 truncate">{contact.message}</p>
+                    {contact.unread > 0 && (
+                      <div className={`min-w-[20px] h-5 ${contact.badgeColor || 'bg-[#212121]'} rounded-full flex items-center justify-center px-1.5 text-white text-[12px] font-medium`}>
+                        {contact.unread}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -268,7 +272,7 @@ const ConversationsNav = ({ setIsMessagesEnabled, isMessagesEnabled, selectedCha
               key={contact.id}
               onClick={() => setSelectedChat(contact.id)}
               className={`flex items-center gap-3 p-3 border-b border-[#C3C7CE] hover:bg-gray-50 cursor-pointer transition-colors ${
-                selectedChat === contact.id ? 'bg-gray-50' : ''
+                selectedChat === contact.id ? 'bg-[#F8F8F8] border-l-2 border-l-[#212121]' : ''
               }`}
             >
               <div className="relative">

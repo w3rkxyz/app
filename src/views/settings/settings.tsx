@@ -225,291 +225,317 @@ const Settings = () => {
   };
 
   return (
-    <div className="px-[156px] profile-sm:px-[80px] lg:px-[20px] sm:px-[16px] pt-[110px] sm:pt-[122px] bg-white sm:w-full pb-10">
-      {/* <div className="absolute w-full mx-0 left-0 top-156px sm:top-[79px] px-[156px] profile-sm:px-[80px] lg:px-[20px] sm:px-[16px] z-20 bg-white">
-        <div
-          className="bg-white w-full h-[196px] sm:h-[110px] rounded-[16px] relative flex justify-end items-end p-[16px]"
-          style={{ backgroundImage: `url(${backgroundImage})` }}
-        >
-          <label
-            className="rounded-[8px] bg-[#E4E4E7] text-black px-[16px] py-[7px] sm:px-[14px] sm:py-[4px] text-[14px] w-fit h-fit cursor-pointer"
-            htmlFor="file_upload"
+    <div className="bg-white">
+      <div className="custom-container profile-sm:px-[80px] lg:px-[20px] sm:px-[16px] pt-[110px] sm:pt-[60px] sm:w-full pb-10">
+        {/* <div className="absolute w-full mx-0 left-0 top-156px sm:top-[79px] px-[156px] profile-sm:px-[80px] lg:px-[20px] sm:px-[16px] z-20 bg-white">
+          <div
+            className="bg-white w-full h-[196px] sm:h-[110px] rounded-[16px] relative flex justify-end items-end p-[16px]"
+            style={{ backgroundImage: `url(${backgroundImage})` }}
           >
-            Choose Cover
-          </label>
-          <input
-            id="file_upload"
-            type="file"
-            name="file_upload"
-            className="hidden"
-            onChange={handleCoverUpload}
-          />
-          <label
-            className={`w-[160px] h-[160px] sm:w-[80px] sm:h-[80px] absolute rounded-[16px] ${
-              photo === null ? "border-[1px]" : ""
-            } border-[#E4E4E7] flex justify-center items-center 
-          left-[31px] bottom-[-80px] sm:left-[16px] sm:bottom-[-40px] bg-white cursor-pointer`}
-            htmlFor="pic_upload"
-          >
-            {photo === null ? (
-              <Image
-                src="/images/add-photo.svg"
-                className={`sm:w-[20px] sm:h-[20px]`}
-                alt="user icon"
-                width={32}
-                height={32}
-              />
-            ) : (
-              <div
-                className={`w-full h-full rounded-[16px] bg-fit`}
-                style={{ backgroundImage: `url(${photo})` }}
-              ></div>
-            )}
+            <label
+              className="rounded-[8px] bg-[#E4E4E7] text-black px-[16px] py-[7px] sm:px-[14px] sm:py-[4px] text-[14px] w-fit h-fit cursor-pointer"
+              htmlFor="file_upload"
+            >
+              Choose Cover
+            </label>
             <input
-              id="pic_upload"
+              id="file_upload"
               type="file"
               name="file_upload"
               className="hidden"
-              onChange={handlePhotoUpload}
+              onChange={handleCoverUpload}
             />
-          </label>
-        </div>
-      </div> */}
-      <div className="relative w-full rounded-xl pb-16 border-[0.5px] border-[#C3C7CE]">
-                <div className="w-full sm:h-[226] aspect-[1344/201] relative sm:rounded-none rounded-t-[12px] overflow-hidden bg-[#C0E0E7]">
-                  {userData.cover ? (
-                      <Image
-                        src={userData.cover}
-                        fill
-                        className="object-cover"
-                        alt="Cover"
-                        sizes="(max-width: 1344px) 100vw, 1344px"
-                      />
-                  ) : null}
-                  <button className="absolute right-5 z-50 bottom-5 border border-[#212121] rounded-full bg-white px-4 py-2 text-sm flex items-center gap-1"><svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 20 20"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M7.24141 16.8751H3.75C3.58424 16.8751 3.42527 16.8093 3.30806 16.692C3.19085 16.5748 3.125 16.4159 3.125 16.2501V12.7587C3.12508 12.5932 3.19082 12.4344 3.30781 12.3173L12.9422 2.68291C13.0594 2.56579 13.2183 2.5 13.384 2.5C13.5497 2.5 13.7086 2.56579 13.8258 2.68291L17.3172 6.17198C17.4343 6.28917 17.5001 6.44808 17.5001 6.61377C17.5001 6.77946 17.4343 6.93837 17.3172 7.05557L7.68281 16.6923C7.56569 16.8093 7.40695 16.875 7.24141 16.8751Z"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M10.625 5L15 9.375"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg> Change Cover</button>
-                </div>
-                <div className="absolute left-6 sm:left-4 bottom-5 sm:-bottom-[68px] w-[154px] h-[154px] sm:w-[135px] sm:h-[135px] rounded-full border-[3px] border-white overflow-hidden">
-                  <div className="relative w-full h-full">
-                    <Image
-                      src={userData.picture}
-                      fill
-                      className="rounded-full object-cover"
-                      alt="Profile"
-                      // onError={handleImageError}
-                    />
-                    {/* <div className="absolute bottom-0 right-0 h-5 w-5 rounded-full border-[0.5px] border-[#212121] bg-white">
-                      
-                    o
-                    </div> */}
-                  </div>
-                </div>
-              </div>
-      <div style={{ boxShadow: '0px 4px 30px 0px #0000000A' }} className="flex flex-col max-w-[823px] mx-auto sm:p-4 p-8 bg-white sm:w-full space-y-4 rounded-2xl sm:my-16 my-5">
-        <FormInput
-          label="Name"
-          name="name"
-          value={formState.name}
-          onChange={handleChange}
-          placeholder="Add Your Name"
-          required
-        />
-        <FormInput
-          label="Job Title / Industry"
-          name="jobTitle"
-          value={formState.jobTitle}
-          onChange={handleChange}
-          placeholder="Add your job title"
-          required
-        />
-        <FormTextarea
-            label="Bio"
-            name="bio"
-            value={formState.bio}
-            onChange={handleChange}
-            placeholder="Tell us a bit about yourself"
-            maxLength={800}
-            rows={5}
-          />
-          <FormSelect
-            label="Location"
-            name="location"
-            value={formState.location}
-            onChange={handleChange}
-            placeholder="Add your location"
-            required
-            options={[
-              { value: 'us', label: 'United States' },
-              { value: 'uk', label: 'United Kingdom' },
-            ]}
-          />
-        <FormInput
-        label="Add Website"
-          name="website"
-          value={formState.website}
-          onChange={handleChange}
-          placeholder="Add your Website"
-          type="url"
-          startContent={<Image
-                            src="/images/setting-link.svg"
-                            alt="Score"
-                            width={16}
-                            height={16}
-                          />}
-        />
-        <FormInput
-          name="x"
-          value={formState.X}
-          onChange={handleChange}
-          placeholder="Add your X URL"
-          type="url"
-          startContent={<Image
-                            src="/images/setting-x.svg"
-                            alt="Score"
-                            width={16}
-                            height={16}
-                          />}
-        />
-        <FormInput
-          name="linkedin"
-          value={formState.linkedin}
-          onChange={handleChange}
-          placeholder="Add your LinkedIn URL"
-          type="url"
-          startContent={<Image
-                            src="/images/setting-linkedin.svg"
-                            alt="Score"
-                            width={20}
-                            height={16}
-                          />}
-        />
-        <FormInput
-          name="github"
-          value={formState.github}
-          onChange={handleChange}
-          placeholder="Add your Github URL"
-          type="url"
-          startContent={<Image
-                            src="/images/setting-github.svg"
-                            alt="Score"
-                            width={20}
-                            height={10}
-                          />}
-        />
-        {/* <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
-          <span className="leading-[14.52px] text-[14px] font-medium text-[black]">
-            X (Twitter)
-          </span>
-          <div className="w-full flex">
-            <div className="rounded-l-[12px] w-[142px] pl-[10px] bg-[#F2F2F2] border-[1px] border-[#E4E4E7] flex items-center text-[#707070] text-[14px] font-normal leading-[14.52px]">
-              https://x.com/
-            </div>
-            <input
-              className="link-input rounded-r-[12px] p-[11px] border-[1px] flex-1 border-[#E4E4E7] sm:w-full border-l-0"
-              placeholder="Enter X Username"
-              name="X"
-              onChange={handleChange}
-              value={formState.X}
-            />
-          </div>
-        </div>
-        <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
-          <span className="leading-[14.52px] text-[14px] font-medium text-[black]">Github</span>
-          <div className="w-full flex">
-            <div className="rounded-l-[12px] w-[142px] pl-[10px] bg-[#F2F2F2] border-[1px] border-[#E4E4E7] flex items-center text-[#707070] text-[14px] font-normal leading-[14.52px]">
-              https://github.com/
-            </div>
-            <input
-              className="link-input rounded-r-[12px] p-[11px] border-[1px] flex-1 border-[#E4E4E7] sm:w-full border-l-0"
-              placeholder="Enter Github Username"
-              name="github"
-              onChange={handleChange}
-              value={formState.github}
-            />
-          </div>
-        </div>
-        <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
-          <span className="leading-[14.52px] text-[14px] font-medium text-[black]">Linkedin</span>
-          <div className="w-full flex">
-            <div className="rounded-l-[12px] w-[142px] pl-[10px] bg-[#F2F2F2] border-[1px] border-[#E4E4E7] flex items-center text-[#707070] text-[14px] font-normal leading-[14.52px]">
-              https://linkedin.com/
-            </div>
-            <input
-              className="link-input rounded-r-[12px] p-[11px] border-[1px] flex-1 border-[#E4E4E7] sm:w-full border-l-0"
-              placeholder="Enter LinkedIn Username"
-              name="linkedin"
-              onChange={handleChange}
-              value={formState.linkedin}
-            />
-          </div>
-        </div>
-        <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
-          <span className="leading-[14.52px] text-[14px] font-medium text-[black]">Website</span>
-          <input
-            className="form-input rounded-[12px] p-[11px] border-[1px] border-[#E4E4E7] sm:w-full"
-            placeholder="Website URL"
-            name="website"
-            onChange={handleChange}
-            value={formState.website}
-          />
-        </div> */}
-        {/* <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
-          <span className="leading-[14.52px] text-[14px] font-medium text-[black]">Location</span>
-          <input
-            className="form-input rounded-[12px] p-[11px] border-[1px] border-[#E4E4E7] sm:w-full"
-            placeholder="Enter Location"
-            name="location"
-            onChange={handleChange}
-            value={formState.location}
-          />
-        </div> */}
-        {savingData ? (
-          <Oval
-            visible={true}
-            height="32"
-            width="32"
-            color="#2D2D2D"
-            secondaryColor="#a2a2a3"
-            strokeWidth={8}
-            ariaLabel="oval-loading"
-            wrapperClass="mx-auto mb-[36px]"
-          />
-        ) : (
-          <div className="flex items-end justify-end border-t-[0.5px] border-[#C3C7CE] pt-8">
-
-          <button
-            // className="mx-auto w-fit py-[4px] px-[24px] tx-[14px] leading-[24px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[36px]"
-            className={`rounded-full px-4 py-2 text-sm font-medium text-white transition-all max-w-fit sm:text-base
-              ${
-            'bg-[#212121] hover:bg-gray-800 cursor-pointer'
-          }
-          `}
-            onClick={handleSubmit}
+            <label
+              className={`w-[160px] h-[160px] sm:w-[80px] sm:h-[80px] absolute rounded-[16px] ${
+                photo === null ? "border-[1px]" : ""
+              } border-[#E4E4E7] flex justify-center items-center 
+            left-[31px] bottom-[-80px] sm:left-[16px] sm:bottom-[-40px] bg-white cursor-pointer`}
+              htmlFor="pic_upload"
             >
-            Save Changes
-          </button>
+              {photo === null ? (
+                <Image
+                  src="/images/add-photo.svg"
+                  className={`sm:w-[20px] sm:h-[20px]`}
+                  alt="user icon"
+                  width={32}
+                  height={32}
+                />
+              ) : (
+                <div
+                  className={`w-full h-full rounded-[16px] bg-fit`}
+                  style={{ backgroundImage: `url(${photo})` }}
+                ></div>
+              )}
+              <input
+                id="pic_upload"
+                type="file"
+                name="file_upload"
+                className="hidden"
+                onChange={handlePhotoUpload}
+              />
+            </label>
+          </div>
+        </div> */}
+        <div className="relative w-full rounded-xl pb-16 border-[0.5px] border-[#C3C7CE]">
+                  <div className="w-full sm:h-[226] aspect-[1344/201] relative  rounded-t-[12px] overflow-hidden bg-[#C0E0E7]">
+                    {userData.cover ? (
+                        <Image
+                          src={userData.cover}
+                          fill
+                          className="object-cover rounded-t-[12px]"
+                          alt="Cover"
+                          sizes="(max-width: 1344px) 100vw, 1344px"
+                        />
+                    ) : null}
+                    <button className="absolute right-5 z-50 bottom-5 border border-[#212121] rounded-full bg-white px-4 py-2 text-sm flex items-center gap-1"><svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M7.24141 16.8751H3.75C3.58424 16.8751 3.42527 16.8093 3.30806 16.692C3.19085 16.5748 3.125 16.4159 3.125 16.2501V12.7587C3.12508 12.5932 3.19082 12.4344 3.30781 12.3173L12.9422 2.68291C13.0594 2.56579 13.2183 2.5 13.384 2.5C13.5497 2.5 13.7086 2.56579 13.8258 2.68291L17.3172 6.17198C17.4343 6.28917 17.5001 6.44808 17.5001 6.61377C17.5001 6.77946 17.4343 6.93837 17.3172 7.05557L7.68281 16.6923C7.56569 16.8093 7.40695 16.875 7.24141 16.8751Z"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M10.625 5L15 9.375"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg> Change Cover</button>
+                  </div>
+                  <div className="absolute left-6 sm:left-4 bottom-5 sm:-bottom-[68px] w-[154px] h-[154px] sm:w-[135px] sm:h-[135px] rounded-full border-[3px] border-white">
+    <div className="relative w-full h-full rounded-full overflow-hidden">
+      <Image
+        src={userData.picture}
+        fill
+        className="rounded-full object-cover"
+        alt="Profile"
+        // onError={handleImageError}
+      />
+    </div>
+    <label className="absolute bottom-[15px] right-[10px] flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border-[0.5px] border-[#212121] bg-white z-10">
+      <svg
+        className="h-3 w-3 text-[#212121]"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+        />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+        />
+      </svg>
+      <input
+        type="file"
+        accept="image/*"
+        // onChange={onProfilePhotoChange}
+        className="hidden"
+      />
+    </label>
+  </div>
+                </div>
+        <div style={{ boxShadow: '0px 4px 30px 0px #0000000A' }} className="flex flex-col max-w-[823px] mx-auto sm:p-4 p-8 bg-white sm:w-full space-y-4 rounded-2xl sm:my-16 my-5">
+          <FormInput
+            label="Name"
+            name="name"
+            value={formState.name}
+            onChange={handleChange}
+            placeholder="Add Your Name"
+            required
+          />
+          <FormInput
+            label="Job Title / Industry"
+            name="jobTitle"
+            value={formState.jobTitle}
+            onChange={handleChange}
+            placeholder="Add your job title"
+            required
+          />
+          <FormTextarea
+              label="Bio"
+              name="bio"
+              value={formState.bio}
+              onChange={handleChange}
+              placeholder="Tell us a bit about yourself"
+              maxLength={800}
+              rows={5}
+            />
+            <FormSelect
+              label="Location"
+              name="location"
+              value={formState.location}
+              onChange={handleChange}
+              placeholder="Add your location"
+              required
+              options={[
+                { value: 'us', label: 'United States' },
+                { value: 'uk', label: 'United Kingdom' },
+              ]}
+            />
+          <FormInput
+          label="Add Website"
+            name="website"
+            value={formState.website}
+            onChange={handleChange}
+            placeholder="Add your Website"
+            type="url"
+            startContent={<Image
+                              src="/images/setting-link.svg"
+                              alt="Score"
+                              width={16}
+                              height={16}
+                            />}
+          />
+          <FormInput
+            name="x"
+            value={formState.X}
+            onChange={handleChange}
+            placeholder="Add your X URL"
+            type="url"
+            startContent={<Image
+                              src="/images/setting-x.svg"
+                              alt="Score"
+                              width={16}
+                              height={16}
+                            />}
+          />
+          <FormInput
+            name="linkedin"
+            value={formState.linkedin}
+            onChange={handleChange}
+            placeholder="Add your LinkedIn URL"
+            type="url"
+            startContent={<Image
+                              src="/images/setting-linkedin.svg"
+                              alt="Score"
+                              width={20}
+                              height={16}
+                            />}
+          />
+          <FormInput
+            name="github"
+            value={formState.github}
+            onChange={handleChange}
+            placeholder="Add your Github URL"
+            type="url"
+            startContent={<Image
+                              src="/images/setting-github.svg"
+                              alt="Score"
+                              width={20}
+                              height={10}
+                            />}
+          />
+          <div className="mb-14"></div>
+          {/* <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
+            <span className="leading-[14.52px] text-[14px] font-medium text-[black]">
+              X (Twitter)
+            </span>
+            <div className="w-full flex">
+              <div className="rounded-l-[12px] w-[142px] pl-[10px] bg-[#F2F2F2] border-[1px] border-[#E4E4E7] flex items-center text-[#707070] text-[14px] font-normal leading-[14.52px]">
+                https://x.com/
+              </div>
+              <input
+                className="link-input rounded-r-[12px] p-[11px] border-[1px] flex-1 border-[#E4E4E7] sm:w-full border-l-0"
+                placeholder="Enter X Username"
+                name="X"
+                onChange={handleChange}
+                value={formState.X}
+              />
             </div>
-        )}
+          </div>
+          <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
+            <span className="leading-[14.52px] text-[14px] font-medium text-[black]">Github</span>
+            <div className="w-full flex">
+              <div className="rounded-l-[12px] w-[142px] pl-[10px] bg-[#F2F2F2] border-[1px] border-[#E4E4E7] flex items-center text-[#707070] text-[14px] font-normal leading-[14.52px]">
+                https://github.com/
+              </div>
+              <input
+                className="link-input rounded-r-[12px] p-[11px] border-[1px] flex-1 border-[#E4E4E7] sm:w-full border-l-0"
+                placeholder="Enter Github Username"
+                name="github"
+                onChange={handleChange}
+                value={formState.github}
+              />
+            </div>
+          </div>
+          <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
+            <span className="leading-[14.52px] text-[14px] font-medium text-[black]">Linkedin</span>
+            <div className="w-full flex">
+              <div className="rounded-l-[12px] w-[142px] pl-[10px] bg-[#F2F2F2] border-[1px] border-[#E4E4E7] flex items-center text-[#707070] text-[14px] font-normal leading-[14.52px]">
+                https://linkedin.com/
+              </div>
+              <input
+                className="link-input rounded-r-[12px] p-[11px] border-[1px] flex-1 border-[#E4E4E7] sm:w-full border-l-0"
+                placeholder="Enter LinkedIn Username"
+                name="linkedin"
+                onChange={handleChange}
+                value={formState.linkedin}
+              />
+            </div>
+          </div>
+          <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
+            <span className="leading-[14.52px] text-[14px] font-medium text-[black]">Website</span>
+            <input
+              className="form-input rounded-[12px] p-[11px] border-[1px] border-[#E4E4E7] sm:w-full"
+              placeholder="Website URL"
+              name="website"
+              onChange={handleChange}
+              value={formState.website}
+            />
+          </div> */}
+          {/* <div className="flex flex-col gap-[5px] sm:gap-[6px] mb-[16px] sm:w-full">
+            <span className="leading-[14.52px] text-[14px] font-medium text-[black]">Location</span>
+            <input
+              className="form-input rounded-[12px] p-[11px] border-[1px] border-[#E4E4E7] sm:w-full"
+              placeholder="Enter Location"
+              name="location"
+              onChange={handleChange}
+              value={formState.location}
+            />
+          </div> */}
+          {savingData ? (
+            <Oval
+              visible={true}
+              height="32"
+              width="32"
+              color="#2D2D2D"
+              secondaryColor="#a2a2a3"
+              strokeWidth={8}
+              ariaLabel="oval-loading"
+              wrapperClass="mx-auto mb-[36px]"
+            />
+          ) : (
+            <div className="flex items-end justify-end border-t-[0.5px] border-[#C3C7CE] sm:mx-0 md:-mx-8 lg:-mx-8 pt-8">
+
+            <button
+              // className="mx-auto w-fit py-[4px] px-[24px] tx-[14px] leading-[24px] text-white bg-[#C6AAFF] hover:bg-[#351A6B] rounded-[8px] font-semibold mb-[36px]"
+              className={`rounded-full px-4 py-2 text-sm font-medium text-white transition-all max-w-fit
+                ${
+              'bg-[#212121] hover:bg-gray-800 cursor-pointer'
+            }
+            `}
+              onClick={handleSubmit}
+              >
+              Save Changes
+            </button>
+              </div>
+          )}
+        </div>
       </div>
     </div>
   );

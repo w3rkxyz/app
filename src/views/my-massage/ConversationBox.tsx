@@ -158,7 +158,7 @@
 import React, { useState } from 'react';
 import { Search, Edit, MoreVertical, Send, Smile, Paperclip, Check, ArrowLeft, MessageCircle } from 'lucide-react';
 import Image from 'next/image';
-import { SVGEmojis, SVGLink, SVGSend } from '@/assets/list-svg-icon';
+import { SVGArrowLeft, SVGEmojis, SVGLink, SVGSend } from '@/assets/list-svg-icon';
 
 const ConversationBox = ({ currentContact, currentMessages, selectedChat, setSelectedChat, isMessagesEnabled }) => {
   // App states
@@ -345,7 +345,7 @@ const ConversationBox = ({ currentContact, currentMessages, selectedChat, setSel
   // STATE 1: Messages not enabled (Image 5)
   if (!isMessagesEnabled) {
     return (
-      <div className="h-screen flex items-center justify-center w-full bg-[#FCFCFC]">
+      <div className="h-screen flex items-center sm:hidden md:block lg:block justify-center w-full bg-[#FCFCFC]">
       </div>
     );
   }
@@ -431,12 +431,12 @@ const ConversationBox = ({ currentContact, currentMessages, selectedChat, setSel
     return (
       <div className="h-screen bg-[#FCFCFC] flex flex-col w-full">
         {/* Mobile Header */}
-        <div className="h-16 bg-white border-b border-gray-200 flex items-center px-4 gap-3">
+        <div className="h-16 bg-white border-b border-gray-200 flex items-center sm:px-0 md:px-4 lg:px-4 gap-3">
           <button 
             onClick={() => setSelectedChat(null)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className=" hover:bg-gray-100 rounded-lg transition-colors"
           >
-            <ArrowLeft size={20} className="text-gray-900" />
+          <SVGArrowLeft />
           </button>
           <img 
             src={currentContact?.avatar} 
@@ -448,27 +448,28 @@ const ConversationBox = ({ currentContact, currentMessages, selectedChat, setSel
               <h2 className="text-sm font-semibold text-gray-900">{currentContact?.name}</h2>
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
             </div>
-            <p className="text-xs text-gray-500">@azusanakano_1997</p>
+            <p className="text-[12px] text-gray-500">@azusanakano_1997</p>
           </div>
-          <button className="px-3 py-1.5 bg-gray-900 text-white text-xs rounded-full hover:bg-gray-800 transition-colors">
+          <button className="px-3 py-1.5 bg-gray-900 text-white text-[12px] flex items-center gap-1 rounded-full hover:bg-gray-800 transition-colors">
+            <Image src={'/images/add.svg'} height={16} width={16} alt='' /> 
             Create Contract
           </button>
         </div>
 
         {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto mt-4 space-y-4">
           <div className="text-center">
-            <span className="text-xs text-gray-500">19 August</span>
+            <span className="text-sm text-gray-500">19 August</span>
           </div>
 
           {currentMessages.map((message) => (
             <div key={message.id}>
               {message.sender === 'them' ? (
-                <div className="flex gap-3 max-w-xl">
+                <div className="flex w-[260px] max-w-xl">
                   <img 
                     src={currentContact?.avatar} 
                     alt={currentContact?.name}
-                    className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                    className="w-8 h-8 rounded-full sm:hidden md:block lg:block object-cover flex-shrink-0"
                   />
                   <div className="flex-1 relative">
                     {message.file ? (
@@ -478,7 +479,7 @@ const ConversationBox = ({ currentContact, currentMessages, selectedChat, setSel
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
                           <div>
-                            <p className="text-base font-semibold text-gray-900">{message.file}</p>
+                            <p className="text-sm font-semibold text-gray-900">{message.file}</p>
                             <p className="text-sm text-gray-500 mt-0.5">{message.fileSize}</p>
                           </div>
                         </div>
@@ -504,7 +505,7 @@ const ConversationBox = ({ currentContact, currentMessages, selectedChat, setSel
                       </div>
                     )}
                     <div className="flex items-center gap-2 mt-1 px-1 absolute bottom-2 right-2">
-                      <span className="text-sm text-gray-500">{message.time}</span>
+                      <span className="text-[12px] text-gray-500">{message.time}</span>
                       {message.read && (
                         <div className="flex items-center">
                           <Check size={12} className="text-blue-600" />
@@ -516,12 +517,12 @@ const ConversationBox = ({ currentContact, currentMessages, selectedChat, setSel
                 </div>
               ) : (
                 <div className="flex justify-end">
-                  <div className="max-w-xl relative">
+                  <div className="max-w-xl w-[260px] relative">
                     <div className="bg-[#212121] rounded-2xl rounded-tr-md px-4 py-3">
                       <p className="text-sm text-white">{message.text}</p>
                     </div>
                     <div className="flex items-center justify-end gap-2 mt-1 px-1 absolute bottom-2 right-2">
-                      <span className="text-sm text-[#C4C4C4]">{message.time}</span>
+                      <span className="text-[12px] text-[#C4C4C4]">{message.time}</span>
                       {message.read && (
                         <div className="flex items-center">
                           <Check size={12} className="text-[#C4C4C4]" />
@@ -536,21 +537,21 @@ const ConversationBox = ({ currentContact, currentMessages, selectedChat, setSel
           ))}
 
           <div className="text-center">
-            <span className="text-xs text-gray-500">Today</span>
+            <span className="text-sm text-gray-500">Today</span>
           </div>
 
-          <div className="flex gap-3 max-w-xl">
+          <div className="flex gap-3 w-[260px] max-w-xl">
             <img 
               src={currentContact?.avatar} 
               alt={currentContact?.name}
-              className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+              className="w-8 h-8 rounded-full sm:hidden md:block lg:block object-cover flex-shrink-0"
             />
             <div className="flex-1 relative">
               <div className="bg-white border border-gray-200 rounded-2xl  px-4 py-3">
                 <p className="text-sm text-gray-900">Do androids truly dream of electric sheeps?</p>
               </div>
               <div className="flex items-center gap-2 mt-1 px-1 absolute bottom-2 right-2">
-                <span className="text-sm text-gray-500">12:25</span>
+                <span className="text-[12px] text-gray-500">12:25</span>
                 <div className="flex items-center">
                   <Check size={12} className="text-gray-400" />
                   <Check size={12} className="text-gray-400 -ml-1.5" />
@@ -595,7 +596,7 @@ const ConversationBox = ({ currentContact, currentMessages, selectedChat, setSel
         </div>
 
         {/* Message Input */}
-        <div className="bg-white border-t border-gray-200 p-4">
+        {/* <div className="bg-white border-t border-gray-200 p-4">
           <div className="flex items-center gap-2">
             <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
               <Paperclip size={18} className="text-gray-500" />
@@ -612,6 +613,55 @@ const ConversationBox = ({ currentContact, currentMessages, selectedChat, setSel
               <Send size={16} className="text-white" />
             </button>
           </div>
+        </div> */}
+        <div style={{ boxShadow: '0px 12px 16px -4px #10182814' }} className="bg-[#FCFCFC] mb-12 mt-5 pb-10">
+          <div className="w-full">
+            <form onSubmit={handleSubmit}>
+              {/* Input Container */}
+              <div className="bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.08)] border border-gray-200/80 p-6 flex flex-col gap-6">
+                {/* Text Input */}
+                <input
+                  type="text"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Send a message..."
+                  className="w-full outline-none text-gray-700 placeholder-gray-400 bg-transparent text-[15px] leading-relaxed"
+                />
+
+                {/* Bottom Row: Icons and Send Button */}
+                <div className="flex items-center justify-between">
+                  {/* Left Icons */}
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      className="text-gray-500 hover:text-gray-700 transition-colors"
+                      aria-label="Attach file"
+                    >
+                      <SVGLink />
+                    </button>
+
+                    <button
+                      type="button"
+                      className="text-gray-500 hover:text-gray-700 transition-colors"
+                      aria-label="Add emoji"
+                    >
+                      <SVGEmojis />
+                    </button>
+                  </div>
+
+                  {/* Send Button */}
+                  <button
+                    type="submit"
+                    disabled={!message.trim()}
+                    className="bg-black text-white rounded-full px-6 py-2.5 flex items-center gap-2.5 hover:bg-gray-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <span className="font-medium text-[15px]">Send</span>
+                    <SVGSend />
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     );
@@ -626,7 +676,7 @@ const ConversationBox = ({ currentContact, currentMessages, selectedChat, setSel
             <img 
               src={currentContact?.avatar} 
               alt={currentContact?.name}
-              className="w-10 h-10 rounded-full object-cover"
+              className="w-10 h-10 rounded-full sm:hidden md:block lg:block object-cover"
             />
             <div>
               <div className="flex items-center gap-2">
@@ -647,7 +697,7 @@ const ConversationBox = ({ currentContact, currentMessages, selectedChat, setSel
 
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           <div className="text-center">
-            <span className="text-xs text-gray-500">19 August</span>
+            <span className="text-sm text-[#94A3B8]">19 August</span>
           </div>
 
           {currentMessages.map((message) => (
@@ -693,7 +743,7 @@ const ConversationBox = ({ currentContact, currentMessages, selectedChat, setSel
                       </div>
                     )}
                     <div className="flex items-center gap-2 mt-1 px-1 absolute bottom-2 right-2">
-                      <span className="text-sm text-gray-500">{message.time}</span>
+                      <span className="text-[12px] text-gray-500">{message.time}</span>
                       {message.read && (
                         <div className="flex items-center">
                           <Check size={12} className="text-blue-600" />
@@ -710,7 +760,7 @@ const ConversationBox = ({ currentContact, currentMessages, selectedChat, setSel
                       <p className="text-sm text-white">{message.text}</p>
                     </div>
                     <div className="flex items-center justify-end gap-2 mt-1 px-1 absolute bottom-2 right-2">
-                      <span className="text-sm text-[#C4C4C4]">{message.time}</span>
+                      <span className="text-[12px] text-[#C4C4C4]">{message.time}</span>
                       {message.read && (
                         <div className="flex items-center">
                           <Check size={12} className="text-[#C4C4C4]" />
@@ -732,14 +782,14 @@ const ConversationBox = ({ currentContact, currentMessages, selectedChat, setSel
             <img 
               src={currentContact?.avatar} 
               alt={currentContact?.name}
-              className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+              className="w-8 h-8 rounded-full object-cover sm:hidden md:block lg:block flex-shrink-0"
             />
             <div className="flex-1 relative">
               <div className="bg-white border border-gray-200 rounded-2xl  px-4 py-3">
                 <p className="text-sm text-gray-900">Do androids truly dream of electric sheeps?</p>
               </div>
               <div className="flex items-center gap-2 mt-1 px-1 absolute bottom-2 right-2">
-                <span className="text-sm text-gray-500">12:25</span>
+                <span className="text-[12px] text-gray-500">12:25</span>
                 <div className="flex items-center">
                   <Check size={12} className="text-gray-400" />
                   <Check size={12} className="text-gray-400 -ml-1.5" />
