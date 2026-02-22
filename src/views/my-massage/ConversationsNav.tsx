@@ -133,7 +133,7 @@ const ConversationsNav = () => {
     >
       <div className="flex justify-between items-center py-[19px] px-[9px]">
         <div className="flex items-center gap-[8px]">
-          <span className="leading-[16.94px] font-semibold text-[24px]">Messages</span>
+          <span className="leading-[16.94px] font-semibold text-[24px] text-black">Messages</span>
           {conversations.length > 0 && (
             <span className="bg-[#351A6B] text-white text-[12px] font-semibold px-[6px] py-[2px] rounded-full">
               {conversations.length}
@@ -147,13 +147,7 @@ const ConversationsNav = () => {
           className="disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="Start new conversation"
         >
-          <Image
-            src="/images/NotePencil.svg"
-            className="cursor-pointer"
-            alt="new message"
-            width={26}
-            height={26}
-          />
+          <Image src="/images/NotePencil.svg" alt="new message" width={26} height={26} />
         </button>
       </div>
 
@@ -187,7 +181,7 @@ const ConversationsNav = () => {
           <ConversationsList conversations={conversations} searchQuery={searchQuery} />
           {!loading && conversations.length === 0 && (
             <div className="flex items-center justify-center h-full px-6 text-center text-[#6C6C6C] text-[14px]">
-              No conversations yet. Start one with the compose button.
+              No conversations yet
             </div>
           )}
         </>
@@ -211,7 +205,7 @@ const ConversationsNav = () => {
       )}
 
       {isNewConversationModalOpen && (
-        <div className="fixed h-screen w-screen top-0 left-0 inset-0 z-[999] overflow-y-auto bg-gray-800 bg-opacity-50 flex justify-center items-center">
+        <div className="fixed h-screen w-screen top-0 left-0 inset-0 z-[999] overflow-y-auto bg-black/45 backdrop-blur-[1px] flex justify-center items-center">
           <div className="w-full flex justify-center align-middle">
             <NewConversation handleCloseModal={() => setIsNewConversationModalOpen(false)} />
           </div>

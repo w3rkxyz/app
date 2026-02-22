@@ -31,7 +31,7 @@ export const useConversations = () => {
   const list = async (options?: ListConversationsOptions, syncFromNetwork: boolean = false) => {
     if (!client) throw new Error("XMTP client not initialized");
     if (syncFromNetwork) {
-      await sync();
+      await syncAll();
     }
 
     setLoading(true);
@@ -120,7 +120,8 @@ export const useConversations = () => {
     setLoading(true);
     try {
       const conversation = await client.conversations.createDm(inboxId);
-      addAddressToUser(user.address, user);
+      addAddressToUser(user.address.toLowerCase(), user);
+      addAddressToUser(inboxId.toLowerCase(), user);
       return conversation;
     } finally {
       setLoading(false);
@@ -132,6 +133,7 @@ export const useConversations = () => {
     setLoading(true);
     try {
       const conversation = await client.conversations.createDmWithIdentifier(identifier);
+      addAddressToUser(identifier.identifier.toLowerCase(), user);
       addAddressToUser(user.address.toLowerCase(), user);
       return conversation;
     } catch (e) {
