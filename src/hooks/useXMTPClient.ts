@@ -31,6 +31,8 @@ const XMTP_API_URLS = {
   dev: "https://api.dev.xmtp.network:5558",
   production: "https://api.production.xmtp.network:5558",
 } as const;
+const XMTP_ENABLED_IDENTIFIERS_KEY = "w3rk:xmtp:enabled-identifiers";
+const XMTP_LAST_ENV_KEY = "w3rk:xmtp:last-env";
 
 export type XMTPConnectStage =
   | "idle"
@@ -166,6 +168,62 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     }
   };
 
+  const getPersistedIdentifiers = useCallback(() => {
+    if (typeof window === "undefined") {
+      return [] as string[];
+    }
+
+    try {
+      const raw = window.localStorage.getItem(XMTP_ENABLED_IDENTIFIERS_KEY);
+      if (!raw) {
+        return [] as string[];
+      }
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        return [] as string[];
+      }
+      return parsed
+        .filter((value): value is string => typeof value === "string")
+        .map(value => value.toLowerCase())
+        .filter(value => value.startsWith("0x") && value.length === 42);
+    } catch {
+      return [] as string[];
+    }
+  }, []);
+
+  const persistEnabledState = useCallback(
+    (env: "local" | "dev" | "production", identifiers: string[] = []) => {
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      const persisted = getPersistedIdentifiers();
+      const merged = Array.from(
+        new Set(
+          [...persisted, ...identifiers, xmtpAddress ?? "", walletAddress ?? ""]
+            .map(value => value.toLowerCase())
+            .filter(value => value.startsWith("0x") && value.length === 42)
+        )
+      );
+
+      window.localStorage.setItem(XMTP_ENABLED_IDENTIFIERS_KEY, JSON.stringify(merged));
+      window.localStorage.setItem(XMTP_LAST_ENV_KEY, env);
+    },
+    [getPersistedIdentifiers, walletAddress, xmtpAddress]
+  );
+
+  const wasXMTPEnabled = useCallback(() => {
+    const activeCandidates = [xmtpAddress, walletAddress]
+      .filter((value): value is string => Boolean(value))
+      .map(value => value.toLowerCase());
+    if (!activeCandidates.length) {
+      return false;
+    }
+
+    const persisted = getPersistedIdentifiers();
+    return activeCandidates.some(candidate => persisted.includes(candidate));
+  }, [getPersistedIdentifiers, walletAddress, xmtpAddress]);
+
   /**
    * Create and connect to an XMTP client using a signer
    */
@@ -266,7 +324,9 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           messageHash,
           signatureLength: signature.length,
         });
-        return hexToBytes(signature);
+        const normalizedSignature =
+          signature.startsWith("0x") ? signature : (`0x${signature}` as `0x${string}`);
+        return hexToBytes(normalizedSignature as `0x${string}`);
       };
 
       // Do not mix XMTP environments during a single enable attempt.
@@ -348,6 +408,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         if (isRegistered) {
           logDebug("build:primary:registered:reuse_client");
           setClient(builtClient);
+          persistEnabledState(env, [primaryIdentifier.identifier]);
           updateStage("connected");
           return builtClient;
         }
@@ -385,6 +446,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           if (isRegistered) {
             logDebug("build:fallback:registered:reuse_client");
             setClient(builtFallbackClient);
+            persistEnabledState(env, [fallbackIdentifier.identifier]);
             updateStage("connected");
             return builtFallbackClient;
           }
@@ -599,6 +661,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         const directClient = await connectAndRegister(signer, "primary");
 
         setClient(directClient);
+        persistEnabledState(env, [xmtpAddress ?? ""]);
         updateStage("connected");
         logDebug("create:connected", { mode: "primary" });
         return directClient;
@@ -624,6 +687,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
               createError
             );
             setClient(recoveredClient);
+            persistEnabledState(env, [xmtpAddress ?? ""]);
             updateStage("connected");
             logDebug("create:connected", { mode: "primary_installation_limit_recovery" });
             return recoveredClient;
@@ -669,6 +733,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
             failedMethod = "Client.create";
             const fallbackClient = await connectAndRegister(fallbackSigner, "eoa_fallback");
             setClient(fallbackClient);
+            persistEnabledState(env, [walletAddress ?? ""]);
             updateStage("connected");
             logDebug("create:connected", { mode: "eoa_fallback" });
             return fallbackClient;
@@ -705,6 +770,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                   fallbackError
                 );
                 setClient(recoveredClient);
+                persistEnabledState(env, [walletAddress ?? ""]);
                 updateStage("connected");
                 logDebug("create:connected", { mode: "eoa_fallback_installation_limit_recovery" });
                 return recoveredClient;
@@ -754,6 +820,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     xmtpAddress,
     logDebug,
     logError,
+    persistEnabledState,
     expectedSigningAddress,
     actualWalletClientAddress,
     signingAddress,
@@ -772,6 +839,12 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       const configuredEnvRaw =
         process.env.NEXT_PUBLIC_XMTP_ENV ?? process.env.NEXT_PUBLIC_XMTP_ENVIRONMENT;
       const fallbackEnv = getEnv();
+      const persistedEnvRaw =
+        typeof window !== "undefined" ? window.localStorage.getItem(XMTP_LAST_ENV_KEY) : null;
+      const persistedEnv =
+        persistedEnvRaw === "local" || persistedEnvRaw === "dev" || persistedEnvRaw === "production"
+          ? persistedEnvRaw
+          : null;
       const walletChainId =
         typeof walletClient?.chain?.id === "number" ? BigInt(walletClient.chain.id) : null;
       const configuredLensChainId =
@@ -788,23 +861,24 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         configuredEnvRaw === "dev" ||
         configuredEnvRaw === "production"
           ? configuredEnvRaw
+          : persistedEnv
+            ? persistedEnv
           : lensChainId === LENS_MAINNET_CHAIN_ID
             ? "production"
             : "dev";
 
-      const identifiers: Identifier[] = [
-        {
-          identifier: xmtpAddress.toLowerCase(),
-          identifierKind: IdentifierKind.Ethereum,
-        },
-      ];
+      const identifierCandidates = Array.from(
+        new Set([
+          ...getPersistedIdentifiers(),
+          xmtpAddress.toLowerCase(),
+          walletAddress?.toLowerCase() ?? "",
+        ])
+      ).filter(value => value.startsWith("0x") && value.length === 42);
 
-      if (walletAddress && walletAddress.toLowerCase() !== xmtpAddress.toLowerCase()) {
-        identifiers.push({
-          identifier: walletAddress.toLowerCase(),
-          identifierKind: IdentifierKind.Ethereum,
-        });
-      }
+      const identifiers: Identifier[] = identifierCandidates.map(identifier => ({
+        identifier,
+        identifierKind: IdentifierKind.Ethereum,
+      }));
 
       for (const identifier of identifiers) {
         try {
@@ -824,6 +898,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
           if (isRegistered) {
             setClient(builtClient);
+            persistEnabledState(env, [identifier.identifier]);
             return builtClient;
           }
 
@@ -843,7 +918,17 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     } finally {
       dispatch(setInitializing(false));
     }
-  }, [dispatch, logDebug, logError, setClient, walletAddress, walletClient, xmtpAddress]);
+  }, [
+    dispatch,
+    getPersistedIdentifiers,
+    logDebug,
+    logError,
+    persistEnabledState,
+    setClient,
+    walletAddress,
+    walletClient,
+    xmtpAddress,
+  ]);
 
   return {
     client,
@@ -854,5 +939,6 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     connectStage,
     createXMTPClient,
     initXMTPClient,
+    wasXMTPEnabled,
   };
 }

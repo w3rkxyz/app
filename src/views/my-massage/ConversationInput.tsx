@@ -1,12 +1,32 @@
 "use client";
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useConversation } from "@/hooks/useConversation";
 import { fileToDataURI, jsonToDataURI } from "@/utils/dataUriHelpers";
+
+const QUICK_EMOJIS = ["😀", "😂", "😊", "😍", "🙏", "👍", "🔥", "🎉", "🤝", "❤️"];
 
 const ConversationInput = () => {
   const { send, sending } = useConversation();
   const [message, setMessage] = useState("");
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const emojiContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (
+        emojiContainerRef.current &&
+        !emojiContainerRef.current.contains(event.target as Node)
+      ) {
+        setShowEmojiPicker(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, []);
 
   const handleSend = async () => {
     if (message.length === 0 || sending) {
@@ -91,23 +111,49 @@ const ConversationInput = () => {
           aria-label="File upload"
         />
       </label>
-      <button
-        type="button"
-        className="h-[40px] w-[40px] rounded-[10px] inline-flex items-center justify-center hover:bg-[#F3F4F6] transition-colors"
-        aria-label="Emoji"
-      >
-        <svg
-          className="w-[20px] h-[20px] text-[#6B7280]"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+      <div className="relative" ref={emojiContainerRef}>
+        <button
+          type="button"
+          className="h-[40px] w-[40px] rounded-[10px] inline-flex items-center justify-center hover:bg-[#F3F4F6] transition-colors"
+          aria-label="Emoji"
+          onClick={() => setShowEmojiPicker(prev => !prev)}
         >
-          <circle cx="12" cy="12" r="9" strokeWidth="2" />
-          <circle cx="9" cy="10" r="1" fill="currentColor" stroke="none" />
-          <circle cx="15" cy="10" r="1" fill="currentColor" stroke="none" />
-          <path strokeLinecap="round" strokeWidth="2" d="M8 14s1.5 2 4 2 4-2 4-2" />
-        </svg>
-      </button>
+          <svg
+            className="w-[20px] h-[20px] text-[#6B7280]"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <circle cx="12" cy="12" r="9" strokeWidth="2" />
+            <circle cx="9" cy="10" r="1" fill="currentColor" stroke="none" />
+            <circle cx="15" cy="10" r="1" fill="currentColor" stroke="none" />
+            <path strokeLinecap="round" strokeWidth="2" d="M8 14s1.5 2 4 2 4-2 4-2" />
+          </svg>
+        </button>
+        {showEmojiPicker && (
+          <div className="absolute bottom-[46px] left-0 z-30 w-[222px] rounded-[12px] border border-[#E4E4E7] bg-white p-[8px] shadow-[0_12px_24px_rgba(0,0,0,0.12)]">
+            <div className="grid grid-cols-5 gap-[6px]">
+              {QUICK_EMOJIS.map(emoji => (
+                <button
+                  type="button"
+                  key={emoji}
+                  className="h-[34px] w-[34px] rounded-[8px] text-[20px] hover:bg-[#F4F4F5] transition-colors"
+                  onClick={() => {
+                    setMessage(prev => `${prev}${emoji}`);
+                    setShowEmojiPicker(false);
+                    setTimeout(() => {
+                      inputRef.current?.focus();
+                    }, 0);
+                  }}
+                  aria-label={`Insert ${emoji}`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
       <input
         className="flex-1 px-[12px] py-[10px] text-[14px] leading-[20px] text-[#111111] placeholder-[#9CA3AF] bg-transparent focus:outline-none"
         placeholder="Send a message..."

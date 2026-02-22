@@ -117,15 +117,16 @@ const ConversationBox = () => {
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-center h-full">
-          <div className="flex flex-col gap-[11px] justify-center items-center">
+        <div className="flex items-center justify-center h-full w-full">
+          <div className="flex flex-col gap-[12px] justify-center items-center px-[24px] text-center">
             <Image
-              src="/images/discuss.svg"
+              src="/images/discuss-grey.svg"
               alt="Discuss"
-              width={24}
-              height={21}
+              width={56}
+              height={56}
+              className="object-contain"
             />
-            <span className="leading-[16.94px] font-medium text-[14px] text-black">
+            <span className="leading-[20px] font-medium text-[14px] text-[#6C6C6C]">
               Select a conversation to start messaging
             </span>
           </div>

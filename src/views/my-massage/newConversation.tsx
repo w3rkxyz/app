@@ -7,8 +7,9 @@ import { type Account } from "@lens-protocol/client";
 import getLensAccountData, { AccountData } from "@/utils/getLensProfile";
 import { useConversations } from "@/hooks/useConversations";
 import useSearchAccounts from "@/hooks/useSearchAccounts";
-import { IdentifierKind, type Identifier } from "@xmtp/browser-sdk";
+import { Dm, IdentifierKind, type Identifier } from "@xmtp/browser-sdk";
 import { useXMTP } from "@/app/XMTPContext";
+import type { ContentTypes } from "@/app/XMTPContext";
 import { useAccount } from "wagmi";
 import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
@@ -110,13 +111,47 @@ const NewConversation = ({ handleCloseModal }: Props) => {
     setSelectedUser(profile.displayName);
     setCreatingConvo(true);
     try {
+      const normalizeIdentifier = (identifier: string) => {
+        const normalized = identifier.toLowerCase();
+        const segments = normalized.split(":");
+        const tail = segments[segments.length - 1];
+        if (tail.startsWith("0x") && tail.length === 42) {
+          return tail;
+        }
+        return normalized;
+      };
+
       const identityCandidates = Array.from(
         new Set(
           [account.address, account.owner]
             .filter((value): value is string => typeof value === "string" && value.length > 0)
-            .map(value => value.toLowerCase())
+            .map(normalizeIdentifier)
         )
       );
+
+      let existingDm: Dm<ContentTypes> | undefined;
+      const existingConversations = await client.conversations.list();
+      for (const conversation of existingConversations) {
+        if (!(conversation instanceof Dm)) {
+          continue;
+        }
+
+        const members = await conversation.members();
+        const memberIdentifiers = members.flatMap(member =>
+          member.accountIdentifiers.map(accountIdentifier =>
+            normalizeIdentifier(accountIdentifier.identifier)
+          )
+        );
+        if (memberIdentifiers.some(identifier => identityCandidates.includes(identifier))) {
+          existingDm = conversation as Dm<ContentTypes>;
+          break;
+        }
+      }
+
+      if (existingDm) {
+        selectConversation(existingDm);
+        return;
+      }
 
       const identifiers: Identifier[] = identityCandidates.map(identifier => ({
         identifier,

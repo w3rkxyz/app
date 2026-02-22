@@ -37,6 +37,16 @@ export const useConversation = () => {
   useEffect(() => {
     let cancelled = false;
 
+    const normalizeIdentifier = (identifier: string) => {
+      const normalized = identifier.toLowerCase();
+      const parts = normalized.split(":");
+      const tail = parts[parts.length - 1];
+      if (tail.startsWith("0x") && tail.length === 42) {
+        return tail;
+      }
+      return normalized;
+    };
+
     const hasResolvedIdentity = (candidate: AccountData, identifier: string) => {
       const displayName = candidate.displayName?.trim().toLowerCase() ?? "";
       const handle = candidate.handle?.trim().toLowerCase() ?? "";
@@ -53,18 +63,23 @@ export const useConversation = () => {
           const members = await activeConversation.members();
           const otherUser = members.find(
             member => {
-              const memberIdentifier = member.accountIdentifiers[0].identifier.toLowerCase();
-              if (selfIdentityAddresses.length > 0) {
-                return !selfIdentityAddresses.includes(memberIdentifier);
+              const memberIdentifiers = member.accountIdentifiers.map(accountIdentifier =>
+                normalizeIdentifier(accountIdentifier.identifier)
+              );
+              if (selfIdentityAddresses.length > 0 && memberIdentifiers.length > 0) {
+                const normalizedSelfIdentifiers = selfIdentityAddresses.map(normalizeIdentifier);
+                return !memberIdentifiers.some(identifier => normalizedSelfIdentifiers.includes(identifier));
               }
-              return memberIdentifier !== activeIdentityAddress.toLowerCase();
+              return !memberIdentifiers.includes(normalizeIdentifier(activeIdentityAddress));
             }
           );
 
           if (otherUser) {
             const otherIdentifiers = Array.from(
               new Set(
-                otherUser.accountIdentifiers.map(identifier => identifier.identifier.toLowerCase())
+                otherUser.accountIdentifiers.map(identifier =>
+                  normalizeIdentifier(identifier.identifier)
+                )
               )
             );
             const mappedUser =
@@ -150,11 +165,12 @@ export const useConversation = () => {
     setLoading(true);
 
     if (syncFromNetwork) {
+      await client.conversations.syncAll();
       await sync();
     }
 
     try {
-      const resolvedOptions = options ?? { limit: 200 };
+      const resolvedOptions = options ?? { limit: 200n };
       const msgs = (await activeConversation?.messages(resolvedOptions)) ?? [];
       const sortedMessages = [...msgs].sort((a, b) => {
         if (a.sentAtNs < b.sentAtNs) return -1;

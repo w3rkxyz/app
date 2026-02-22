@@ -44,6 +44,16 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
   useEffect(() => {
     let cancelled = false;
 
+    const normalizeIdentifier = (identifier: string) => {
+      const normalized = identifier.toLowerCase();
+      const parts = normalized.split(":");
+      const tail = parts[parts.length - 1];
+      if (tail.startsWith("0x") && tail.length === 42) {
+        return tail;
+      }
+      return normalized;
+    };
+
     const hasResolvedIdentity = (candidate: AccountData, identifier: string) => {
       const displayName = candidate.displayName?.trim().toLowerCase() ?? "";
       const handle = candidate.handle?.trim().toLowerCase() ?? "";
@@ -59,11 +69,14 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
         const members = await conversation.members();
         const otherMember = members.find(
           (member: GroupMember) => {
-            const memberIdentifier = member.accountIdentifiers[0].identifier.toLowerCase();
-            if (selfIdentityAddresses.length > 0) {
-              return !selfIdentityAddresses.includes(memberIdentifier);
+            const memberIdentifiers = member.accountIdentifiers.map(accountIdentifier =>
+              normalizeIdentifier(accountIdentifier.identifier)
+            );
+            if (selfIdentityAddresses.length > 0 && memberIdentifiers.length > 0) {
+              const normalizedSelfIdentifiers = selfIdentityAddresses.map(normalizeIdentifier);
+              return !memberIdentifiers.some(identifier => normalizedSelfIdentifiers.includes(identifier));
             }
-            return memberIdentifier !== activeIdentityAddress?.toLowerCase();
+            return !memberIdentifiers.includes(normalizeIdentifier(activeIdentityAddress ?? ""));
           }
         );
 
@@ -72,7 +85,11 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
         }
 
         const otherIdentifiers = Array.from(
-          new Set(otherMember.accountIdentifiers.map(identifier => identifier.identifier.toLowerCase()))
+          new Set(
+            otherMember.accountIdentifiers.map(identifier =>
+              normalizeIdentifier(identifier.identifier)
+            )
+          )
         );
         const mapped =
           otherIdentifiers
@@ -126,7 +143,7 @@ const ConversationCard = ({ conversation, usersDic, searchQuery = "" }: Conversa
         }
 
         try {
-          const messages = await conversation.messages({ limit: 1 });
+          const messages = await conversation.messages({ limit: 1n });
           if (messages && messages.length > 0 && !cancelled) {
             const lastMsg = messages[0];
             const content = lastMsg.content;
