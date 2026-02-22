@@ -10,7 +10,6 @@ import { Oval } from "react-loader-spinner";
 import { getLensClient } from "@/client";
 import getLensAccountData from "@/utils/getLensProfile";
 import { fetchAccount, setAccountMetadata } from "@lens-protocol/client/actions";
-import { useRouter } from "next/navigation";
 import { handleOperationWith } from "@lens-protocol/client/viem";
 import { useWalletClient } from "wagmi";
 import { useSelector } from "react-redux";
@@ -57,7 +56,6 @@ const Settings = () => {
   const { data: authenticatedUser, loading: authenticatedUserLoading } = useAuthenticatedUser();
   const { data: walletClient } = useWalletClient();
   const profile = useSelector((state: RootState) => state.app.user);
-  const router = useRouter();
 
   const coverUploadInputRef = useRef<HTMLInputElement>(null);
   const photoUploadInputRef = useRef<HTMLInputElement>(null);
@@ -170,19 +168,12 @@ const Settings = () => {
         return;
       }
 
-      if (!authenticatedUser) {
-        router.push("/");
-        return;
-      }
+      const hasProfileFallback =
+        Boolean(profile?.address) || Boolean(profile?.displayName) || Boolean(profile?.handle);
 
       try {
         const client = await getLensClient();
         if (!active) return;
-
-        if (!client.isSessionClient()) {
-          router.push("/");
-          return;
-        }
 
         // Hydrate from the active Lens account first (Redux), then fallback to session address.
         // This prevents blank settings when authenticatedUser.address is a wallet/manager address.
@@ -194,7 +185,7 @@ const Settings = () => {
           }).unwrapOr(null);
         }
 
-        if (!account) {
+        if (!account && authenticatedUser?.address) {
           account = await fetchAccount(client, {
             address: authenticatedUser.address,
           }).unwrapOr(null);
@@ -219,6 +210,21 @@ const Settings = () => {
             website: profile.attributes?.website || "",
             location: profile.attributes?.location || "",
           });
+        } else if (!authenticatedUser && !hasProfileFallback) {
+          // Keep settings page open (do not force redirect) even when session is not yet available.
+          // Saving will still require an authenticated session.
+          setFormState({
+            name: "",
+            picture: "",
+            cover: "",
+            jobTitle: "",
+            bio: "",
+            X: "",
+            github: "",
+            linkedin: "",
+            website: "",
+            location: "",
+          });
         }
 
         setPendingCoverFile(null);
@@ -239,7 +245,7 @@ const Settings = () => {
     return () => {
       active = false;
     };
-  }, [authenticatedUser, authenticatedUserLoading, profile, router]);
+  }, [authenticatedUser, authenticatedUserLoading, profile]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
