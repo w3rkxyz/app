@@ -328,7 +328,7 @@ const FindTalent = () => {
                     </div>
                   </div>
                   {index < filteredJobs.length - 1 && (
-                    <hr className=" border-0 h-[1px] bg-[#8C8C8C] my-0" />
+                    <hr className=" border-0 h-[1px] bg-[#E8E8E8] my-0" />
                   )}
                 </div>
               ))
