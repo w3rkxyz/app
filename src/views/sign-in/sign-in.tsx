@@ -164,7 +164,7 @@ export const LoginPage = () => {
 
             {/* Footer */}
             <div className="flex items-center gap-2 text-center mt-6 text-[#85868C] text-base font-bold cursor-pointer hover:text-gray-700 transition">
-              <SVGHardDrive /> I don't have a wallet
+              <SVGHardDrive /> I don&apos;t have a wallet
             </div>
           </div>
         
