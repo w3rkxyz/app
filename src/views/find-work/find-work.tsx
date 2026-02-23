@@ -132,6 +132,12 @@ const FindWork = () => {
   const getCategoryIconStyle = (isSelected: boolean) => ({
     filter: isSelected ? "brightness(0.26)" : "none",
   });
+  const handleCategorySelection = (categoryName: string, closeDropdown = false) => {
+    setSelectedCategory(prev => (prev === categoryName ? "" : categoryName));
+    if (closeDropdown) {
+      setIsCategoryDropdownOpen(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -173,10 +179,7 @@ const FindWork = () => {
                     return (
                       <button
                         key={category.name}
-                        onClick={() => {
-                          setSelectedCategory(category.name);
-                          setIsCategoryDropdownOpen(false);
-                        }}
+                        onClick={() => handleCategorySelection(category.name, true)}
                         className={`w-full flex items-center gap-[12px] px-[12px] py-[10px] rounded-[8px] text-left transition-colors ${isSelected ? "bg-[#EEEEEE]" : "hover:bg-[#F5F5F5]"
                           }`}
                       >
@@ -245,10 +248,7 @@ const FindWork = () => {
                     return (
                       <button
                         key={category.name}
-                        onClick={() => {
-                          setSelectedCategory(category.name);
-                          setIsCategoryDropdownOpen(false);
-                        }}
+                        onClick={() => handleCategorySelection(category.name, true)}
                         className={`w-full flex items-center gap-[12px] px-[12px] py-[10px] rounded-[8px] text-left transition-colors ${isSelected ? "bg-[#EEEEEE]" : "hover:bg-[#F5F5F5]"
                           }`}
                       >
@@ -298,7 +298,7 @@ const FindWork = () => {
                     return (
                       <button
                         key={category.name}
-                        onClick={() => setSelectedCategory(category.name)}
+                        onClick={() => handleCategorySelection(category.name)}
                         className="flex items-center gap-[12px] rounded-[8px] text-left transition-colors text-[#4A4A4A]"
                       >
                         <span className="flex-shrink-0" style={getCategoryIconStyle(isSelected)}>
