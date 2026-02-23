@@ -51,14 +51,17 @@ const ConversationBox = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeConversation?.id, client]);
 
+  const isEmptyConversationState =
+    Boolean(client) && activeConversation === undefined && !(notOnNetwork && invalidUser);
+
   return (
     <div
       className={`horizontal-box bg-[#FCFCFC] px-[12px] ${
         activeConversation !== undefined || (notOnNetwork && invalidUser) ? "" : "sm:hidden"
-      } flex-1 min-w-0`}
+      } flex flex-col flex-1 min-w-0 h-full ${isEmptyConversationState ? "bg-white px-0" : ""}`}
     >
       {!client ? (
-        <div className="flex-1" />
+        <div className="flex-1 bg-white" />
       ) : notOnNetwork && invalidUser ? (
         <div className="flex flex-col h-full w-full bg-white overflow-hidden">
           <div className="h-[64px] px-[24px] sm:px-[14px] border-b border-[#ECECF0] flex items-center gap-[10px]">
