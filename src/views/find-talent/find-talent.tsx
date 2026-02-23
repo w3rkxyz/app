@@ -150,6 +150,9 @@ const FindTalent = () => {
   });
 
   const selectedCategoryData = categories.find(cat => cat.name === selectedCategory);
+  const getCategoryIconStyle = (isSelected: boolean) => ({
+    filter: isSelected ? "brightness(0.26)" : "none",
+  });
 
   return (
     <div className="min-h-screen bg-white">
@@ -201,7 +204,9 @@ const FindTalent = () => {
                           isSelected ? "bg-[#EEEEEE]" : "hover:bg-[#F5F5F5]"
                         }`}
                       >
-                        <IconComponent size={20} className="flex-shrink-0 text-[#818181]" />
+                        <span className="flex-shrink-0" style={getCategoryIconStyle(isSelected)}>
+                          <IconComponent size={20} className="flex-shrink-0 text-[#818181]" />
+                        </span>
                         <span
                           className={`text-[16px] leading-[24px] tracking-[0px] align-middle ${
                             isSelected
@@ -326,7 +331,9 @@ const FindTalent = () => {
                           isSelected ? "bg-[#EEEEEE]" : "hover:bg-[#F5F5F5]"
                         }`}
                       >
-                        <IconComponent size={20} className="flex-shrink-0 text-[#818181]" />
+                        <span className="flex-shrink-0" style={getCategoryIconStyle(isSelected)}>
+                          <IconComponent size={20} className="flex-shrink-0 text-[#818181]" />
+                        </span>
                         <span
                           className={`text-[16px] leading-[24px] tracking-[0px] align-middle ${
                             isSelected
@@ -420,7 +427,9 @@ const FindTalent = () => {
                         onClick={() => setSelectedCategory(category.name)}
                         className="flex items-center gap-[12px] rounded-[8px] text-left transition-colors text-[#4A4A4A]"
                       >
-                        <IconComponent size={20} className="flex-shrink-0 text-[#818181]" />
+                        <span className="flex-shrink-0" style={getCategoryIconStyle(isSelected)}>
+                          <IconComponent size={20} className="flex-shrink-0 text-[#818181]" />
+                        </span>
                         <span
                           className={`text-[16px] leading-[24px] tracking-[0px] align-middle ${
                             isSelected
