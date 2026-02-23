@@ -17,6 +17,7 @@ import {
   Users,
   HelpCircle,
 } from "lucide-react";
+import PaymentTokensDropdown from "../onboarding/payment-tokens-dropdown";
 
 interface CreateJobModalProps {
   open: boolean;
@@ -143,6 +144,22 @@ const CreateJobModal = ({ open, onClose }: CreateJobModalProps) => {
 
   if (!open) return null;
 
+  const handleJobAddToken = () => {
+    setSelectedTokens((prev) => [...prev, 'Ethereum (ETH)']);
+  }
+
+  const handleJobTokenUpdate = (index: number, tokenName: string, tokenSymbol: string) => {
+    setSelectedTokens(prev => {
+      const newTokens = [...prev]
+      newTokens[index] = `${tokenName} (${tokenSymbol})`
+      return newTokens
+    })
+  }
+
+  const handleJobRemoveToken = (index: number) => {
+    setSelectedTokens((prev) => prev.filter((_, i) => i !== index));
+  }
+
   return (
     <div
       className="fixed inset-0 z-[99991] flex items-center justify-center bg-[rgba(15,23,42,0.55)]"
@@ -227,8 +244,14 @@ const CreateJobModal = ({ open, onClose }: CreateJobModalProps) => {
               </div>
             </div>
 
-            {/* Payment Tokens */}
-            <div className="space-y-[6px] relative" ref={tokenDropdownRef}>
+            <PaymentTokensDropdown
+              tokens={selectedTokens}
+              onUpdateToken={handleJobTokenUpdate}
+              onAddToken={handleJobAddToken}
+              onRemoveToken={handleJobRemoveToken}
+            />
+
+            {/* <div className="space-y-[6px] relative" ref={tokenDropdownRef}>
               <label className="text-[14px] font-medium leading-[20px] text-[#111827]">
                 Payment Token(s)<span className="text-[#DC2626]">*</span>
               </label>
@@ -280,7 +303,7 @@ const CreateJobModal = ({ open, onClose }: CreateJobModalProps) => {
                   </div>
                 </div>
               )}
-            </div>
+            </div> */}
 
             {/* Job Category */}
             <div className="space-y-[6px] pb-[8px]" ref={categoryDropdownRef}>

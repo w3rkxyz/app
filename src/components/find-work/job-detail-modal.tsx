@@ -174,7 +174,7 @@ const JobDetailModal = ({ job, open, onClose }: JobDetailModalProps) => {
             {/* Tags Section */}
             {job.tags && job.tags.length > 0 && (
               <div className="mb-[16px] pb-[16px]">
-                <h3 className="text-[16px] font-semibold text-[#212121] mb-[12px]">Tags</h3>
+                {/* <h3 className="text-[16px] font-semibold text-[#212121] mb-[12px]">Tags</h3> */}
                 <div className="flex flex-wrap gap-[4px]">
                   {job.tags
                     .filter(tag => tag !== "[tag]" && tag.trim() !== "")

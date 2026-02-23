@@ -51,14 +51,17 @@ const ConversationBox = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeConversation?.id, client]);
 
+  const isEmptyConversationState =
+    Boolean(client) && activeConversation === undefined && !(notOnNetwork && invalidUser);
+
   return (
     <div
       className={`horizontal-box bg-[#FCFCFC] px-[12px] ${
         activeConversation !== undefined || (notOnNetwork && invalidUser) ? "" : "sm:hidden"
-      } flex-1 min-w-0`}
+      } flex flex-col flex-1 min-w-0 h-full ${isEmptyConversationState ? "bg-white px-0" : ""}`}
     >
       {!client ? (
-        <div className="flex-1" />
+        <div className="flex-1 bg-white" />
       ) : notOnNetwork && invalidUser ? (
         <div className="flex flex-col h-full w-full bg-white overflow-hidden">
           <div className="h-[64px] px-[24px] sm:px-[14px] border-b border-[#ECECF0] flex items-center gap-[10px]">
@@ -117,17 +120,11 @@ const ConversationBox = () => {
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-center h-full">
-          <div className="flex flex-col gap-[11px] justify-center items-center">
-            <Image
-              src="/images/discuss.svg"
-              alt="Discuss"
-              width={24}
-              height={21}
-            />
-            <span className="leading-[16.94px] font-medium text-[14px] text-black">
-              Select a conversation to start messaging
-            </span>
+        <div className="flex-1 flex items-center justify-center bg-white">
+          <div className="text-center flex flex-col items-center justify-center">
+            <Image src="/images/ChatsCircle.svg" alt="" width={64} height={64} />
+            <p className="text-gray-500 text-sm">Select a conversation to</p>
+            <p className="text-gray-500 text-sm">start messaging</p>
           </div>
         </div>
       )}
