@@ -25,7 +25,7 @@ const FindWorkJobCard = ({ job, onClick, isLast }: FindWorkJobCardProps) => {
         <div className="group group-hover:bg-[#fafafa]">
             <div
                 onClick={() => onClick?.(job)}
-                className="bg-white group-hover:bg-[#fafafa] p-[8px] sm:p-[8px] sm:pb-[16px] md:p-[24px] pb-[16px] md:pb-[24px] grid sm:grid-cols-[92px_1fr] grid-cols-[64px_1fr] gap-x-[12px] md:gap-x-[20px] gap-y-[8px] hover:shadow-sm transition-shadow cursor-pointer"
+                className="bg-white group-hover:bg-[#fafafa] p-[24px] sm:p-[8px] sm:pb-[16px] md:p-[24px] pb-[16px] md:pb-[24px] grid sm:grid-cols-[92px_1fr] grid-cols-[64px_1fr] gap-x-[12px] md:gap-x-[20px] gap-y-[8px] hover:shadow-sm transition-shadow cursor-pointer"
             >
                 <div className="row-span-2 sm:row-span-3 sm:aspect-square">
                     <Image
@@ -62,7 +62,7 @@ const FindWorkJobCard = ({ job, onClick, isLast }: FindWorkJobCardProps) => {
                 </div>
 
                 <div className="col-span-2 mt-[8px]">
-                    <div className="flex flex-wrap gap-[4px]">
+                    <div className="flex flex-wrap gap-[12px]">
                         {job.tags
                             .filter(tag => tag !== "[tag]" && tag.trim() !== "")
                             .slice(0, 3)
@@ -78,7 +78,7 @@ const FindWorkJobCard = ({ job, onClick, isLast }: FindWorkJobCardProps) => {
                 </div>
             </div>
             {!isLast && (
-                <hr className="border-0 h-[1px] bg-[#8C8C8C] my-0" />
+                <hr className="border-0 h-[1px] bg-[#E8E8E8] my-0" />
             )}
         </div>
     );
