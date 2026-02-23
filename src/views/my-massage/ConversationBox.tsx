@@ -410,12 +410,11 @@ const ConversationBox = ({ currentContact, currentMessages, selectedChat, setSel
 
         {/* Empty state - Desktop only */}
         {!isMobile && (
-          <div className="flex items-center justify-center h-full">
-            <div className="flex flex-col gap-[11px] justify-center items-center">
-              <Image src="/images/discuss.svg" alt="Discuss" width={24} height={21} />
-              <span className="leading-[16.94px] font-medium text-[14px] text-black">
-                Select a conversation to start messaging
-              </span>
+          <div className="flex-1 flex items-center justify-center bg-white">
+            <div className="text-center flex flex-col items-center justify-center">
+              <Image src={'/images/ChatsCircle.svg'} alt="" width={64} height={64} />
+              <p className="text-gray-500 text-sm">Select a conversation to</p>
+              <p className="text-gray-500 text-sm">start messaging</p>
             </div>
           </div>
         )}
