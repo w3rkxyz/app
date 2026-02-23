@@ -58,7 +58,7 @@ const categories: Category[] = [
 
 const FindWork = () => {
   const [jobs, setJobs] = useState<JobData[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>("Design");
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [searchText, setSearchText] = useState("");
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -123,7 +123,7 @@ const FindWork = () => {
       job.username.toLowerCase().includes(searchText.toLowerCase());
 
     const matchesCategory =
-      selectedCategory === "All" || job.tags.some(tag => tag === selectedCategory);
+      !selectedCategory || selectedCategory === "All" || job.tags.some(tag => tag === selectedCategory);
 
     return matchesSearch && matchesCategory;
   });

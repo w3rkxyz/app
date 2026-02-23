@@ -58,7 +58,7 @@ const hourlyRates: HourlyRate[] = [
 
 const FindTalent = () => {
   const [jobs, setJobs] = useState<JobData[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>("Design");
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedHourlyRate, setSelectedHourlyRate] = useState<string>("All Rates");
   const [searchText, setSearchText] = useState("");
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
@@ -136,7 +136,7 @@ const FindTalent = () => {
       job.username.toLowerCase().includes(searchText.toLowerCase());
 
     const matchesCategory =
-      selectedCategory === "All" || job.tags.some(tag => tag === selectedCategory);
+      !selectedCategory || selectedCategory === "All" || job.tags.some(tag => tag === selectedCategory);
 
     // Filter by hourly rate
     const selectedRate = hourlyRates.find(rate => rate.label === selectedHourlyRate);
