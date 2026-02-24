@@ -58,7 +58,7 @@ const categories: Category[] = [
 
 const FindWork = () => {
   const [jobs, setJobs] = useState<JobData[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>("Design");
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [searchText, setSearchText] = useState("");
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -123,12 +123,21 @@ const FindWork = () => {
       job.username.toLowerCase().includes(searchText.toLowerCase());
 
     const matchesCategory =
-      selectedCategory === "All" || job.tags.some(tag => tag === selectedCategory);
+      !selectedCategory || selectedCategory === "All" || job.tags.some(tag => tag === selectedCategory);
 
     return matchesSearch && matchesCategory;
   });
 
   const selectedCategoryData = categories.find(cat => cat.name === selectedCategory);
+  const getCategoryIconStyle = (isSelected: boolean) => ({
+    filter: isSelected ? "brightness(0.26)" : "none",
+  });
+  const handleCategorySelection = (categoryName: string, closeDropdown = false) => {
+    setSelectedCategory(prev => (prev === categoryName ? "" : categoryName));
+    if (closeDropdown) {
+      setIsCategoryDropdownOpen(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -170,14 +179,13 @@ const FindWork = () => {
                     return (
                       <button
                         key={category.name}
-                        onClick={() => {
-                          setSelectedCategory(category.name);
-                          setIsCategoryDropdownOpen(false);
-                        }}
+                        onClick={() => handleCategorySelection(category.name, true)}
                         className={`w-full flex items-center gap-[12px] px-[12px] py-[10px] rounded-[8px] text-left transition-colors ${isSelected ? "bg-[#EEEEEE]" : "hover:bg-[#F5F5F5]"
                           }`}
                       >
-                        {IconComponent}
+                        <span className="flex-shrink-0" style={getCategoryIconStyle(isSelected)}>
+                          <IconComponent size={20} />
+                        </span>
                         <span
                           className={`text-[16px] leading-[24px] tracking-[0px] align-middle ${isSelected
                               ? "font-semibold text-[#212121]"
@@ -240,14 +248,13 @@ const FindWork = () => {
                     return (
                       <button
                         key={category.name}
-                        onClick={() => {
-                          setSelectedCategory(category.name);
-                          setIsCategoryDropdownOpen(false);
-                        }}
+                        onClick={() => handleCategorySelection(category.name, true)}
                         className={`w-full flex items-center gap-[12px] px-[12px] py-[10px] rounded-[8px] text-left transition-colors ${isSelected ? "bg-[#EEEEEE]" : "hover:bg-[#F5F5F5]"
                           }`}
                       >
-                        {IconComponent}
+                        <span className="flex-shrink-0" style={getCategoryIconStyle(isSelected)}>
+                          <IconComponent size={20} />
+                        </span>
                         <span
                           className={`text-[16px] leading-[24px] tracking-[0px] align-middle ${isSelected
                               ? "font-semibold text-[#212121]"
@@ -291,10 +298,12 @@ const FindWork = () => {
                     return (
                       <button
                         key={category.name}
-                        onClick={() => setSelectedCategory(category.name)}
+                        onClick={() => handleCategorySelection(category.name)}
                         className="flex items-center gap-[12px] rounded-[8px] text-left transition-colors text-[#4A4A4A]"
                       >
-                        <IconComponent size={20} className="flex-shrink-0 text-[#818181]" />
+                        <span className="flex-shrink-0" style={getCategoryIconStyle(isSelected)}>
+                          <IconComponent size={20} className="flex-shrink-0 text-[#818181]" />
+                        </span>
                         <span
                           className={`text-[16px] leading-[24px] tracking-[0px] align-middle ${isSelected
                               ? "font-semibold text-[#212121]"
