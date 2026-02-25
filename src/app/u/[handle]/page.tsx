@@ -283,6 +283,7 @@ export default function Profile() {
   const following = getFollowCount(lensAccount, "following");
   const score = 23694;
   const createPostHandle = loggedInProfile?.handle || handle;
+  const messageUrl = viewedHandle ? `/messages?handle=${encodeURIComponent(viewedHandle)}` : "/messages";
 
   useEffect(() => {
     setFollowersCount(followers);
@@ -431,6 +432,24 @@ export default function Profile() {
               <p className="text-[14px] text-[#6C6C6C] leading-[20px] mb-[16px]">{about}</p>
             ) : null}
 
+            {!isOwnProfile ? (
+              <div className="flex items-center gap-[10px] my-[16px]">
+                <button
+                  className={`flex-1 h-[40px] flex items-center justify-center gap-2 rounded-full py-2 px-4 text-[14px] font-medium transition-colors ${followButtonClassName}`}
+                  onClick={handleFollowToggle}
+                  disabled={followSubmitting || followStatusLoading}
+                >
+                  {followButtonLabel}
+                </button>
+                <Link
+                  href={messageUrl}
+                  className="flex-1 h-[40px] flex items-center justify-center rounded-full border border-[#212121] bg-white text-[#212121] py-2 px-4 text-[14px] font-medium hover:bg-[#F7F7F7] transition-colors"
+                >
+                  Message
+                </Link>
+              </div>
+            ) : null}
+
             <div className="flex gap-[16px] my-[16px] sm:py-0 py-[16px]">
               <span className="leading-[20px]">
                 <span className="font-semibold sm:text-[14px] text-[20px] text-[#212121]">
@@ -515,15 +534,7 @@ export default function Profile() {
                 <PlusIcon className="w-5 h-5" />
                 Create Post
               </button>
-            ) : (
-              <button
-                className={`w-full sm:flex h-[40px] hidden items-center justify-center gap-2 rounded-full py-2 px-4 text-[14px] font-medium transition-colors shrink-0 mt-[16px] ${followButtonClassName}`}
-                onClick={handleFollowToggle}
-                disabled={followSubmitting || followStatusLoading}
-              >
-                {followButtonLabel}
-              </button>
-            )}
+            ) : null}
           </div>
           <hr className="bg-[#E4E4E7] h-[1px] mb-0 hidden lg:block" />
 
@@ -538,15 +549,7 @@ export default function Profile() {
                   <PlusIcon className="w-5 h-5" />
                   Create Post
                 </button>
-              ) : (
-                <button
-                  className={`order-1 sm:hidden md:order-2 w-full max-w-[153px] md:w-[153px] h-[40px] flex items-center justify-center gap-2 rounded-full py-2 px-4 text-[14px] font-medium transition-colors shrink-0 ${followButtonClassName}`}
-                  onClick={handleFollowToggle}
-                  disabled={followSubmitting || followStatusLoading}
-                >
-                  {followButtonLabel}
-                </button>
-              )}
+              ) : null}
             </div>
             <div className="bg-white">
               {postsLoading ? (
