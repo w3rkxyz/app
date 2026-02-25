@@ -103,6 +103,11 @@ function isFollowingFromStatus(value: any) {
   return false;
 }
 
+function normalizeHandleValue(value: string | null | undefined) {
+  if (!value) return "";
+  return value.replace(/^@/, "").trim().toLowerCase();
+}
+
 export default function Profile() {
   const params = useParams<{ handle: string }>();
   const routeHandle = Array.isArray(params?.handle) ? params.handle[0] : params?.handle;
@@ -120,6 +125,7 @@ export default function Profile() {
   const [followSubmitting, setFollowSubmitting] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
+  const [sessionProfileAddress, setSessionProfileAddress] = useState("");
 
   const {
     data: lensAccount,
@@ -130,15 +136,15 @@ export default function Profile() {
   });
 
   const accountData = lensAccount ? getLensAccountData(lensAccount as any) : null;
-  const observerAddress = loggedInProfile?.address || "";
+  const observerAddress = loggedInProfile?.address || sessionProfileAddress || "";
   const profileAddress = lensAccount?.address || "";
-  const isOwnProfile =
-    (Boolean(loggedInProfile?.userLink) &&
-      loggedInProfile.userLink.toLowerCase() === normalizedHandle.toLowerCase()) ||
-    (Boolean(observerAddress) &&
-      Boolean(profileAddress) &&
-      observerAddress.toLowerCase() === profileAddress.toLowerCase());
-  const canFollowProfile = !isOwnProfile && Boolean(loggedInProfile?.address) && Boolean(lensAccount?.address);
+  const loggedInHandle = normalizeHandleValue(loggedInProfile?.userLink || loggedInProfile?.handle);
+  const viewedHandle = normalizeHandleValue(lensAccount?.username?.localName || normalizedHandle);
+  const hasAddressContext = Boolean(observerAddress) && Boolean(profileAddress);
+  const isOwnProfile = hasAddressContext
+    ? observerAddress.toLowerCase() === profileAddress.toLowerCase()
+    : Boolean(loggedInHandle) && Boolean(viewedHandle) && loggedInHandle === viewedHandle;
+  const canFollowProfile = !isOwnProfile && Boolean(observerAddress) && Boolean(profileAddress);
 
   const handleOpenJobModal = () => {
     if (isOwnProfile) {
@@ -146,6 +152,33 @@ export default function Profile() {
     }
   };
   const handleCloseJobModal = () => setIsJobModalOpen(false);
+
+  useEffect(() => {
+    let active = true;
+
+    const hydrateSessionProfileAddress = async () => {
+      if (!sessionClient) {
+        setSessionProfileAddress("");
+        return;
+      }
+
+      try {
+        const authenticatedUser = await sessionClient.getAuthenticatedUser().unwrapOr(null);
+        if (!active) return;
+        setSessionProfileAddress(authenticatedUser?.address || "");
+      } catch (error) {
+        if (!active) return;
+        console.error("Failed to read authenticated session profile:", error);
+        setSessionProfileAddress("");
+      }
+    };
+
+    void hydrateSessionProfileAddress();
+
+    return () => {
+      active = false;
+    };
+  }, [sessionClient]);
 
   useEffect(() => {
     let active = true;
