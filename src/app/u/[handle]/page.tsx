@@ -7,12 +7,16 @@ import { useParams } from "next/navigation";
 import { useSelector } from "react-redux";
 import { evmAddress, useAccount as useLensAccount, useSessionClient } from "@lens-protocol/react";
 import { fetchFollowStatus, fetchPosts, follow, unfollow } from "@lens-protocol/client/actions";
+import { handleOperationWith } from "@lens-protocol/client/viem";
 import { PlusIcon } from "lucide-react";
 import toast from "react-hot-toast";
+import { useWalletClient } from "wagmi";
 import CreatePostModal from "@/views/profile/CreatePostModal";
 import ProfilePostCard from "@/components/Cards/ProfilePostCard";
 import getLensAccountData from "@/utils/getLensProfile";
 import { client } from "@/client";
+
+const LENS_TESTNET_CHAIN_ID = 37111;
 
 function getDomain(url: string) {
   return url.replace(/https?:\/\//, "").replace(/\/$/, "");
@@ -118,6 +122,7 @@ export default function Profile() {
 
   const { user: loggedInProfile } = useSelector((state: any) => state.app);
   const { data: sessionClient } = useSessionClient();
+  const { data: walletClient } = useWalletClient();
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
   const [profilePosts, setProfilePosts] = useState<ProfilePost[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
@@ -141,10 +146,13 @@ export default function Profile() {
   const loggedInHandle = normalizeHandleValue(loggedInProfile?.userLink || loggedInProfile?.handle);
   const viewedHandle = normalizeHandleValue(lensAccount?.username?.localName || normalizedHandle);
   const hasAddressContext = Boolean(observerAddress) && Boolean(profileAddress);
+  const canFollowValidationTypename = lensAccount?.operations?.canFollow?.__typename;
+  const canFollowByProtocol = canFollowValidationTypename !== "AccountFollowOperationValidationFailed";
   const isOwnProfile = hasAddressContext
     ? observerAddress.toLowerCase() === profileAddress.toLowerCase()
     : Boolean(loggedInHandle) && Boolean(viewedHandle) && loggedInHandle === viewedHandle;
-  const canFollowProfile = !isOwnProfile && Boolean(observerAddress) && Boolean(profileAddress);
+  const canCheckFollowStatus = !isOwnProfile && Boolean(observerAddress) && Boolean(profileAddress);
+  const canFollowProfile = canCheckFollowStatus && (isFollowing || canFollowByProtocol);
 
   const handleOpenJobModal = () => {
     if (isOwnProfile) {
@@ -152,6 +160,51 @@ export default function Profile() {
     }
   };
   const handleCloseJobModal = () => setIsJobModalOpen(false);
+
+  const ensureLensTestnetChain = useCallback(async () => {
+    if (!walletClient) {
+      toast.error("Wallet not ready. Reconnect and try again.");
+      return false;
+    }
+
+    if (walletClient.chain?.id === LENS_TESTNET_CHAIN_ID) {
+      return true;
+    }
+
+    try {
+      await walletClient.switchChain({ id: LENS_TESTNET_CHAIN_ID });
+      return true;
+    } catch (error: any) {
+      if (error?.code !== 4902) {
+        toast.error("Please switch to Lens Chain Testnet to continue.");
+        return false;
+      }
+
+      try {
+        await walletClient.addChain({
+          chain: {
+            id: LENS_TESTNET_CHAIN_ID,
+            name: "Lens Chain Testnet",
+            nativeCurrency: { name: "GHO", symbol: "GHO", decimals: 18 },
+            rpcUrls: {
+              default: { http: ["https://rpc.testnet.lens.xyz"] },
+            },
+            blockExplorers: {
+              default: {
+                name: "Lens Explorer",
+                url: "https://block-explorer.testnet.lens.xyz",
+              },
+            },
+          },
+        });
+        await walletClient.switchChain({ id: LENS_TESTNET_CHAIN_ID });
+        return true;
+      } catch {
+        toast.error("Could not add Lens Chain Testnet to your wallet.");
+        return false;
+      }
+    }
+  }, [walletClient]);
 
   useEffect(() => {
     let active = true;
@@ -179,6 +232,18 @@ export default function Profile() {
       active = false;
     };
   }, [sessionClient]);
+
+  useEffect(() => {
+    if (!canCheckFollowStatus) {
+      setIsFollowing(false);
+      return;
+    }
+
+    const initialFollowState = lensAccount?.operations?.isFollowedByMe;
+    if (typeof initialFollowState !== "undefined") {
+      setIsFollowing(isFollowingFromStatus(initialFollowState));
+    }
+  }, [canCheckFollowStatus, lensAccount?.operations?.isFollowedByMe]);
 
   useEffect(() => {
     let active = true;
@@ -230,7 +295,7 @@ export default function Profile() {
   }, [lensAccount?.address]);
 
   const refreshFollowStatus = useCallback(async () => {
-    if (!canFollowProfile) {
+    if (!canCheckFollowStatus) {
       setIsFollowing(false);
       return;
     }
@@ -261,7 +326,7 @@ export default function Profile() {
     } finally {
       setFollowStatusLoading(false);
     }
-  }, [canFollowProfile, observerAddress, profileAddress]);
+  }, [canCheckFollowStatus, observerAddress, profileAddress]);
 
   useEffect(() => {
     void refreshFollowStatus();
@@ -291,6 +356,10 @@ export default function Profile() {
 
   const handleFollowToggle = async () => {
     if (!canFollowProfile) {
+      if (!canFollowByProtocol && !isFollowing) {
+        toast.error("This profile cannot be followed right now.");
+        return;
+      }
       toast.error("Please connect your wallet and sign in to Lens.");
       return;
     }
@@ -300,17 +369,33 @@ export default function Profile() {
       return;
     }
 
+    if (!walletClient) {
+      toast.error("Wallet not ready. Reconnect and try again.");
+      return;
+    }
+
+    const isLensTestnet = await ensureLensTestnetChain();
+    if (!isLensTestnet) {
+      return;
+    }
+
     setFollowSubmitting(true);
 
     const wasFollowing = isFollowing;
 
     try {
-      const result = wasFollowing
+      const operation = wasFollowing
         ? await unfollow(sessionClient, { account: evmAddress(profileAddress) })
         : await follow(sessionClient, { account: evmAddress(profileAddress) });
 
-      if (result.isErr()) {
-        toast.error(result.error.message || "Failed to update follow status.");
+      if (operation.isErr()) {
+        toast.error(operation.error.message || "Failed to update follow status.");
+        return;
+      }
+
+      const txResult = await operation.andThen(handleOperationWith(walletClient));
+      if (txResult.isErr()) {
+        toast.error(txResult.error.message || "Failed to submit follow transaction.");
         return;
       }
 
@@ -318,12 +403,17 @@ export default function Profile() {
       setIsFollowing(nextFollowing);
       setFollowersCount((count) => Math.max(0, count + (nextFollowing ? 1 : -1)));
       toast.success(nextFollowing ? `You are now following ${handle}` : `You unfollowed ${handle}`);
+
+      const indexingResult = await sessionClient.waitForTransaction(txResult.value);
+      if (indexingResult.isErr()) {
+        toast.error(indexingResult.error.message || "Transaction submitted but confirmation is delayed.");
+      }
     } catch (error: any) {
       console.error("Failed to update follow status:", error);
       toast.error(error?.message || "Failed to update follow status.");
     } finally {
+      await refreshFollowStatus();
       setFollowSubmitting(false);
-      void refreshFollowStatus();
     }
   };
 
@@ -333,6 +423,8 @@ export default function Profile() {
       : "Following..."
     : followStatusLoading
       ? "Loading..."
+      : !canFollowByProtocol && !isFollowing
+        ? "Cannot Follow"
       : isFollowing
         ? "Unfollow"
         : "Follow";
@@ -437,7 +529,7 @@ export default function Profile() {
                 <button
                   className={`flex-1 h-[40px] flex items-center justify-center gap-2 rounded-full py-2 px-4 text-[14px] font-medium transition-colors ${followButtonClassName}`}
                   onClick={handleFollowToggle}
-                  disabled={followSubmitting || followStatusLoading}
+                  disabled={followSubmitting || followStatusLoading || (!canFollowByProtocol && !isFollowing)}
                 >
                   {followButtonLabel}
                 </button>
