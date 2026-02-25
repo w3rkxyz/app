@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import { useSelector } from "react-redux";
-import { useAccount as useLensAccount } from "@lens-protocol/react";
-import { fetchPosts } from "@lens-protocol/client/actions";
+import { evmAddress, useAccount as useLensAccount, useSessionClient } from "@lens-protocol/react";
+import { fetchFollowStatus, fetchPosts, follow, unfollow } from "@lens-protocol/client/actions";
 import { PlusIcon } from "lucide-react";
+import toast from "react-hot-toast";
 import CreatePostModal from "@/views/profile/CreatePostModal";
 import ProfilePostCard from "@/components/Cards/ProfilePostCard";
 import getLensAccountData from "@/utils/getLensProfile";
@@ -90,6 +91,18 @@ function getFollowCount(account: any, key: "followers" | "following") {
   );
 }
 
+function isFollowingFromStatus(value: any) {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (value && typeof value === "object") {
+    return Boolean(value.optimistic || value.onChain);
+  }
+
+  return false;
+}
+
 export default function Profile() {
   const params = useParams<{ handle: string }>();
   const routeHandle = Array.isArray(params?.handle) ? params.handle[0] : params?.handle;
@@ -99,9 +112,14 @@ export default function Profile() {
   );
 
   const { user: loggedInProfile } = useSelector((state: any) => state.app);
+  const { data: sessionClient } = useSessionClient();
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
   const [profilePosts, setProfilePosts] = useState<ProfilePost[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
+  const [followStatusLoading, setFollowStatusLoading] = useState(false);
+  const [followSubmitting, setFollowSubmitting] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
 
   const {
     data: lensAccount,
@@ -112,11 +130,21 @@ export default function Profile() {
   });
 
   const accountData = lensAccount ? getLensAccountData(lensAccount as any) : null;
+  const observerAddress = loggedInProfile?.address || "";
+  const profileAddress = lensAccount?.address || "";
   const isOwnProfile =
-    Boolean(loggedInProfile?.userLink) &&
-    loggedInProfile.userLink.toLowerCase() === normalizedHandle.toLowerCase();
+    (Boolean(loggedInProfile?.userLink) &&
+      loggedInProfile.userLink.toLowerCase() === normalizedHandle.toLowerCase()) ||
+    (Boolean(observerAddress) &&
+      Boolean(profileAddress) &&
+      observerAddress.toLowerCase() === profileAddress.toLowerCase());
+  const canFollowProfile = !isOwnProfile && Boolean(loggedInProfile?.address) && Boolean(lensAccount?.address);
 
-  const handleOpenJobModal = () => setIsJobModalOpen(true);
+  const handleOpenJobModal = () => {
+    if (isOwnProfile) {
+      setIsJobModalOpen(true);
+    }
+  };
   const handleCloseJobModal = () => setIsJobModalOpen(false);
 
   useEffect(() => {
@@ -168,6 +196,44 @@ export default function Profile() {
     };
   }, [lensAccount?.address]);
 
+  const refreshFollowStatus = useCallback(async () => {
+    if (!canFollowProfile) {
+      setIsFollowing(false);
+      return;
+    }
+
+    setFollowStatusLoading(true);
+
+    try {
+      const result = await fetchFollowStatus(client, {
+        pairs: [
+          {
+            account: evmAddress(profileAddress),
+            follower: evmAddress(observerAddress),
+          },
+        ],
+      });
+
+      if (result.isErr()) {
+        console.error("Failed to fetch follow status:", result.error);
+        setIsFollowing(false);
+        return;
+      }
+
+      const currentStatus = result.value?.[0]?.isFollowing;
+      setIsFollowing(isFollowingFromStatus(currentStatus));
+    } catch (error) {
+      console.error("Failed to fetch follow status:", error);
+      setIsFollowing(false);
+    } finally {
+      setFollowStatusLoading(false);
+    }
+  }, [canFollowProfile, observerAddress, profileAddress]);
+
+  useEffect(() => {
+    void refreshFollowStatus();
+  }, [refreshFollowStatus]);
+
   const displayName = accountData?.displayName || normalizedHandle || "User";
   const handle = accountData?.handle || (normalizedHandle ? `@${normalizedHandle}` : "@user");
   const coverPicture = accountData?.coverPicture || "";
@@ -184,6 +250,61 @@ export default function Profile() {
   const following = getFollowCount(lensAccount, "following");
   const score = 23694;
   const createPostHandle = loggedInProfile?.handle || handle;
+
+  useEffect(() => {
+    setFollowersCount(followers);
+  }, [followers]);
+
+  const handleFollowToggle = async () => {
+    if (!canFollowProfile) {
+      toast.error("Please connect your wallet and sign in to Lens.");
+      return;
+    }
+
+    if (!sessionClient) {
+      toast.error("Please connect your wallet and sign in to Lens.");
+      return;
+    }
+
+    setFollowSubmitting(true);
+
+    const wasFollowing = isFollowing;
+
+    try {
+      const result = wasFollowing
+        ? await unfollow(sessionClient, { account: evmAddress(profileAddress) })
+        : await follow(sessionClient, { account: evmAddress(profileAddress) });
+
+      if (result.isErr()) {
+        toast.error(result.error.message || "Failed to update follow status.");
+        return;
+      }
+
+      const nextFollowing = !wasFollowing;
+      setIsFollowing(nextFollowing);
+      setFollowersCount((count) => Math.max(0, count + (nextFollowing ? 1 : -1)));
+      toast.success(nextFollowing ? `You are now following ${handle}` : `You unfollowed ${handle}`);
+    } catch (error: any) {
+      console.error("Failed to update follow status:", error);
+      toast.error(error?.message || "Failed to update follow status.");
+    } finally {
+      setFollowSubmitting(false);
+      void refreshFollowStatus();
+    }
+  };
+
+  const followButtonLabel = followSubmitting
+    ? isFollowing
+      ? "Unfollowing..."
+      : "Following..."
+    : followStatusLoading
+      ? "Loading..."
+      : isFollowing
+        ? "Unfollow"
+        : "Follow";
+  const followButtonClassName = isFollowing
+    ? "bg-white text-[#212121] border border-[#212121] hover:bg-[#F7F7F7]"
+    : "bg-[#212121] text-white hover:bg-[#333]";
 
   if (!normalizedHandle) {
     return (
@@ -280,7 +401,7 @@ export default function Profile() {
             <div className="flex gap-[16px] my-[16px] sm:py-0 py-[16px]">
               <span className="leading-[20px]">
                 <span className="font-semibold sm:text-[14px] text-[20px] text-[#212121]">
-                  {followers}
+                  {followersCount}
                 </span>
                 <span className="font-medium sm:text-[12px] text-[16px] text-[#6C6C6C] ml-1">
                   Followers
@@ -353,26 +474,46 @@ export default function Profile() {
                 </span>
               </div>
             </div>
-            <button
-              className="w-full sm:flex h-[40px] hidden items-center justify-center gap-2 rounded-full bg-[#212121] text-white py-2 px-4 text-[14px] font-medium hover:bg-[#333] transition-colors shrink-0 mt-[16px]"
-              onClick={handleOpenJobModal}
-            >
-              <PlusIcon className="w-5 h-5" />
-              Create Post
-            </button>
+            {isOwnProfile ? (
+              <button
+                className="w-full sm:flex h-[40px] hidden items-center justify-center gap-2 rounded-full bg-[#212121] text-white py-2 px-4 text-[14px] font-medium hover:bg-[#333] transition-colors shrink-0 mt-[16px]"
+                onClick={handleOpenJobModal}
+              >
+                <PlusIcon className="w-5 h-5" />
+                Create Post
+              </button>
+            ) : (
+              <button
+                className={`w-full sm:flex h-[40px] hidden items-center justify-center gap-2 rounded-full py-2 px-4 text-[14px] font-medium transition-colors shrink-0 mt-[16px] ${followButtonClassName}`}
+                onClick={handleFollowToggle}
+                disabled={followSubmitting || followStatusLoading}
+              >
+                {followButtonLabel}
+              </button>
+            )}
           </div>
           <hr className="bg-[#E4E4E7] h-[1px] mb-0 hidden lg:block" />
 
           <div className="sm:pt-0 pt-[0] flex-1 min-w-0 sm:px-[16px]">
             <div className="flex flex-row items-center justify-between gap-4 mb-[16px]">
               <h2 className="text-[20px] font-semibold text-[#212121] leading-[24px]">All Posts</h2>
-              <button
-                className="order-1 sm:hidden md:order-2 w-full max-w-[153px] md:w-[153px] h-[40px] flex items-center justify-center gap-2 rounded-full bg-[#212121] text-white py-2 px-4 text-[14px] font-medium hover:bg-[#333] transition-colors shrink-0"
-                onClick={handleOpenJobModal}
-              >
-                <PlusIcon className="w-5 h-5" />
-                Create Post
-              </button>
+              {isOwnProfile ? (
+                <button
+                  className="order-1 sm:hidden md:order-2 w-full max-w-[153px] md:w-[153px] h-[40px] flex items-center justify-center gap-2 rounded-full bg-[#212121] text-white py-2 px-4 text-[14px] font-medium hover:bg-[#333] transition-colors shrink-0"
+                  onClick={handleOpenJobModal}
+                >
+                  <PlusIcon className="w-5 h-5" />
+                  Create Post
+                </button>
+              ) : (
+                <button
+                  className={`order-1 sm:hidden md:order-2 w-full max-w-[153px] md:w-[153px] h-[40px] flex items-center justify-center gap-2 rounded-full py-2 px-4 text-[14px] font-medium transition-colors shrink-0 ${followButtonClassName}`}
+                  onClick={handleFollowToggle}
+                  disabled={followSubmitting || followStatusLoading}
+                >
+                  {followButtonLabel}
+                </button>
+              )}
             </div>
             <div className="bg-white">
               {postsLoading ? (
