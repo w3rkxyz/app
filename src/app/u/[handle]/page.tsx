@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useParams } from "next/navigation";
 import { useSelector } from "react-redux";
 import { evmAddress, useAccount as useLensAccount, useSessionClient } from "@lens-protocol/react";
-import { fetchFollowStatus, fetchPosts, follow, unfollow } from "@lens-protocol/client/actions";
+import { fetchAccount, fetchFollowStatus, fetchPosts, follow, unfollow } from "@lens-protocol/client/actions";
 import { handleOperationWith } from "@lens-protocol/client/viem";
 import { PlusIcon } from "lucide-react";
 import toast from "react-hot-toast";
@@ -130,6 +130,8 @@ export default function Profile() {
   const [followSubmitting, setFollowSubmitting] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [canFollowByProtocol, setCanFollowByProtocol] = useState(true);
   const [sessionProfileAddress, setSessionProfileAddress] = useState("");
 
   const {
@@ -141,18 +143,16 @@ export default function Profile() {
   });
 
   const accountData = lensAccount ? getLensAccountData(lensAccount as any) : null;
-  const observerAddress = loggedInProfile?.address || sessionProfileAddress || "";
+  const observerAddress = sessionProfileAddress || loggedInProfile?.address || "";
   const profileAddress = lensAccount?.address || "";
   const loggedInHandle = normalizeHandleValue(loggedInProfile?.userLink || loggedInProfile?.handle);
   const viewedHandle = normalizeHandleValue(lensAccount?.username?.localName || normalizedHandle);
   const hasAddressContext = Boolean(observerAddress) && Boolean(profileAddress);
-  const canFollowValidationTypename = lensAccount?.operations?.canFollow?.__typename;
-  const canFollowByProtocol = canFollowValidationTypename !== "AccountFollowOperationValidationFailed";
+  const canFollowValidationTypename = lensAccount?.operations?.canFollow?.__typename || "";
   const isOwnProfile = hasAddressContext
     ? observerAddress.toLowerCase() === profileAddress.toLowerCase()
     : Boolean(loggedInHandle) && Boolean(viewedHandle) && loggedInHandle === viewedHandle;
   const canCheckFollowStatus = !isOwnProfile && Boolean(observerAddress) && Boolean(profileAddress);
-  const canFollowProfile = canCheckFollowStatus && (isFollowing || canFollowByProtocol);
 
   const handleOpenJobModal = () => {
     if (isOwnProfile) {
@@ -167,13 +167,27 @@ export default function Profile() {
       return false;
     }
 
-    if (walletClient.chain?.id === LENS_TESTNET_CHAIN_ID) {
+    const readChainId = async () => {
+      try {
+        return await walletClient.getChainId();
+      } catch {
+        return walletClient.chain?.id;
+      }
+    };
+
+    const currentChainId = await readChainId();
+    console.info("[follow] wallet pre-check", {
+      walletAddress: walletClient.account?.address,
+      chainId: currentChainId,
+      requiredChainId: LENS_TESTNET_CHAIN_ID,
+    });
+
+    if (currentChainId === LENS_TESTNET_CHAIN_ID) {
       return true;
     }
 
     try {
       await walletClient.switchChain({ id: LENS_TESTNET_CHAIN_ID });
-      return true;
     } catch (error: any) {
       if (error?.code !== 4902) {
         toast.error("Please switch to Lens Chain Testnet to continue.");
@@ -198,13 +212,40 @@ export default function Profile() {
           },
         });
         await walletClient.switchChain({ id: LENS_TESTNET_CHAIN_ID });
-        return true;
       } catch {
         toast.error("Could not add Lens Chain Testnet to your wallet.");
         return false;
       }
     }
+
+    const nextChainId = await readChainId();
+    console.info("[follow] wallet post-switch", {
+      walletAddress: walletClient.account?.address,
+      chainId: nextChainId,
+      requiredChainId: LENS_TESTNET_CHAIN_ID,
+    });
+
+    if (nextChainId !== LENS_TESTNET_CHAIN_ID) {
+      toast.error("Lens Testnet switch did not complete.");
+      return false;
+    }
+
+    return true;
   }, [walletClient]);
+
+  const getSessionObserverAddress = useCallback(async () => {
+    if (!sessionClient) {
+      return "";
+    }
+
+    try {
+      const authenticatedUser = await sessionClient.getAuthenticatedUser().unwrapOr(null);
+      return authenticatedUser?.address || "";
+    } catch (error) {
+      console.error("[follow] failed to resolve session observer address", { error });
+      return "";
+    }
+  }, [sessionClient]);
 
   useEffect(() => {
     let active = true;
@@ -244,6 +285,13 @@ export default function Profile() {
       setIsFollowing(isFollowingFromStatus(initialFollowState));
     }
   }, [canCheckFollowStatus, lensAccount?.operations?.isFollowedByMe]);
+
+  useEffect(() => {
+    if (!canFollowValidationTypename) {
+      return;
+    }
+    setCanFollowByProtocol(canFollowValidationTypename !== "AccountFollowOperationValidationFailed");
+  }, [canFollowValidationTypename]);
 
   useEffect(() => {
     let active = true;
@@ -294,20 +342,87 @@ export default function Profile() {
     };
   }, [lensAccount?.address]);
 
-  const refreshFollowStatus = useCallback(async () => {
-    if (!canCheckFollowStatus) {
+  const refreshProfileSnapshot = useCallback(async (reason: string) => {
+    if (!profileAddress) {
+      return;
+    }
+
+    try {
+      const queryClient = sessionClient ?? client;
+      const accountResult = await fetchAccount(queryClient, {
+        address: evmAddress(profileAddress),
+      });
+
+      if (accountResult.isErr()) {
+        console.error("[follow] failed to refresh account snapshot", {
+          reason,
+          profileAddress,
+          error: accountResult.error,
+        });
+        return;
+      }
+
+      const freshAccount = accountResult.value;
+      if (!freshAccount) {
+        console.warn("[follow] account snapshot empty", { reason, profileAddress });
+        return;
+      }
+
+      const freshFollowers = getFollowCount(freshAccount, "followers");
+      const freshFollowing = getFollowCount(freshAccount, "following");
+      setFollowersCount(freshFollowers);
+      setFollowingCount(freshFollowing);
+
+      const freshCanFollowTypename = freshAccount?.operations?.canFollow?.__typename;
+      if (freshCanFollowTypename) {
+        setCanFollowByProtocol(freshCanFollowTypename !== "AccountFollowOperationValidationFailed");
+      }
+
+      console.info("[follow] refreshed account snapshot", {
+        reason,
+        clientType: sessionClient ? "session" : "public",
+        profileAddress,
+        followers: freshFollowers,
+        following: freshFollowing,
+        canFollowTypename: freshCanFollowTypename || null,
+      });
+    } catch (error) {
+      console.error("[follow] account snapshot refresh failed", {
+        reason,
+        profileAddress,
+        error,
+      });
+    }
+  }, [profileAddress, sessionClient]);
+
+  const refreshFollowStatus = useCallback(async (options?: { observerAddressOverride?: string; reason?: string }) => {
+    const effectiveObserverAddress = options?.observerAddressOverride || observerAddress;
+    const canCheckStatusWithObserver = Boolean(profileAddress)
+      && Boolean(effectiveObserverAddress)
+      && effectiveObserverAddress.toLowerCase() !== profileAddress.toLowerCase();
+
+    if (!canCheckStatusWithObserver) {
       setIsFollowing(false);
+      await refreshProfileSnapshot(options?.reason || "follow-status-refresh-skipped");
       return;
     }
 
     setFollowStatusLoading(true);
 
     try {
-      const result = await fetchFollowStatus(client, {
+      const queryClient = sessionClient ?? client;
+      console.info("[follow] refresh status request", {
+        reason: options?.reason || "follow-status-refresh",
+        clientType: sessionClient ? "session" : "public",
+        observerAddress: effectiveObserverAddress,
+        profileAddress,
+      });
+
+      const result = await fetchFollowStatus(queryClient, {
         pairs: [
           {
             account: evmAddress(profileAddress),
-            follower: evmAddress(observerAddress),
+            follower: evmAddress(effectiveObserverAddress),
           },
         ],
       });
@@ -320,17 +435,29 @@ export default function Profile() {
 
       const currentStatus = result.value?.[0]?.isFollowing;
       setIsFollowing(isFollowingFromStatus(currentStatus));
+      console.info("[follow] refresh status response", {
+        reason: options?.reason || "follow-status-refresh",
+        observerAddress: effectiveObserverAddress,
+        profileAddress,
+        currentStatus,
+        normalized: isFollowingFromStatus(currentStatus),
+      });
     } catch (error) {
       console.error("Failed to fetch follow status:", error);
       setIsFollowing(false);
     } finally {
       setFollowStatusLoading(false);
+      await refreshProfileSnapshot(options?.reason || "follow-status-refresh");
     }
-  }, [canCheckFollowStatus, observerAddress, profileAddress]);
+  }, [observerAddress, profileAddress, refreshProfileSnapshot, sessionClient]);
 
   useEffect(() => {
     void refreshFollowStatus();
   }, [refreshFollowStatus]);
+
+  useEffect(() => {
+    void refreshProfileSnapshot("profile-load");
+  }, [refreshProfileSnapshot]);
 
   const displayName = accountData?.displayName || normalizedHandle || "User";
   const handle = accountData?.handle || (normalizedHandle ? `@${normalizedHandle}` : "@user");
@@ -345,7 +472,6 @@ export default function Profile() {
   const github = accountData?.attributes?.github || "";
   const linkedin = accountData?.attributes?.linkedin || "";
   const followers = getFollowCount(lensAccount, "followers");
-  const following = getFollowCount(lensAccount, "following");
   const score = 23694;
   const createPostHandle = loggedInProfile?.handle || handle;
   const messageUrl = viewedHandle ? `/messages?handle=${encodeURIComponent(viewedHandle)}` : "/messages";
@@ -354,16 +480,11 @@ export default function Profile() {
     setFollowersCount(followers);
   }, [followers]);
 
-  const handleFollowToggle = async () => {
-    if (!canFollowProfile) {
-      if (!canFollowByProtocol && !isFollowing) {
-        toast.error("This profile cannot be followed right now.");
-        return;
-      }
-      toast.error("Please connect your wallet and sign in to Lens.");
-      return;
-    }
+  useEffect(() => {
+    setFollowingCount(getFollowCount(lensAccount, "following"));
+  }, [lensAccount]);
 
+  const handleFollowToggle = async () => {
     if (!sessionClient) {
       toast.error("Please connect your wallet and sign in to Lens.");
       return;
@@ -371,6 +492,41 @@ export default function Profile() {
 
     if (!walletClient) {
       toast.error("Wallet not ready. Reconnect and try again.");
+      return;
+    }
+
+    const sessionObserverAddress = await getSessionObserverAddress();
+    const effectiveObserverAddress = sessionObserverAddress || observerAddress;
+    const canFollowNow = Boolean(effectiveObserverAddress)
+      && Boolean(profileAddress)
+      && effectiveObserverAddress.toLowerCase() !== profileAddress.toLowerCase();
+
+    const runtimeChainId = await walletClient.getChainId().catch(() => walletClient.chain?.id);
+    console.info("[follow] click", {
+      walletAddress: walletClient.account?.address,
+      chainId: runtimeChainId,
+      observerAddress: effectiveObserverAddress,
+      observerAddressFromSession: sessionObserverAddress || null,
+      observerAddressFromState: observerAddress || null,
+      targetProfileAddress: profileAddress,
+      targetHandle: handle,
+      targetUsername: viewedHandle,
+      canFollowNow,
+      canFollowByProtocol,
+      isFollowing,
+    });
+
+    if (sessionObserverAddress && sessionObserverAddress !== sessionProfileAddress) {
+      setSessionProfileAddress(sessionObserverAddress);
+    }
+
+    if (!canFollowNow) {
+      toast.error("Please connect your wallet and sign in to Lens.");
+      return;
+    }
+
+    if (!isFollowing && !canFollowByProtocol) {
+      toast.error("This profile cannot be followed right now.");
       return;
     }
 
@@ -390,12 +546,57 @@ export default function Profile() {
 
       if (operation.isErr()) {
         toast.error(operation.error.message || "Failed to update follow status.");
+        console.error("[follow] operation failed", {
+          action: wasFollowing ? "unfollow" : "follow",
+          error: operation.error,
+        });
         return;
       }
 
-      const txResult = await operation.andThen(handleOperationWith(walletClient));
+      const operationValue: any = operation.value;
+      console.info("[follow] operation result", {
+        action: wasFollowing ? "unfollow" : "follow",
+        typename: operationValue?.__typename,
+        hash: operationValue?.hash || null,
+        reason: operationValue?.reason || null,
+      });
+      if (
+        operationValue?.__typename === "SelfFundedTransactionRequest"
+        || operationValue?.__typename === "SponsoredTransactionRequest"
+      ) {
+        console.info("[follow] operation transaction request", {
+          action: wasFollowing ? "unfollow" : "follow",
+          requestType: operationValue.__typename,
+          from: operationValue?.raw?.from || null,
+          to: operationValue?.raw?.to || null,
+          chainId: operationValue?.raw?.chainId || null,
+        });
+      }
+
+      const operationHandler = handleOperationWith(walletClient as any) as any;
+      const txResult = await operationHandler(operationValue);
       if (txResult.isErr()) {
         toast.error(txResult.error.message || "Failed to submit follow transaction.");
+        console.error("[follow] tx submission failed", {
+          action: wasFollowing ? "unfollow" : "follow",
+          error: txResult.error,
+        });
+        return;
+      }
+
+      const txIdentifier = txResult.value;
+      const looksLikeTxHash = /^0x[a-fA-F0-9]{64}$/.test(txIdentifier);
+      console.info("[follow] tx submitted", {
+        action: wasFollowing ? "unfollow" : "follow",
+        txIdentifier,
+        looksLikeTxHash,
+      });
+      if (!looksLikeTxHash) {
+        toast.error("Lens returned an unexpected transaction identifier.");
+        console.error("[follow] unexpected transaction identifier", {
+          action: wasFollowing ? "unfollow" : "follow",
+          txIdentifier,
+        });
         return;
       }
 
@@ -404,15 +605,30 @@ export default function Profile() {
       setFollowersCount((count) => Math.max(0, count + (nextFollowing ? 1 : -1)));
       toast.success(nextFollowing ? `You are now following ${handle}` : `You unfollowed ${handle}`);
 
-      const indexingResult = await sessionClient.waitForTransaction(txResult.value);
+      console.info("[follow] waiting for transaction confirmation", {
+        txIdentifier,
+      });
+
+      const indexingResult = await sessionClient.waitForTransaction(txIdentifier);
       if (indexingResult.isErr()) {
         toast.error(indexingResult.error.message || "Transaction submitted but confirmation is delayed.");
+        console.error("[follow] transaction confirmation failed", {
+          txIdentifier,
+          error: indexingResult.error,
+        });
+      } else {
+        console.info("[follow] transaction confirmed", {
+          txHash: indexingResult.value,
+        });
       }
     } catch (error: any) {
       console.error("Failed to update follow status:", error);
       toast.error(error?.message || "Failed to update follow status.");
     } finally {
-      await refreshFollowStatus();
+      await refreshFollowStatus({
+        observerAddressOverride: sessionObserverAddress || observerAddress,
+        reason: "post-follow-toggle",
+      });
       setFollowSubmitting(false);
     }
   };
@@ -553,7 +769,7 @@ export default function Profile() {
               </span>
               <span className=" leading-[20px]">
                 <span className="font-semibold sm:text-[14px] text-[20px] text-[#212121]">
-                  {following}
+                  {followingCount}
                 </span>
                 <span className="font-medium sm:text-[12px] text-[16px] text-[#6C6C6C] ml-1">
                   Following
