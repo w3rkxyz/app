@@ -27,6 +27,37 @@ const getErrMsg = (error: unknown, fallback: string) => {
   return fallback;
 };
 
+const isSignatureRejected = (error: unknown) => {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const err = error as {
+    code?: unknown;
+    message?: unknown;
+    shortMessage?: unknown;
+    reason?: unknown;
+  };
+
+  if (err.code === 4001 || err.code === "ACTION_REJECTED") {
+    return true;
+  }
+
+  const text = [err.message, err.shortMessage, err.reason]
+    .filter((value): value is string => typeof value === "string")
+    .join(" ")
+    .toLowerCase();
+
+  return (
+    text.includes("user rejected") ||
+    text.includes("rejected the request") ||
+    text.includes("denied transaction signature") ||
+    text.includes("request rejected") ||
+    text.includes("cancelled") ||
+    text.includes("canceled")
+  );
+};
+
 export default function LoginForm({ owner }: { owner: string }) {
   const dispatch = useDispatch();
   const router = useRouter();
@@ -289,12 +320,23 @@ export default function LoginForm({ owner }: { owner: string }) {
             },
           };
 
-      await authenticate({
+      const authenticated = await authenticate({
         ...authRequest,
         signMessage: async (message: string) => {
           return await walletClient.signMessage({ message });
         },
       });
+
+      if (authenticated.isErr()) {
+        if (isSignatureRejected(authenticated.error)) {
+          setAuthError("Signature request was cancelled. Please sign to continue.");
+          return;
+        }
+
+        const msg = getErrMsg(authenticated.error, "Lens authentication failed");
+        setAuthError(msg);
+        return;
+      }
 
       const profile = getLensAccountData(account);
       dispatch(setLensProfile({ profile }));
