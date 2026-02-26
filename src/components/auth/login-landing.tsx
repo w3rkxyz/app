@@ -160,26 +160,23 @@ const LoginLanding = () => {
 
         return (
           <section className={styles.page}>
+            <div className={styles.pageLogo} aria-hidden="true">
+              <Image
+                src="/images/brand-logo.svg"
+                alt=""
+                width={214}
+                height={78}
+                className={styles.brandLogo}
+                priority
+              />
+            </div>
+
             <div className={styles.container}>
               <div className={styles.desktopGrid}>
                 <div className={styles.leftColumn}>
                   <div className={styles.leftRail}>
-                    <div className={styles.pageLogo} aria-hidden="true">
-                      <Image
-                        src="/images/brand-logo.svg"
-                        alt=""
-                        width={214}
-                        height={78}
-                        className={styles.brandLogo}
-                        priority
-                      />
-                    </div>
-
                     <div className={styles.leftPanel}>
-                      <h1 className={styles.title}>Sign in with Wallet</h1>
-                      <p className={styles.subtitle}>
-                        Continue with a wallet to access your on-chain profile.
-                      </p>
+                      <h1 className={styles.title}>Login with Wallet</h1>
 
                       <button type="button" className={styles.primaryButton} onClick={onFamilyClick}>
                         <span className={styles.primaryButtonInner}>
