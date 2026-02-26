@@ -20,20 +20,6 @@
   padding: 0;
 }
 
-.pageLogo {
-  position: absolute;
-  left: 12px;
-  top: 10px;
-  z-index: 8;
-  width: clamp(110px, 14vw, 162px);
-  pointer-events: none;
-}
-
-.brandLogo {
-  width: 100%;
-  height: auto;
-}
-
 .desktopGrid {
   display: flex;
   flex: 1;
@@ -47,70 +33,106 @@
   align-items: center;
   justify-content: center;
   background: #ffffff;
-  padding: var(--desktop-pad);
+  padding: 88px var(--desktop-pad) var(--desktop-pad);
   min-width: 0;
   min-height: 100vh;
 }
 
-.leftPanel {
+.leftRail {
+  position: relative;
   width: min(100%, 520px);
+}
+
+.pageLogo {
+  position: absolute;
+  left: 10px;
+  top: -56px;
+  z-index: 8;
+  width: clamp(86px, 11vw, 128px);
+  pointer-events: none;
+}
+
+.brandLogo {
+  width: 100%;
+  height: auto;
+}
+
+.leftPanel {
+  width: 100%;
   border: 1px solid #e2e8f0;
-  border-radius: 24px;
+  border-radius: 18px;
   background: #ffffff;
-  box-shadow: 0 20px 56px rgba(15, 23, 42, 0.08);
-  padding: 44px 36px 34px;
+  box-shadow: 0 16px 42px rgba(15, 23, 42, 0.07);
+  padding: 34px 30px 26px;
 }
 
 .title {
   margin: 0;
   color: #0f172a;
-  font-size: clamp(28px, 3.2vw, 40px);
-  line-height: 1.1;
-  letter-spacing: -0.02em;
+  font-size: clamp(24px, 2.7vw, 32px);
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+  text-align: center;
 }
 
 .subtitle {
-  margin: 14px 0 0;
-  color: #475569;
-  font-size: clamp(14px, 1.2vw, 16px);
-  line-height: 1.5;
+  margin: 11px 0 0;
+  color: #64748b;
+  font-size: clamp(12px, 1vw, 14px);
+  line-height: 1.45;
+  text-align: center;
 }
 
 .primaryButton {
-  margin-top: 26px;
+  margin-top: 18px;
   width: 100%;
-  height: 52px;
+  height: 44px;
   border: 0;
-  border-radius: 14px;
-  background: #0f172a;
+  border-radius: 12px;
+  background: #000000;
   color: #ffffff;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
 
 .primaryButton:hover {
-  background: #1e293b;
+  background: #111111;
+}
+
+.primaryButtonInner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.familyIcon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
 }
 
 .divider {
-  margin: 22px 0 14px;
+  margin: 12px 0 10px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  color: #64748b;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.4;
+  justify-content: center;
+  gap: 8px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  text-transform: lowercase;
 }
 
 .divider::before,
 .divider::after {
   content: "";
-  flex: 1;
+  width: 26px;
   height: 1px;
-  background: #e2e8f0;
+  background: #dbe3ec;
 }
 
 .walletList {
@@ -121,14 +143,14 @@
 
 .walletButton {
   width: 100%;
-  height: 48px;
-  border: 1px solid #e2e8f0;
+  min-height: 46px;
+  border: 1px solid #c4cfdb;
   border-radius: 12px;
   background: #ffffff;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 14px;
+  padding: 10px 16px;
   color: #0f172a;
   font-size: 15px;
   font-weight: 600;
@@ -139,8 +161,8 @@
 }
 
 .walletButton:hover {
-  border-color: #cbd5e1;
-  background: #f8fafc;
+  border-color: #9eacbf;
+  background: #f3f7fc;
 }
 
 .walletButton:focus-visible,
@@ -154,23 +176,23 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 8px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 
 .walletGlyph {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
 }
 
 .signupText {
-  margin: 18px 0 0;
-  color: #475569;
-  font-size: 14px;
-  line-height: 1.4;
+  margin: 14px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: center;
 }
 
 .signupAction {
@@ -178,7 +200,7 @@
   padding: 0;
   background: transparent;
   color: #0f172a;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   text-decoration: underline;
   cursor: pointer;
@@ -222,12 +244,6 @@
 }
 
 @media (max-width: 1024px) {
-  .pageLogo {
-    left: 10px;
-    top: 8px;
-    width: clamp(94px, 22vw, 132px);
-  }
-
   .desktopGrid {
     display: block;
     min-height: auto;
@@ -235,13 +251,22 @@
 
   .leftColumn {
     min-height: auto;
-    padding: 82px 16px 20px;
+    padding: 86px 16px 20px;
+  }
+
+  .leftRail {
+    width: min(100%, 560px);
+  }
+
+  .pageLogo {
+    left: 12px;
+    top: -50px;
+    width: clamp(78px, 18vw, 116px);
   }
 
   .leftPanel {
-    width: min(100%, 560px);
-    padding: 30px 22px 24px;
-    border-radius: 18px;
+    border-radius: 16px;
+    padding: 28px 22px 22px;
   }
 
   .rightColumn {
@@ -269,20 +294,28 @@
     padding: 74px 14px 18px;
   }
 
+  .leftRail {
+    width: 100%;
+  }
+
+  .pageLogo {
+    left: 10px;
+    top: -44px;
+    width: 92px;
+  }
+
   .leftPanel {
-    border-radius: 16px;
+    border-radius: 14px;
+    padding: 24px 18px 20px;
   }
 
   .title {
-    font-size: clamp(24px, 8vw, 32px);
-  }
-
-  .primaryButton {
-    height: 50px;
+    font-size: clamp(22px, 7vw, 28px);
   }
 
   .walletButton {
-    height: 46px;
+    min-height: 44px;
+    padding: 9px 14px;
   }
 
   .rightColumn {
