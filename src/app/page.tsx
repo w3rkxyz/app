@@ -1,9 +1,5 @@
-import HomeMvpLaunch from "@/views/home/homeMvpLuanch";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return (
-    <>
-      <HomeMvpLaunch />
-    </>
-  );
+  redirect("/login");
 }

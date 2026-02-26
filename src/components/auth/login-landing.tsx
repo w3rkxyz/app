@@ -12,7 +12,7 @@ import profilePreviewImage from "../../../attached_assets/profile.preview.image.
 import loginMobile from "../../../attached_assets/login-mobile.png";
 import styles from "./login-landing.module.css";
 
-type WalletOption = "metamask" | "phantom" | "coinbase" | "other";
+type WalletOption = "metamask" | "rabby" | "rainbow" | "other";
 
 type HitArea = {
   left: string;
@@ -30,8 +30,8 @@ const DESKTOP_FAMILY_AREA: HitArea = {
 
 const DESKTOP_WALLET_AREAS: Record<WalletOption, HitArea> = {
   metamask: { left: "18.194%", top: "40.625%", width: "63.611%", height: "6.201%" },
-  phantom: { left: "18.194%", top: "48.438%", width: "63.611%", height: "6.201%" },
-  coinbase: { left: "18.194%", top: "56.250%", width: "63.611%", height: "6.201%" },
+  rabby: { left: "18.194%", top: "48.438%", width: "63.611%", height: "6.201%" },
+  rainbow: { left: "18.194%", top: "56.250%", width: "63.611%", height: "6.201%" },
   other: { left: "18.194%", top: "64.063%", width: "63.611%", height: "6.641%" },
 };
 
@@ -44,8 +44,8 @@ const MOBILE_FAMILY_AREA: HitArea = {
 
 const MOBILE_WALLET_AREAS: Record<WalletOption, HitArea> = {
   metamask: { left: "13.023%", top: "35.165%", width: "73.953%", height: "5.815%" },
-  phantom: { left: "13.023%", top: "42.491%", width: "73.953%", height: "5.815%" },
-  coinbase: { left: "13.023%", top: "49.817%", width: "73.953%", height: "5.815%" },
+  rabby: { left: "13.023%", top: "42.491%", width: "73.953%", height: "5.815%" },
+  rainbow: { left: "13.023%", top: "49.817%", width: "73.953%", height: "5.815%" },
   other: { left: "13.023%", top: "57.143%", width: "73.953%", height: "6.177%" },
 };
 
@@ -91,8 +91,8 @@ const LoginLanding = () => {
 
     return {
       metamask,
-      phantom: pickAll(["phantom"]),
-      coinbase: pickAll(["coinbase"]),
+      rabby: pickAll(["rabby"]),
+      rainbow: pickAll(["rainbow"]),
     };
   }, [connectors]);
 
@@ -109,15 +109,21 @@ const LoginLanding = () => {
       const targets = connectorCandidates[wallet];
       if (!targets.length) {
         const walletLabel =
-          wallet === "coinbase" ? "Coinbase Wallet" : wallet[0].toUpperCase() + wallet.slice(1);
+          wallet === "metamask"
+            ? "MetaMask"
+            : wallet === "rabby"
+              ? "Rabby Wallet"
+              : wallet === "rainbow"
+                ? "Rainbow Wallet"
+                : "Wallet";
         toast.error(`${walletLabel} not available`);
         return;
       }
 
       const walletKeywords: Record<Exclude<WalletOption, "other">, string[]> = {
         metamask: ["metamask", "meta mask"],
-        phantom: ["phantom"],
-        coinbase: ["coinbase"],
+        rabby: ["rabby"],
+        rainbow: ["rainbow"],
       };
 
       const isActiveWalletMatch =
@@ -153,7 +159,13 @@ const LoginLanding = () => {
       }
 
       const walletLabel =
-        wallet === "coinbase" ? "Coinbase Wallet" : wallet[0].toUpperCase() + wallet.slice(1);
+        wallet === "metamask"
+          ? "MetaMask"
+          : wallet === "rabby"
+            ? "Rabby Wallet"
+            : wallet === "rainbow"
+              ? "Rainbow Wallet"
+              : "Wallet";
       toast.error(`Unable to connect ${walletLabel}`);
     },
     [
@@ -230,11 +242,11 @@ const LoginLanding = () => {
                     {renderHitButton("Connect MetaMask", DESKTOP_WALLET_AREAS.metamask, () =>
                       onWalletClick("metamask")
                     )}
-                    {renderHitButton("Connect Phantom", DESKTOP_WALLET_AREAS.phantom, () =>
-                      onWalletClick("phantom")
+                    {renderHitButton("Connect Rabby Wallet", DESKTOP_WALLET_AREAS.rabby, () =>
+                      onWalletClick("rabby")
                     )}
-                    {renderHitButton("Connect Coinbase Wallet", DESKTOP_WALLET_AREAS.coinbase, () =>
-                      onWalletClick("coinbase")
+                    {renderHitButton("Connect Rainbow Wallet", DESKTOP_WALLET_AREAS.rainbow, () =>
+                      onWalletClick("rainbow")
                     )}
                     {renderHitButton("Connect Other Wallet", DESKTOP_WALLET_AREAS.other, () =>
                       onWalletClick("other")
@@ -281,11 +293,11 @@ const LoginLanding = () => {
                   {renderHitButton("Connect MetaMask", MOBILE_WALLET_AREAS.metamask, () =>
                     onWalletClick("metamask")
                   )}
-                  {renderHitButton("Connect Phantom", MOBILE_WALLET_AREAS.phantom, () =>
-                    onWalletClick("phantom")
+                  {renderHitButton("Connect Rabby Wallet", MOBILE_WALLET_AREAS.rabby, () =>
+                    onWalletClick("rabby")
                   )}
-                  {renderHitButton("Connect Coinbase Wallet", MOBILE_WALLET_AREAS.coinbase, () =>
-                    onWalletClick("coinbase")
+                  {renderHitButton("Connect Rainbow Wallet", MOBILE_WALLET_AREAS.rainbow, () =>
+                    onWalletClick("rainbow")
                   )}
                   {renderHitButton("Connect Other Wallet", MOBILE_WALLET_AREAS.other, () =>
                     onWalletClick("other")
