@@ -25,16 +25,16 @@ const Step1RoleSelection: React.FC<
   freelancerSubtitle = "Offer services & get hired.",
 }) => {
   return (
-    <div className="flex w-[900px] sm:w-full  flex-col items-center justify-center px-6  py-4">
+    <div className="flex w-[960px] sm:w-full  flex-col items-center justify-center px-6  py-4">
       <div className="xs:mb-10 mb-8 text-center w-full">
         <h1 className="mb-2 xs:text-[24px] text-[28px] font-medium text-primary-black ">{title}</h1>
         <p className="text-base text-[#83899F]">{subtitle}</p>
       </div>
 
-      <div className=" xs:mb-4 mb-8  w-full max-w-[1047px] mx-auto flex  sm:flex-col gap-4 flex-row sm:gap-6">
+      <div className=" xs:mb-4 mb-8  w-full max-w-[1090px] mx-auto flex  sm:flex-col gap-4 flex-row sm:gap-6">
         <button
           onClick={() => onRoleSelect("client")}
-          className={`flex flex-col items-center sm:w-full md:w-[511px] flex-1 rounded-[8px] border bg-white  transition-all hover:border-gray-400 hover:shadow-md ${
+          className={`flex flex-col items-center sm:w-full md:w-[535px] flex-1 rounded-[8px] border bg-white  transition-all hover:border-gray-400 hover:shadow-md ${
             selectedRole === "client" ? "border-[#212121] shadow-md" : "border-[#C3C7CE]"
           }`}
         >
@@ -58,7 +58,7 @@ const Step1RoleSelection: React.FC<
 
         <button
           onClick={() => onRoleSelect("freelancer")}
-          className={`flex flex-col items-center sm:w-full md:w-[511px] flex-1 rounded-[8px] border bg-white transition-all hover:border-gray-400 hover:shadow-md  ${
+          className={`flex flex-col items-center sm:w-full md:w-[535px] flex-1 rounded-[8px] border bg-white transition-all hover:border-gray-400 hover:shadow-md  ${
             selectedRole === "freelancer" ? "border-[#212121] shadow-md" : "border-[#C3C7CE]"
           }`}
         >

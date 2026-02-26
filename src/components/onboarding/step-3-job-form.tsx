@@ -23,7 +23,9 @@ const Step3JobForm: React.FC<Step3JobFormProps & {
   onToggleCategory,
   onRemoveCategory,
   onBack,
+  onSkip,
   onPublish,
+  submitting = false,
   title = "Create Your First Job",
   subtitle = "Post your first job and connect with top freelancers.",
   stepText = "Step 3 of 3",
@@ -88,9 +90,10 @@ const Step3JobForm: React.FC<Step3JobFormProps & {
 
           <NavigationButtons
             onBack={onBack}
+            onSkip={onSkip}
             onContinue={onPublish}
             continueLabel="Publish Job"
-            continueDisabled={!isValid}
+            continueDisabled={!isValid || submitting}
             showSkip={true}
           />
         </div>
@@ -99,4 +102,3 @@ const Step3JobForm: React.FC<Step3JobFormProps & {
   }
 
 export default Step3JobForm
-

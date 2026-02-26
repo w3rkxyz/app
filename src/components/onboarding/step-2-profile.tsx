@@ -16,6 +16,7 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
   onBannerPhotoChange,
   onBack,
   onContinue,
+  saving = false,
 }) => {
   return (
     <div className="flex min-h-screen flex-col w-full xs:px-4 py-8 sm:px-6 lg:px-8">
@@ -243,7 +244,7 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
           onBack={onBack}
           onContinue={onContinue}
           continueLabel="Continue"
-          continueDisabled={!formData.name || !formData.jobTitle}
+          continueDisabled={!formData.name || !formData.jobTitle || saving}
           showSkip={false}
         />
       </div>

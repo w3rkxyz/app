@@ -46,6 +46,7 @@ export interface Step2ProfileProps {
   onBannerPhotoChange: (e: React.ChangeEvent<HTMLInputElement>) => void
   onBack: () => void
   onContinue: () => void
+  saving?: boolean
 }
 
 export interface Step3JobFormProps {
@@ -58,7 +59,9 @@ export interface Step3JobFormProps {
   onToggleCategory: (category: string) => void
   onRemoveCategory: (category: string) => void
   onBack: () => void
+  onSkip?: () => void
   onPublish: () => void
+  submitting?: boolean
 }
 
 export interface Step3ServiceFormProps {
@@ -71,6 +74,7 @@ export interface Step3ServiceFormProps {
   onToggleCategory: (category: string) => void
   onRemoveCategory: (category: string) => void
   onBack: () => void
+  onSkip?: () => void
   onAddService: () => void
+  submitting?: boolean
 }
-

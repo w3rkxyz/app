@@ -25,6 +25,7 @@ import CreateJobModal from "@/components/find-work/create-job-modal";
 
 import FindWorkJobCard from "@/components/Cards/FindWorkJobCard";
 import { SVGAdminSupport, SVGBlockChain, SVGCampaign, SVGCode, SVGDesignPallete, SVGInfo, SVGLock, SVGUsers, SVGUserSound } from "@/assets/list-svg-icon";
+import { getOnboardingFeedPosts } from "@/utils/onboardingPosts";
 
 interface JobData {
   username: string;
@@ -70,10 +71,37 @@ const FindWork = () => {
   const [isCreateJobModalOpen, setIsCreateJobModalOpen] = useState(false);
 
   useEffect(() => {
-    fetch("/find-work.json")
-      .then(res => res.json())
-      .then(data => setJobs(data))
-      .catch(err => console.error("Error loading jobs:", err));
+    let active = true;
+
+    const loadJobs = async () => {
+      let seededJobs: JobData[] = [];
+      try {
+        const response = await fetch("/find-work.json");
+        seededJobs = await response.json();
+      } catch (error) {
+        console.error("Error loading jobs:", error);
+      }
+
+      const onboardingJobs: JobData[] = getOnboardingFeedPosts("job").map(post => ({
+        username: post.username,
+        profileImage: post.profileImage,
+        jobName: post.jobName,
+        jobIcon: post.jobIcon,
+        description: post.description,
+        contractType: post.contractType,
+        paymentAmount: post.paymentAmount,
+        paidIn: post.paidIn,
+        tags: post.tags,
+      }));
+
+      if (!active) return;
+      setJobs([...onboardingJobs, ...seededJobs]);
+    };
+
+    void loadJobs();
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
