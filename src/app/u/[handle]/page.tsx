@@ -1620,22 +1620,31 @@ export default function Profile() {
                           <Image src={account.picture || DEFAULT_PROFILE_AVATAR} alt={account.displayName} fill className="object-cover" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-[14px] font-semibold text-[#212121] truncate">{account.displayName}</p>
-                          <p className="text-[13px] text-[#6C6C6C] truncate">{account.handle}</p>
-                          {account.bio ? (
-                            <p className="mt-[4px] text-[13px] text-[#6C6C6C]">{account.bio}</p>
-                          ) : null}
                           {account.profilePath ? (
                             <Link
                               href={account.profilePath}
                               onClick={closeConnectionsModal}
-                              className="inline-block mt-[6px] text-[13px] font-medium text-[#212121] underline hover:opacity-80"
+                              className="block hover:opacity-80"
                             >
-                              View profile
+                              <p className="text-[14px] font-semibold text-[#212121] truncate underline-offset-2 hover:underline">
+                                {account.displayName}
+                              </p>
+                              <p className="text-[13px] text-[#6C6C6C] truncate underline-offset-2 hover:underline">
+                                {account.handle}
+                              </p>
                             </Link>
                           ) : (
-                            <p className="mt-[6px] text-[12px] text-[#A1A1AA]">No handle available</p>
+                            <>
+                              <p className="text-[14px] font-semibold text-[#212121] truncate">{account.displayName}</p>
+                              <p className="text-[13px] text-[#6C6C6C] truncate">{account.handle}</p>
+                            </>
                           )}
+                          {account.bio ? (
+                            <p className="mt-[4px] text-[13px] text-[#6C6C6C]">{account.bio}</p>
+                          ) : null}
+                          {!account.profilePath ? (
+                            <p className="mt-[6px] text-[12px] text-[#A1A1AA]">No handle available</p>
+                          ) : null}
                         </div>
 
                         {showConnectionFollowButtons && !account.isSelf ? (
