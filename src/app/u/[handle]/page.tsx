@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useSelector } from "react-redux";
 import { evmAddress, useAccount as useLensAccount, useSessionClient } from "@lens-protocol/react";
 import { fetchAccount, fetchFollowStatus, fetchPosts, follow, unfollow } from "@lens-protocol/client/actions";
@@ -17,6 +17,9 @@ import getLensAccountData from "@/utils/getLensProfile";
 import { client } from "@/client";
 
 const LENS_TESTNET_CHAIN_ID = 37111;
+const FOLLOW_CONFIRM_TIMEOUT_MS = 120000;
+const FOLLOW_POLL_INTERVAL_MS = 1500;
+const DEFAULT_LENS_GRAPHQL_ENDPOINT = "https://api.testnet.lens.xyz/graphql";
 
 function getDomain(url: string) {
   return url.replace(/https?:\/\//, "").replace(/\/$/, "");
@@ -112,13 +115,234 @@ function normalizeHandleValue(value: string | null | undefined) {
   return value.replace(/^@/, "").trim().toLowerCase();
 }
 
+function isTxHashIdentifier(value: string) {
+  return /^0x[a-fA-F0-9]{64}$/.test(value);
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function toDebugLine(event: string, data?: unknown) {
+  try {
+    return `${new Date().toISOString()} ${event} ${data ? JSON.stringify(data) : ""}`.trim();
+  } catch {
+    return `${new Date().toISOString()} ${event}`;
+  }
+}
+
+function isOperationStatusUnsupportedError(errorMessages: string[]) {
+  return errorMessages.some((message) => {
+    const normalized = message.toLowerCase();
+    return normalized.includes("cannot query field \"operationstatus\"")
+      || normalized.includes("unknown argument")
+      || normalized.includes("unknown type \"operationstatus\"");
+  });
+}
+
+type LensOperationResolution = {
+  status: "confirmed" | "failed" | "timeout";
+  source: "tx-hash" | "operation-status" | "follow-status-fallback";
+  txHash?: string;
+  reason?: string;
+};
+
+async function pollLensOperationStatusEndpoint(params: {
+  endpoint: string;
+  operationId: string;
+  timeoutMs: number;
+  pollIntervalMs: number;
+  onLog?: (event: string, data?: Record<string, unknown>) => void;
+}) {
+  const { endpoint, operationId, timeoutMs, pollIntervalMs, onLog } = params;
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          query: "query LensOperationStatus($id: ID!) { operationStatus(request: { id: $id }) { __typename } }",
+          variables: { id: operationId },
+        }),
+      });
+
+      const payload = await response.json().catch(() => null);
+      const errorMessages = Array.isArray(payload?.errors)
+        ? payload.errors.map((error: any) => String(error?.message || "unknown GraphQL error"))
+        : [];
+
+      if (errorMessages.length > 0 && isOperationStatusUnsupportedError(errorMessages)) {
+        onLog?.("operation status endpoint not supported on current Lens API", {
+          endpoint,
+          operationId,
+          errors: errorMessages,
+        });
+        return { status: "unsupported" as const, reason: errorMessages.join(" | ") };
+      }
+
+      if (errorMessages.length > 0) {
+        onLog?.("operation status endpoint returned errors", {
+          endpoint,
+          operationId,
+          errors: errorMessages,
+        });
+      }
+
+      const typename = payload?.data?.operationStatus?.__typename;
+      onLog?.("operation status poll result", { operationId, typename: typename || null });
+
+      if (typeof typename === "string") {
+        if (/fail|reject|error/i.test(typename)) {
+          return { status: "failed" as const, reason: `operation status ${typename}` };
+        }
+
+        if (/finish|success|complete/i.test(typename)) {
+          return { status: "confirmed" as const };
+        }
+      }
+    } catch (error: any) {
+      onLog?.("operation status endpoint request failed", {
+        operationId,
+        error: String(error?.message || error),
+      });
+    }
+
+    await wait(pollIntervalMs);
+  }
+
+  return { status: "timeout" as const, reason: `Timeout waiting for operation ${operationId}` };
+}
+
+async function resolveLensOperationToTxHashOrReceipt(params: {
+  identifier: string;
+  sessionClient: any;
+  statusClient: any;
+  observerAddress: string;
+  profileAddress: string;
+  expectedFollowing: boolean;
+  endpoint: string;
+  timeoutMs?: number;
+  pollIntervalMs?: number;
+  onLog?: (event: string, data?: Record<string, unknown>) => void;
+}): Promise<LensOperationResolution> {
+  const {
+    identifier,
+    sessionClient,
+    statusClient,
+    observerAddress,
+    profileAddress,
+    expectedFollowing,
+    endpoint,
+    timeoutMs = FOLLOW_CONFIRM_TIMEOUT_MS,
+    pollIntervalMs = FOLLOW_POLL_INTERVAL_MS,
+    onLog,
+  } = params;
+
+  if (isTxHashIdentifier(identifier)) {
+    onLog?.("confirmation path: tx hash", { identifier });
+    const waitResult = await sessionClient.waitForTransaction(identifier);
+    if (waitResult.isErr()) {
+      return {
+        status: "failed",
+        source: "tx-hash",
+        txHash: identifier,
+        reason: waitResult.error?.message || "Failed waiting for transaction confirmation.",
+      };
+    }
+
+    return {
+      status: "confirmed",
+      source: "tx-hash",
+      txHash: waitResult.value,
+    };
+  }
+
+  onLog?.("confirmation path: non-hash operation id", { identifier });
+  const operationStatus = await pollLensOperationStatusEndpoint({
+    endpoint,
+    operationId: identifier,
+    timeoutMs,
+    pollIntervalMs,
+    onLog,
+  });
+
+  if (operationStatus.status === "confirmed") {
+    return {
+      status: "confirmed",
+      source: "operation-status",
+    };
+  }
+
+  if (operationStatus.status === "failed") {
+    return {
+      status: "failed",
+      source: "operation-status",
+      reason: operationStatus.reason || "Operation failed.",
+    };
+  }
+
+  onLog?.("operation id unresolved via operation status; fallback to follow-status polling", {
+    identifier,
+    fallback: "fetchFollowStatus",
+  });
+
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    const statusResult = await fetchFollowStatus(statusClient, {
+      pairs: [
+        {
+          account: evmAddress(profileAddress),
+          follower: evmAddress(observerAddress),
+        },
+      ],
+    });
+
+    if (statusResult.isErr()) {
+      onLog?.("follow-status fallback poll failed", {
+        identifier,
+        error: statusResult.error?.message || "unknown fetchFollowStatus error",
+      });
+      await wait(pollIntervalMs);
+      continue;
+    }
+
+    const currentStatus = statusResult.value?.[0]?.isFollowing;
+    const normalized = isFollowingFromStatus(currentStatus);
+    onLog?.("follow-status fallback poll result", {
+      identifier,
+      currentStatus: typeof currentStatus === "object" ? currentStatus?.__typename || "object" : currentStatus,
+      normalized,
+      expectedFollowing,
+    });
+
+    if (normalized === expectedFollowing) {
+      return {
+        status: "confirmed",
+        source: "follow-status-fallback",
+      };
+    }
+
+    await wait(pollIntervalMs);
+  }
+
+  return {
+    status: "timeout",
+    source: "follow-status-fallback",
+    reason: `Timeout waiting for operation ${identifier} to reflect in follow status.`,
+  };
+}
+
 export default function Profile() {
   const params = useParams<{ handle: string }>();
+  const searchParams = useSearchParams();
   const routeHandle = Array.isArray(params?.handle) ? params.handle[0] : params?.handle;
   const normalizedHandle = useMemo(
     () => decodeURIComponent(routeHandle || "").replace(/^@/, "").trim(),
     [routeHandle]
   );
+  const showFollowDebug = searchParams?.get("followDebug") === "1";
 
   const { user: loggedInProfile } = useSelector((state: any) => state.app);
   const { data: sessionClient } = useSessionClient();
@@ -133,6 +357,7 @@ export default function Profile() {
   const [followingCount, setFollowingCount] = useState(0);
   const [canFollowByProtocol, setCanFollowByProtocol] = useState(true);
   const [sessionProfileAddress, setSessionProfileAddress] = useState("");
+  const [followDebugLines, setFollowDebugLines] = useState<string[]>([]);
 
   const {
     data: lensAccount,
@@ -153,6 +378,25 @@ export default function Profile() {
     ? observerAddress.toLowerCase() === profileAddress.toLowerCase()
     : Boolean(loggedInHandle) && Boolean(viewedHandle) && loggedInHandle === viewedHandle;
   const canCheckFollowStatus = !isOwnProfile && Boolean(observerAddress) && Boolean(profileAddress);
+  const lensBackendEndpoint = useMemo(() => {
+    const endpoint = (client as any)?.context?.environment?.backend;
+    return String(endpoint || process.env.NEXT_PUBLIC_LENS_API_URL || DEFAULT_LENS_GRAPHQL_ENDPOINT);
+  }, []);
+
+  const logFollow = useCallback((event: string, data?: Record<string, unknown>, level: "info" | "error" | "warn" = "info") => {
+    const line = toDebugLine(event, data);
+    setFollowDebugLines((prev) => [...prev.slice(-149), line]);
+
+    if (level === "error") {
+      console.error(`[follow] ${event}`, data || {});
+      return;
+    }
+    if (level === "warn") {
+      console.warn(`[follow] ${event}`, data || {});
+      return;
+    }
+    console.info(`[follow] ${event}`, data || {});
+  }, []);
 
   const handleOpenJobModal = () => {
     if (isOwnProfile) {
@@ -176,7 +420,7 @@ export default function Profile() {
     };
 
     const currentChainId = await readChainId();
-    console.info("[follow] wallet pre-check", {
+    logFollow("wallet pre-check", {
       walletAddress: walletClient.account?.address,
       chainId: currentChainId,
       requiredChainId: LENS_TESTNET_CHAIN_ID,
@@ -219,7 +463,7 @@ export default function Profile() {
     }
 
     const nextChainId = await readChainId();
-    console.info("[follow] wallet post-switch", {
+    logFollow("wallet post-switch", {
       walletAddress: walletClient.account?.address,
       chainId: nextChainId,
       requiredChainId: LENS_TESTNET_CHAIN_ID,
@@ -231,7 +475,7 @@ export default function Profile() {
     }
 
     return true;
-  }, [walletClient]);
+  }, [logFollow, walletClient]);
 
   const getSessionObserverAddress = useCallback(async () => {
     if (!sessionClient) {
@@ -242,10 +486,12 @@ export default function Profile() {
       const authenticatedUser = await sessionClient.getAuthenticatedUser().unwrapOr(null);
       return authenticatedUser?.address || "";
     } catch (error) {
-      console.error("[follow] failed to resolve session observer address", { error });
+      logFollow("failed to resolve session observer address", {
+        error: String((error as any)?.message || error),
+      }, "error");
       return "";
     }
-  }, [sessionClient]);
+  }, [logFollow, sessionClient]);
 
   useEffect(() => {
     let active = true;
@@ -262,7 +508,9 @@ export default function Profile() {
         setSessionProfileAddress(authenticatedUser?.address || "");
       } catch (error) {
         if (!active) return;
-        console.error("Failed to read authenticated session profile:", error);
+        logFollow("failed to read authenticated session profile", {
+          error: String((error as any)?.message || error),
+        }, "error");
         setSessionProfileAddress("");
       }
     };
@@ -272,7 +520,7 @@ export default function Profile() {
     return () => {
       active = false;
     };
-  }, [sessionClient]);
+  }, [logFollow, sessionClient]);
 
   useEffect(() => {
     if (!canCheckFollowStatus) {
@@ -354,17 +602,17 @@ export default function Profile() {
       });
 
       if (accountResult.isErr()) {
-        console.error("[follow] failed to refresh account snapshot", {
+        logFollow("failed to refresh account snapshot", {
           reason,
           profileAddress,
-          error: accountResult.error,
-        });
+          error: accountResult.error?.message || "unknown fetchAccount error",
+        }, "error");
         return;
       }
 
       const freshAccount = accountResult.value;
       if (!freshAccount) {
-        console.warn("[follow] account snapshot empty", { reason, profileAddress });
+        logFollow("account snapshot empty", { reason, profileAddress }, "warn");
         return;
       }
 
@@ -378,7 +626,7 @@ export default function Profile() {
         setCanFollowByProtocol(freshCanFollowTypename !== "AccountFollowOperationValidationFailed");
       }
 
-      console.info("[follow] refreshed account snapshot", {
+      logFollow("refreshed account snapshot", {
         reason,
         clientType: sessionClient ? "session" : "public",
         profileAddress,
@@ -387,13 +635,13 @@ export default function Profile() {
         canFollowTypename: freshCanFollowTypename || null,
       });
     } catch (error) {
-      console.error("[follow] account snapshot refresh failed", {
+      logFollow("account snapshot refresh failed", {
         reason,
         profileAddress,
-        error,
-      });
+        error: String((error as any)?.message || error),
+      }, "error");
     }
-  }, [profileAddress, sessionClient]);
+  }, [logFollow, profileAddress, sessionClient]);
 
   const refreshFollowStatus = useCallback(async (options?: { observerAddressOverride?: string; reason?: string }) => {
     const effectiveObserverAddress = options?.observerAddressOverride || observerAddress;
@@ -411,7 +659,7 @@ export default function Profile() {
 
     try {
       const queryClient = sessionClient ?? client;
-      console.info("[follow] refresh status request", {
+      logFollow("refresh status request", {
         reason: options?.reason || "follow-status-refresh",
         clientType: sessionClient ? "session" : "public",
         observerAddress: effectiveObserverAddress,
@@ -428,14 +676,18 @@ export default function Profile() {
       });
 
       if (result.isErr()) {
-        console.error("Failed to fetch follow status:", result.error);
+        logFollow("failed to fetch follow status", {
+          observerAddress: effectiveObserverAddress,
+          profileAddress,
+          error: result.error?.message || "unknown fetchFollowStatus error",
+        }, "error");
         setIsFollowing(false);
         return;
       }
 
       const currentStatus = result.value?.[0]?.isFollowing;
       setIsFollowing(isFollowingFromStatus(currentStatus));
-      console.info("[follow] refresh status response", {
+      logFollow("refresh status response", {
         reason: options?.reason || "follow-status-refresh",
         observerAddress: effectiveObserverAddress,
         profileAddress,
@@ -443,13 +695,17 @@ export default function Profile() {
         normalized: isFollowingFromStatus(currentStatus),
       });
     } catch (error) {
-      console.error("Failed to fetch follow status:", error);
+      logFollow("failed to fetch follow status", {
+        observerAddress: effectiveObserverAddress,
+        profileAddress,
+        error: String((error as any)?.message || error),
+      }, "error");
       setIsFollowing(false);
     } finally {
       setFollowStatusLoading(false);
       await refreshProfileSnapshot(options?.reason || "follow-status-refresh");
     }
-  }, [observerAddress, profileAddress, refreshProfileSnapshot, sessionClient]);
+  }, [logFollow, observerAddress, profileAddress, refreshProfileSnapshot, sessionClient]);
 
   useEffect(() => {
     void refreshFollowStatus();
@@ -502,7 +758,7 @@ export default function Profile() {
       && effectiveObserverAddress.toLowerCase() !== profileAddress.toLowerCase();
 
     const runtimeChainId = await walletClient.getChainId().catch(() => walletClient.chain?.id);
-    console.info("[follow] click", {
+    logFollow("click", {
       walletAddress: walletClient.account?.address,
       chainId: runtimeChainId,
       observerAddress: effectiveObserverAddress,
@@ -514,6 +770,7 @@ export default function Profile() {
       canFollowNow,
       canFollowByProtocol,
       isFollowing,
+      lensBackendEndpoint,
     });
 
     if (sessionObserverAddress && sessionObserverAddress !== sessionProfileAddress) {
@@ -532,6 +789,20 @@ export default function Profile() {
 
     const isLensTestnet = await ensureLensTestnetChain();
     if (!isLensTestnet) {
+      logFollow("wallet switch failed", {
+        requiredChainId: LENS_TESTNET_CHAIN_ID,
+      }, "warn");
+      return;
+    }
+
+    const chainBeforeSigning = await walletClient.getChainId().catch(() => walletClient.chain?.id);
+    logFollow("wallet chain before signing", {
+      chainId: chainBeforeSigning,
+      requiredChainId: LENS_TESTNET_CHAIN_ID,
+    });
+
+    if (chainBeforeSigning !== LENS_TESTNET_CHAIN_ID) {
+      toast.error("Wallet is not on Lens Chain Testnet (37111).");
       return;
     }
 
@@ -546,25 +817,28 @@ export default function Profile() {
 
       if (operation.isErr()) {
         toast.error(operation.error.message || "Failed to update follow status.");
-        console.error("[follow] operation failed", {
+        logFollow("mutation response", {
           action: wasFollowing ? "unfollow" : "follow",
-          error: operation.error,
-        });
+          ok: false,
+          error: operation.error?.message || "unknown follow mutation error",
+        }, "error");
         return;
       }
 
       const operationValue: any = operation.value;
-      console.info("[follow] operation result", {
+      logFollow("mutation response", {
         action: wasFollowing ? "unfollow" : "follow",
-        typename: operationValue?.__typename,
+        ok: true,
+        typename: operationValue?.__typename || null,
         hash: operationValue?.hash || null,
         reason: operationValue?.reason || null,
       });
+
       if (
         operationValue?.__typename === "SelfFundedTransactionRequest"
         || operationValue?.__typename === "SponsoredTransactionRequest"
       ) {
-        console.info("[follow] operation transaction request", {
+        logFollow("mutation transaction request", {
           action: wasFollowing ? "unfollow" : "follow",
           requestType: operationValue.__typename,
           from: operationValue?.raw?.from || null,
@@ -573,56 +847,69 @@ export default function Profile() {
         });
       }
 
+      const chainRightBeforeSigning = await walletClient.getChainId().catch(() => walletClient.chain?.id);
+      logFollow("wallet chain right before signing", {
+        chainId: chainRightBeforeSigning,
+        requiredChainId: LENS_TESTNET_CHAIN_ID,
+      });
+
+      if (chainRightBeforeSigning !== LENS_TESTNET_CHAIN_ID) {
+        toast.error("Wallet switched away from Lens Chain Testnet (37111).");
+        return;
+      }
+
       const operationHandler = handleOperationWith(walletClient as any) as any;
       const txResult = await operationHandler(operationValue);
+      logFollow("handleOperationWith return value", txResult.isErr()
+        ? {
+          ok: false,
+          action: wasFollowing ? "unfollow" : "follow",
+          error: txResult.error?.message || "unknown transaction handler error",
+        }
+        : {
+          ok: true,
+          action: wasFollowing ? "unfollow" : "follow",
+          identifier: String(txResult.value),
+          looksLikeTxHash: isTxHashIdentifier(String(txResult.value)),
+        });
+
       if (txResult.isErr()) {
         toast.error(txResult.error.message || "Failed to submit follow transaction.");
-        console.error("[follow] tx submission failed", {
-          action: wasFollowing ? "unfollow" : "follow",
-          error: txResult.error,
-        });
         return;
       }
 
-      const txIdentifier = txResult.value;
-      const looksLikeTxHash = /^0x[a-fA-F0-9]{64}$/.test(txIdentifier);
-      console.info("[follow] tx submitted", {
-        action: wasFollowing ? "unfollow" : "follow",
-        txIdentifier,
-        looksLikeTxHash,
-      });
-      if (!looksLikeTxHash) {
-        toast.error("Lens returned an unexpected transaction identifier.");
-        console.error("[follow] unexpected transaction identifier", {
-          action: wasFollowing ? "unfollow" : "follow",
-          txIdentifier,
-        });
-        return;
-      }
-
+      const txIdentifier = String(txResult.value);
       const nextFollowing = !wasFollowing;
+      const resolution = await resolveLensOperationToTxHashOrReceipt({
+        identifier: txIdentifier,
+        sessionClient,
+        statusClient: sessionClient ?? client,
+        observerAddress: effectiveObserverAddress,
+        profileAddress,
+        expectedFollowing: nextFollowing,
+        endpoint: lensBackendEndpoint,
+        onLog: (event, data) => logFollow(event, data),
+      });
+
+      logFollow("operation resolution result", {
+        action: wasFollowing ? "unfollow" : "follow",
+        identifier: txIdentifier,
+        resolution,
+      });
+
+      if (resolution.status !== "confirmed") {
+        toast.error(resolution.reason || "Follow operation was not confirmed.");
+        return;
+      }
+
       setIsFollowing(nextFollowing);
       setFollowersCount((count) => Math.max(0, count + (nextFollowing ? 1 : -1)));
       toast.success(nextFollowing ? `You are now following ${handle}` : `You unfollowed ${handle}`);
-
-      console.info("[follow] waiting for transaction confirmation", {
-        txIdentifier,
-      });
-
-      const indexingResult = await sessionClient.waitForTransaction(txIdentifier);
-      if (indexingResult.isErr()) {
-        toast.error(indexingResult.error.message || "Transaction submitted but confirmation is delayed.");
-        console.error("[follow] transaction confirmation failed", {
-          txIdentifier,
-          error: indexingResult.error,
-        });
-      } else {
-        console.info("[follow] transaction confirmed", {
-          txHash: indexingResult.value,
-        });
-      }
     } catch (error: any) {
-      console.error("Failed to update follow status:", error);
+      logFollow("follow toggle exception", {
+        error: error?.message || String(error),
+        stack: error?.stack || null,
+      }, "error");
       toast.error(error?.message || "Failed to update follow status.");
     } finally {
       await refreshFollowStatus({
@@ -632,6 +919,15 @@ export default function Profile() {
       setFollowSubmitting(false);
     }
   };
+
+  const copyFollowDebug = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(followDebugLines.join("\n"));
+      toast.success("Copied follow debug logs.");
+    } catch {
+      toast.error("Could not copy follow debug logs.");
+    }
+  }, [followDebugLines]);
 
   const followButtonLabel = followSubmitting
     ? isFollowing
@@ -755,6 +1051,24 @@ export default function Profile() {
                 >
                   Message
                 </Link>
+              </div>
+            ) : null}
+
+            {showFollowDebug ? (
+              <div className="my-[12px] rounded-[10px] border border-[#E4E4E7] bg-[#FAFAFA] p-[10px]">
+                <div className="mb-[8px] flex items-center justify-between">
+                  <p className="text-[12px] font-semibold text-[#212121]">Follow Debug</p>
+                  <button
+                    type="button"
+                    onClick={copyFollowDebug}
+                    className="rounded-[6px] border border-[#D4D4D8] bg-white px-[8px] py-[4px] text-[11px] font-medium text-[#212121]"
+                  >
+                    Copy Logs
+                  </button>
+                </div>
+                <pre className="max-h-[220px] overflow-auto whitespace-pre-wrap break-all text-[11px] leading-[16px] text-[#3F3F46]">
+                  {followDebugLines.length > 0 ? followDebugLines.join("\n") : "No follow debug logs yet."}
+                </pre>
               </div>
             ) : null}
 
