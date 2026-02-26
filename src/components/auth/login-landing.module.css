@@ -3,6 +3,7 @@
   --desktop-panel-max-width: 520px;
   --desktop-right-preview-max-width: 560px;
 
+  position: relative;
   display: flex;
   margin: 0;
   width: 100vw;
@@ -45,24 +46,52 @@
   aspect-ratio: 1440 / 2048;
 }
 
-.desktopLogo {
+.pageLogo {
   position: absolute;
-  left: 5.2%;
-  top: 5.8%;
-  z-index: 3;
-  width: clamp(106px, 22%, 146px);
-  pointer-events: none;
+  left: 24px;
+  top: 24px;
+  z-index: 8;
+  width: clamp(110px, 14vw, 162px);
 }
 
-.desktopLogoMask {
+.desktopTitle {
   position: absolute;
-  left: 0;
-  top: 0;
-  width: 30%;
-  height: 15%;
-  background: #ffffff;
-  z-index: 2;
-  pointer-events: none;
+  left: 18.194%;
+  top: 18.6%;
+  width: 63.611%;
+  z-index: 4;
+  font-size: clamp(16px, 1.7vw, 23px);
+  font-weight: 600;
+  line-height: 1.25;
+  color: #0f172a;
+  background: #fff;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.desktopSignup {
+  position: absolute;
+  left: 18.194%;
+  top: 74.8%;
+  width: 63.611%;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: clamp(12px, 1.05vw, 14px);
+  color: #334155;
+  background: #fff;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.inlineAction {
+  border: 0;
+  background: transparent;
+  color: #0f172a;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .brandLogo {
@@ -95,7 +124,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  width: 100%;
+  width: 50%;
   max-width: none;
   height: 100%;
   background: transparent;
@@ -104,10 +133,12 @@
 }
 
 .rightImage {
-  width: clamp(920px, 95vw, 1280px);
-  height: auto;
+  width: 200%;
+  height: 100%;
   max-width: none;
-  max-height: calc(100vh - (var(--desktop-pad) * 2));
+  max-height: none;
+  object-fit: cover;
+  object-position: left center;
   transform: none;
   transform-origin: left center;
   flex-shrink: 0;
@@ -123,24 +154,35 @@
   aspect-ratio: 860 / 2184;
 }
 
-.mobileLogo {
+.mobileTitle {
   position: absolute;
-  left: 6%;
-  top: 5.4%;
-  z-index: 3;
-  width: clamp(86px, 26%, 122px);
-  pointer-events: none;
+  left: 13.023%;
+  top: 16.2%;
+  width: 73.953%;
+  z-index: 4;
+  font-size: clamp(13px, 4vw, 20px);
+  font-weight: 600;
+  line-height: 1.25;
+  color: #0f172a;
+  background: #fff;
+  padding: 2px 6px;
+  border-radius: 6px;
 }
 
-.mobileLogoMask {
+.mobileSignup {
   position: absolute;
-  left: 0;
-  top: 0;
-  width: 43%;
-  height: 14%;
-  background: #ffffff;
-  z-index: 2;
-  pointer-events: none;
+  left: 13.023%;
+  top: 66.8%;
+  width: 73.953%;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: clamp(10px, 3.1vw, 13px);
+  color: #334155;
+  background: #fff;
+  padding: 2px 6px;
+  border-radius: 6px;
 }
 
 @media (max-width: 1024px) {
@@ -169,20 +211,27 @@
 
   .rightPanel {
     justify-content: center;
+    width: 100%;
     max-width: 560px;
     height: auto;
-    overflow: visible;
+    overflow: hidden;
   }
 
   .rightImage {
-    width: min(100%, 560px);
-    max-width: 100%;
+    width: 200%;
+    max-width: none;
     max-height: none;
     transform: none;
   }
 }
 
 @media (max-width: 767px) {
+  .pageLogo {
+    left: 16px;
+    top: 14px;
+    width: clamp(92px, 28vw, 130px);
+  }
+
   .desktopGrid {
     display: none;
   }
@@ -205,5 +254,4 @@
     z-index: 2;
     pointer-events: none;
   }
-
 }

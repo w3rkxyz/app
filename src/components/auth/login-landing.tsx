@@ -6,13 +6,15 @@ import { useDispatch } from "react-redux";
 import { ConnectKitButton } from "connectkit";
 import { useAccount as useWagmiAccount, useConnect, useDisconnect } from "wagmi";
 import { toast } from "react-hot-toast";
-import { displayLoginModal } from "@/redux/app";
+import { displayLoginModal, setLoginIntent } from "@/redux/app";
 import loginDesktopLeft from "../../../attached_assets/login-desktop-left.png";
 import profilePreviewImage from "../../../attached_assets/profile.preview.image.png.png";
 import loginMobile from "../../../attached_assets/login-mobile.png";
 import styles from "./login-landing.module.css";
 
-type WalletOption = "metamask" | "phantom" | "coinbase" | "other";
+type WalletOption = "metamask" | "rabby" | "rainbow" | "other";
+type DirectWalletOption = Exclude<WalletOption, "other">;
+type LoginIntent = "login" | "signup";
 
 type HitArea = {
   left: string;
@@ -30,8 +32,8 @@ const DESKTOP_FAMILY_AREA: HitArea = {
 
 const DESKTOP_WALLET_AREAS: Record<WalletOption, HitArea> = {
   metamask: { left: "18.194%", top: "40.625%", width: "63.611%", height: "6.201%" },
-  phantom: { left: "18.194%", top: "48.438%", width: "63.611%", height: "6.201%" },
-  coinbase: { left: "18.194%", top: "56.250%", width: "63.611%", height: "6.201%" },
+  rabby: { left: "18.194%", top: "48.438%", width: "63.611%", height: "6.201%" },
+  rainbow: { left: "18.194%", top: "56.250%", width: "63.611%", height: "6.201%" },
   other: { left: "18.194%", top: "64.063%", width: "63.611%", height: "6.641%" },
 };
 
@@ -44,9 +46,15 @@ const MOBILE_FAMILY_AREA: HitArea = {
 
 const MOBILE_WALLET_AREAS: Record<WalletOption, HitArea> = {
   metamask: { left: "13.023%", top: "35.165%", width: "73.953%", height: "5.815%" },
-  phantom: { left: "13.023%", top: "42.491%", width: "73.953%", height: "5.815%" },
-  coinbase: { left: "13.023%", top: "49.817%", width: "73.953%", height: "5.815%" },
+  rabby: { left: "13.023%", top: "42.491%", width: "73.953%", height: "5.815%" },
+  rainbow: { left: "13.023%", top: "49.817%", width: "73.953%", height: "5.815%" },
   other: { left: "13.023%", top: "57.143%", width: "73.953%", height: "6.177%" },
+};
+
+const walletLabels: Record<DirectWalletOption, string> = {
+  metamask: "MetaMask",
+  rabby: "Rabby Wallet",
+  rainbow: "Rainbow Wallet",
 };
 
 const LoginLanding = () => {
@@ -54,20 +62,25 @@ const LoginLanding = () => {
   const { isConnected, connector: activeConnector } = useWagmiAccount();
   const { connectAsync, connectors } = useConnect();
   const { disconnectAsync } = useDisconnect();
-  const [pendingFamilyConnect, setPendingFamilyConnect] = useState(false);
+  const [pendingIntent, setPendingIntent] = useState<LoginIntent | null>(null);
 
-  const triggerLoginFlow = useCallback(() => {
-    dispatch(displayLoginModal({ display: true }));
-  }, [dispatch]);
+  const triggerLoginFlow = useCallback(
+    (intent: LoginIntent) => {
+      dispatch(setLoginIntent({ intent }));
+      dispatch(displayLoginModal({ display: true }));
+    },
+    [dispatch]
+  );
 
   useEffect(() => {
-    if (!pendingFamilyConnect || !isConnected) {
+    if (!pendingIntent || !isConnected) {
       return;
     }
 
-    setPendingFamilyConnect(false);
-    triggerLoginFlow();
-  }, [isConnected, pendingFamilyConnect, triggerLoginFlow]);
+    const intent = pendingIntent;
+    setPendingIntent(null);
+    triggerLoginFlow(intent);
+  }, [isConnected, pendingIntent, triggerLoginFlow]);
 
   const connectorCandidates = useMemo(() => {
     const pickAll = (keywords: string[]) =>
@@ -91,46 +104,50 @@ const LoginLanding = () => {
 
     return {
       metamask,
-      phantom: pickAll(["phantom"]),
-      coinbase: pickAll(["coinbase"]),
+      rabby: pickAll(["rabby"]),
+      rainbow: pickAll(["rainbow"]),
     };
   }, [connectors]);
 
   const connectSpecificWallet = useCallback(
     async (wallet: WalletOption, showWalletModal: () => void) => {
-      setPendingFamilyConnect(false);
+      setPendingIntent(null);
 
       if (wallet === "other") {
-        setPendingFamilyConnect(!isConnected);
+        if (isConnected) {
+          triggerLoginFlow("login");
+          return;
+        }
+
+        setPendingIntent("login");
         showWalletModal();
         return;
       }
 
-      const targets = connectorCandidates[wallet];
+      const directWallet: DirectWalletOption = wallet;
+      const targets = connectorCandidates[directWallet];
       if (!targets.length) {
-        const walletLabel =
-          wallet === "coinbase" ? "Coinbase Wallet" : wallet[0].toUpperCase() + wallet.slice(1);
-        toast.error(`${walletLabel} not available`);
+        toast.error(`${walletLabels[directWallet]} not available`);
         return;
       }
 
-      const walletKeywords: Record<Exclude<WalletOption, "other">, string[]> = {
+      const walletKeywords: Record<DirectWalletOption, string[]> = {
         metamask: ["metamask", "meta mask"],
-        phantom: ["phantom"],
-        coinbase: ["coinbase"],
+        rabby: ["rabby"],
+        rainbow: ["rainbow"],
       };
 
       const isActiveWalletMatch =
         isConnected &&
         activeConnector &&
-        walletKeywords[wallet].some(keyword => {
+        walletKeywords[directWallet].some(keyword => {
           const id = activeConnector.id.toLowerCase();
           const name = activeConnector.name.toLowerCase();
           return id.includes(keyword) || name.includes(keyword);
         });
 
       if (isActiveWalletMatch) {
-        triggerLoginFlow();
+        triggerLoginFlow("login");
         return;
       }
 
@@ -145,25 +162,16 @@ const LoginLanding = () => {
       for (const target of targets) {
         try {
           await connectAsync({ connector: target });
-          triggerLoginFlow();
+          triggerLoginFlow("login");
           return;
         } catch {
           // Try next connector candidate for this wallet.
         }
       }
 
-      const walletLabel =
-        wallet === "coinbase" ? "Coinbase Wallet" : wallet[0].toUpperCase() + wallet.slice(1);
-      toast.error(`Unable to connect ${walletLabel}`);
+      toast.error(`Unable to connect ${walletLabels[directWallet]}`);
     },
-    [
-      activeConnector,
-      connectAsync,
-      connectorCandidates,
-      disconnectAsync,
-      isConnected,
-      triggerLoginFlow,
-    ]
+    [activeConnector, connectAsync, connectorCandidates, disconnectAsync, isConnected, triggerLoginFlow]
   );
 
   const renderHitButton = (
@@ -177,7 +185,7 @@ const LoginLanding = () => {
       type="button"
       aria-label={label}
       onClick={onClick}
-      className="absolute bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-[#8D73CF] focus-visible:ring-offset-2"
+      className="absolute bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-[#0F172A] focus-visible:ring-offset-2"
       style={{
         left: area.left,
         top: area.top,
@@ -192,7 +200,22 @@ const LoginLanding = () => {
     <ConnectKitButton.Custom>
       {({ show }) => {
         const onFamilyClick = () => {
-          setPendingFamilyConnect(!isConnected);
+          if (isConnected) {
+            triggerLoginFlow("login");
+            return;
+          }
+
+          setPendingIntent("login");
+          show();
+        };
+
+        const onSignUpClick = () => {
+          if (isConnected) {
+            triggerLoginFlow("signup");
+            return;
+          }
+
+          setPendingIntent("signup");
           show();
         };
 
@@ -202,20 +225,21 @@ const LoginLanding = () => {
 
         return (
           <section className={styles.page}>
+            <div className={styles.pageLogo} aria-hidden="true">
+              <Image
+                src="/images/brand-logo.svg"
+                alt=""
+                width={214}
+                height={78}
+                className={styles.brandLogo}
+                priority
+              />
+            </div>
+
             <div className={styles.container}>
               <div className={styles.desktopGrid}>
                 <div className={styles.leftColumn}>
                   <div className={styles.leftPanel}>
-                    <div className={styles.desktopLogo} aria-hidden="true">
-                      <Image
-                        src="/images/brand-logo.svg"
-                        alt=""
-                        width={214}
-                        height={78}
-                        className={styles.brandLogo}
-                        priority
-                      />
-                    </div>
                     <Image
                       src={loginDesktopLeft}
                       alt="Login wallet panel"
@@ -224,17 +248,24 @@ const LoginLanding = () => {
                       className={styles.panelImage}
                       sizes="(max-width: 767px) 0px, (max-width: 1024px) 540px, 600px"
                     />
-                    <div className={styles.desktopLogoMask} aria-hidden="true" />
+
+                    <div className={styles.desktopTitle}>Login with your Lens account</div>
+                    <div className={styles.desktopSignup}>
+                      <span>Don&apos;t have an account?</span>
+                      <button type="button" onClick={onSignUpClick} className={styles.inlineAction}>
+                        Sign Up
+                      </button>
+                    </div>
 
                     {renderHitButton("Continue with Family", DESKTOP_FAMILY_AREA, onFamilyClick, "24px")}
                     {renderHitButton("Connect MetaMask", DESKTOP_WALLET_AREAS.metamask, () =>
                       onWalletClick("metamask")
                     )}
-                    {renderHitButton("Connect Phantom", DESKTOP_WALLET_AREAS.phantom, () =>
-                      onWalletClick("phantom")
+                    {renderHitButton("Connect Rabby Wallet", DESKTOP_WALLET_AREAS.rabby, () =>
+                      onWalletClick("rabby")
                     )}
-                    {renderHitButton("Connect Coinbase Wallet", DESKTOP_WALLET_AREAS.coinbase, () =>
-                      onWalletClick("coinbase")
+                    {renderHitButton("Connect Rainbow Wallet", DESKTOP_WALLET_AREAS.rainbow, () =>
+                      onWalletClick("rainbow")
                     )}
                     {renderHitButton("Connect Other Wallet", DESKTOP_WALLET_AREAS.other, () =>
                       onWalletClick("other")
@@ -257,16 +288,6 @@ const LoginLanding = () => {
 
               <div className={styles.mobileWrap}>
                 <div className={styles.mobilePanel}>
-                  <div className={styles.mobileLogo} aria-hidden="true">
-                    <Image
-                      src="/images/brand-logo.svg"
-                      alt=""
-                      width={214}
-                      height={78}
-                      className={styles.brandLogo}
-                      priority
-                    />
-                  </div>
                   <Image
                     src={loginMobile}
                     alt="Mobile login wallet panel"
@@ -275,17 +296,24 @@ const LoginLanding = () => {
                     className={styles.panelImage}
                     sizes="100vw"
                   />
-                  <div className={styles.mobileLogoMask} aria-hidden="true" />
+
+                  <div className={styles.mobileTitle}>Login with your Lens account</div>
+                  <div className={styles.mobileSignup}>
+                    <span>Don&apos;t have an account?</span>
+                    <button type="button" onClick={onSignUpClick} className={styles.inlineAction}>
+                      Sign Up
+                    </button>
+                  </div>
 
                   {renderHitButton("Continue with Family", MOBILE_FAMILY_AREA, onFamilyClick, "24px")}
                   {renderHitButton("Connect MetaMask", MOBILE_WALLET_AREAS.metamask, () =>
                     onWalletClick("metamask")
                   )}
-                  {renderHitButton("Connect Phantom", MOBILE_WALLET_AREAS.phantom, () =>
-                    onWalletClick("phantom")
+                  {renderHitButton("Connect Rabby Wallet", MOBILE_WALLET_AREAS.rabby, () =>
+                    onWalletClick("rabby")
                   )}
-                  {renderHitButton("Connect Coinbase Wallet", MOBILE_WALLET_AREAS.coinbase, () =>
-                    onWalletClick("coinbase")
+                  {renderHitButton("Connect Rainbow Wallet", MOBILE_WALLET_AREAS.rainbow, () =>
+                    onWalletClick("rainbow")
                   )}
                   {renderHitButton("Connect Other Wallet", MOBILE_WALLET_AREAS.other, () =>
                     onWalletClick("other")

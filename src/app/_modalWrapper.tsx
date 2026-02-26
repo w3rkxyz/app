@@ -17,7 +17,7 @@ export default function ModalWrapper({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { loginModal, switchModal, user: profile } = useSelector((state: any) => state.app);
+  const { loginModal, switchModal, loginIntent, user: profile } = useSelector((state: any) => state.app);
 
   const { displayAlert, alertData, displaytransactionLoader, loaderText } = useSelector(
     (state: any) => state.alerts
@@ -63,7 +63,7 @@ export default function ModalWrapper({
   return (
     <div className="flex flex-col min-h-screen">
       {children}
-      {loginModal && !switchModal && address && <LoginForm owner={address} />}
+      {loginModal && !switchModal && address && <LoginForm owner={address} loginIntent={loginIntent} />}
       {switchModal && address && <SwitchForm />}
       {displayAlert && (
         <div className="fixed right-[30px] top-[30px] z-[999999999999]">

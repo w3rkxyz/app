@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { useDispatch } from "react-redux";
-import { setLensProfile, displayLoginModal } from "@/redux/app";
+import { setLensProfile, displayLoginModal, setLoginIntent } from "@/redux/app";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import getLensAccountData from "@/utils/getLensProfile";
@@ -27,13 +27,19 @@ const getErrMsg = (error: unknown, fallback: string) => {
   return fallback;
 };
 
-export default function LoginForm({ owner }: { owner: string }) {
+type LoginFormProps = {
+  owner: string;
+  loginIntent?: "login" | "signup";
+};
+
+export default function LoginForm({ owner, loginIntent = "login" }: LoginFormProps) {
   const dispatch = useDispatch();
   const router = useRouter();
   const { data: walletClient } = useWalletClient();
   const wallet = useAccount();
   const autoSelectedAccountRef = useRef<string | null>(null);
   const lastWalletAddressRef = useRef<string | null>(null);
+  const signupFlowStartedRef = useRef(false);
 
   const [creatingProfile, setCreatingProfile] = useState(false);
   const [sessionClient, setSessionClient] = useState<SessionClient | null>(null);
@@ -227,13 +233,12 @@ export default function LoginForm({ owner }: { owner: string }) {
           );
 
           setCreatingProfile(false);
-          setMintSuccessMessage("Profile minted successfully. Finalizing login...");
+          setMintSuccessMessage("Profile minted successfully. Redirecting to onboarding...");
           setSessionClient(null);
           setHandle("");
-
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
+          dispatch(displayLoginModal({ display: false }));
+          dispatch(setLoginIntent({ intent: "login" }));
+          router.push("/onboarding");
         } catch {
           setCreatingProfile(false);
           setErrorMessage("Failed to create profile. Please try again.");
@@ -301,6 +306,7 @@ export default function LoginForm({ owner }: { owner: string }) {
       const profile = getLensAccountData(account);
       dispatch(setLensProfile({ profile }));
       dispatch(displayLoginModal({ display: false }));
+      dispatch(setLoginIntent({ intent: "login" }));
 
       toast.success("Login successful", { position: "top-center" });
 
@@ -315,12 +321,14 @@ export default function LoginForm({ owner }: { owner: string }) {
 
   const handleCloseModal = () => {
     dispatch(displayLoginModal({ display: false }));
+    dispatch(setLoginIntent({ intent: "login" }));
   };
 
   useEffect(() => {
     if (!normalizedWalletAddress) {
       autoSelectedAccountRef.current = null;
       lastWalletAddressRef.current = null;
+      signupFlowStartedRef.current = false;
       setSessionClient(null);
       setHandle("");
       setShowError(false);
@@ -331,6 +339,7 @@ export default function LoginForm({ owner }: { owner: string }) {
 
     if (lastWalletAddressRef.current && lastWalletAddressRef.current !== normalizedWalletAddress) {
       autoSelectedAccountRef.current = null;
+      signupFlowStartedRef.current = false;
       setSessionClient(null);
       setHandle("");
       setShowError(false);
@@ -341,6 +350,44 @@ export default function LoginForm({ owner }: { owner: string }) {
 
     lastWalletAddressRef.current = normalizedWalletAddress;
   }, [normalizedWalletAddress]);
+
+  useEffect(() => {
+    if (loginIntent !== "signup") {
+      signupFlowStartedRef.current = false;
+      return;
+    }
+
+    if (
+      accountsLoading ||
+      authenticateLoading ||
+      continuing ||
+      !walletReady ||
+      !isWalletContextReady ||
+      !availableAccounts ||
+      profileCount !== 0 ||
+      sessionClient !== null
+    ) {
+      return;
+    }
+
+    if (signupFlowStartedRef.current) {
+      return;
+    }
+
+    signupFlowStartedRef.current = true;
+    void authenticateUser();
+  }, [
+    accountsLoading,
+    authenticateLoading,
+    authenticateUser,
+    availableAccounts,
+    continuing,
+    isWalletContextReady,
+    loginIntent,
+    profileCount,
+    sessionClient,
+    walletReady,
+  ]);
 
   useEffect(() => {
     if (
@@ -378,7 +425,9 @@ export default function LoginForm({ owner }: { owner: string }) {
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-[#0F172A80] px-[16px] py-[24px]">
       <div className="max-h-[92vh] w-full max-w-[460px] overflow-y-auto rounded-[20px] border border-[#E2E8F0] bg-white shadow-[0_22px_65px_rgba(15,23,42,0.26)]">
         <div className="flex items-center justify-between border-b border-[#E5E7EB] px-[20px] py-[16px]">
-          <span className="text-[18px] font-semibold leading-[1.2] text-[#0F172A]">Complete Login</span>
+          <span className="text-[18px] font-semibold leading-[1.2] text-[#0F172A]">
+            Login with your Lens account
+          </span>
           <Image
             onClick={handleCloseModal}
             className="cursor-pointer"
@@ -442,7 +491,9 @@ export default function LoginForm({ owner }: { owner: string }) {
           {availableAccounts && profileCount === 0 && sessionClient === null && walletReady && (
             <>
               <span className="text-[14px] font-semibold leading-[1.4] text-[#0F172A]">
-                No Lens profile found, mint yours now!
+                {loginIntent === "signup"
+                  ? "No Lens profile found. Let's create your account."
+                  : "No Lens profile found, mint yours now!"}
               </span>
               <p className="text-[13px] leading-[1.4] text-[#64748B]">
                 Continue once to initialize Lens, then choose your handle.
@@ -453,7 +504,11 @@ export default function LoginForm({ owner }: { owner: string }) {
                 onClick={authenticateUser}
                 disabled={continuing || authenticateLoading}
               >
-                {continuing || authenticateLoading ? "Waiting for signature..." : "Continue"}
+                {continuing || authenticateLoading
+                  ? "Waiting for signature..."
+                  : loginIntent === "signup"
+                    ? "Start Sign Up"
+                    : "Continue"}
               </button>
             </>
           )}
@@ -502,8 +557,11 @@ export default function LoginForm({ owner }: { owner: string }) {
           {availableAccounts && profileCount > 1 && !autoSelecting && (
             <>
               <span className="text-[14px] font-semibold leading-[1.4] text-[#0F172A]">
-                Select your Lens profile
+                Multiple Lens profiles found
               </span>
+              <p className="text-[13px] leading-[1.4] text-[#64748B]">
+                Select the account you want to use to continue.
+              </p>
               <div className="flex max-h-[280px] flex-col gap-[8px] overflow-y-auto pr-[4px]">
                 {availableAccounts.items.map(item => (
                   <button
