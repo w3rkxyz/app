@@ -227,13 +227,11 @@ export default function LoginForm({ owner }: { owner: string }) {
           );
 
           setCreatingProfile(false);
-          setMintSuccessMessage("Profile minted successfully. Finalizing login...");
+          setMintSuccessMessage("Profile minted successfully. Redirecting to onboarding...");
           setSessionClient(null);
           setHandle("");
-
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
+          dispatch(displayLoginModal({ display: false }));
+          router.push("/onboarding");
         } catch {
           setCreatingProfile(false);
           setErrorMessage("Failed to create profile. Please try again.");
