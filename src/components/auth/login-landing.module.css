@@ -1,8 +1,7 @@
 .page {
   --desktop-pad: 24px;
-  --desktop-panel-max-width: 520px;
-  --desktop-right-preview-max-width: 560px;
 
+  position: relative;
   display: flex;
   margin: 0;
   width: 100vw;
@@ -19,6 +18,20 @@
   min-height: 100vh;
   margin: 0;
   padding: 0;
+}
+
+.pageLogo {
+  position: absolute;
+  left: 12px;
+  top: 10px;
+  z-index: 8;
+  width: clamp(110px, 14vw, 162px);
+  pointer-events: none;
+}
+
+.brandLogo {
+  width: 100%;
+  height: auto;
 }
 
 .desktopGrid {
@@ -40,56 +53,135 @@
 }
 
 .leftPanel {
-  position: relative;
-  width: min(100%, var(--desktop-panel-max-width));
-  aspect-ratio: 1440 / 2048;
-}
-
-.desktopLogo {
-  position: absolute;
-  left: 5.2%;
-  top: 5.8%;
-  z-index: 3;
-  width: clamp(106px, 22%, 146px);
-  pointer-events: none;
-}
-
-.desktopLogoMask {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 30%;
-  height: 15%;
+  width: min(100%, 520px);
+  border: 1px solid #e2e8f0;
+  border-radius: 24px;
   background: #ffffff;
-  z-index: 2;
-  pointer-events: none;
+  box-shadow: 0 20px 56px rgba(15, 23, 42, 0.08);
+  padding: 44px 36px 34px;
 }
 
-.desktopWalletLabel {
-  position: absolute;
-  z-index: 4;
+.title {
+  margin: 0;
+  color: #0f172a;
+  font-size: clamp(28px, 3.2vw, 40px);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  margin: 14px 0 0;
+  color: #475569;
+  font-size: clamp(14px, 1.2vw, 16px);
+  line-height: 1.5;
+}
+
+.primaryButton {
+  margin-top: 26px;
+  width: 100%;
+  height: 52px;
+  border: 0;
+  border-radius: 14px;
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.primaryButton:hover {
+  background: #1e293b;
+}
+
+.divider {
+  margin: 22px 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #e2e8f0;
+}
+
+.walletList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.walletButton {
+  width: 100%;
+  height: 48px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 14px;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.walletButton:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.walletButton:focus-visible,
+.primaryButton:focus-visible,
+.signupAction:focus-visible {
+  outline: 2px solid #0f172a;
+  outline-offset: 2px;
+}
+
+.walletIconWrap {
   display: inline-flex;
   align-items: center;
-  height: 2.2%;
-  padding: 0 6px;
-  border-radius: 6px;
-  background: #ffffff;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.walletGlyph {
+  width: 18px;
+  height: 18px;
+}
+
+.signupText {
+  margin: 18px 0 0;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.signupAction {
+  border: 0;
+  padding: 0;
+  background: transparent;
   color: #0f172a;
-  font-size: clamp(10px, 1.02vw, 13px);
-  font-weight: 600;
-  line-height: 1;
-  pointer-events: none;
-}
-
-.brandLogo {
-  width: 100%;
-  height: auto;
-}
-
-.panelImage {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .rightColumn {
@@ -129,55 +221,11 @@
   flex-shrink: 0;
 }
 
-.mobileWrap {
-  display: none;
-}
-
-.mobilePanel {
-  position: relative;
-  width: min(100vw, 430px);
-  aspect-ratio: 860 / 2184;
-}
-
-.mobileLogo {
-  position: absolute;
-  left: 6%;
-  top: 5.4%;
-  z-index: 3;
-  width: clamp(86px, 26%, 122px);
-  pointer-events: none;
-}
-
-.mobileLogoMask {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 43%;
-  height: 14%;
-  background: #ffffff;
-  z-index: 2;
-  pointer-events: none;
-}
-
-.mobileWalletLabel {
-  position: absolute;
-  z-index: 4;
-  display: inline-flex;
-  align-items: center;
-  height: 2.1%;
-  padding: 0 5px;
-  border-radius: 5px;
-  background: #ffffff;
-  color: #0f172a;
-  font-size: clamp(8px, 2.4vw, 11px);
-  font-weight: 600;
-  line-height: 1;
-  pointer-events: none;
-}
-
 @media (max-width: 1024px) {
-  .container {
-    min-height: auto;
+  .pageLogo {
+    left: 10px;
+    top: 8px;
+    width: clamp(94px, 22vw, 132px);
   }
 
   .desktopGrid {
@@ -186,12 +234,14 @@
   }
 
   .leftColumn {
-    padding: 24px 16px;
     min-height: auto;
+    padding: 82px 16px 20px;
   }
 
   .leftPanel {
     width: min(100%, 560px);
+    padding: 30px 22px 24px;
+    border-radius: 18px;
   }
 
   .rightColumn {
@@ -215,27 +265,27 @@
 }
 
 @media (max-width: 767px) {
-  .desktopGrid {
-    display: none;
+  .leftColumn {
+    padding: 74px 14px 18px;
   }
 
-  .mobileWrap {
-    display: flex;
-    justify-content: center;
-    width: 100%;
-    background: #ffffff;
+  .leftPanel {
+    border-radius: 16px;
   }
 
-  .mobilePanel::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 4.8%;
-    background: #ffffff;
-    z-index: 2;
-    pointer-events: none;
+  .title {
+    font-size: clamp(24px, 8vw, 32px);
   }
 
+  .primaryButton {
+    height: 50px;
+  }
+
+  .walletButton {
+    height: 46px;
+  }
+
+  .rightColumn {
+    min-height: 380px;
+  }
 }

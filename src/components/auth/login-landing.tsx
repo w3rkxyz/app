@@ -7,46 +7,51 @@ import { ConnectKitButton } from "connectkit";
 import { useAccount as useWagmiAccount, useConnect, useDisconnect } from "wagmi";
 import { toast } from "react-hot-toast";
 import { displayLoginModal } from "@/redux/app";
-import loginDesktopLeft from "../../../attached_assets/login-desktop-left.png";
 import profilePreviewImage from "../../../attached_assets/profile.preview.image.png.png";
-import loginMobile from "../../../attached_assets/login-mobile.png";
 import styles from "./login-landing.module.css";
 
 type WalletOption = "metamask" | "rabby" | "rainbow" | "other";
+type DirectWalletOption = Exclude<WalletOption, "other">;
 
-type HitArea = {
-  left: string;
-  top: string;
-  width: string;
-  height: string;
+const walletButtons: Array<{ id: DirectWalletOption; label: string }> = [
+  { id: "metamask", label: "MetaMask" },
+  { id: "rabby", label: "Rabby" },
+  { id: "rainbow", label: "Rainbow Wallet" },
+];
+
+const getWalletLabel = (wallet: DirectWalletOption) => {
+  if (wallet === "metamask") return "MetaMask";
+  if (wallet === "rabby") return "Rabby Wallet";
+  return "Rainbow Wallet";
 };
 
-const DESKTOP_FAMILY_AREA: HitArea = {
-  left: "18.194%",
-  top: "28.516%",
-  width: "63.611%",
-  height: "5.469%",
-};
+const WalletIcon = ({ wallet }: { wallet: DirectWalletOption }) => {
+  if (wallet === "metamask") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className={styles.walletGlyph}>
+        <path d="M12 2l-5 8 2 10h6l2-10-5-8z" fill="#F6851B" />
+        <path d="M7 10l5-2 5 2-5 10-5-10z" fill="#E2761B" />
+      </svg>
+    );
+  }
 
-const DESKTOP_WALLET_AREAS: Record<WalletOption, HitArea> = {
-  metamask: { left: "18.194%", top: "40.625%", width: "63.611%", height: "6.201%" },
-  rabby: { left: "18.194%", top: "48.438%", width: "63.611%", height: "6.201%" },
-  rainbow: { left: "18.194%", top: "56.250%", width: "63.611%", height: "6.201%" },
-  other: { left: "18.194%", top: "64.063%", width: "63.611%", height: "6.641%" },
-};
+  if (wallet === "rabby") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className={styles.walletGlyph}>
+        <path d="M12 2l8 4.5v11L12 22l-8-4.5v-11L12 2z" fill="#7088FF" />
+        <path d="M12 6l4 2.2v5.6L12 16l-4-2.2V8.2L12 6z" fill="#FFFFFF" opacity="0.9" />
+      </svg>
+    );
+  }
 
-const MOBILE_FAMILY_AREA: HitArea = {
-  left: "13.023%",
-  top: "23.810%",
-  width: "73.953%",
-  height: "5.128%",
-};
-
-const MOBILE_WALLET_AREAS: Record<WalletOption, HitArea> = {
-  metamask: { left: "13.023%", top: "35.165%", width: "73.953%", height: "5.815%" },
-  rabby: { left: "13.023%", top: "42.491%", width: "73.953%", height: "5.815%" },
-  rainbow: { left: "13.023%", top: "49.817%", width: "73.953%", height: "5.815%" },
-  other: { left: "13.023%", top: "57.143%", width: "73.953%", height: "6.177%" },
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={styles.walletGlyph}>
+      <path d="M4 13a8 8 0 0116 0H4z" fill="#FF4B4B" />
+      <path d="M5 16a7 7 0 0114 0H5z" fill="#FF9F1A" />
+      <path d="M6 19a6 6 0 0112 0H6z" fill="#34C759" />
+      <circle cx="12" cy="16.5" r="1.5" fill="#3B82F6" />
+    </svg>
+  );
 };
 
 const LoginLanding = () => {
@@ -108,19 +113,11 @@ const LoginLanding = () => {
 
       const targets = connectorCandidates[wallet];
       if (!targets.length) {
-        const walletLabel =
-          wallet === "metamask"
-            ? "MetaMask"
-            : wallet === "rabby"
-              ? "Rabby Wallet"
-              : wallet === "rainbow"
-                ? "Rainbow Wallet"
-                : "Wallet";
-        toast.error(`${walletLabel} not available`);
+        toast.error(`${getWalletLabel(wallet)} not available`);
         return;
       }
 
-      const walletKeywords: Record<Exclude<WalletOption, "other">, string[]> = {
+      const walletKeywords: Record<DirectWalletOption, string[]> = {
         metamask: ["metamask", "meta mask"],
         rabby: ["rabby"],
         rainbow: ["rainbow"],
@@ -158,15 +155,7 @@ const LoginLanding = () => {
         }
       }
 
-      const walletLabel =
-        wallet === "metamask"
-          ? "MetaMask"
-          : wallet === "rabby"
-            ? "Rabby Wallet"
-            : wallet === "rainbow"
-              ? "Rainbow Wallet"
-              : "Wallet";
-      toast.error(`Unable to connect ${walletLabel}`);
+      toast.error(`Unable to connect ${getWalletLabel(wallet)}`);
     },
     [
       activeConnector,
@@ -178,48 +167,6 @@ const LoginLanding = () => {
     ]
   );
 
-  const renderHitButton = (
-    label: string,
-    area: HitArea,
-    onClick: () => void,
-    radius = "14px"
-  ) => (
-    <button
-      key={`${label}-${area.top}-${area.left}`}
-      type="button"
-      aria-label={label}
-      onClick={onClick}
-      className="absolute bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-[#8D73CF] focus-visible:ring-offset-2"
-      style={{
-        left: area.left,
-        top: area.top,
-        width: area.width,
-        height: area.height,
-        borderRadius: radius,
-      }}
-    />
-  );
-
-  const renderWalletLabel = (
-    label: string,
-    area: HitArea,
-    className: string,
-    leftOffset: string,
-    topOffset: string
-  ) => (
-    <div
-      key={`${label}-${area.top}-${area.left}`}
-      aria-hidden="true"
-      className={className}
-      style={{
-        left: `calc(${area.left} + ${leftOffset})`,
-        top: `calc(${area.top} + ${topOffset})`,
-      }}
-    >
-      {label}
-    </div>
-  );
-
   return (
     <ConnectKitButton.Custom>
       {({ show }) => {
@@ -228,63 +175,62 @@ const LoginLanding = () => {
           show();
         };
 
-        const onWalletClick = (wallet: WalletOption) => {
+        const onWalletClick = (wallet: DirectWalletOption) => {
           void connectSpecificWallet(wallet, show);
         };
 
         return (
           <section className={styles.page}>
+            <div className={styles.pageLogo} aria-hidden="true">
+              <Image
+                src="/images/brand-logo.svg"
+                alt=""
+                width={214}
+                height={78}
+                className={styles.brandLogo}
+                priority
+              />
+            </div>
+
             <div className={styles.container}>
               <div className={styles.desktopGrid}>
                 <div className={styles.leftColumn}>
                   <div className={styles.leftPanel}>
-                    <div className={styles.desktopLogo} aria-hidden="true">
-                      <Image
-                        src="/images/brand-logo.svg"
-                        alt=""
-                        width={214}
-                        height={78}
-                        className={styles.brandLogo}
-                        priority
-                      />
-                    </div>
-                    <Image
-                      src={loginDesktopLeft}
-                      alt="Login wallet panel"
-                      fill
-                      priority
-                      className={styles.panelImage}
-                      sizes="(max-width: 767px) 0px, (max-width: 1024px) 540px, 600px"
-                    />
-                    <div className={styles.desktopLogoMask} aria-hidden="true" />
-                    {renderWalletLabel(
-                      "Rabby Wallet",
-                      DESKTOP_WALLET_AREAS.rabby,
-                      styles.desktopWalletLabel,
-                      "12.8%",
-                      "1.8%"
-                    )}
-                    {renderWalletLabel(
-                      "Rainbow Wallet",
-                      DESKTOP_WALLET_AREAS.rainbow,
-                      styles.desktopWalletLabel,
-                      "12.8%",
-                      "1.8%"
-                    )}
+                    <h1 className={styles.title}>Sign in with Wallet</h1>
+                    <p className={styles.subtitle}>
+                      Continue with a wallet to access your on-chain profile.
+                    </p>
 
-                    {renderHitButton("Continue with Family", DESKTOP_FAMILY_AREA, onFamilyClick, "24px")}
-                    {renderHitButton("Connect MetaMask", DESKTOP_WALLET_AREAS.metamask, () =>
-                      onWalletClick("metamask")
-                    )}
-                    {renderHitButton("Connect Rabby Wallet", DESKTOP_WALLET_AREAS.rabby, () =>
-                      onWalletClick("rabby")
-                    )}
-                    {renderHitButton("Connect Rainbow Wallet", DESKTOP_WALLET_AREAS.rainbow, () =>
-                      onWalletClick("rainbow")
-                    )}
-                    {renderHitButton("Connect Other Wallet", DESKTOP_WALLET_AREAS.other, () =>
-                      onWalletClick("other")
-                    )}
+                    <button type="button" className={styles.primaryButton} onClick={onFamilyClick}>
+                      Continue with Family
+                    </button>
+
+                    <div className={styles.divider}>
+                      <span>Or select a wallet from the list below</span>
+                    </div>
+
+                    <div className={styles.walletList}>
+                      {walletButtons.map(wallet => (
+                        <button
+                          key={wallet.id}
+                          type="button"
+                          className={styles.walletButton}
+                          onClick={() => onWalletClick(wallet.id)}
+                        >
+                          <span className={styles.walletIconWrap}>
+                            <WalletIcon wallet={wallet.id} />
+                          </span>
+                          <span>{wallet.label}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <p className={styles.signupText}>
+                      Don&apos;t have an account?{" "}
+                      <button type="button" className={styles.signupAction} onClick={onFamilyClick}>
+                        Sign up
+                      </button>
+                    </p>
                   </div>
                 </div>
 
@@ -298,58 +244,6 @@ const LoginLanding = () => {
                       sizes="(max-width: 767px) 0px, (max-width: 1024px) 760px, 1100px"
                     />
                   </div>
-                </div>
-              </div>
-
-              <div className={styles.mobileWrap}>
-                <div className={styles.mobilePanel}>
-                  <div className={styles.mobileLogo} aria-hidden="true">
-                    <Image
-                      src="/images/brand-logo.svg"
-                      alt=""
-                      width={214}
-                      height={78}
-                      className={styles.brandLogo}
-                      priority
-                    />
-                  </div>
-                  <Image
-                    src={loginMobile}
-                    alt="Mobile login wallet panel"
-                    fill
-                    priority
-                    className={styles.panelImage}
-                    sizes="100vw"
-                  />
-                  <div className={styles.mobileLogoMask} aria-hidden="true" />
-                  {renderWalletLabel(
-                    "Rabby Wallet",
-                    MOBILE_WALLET_AREAS.rabby,
-                    styles.mobileWalletLabel,
-                    "12.8%",
-                    "1.7%"
-                  )}
-                  {renderWalletLabel(
-                    "Rainbow Wallet",
-                    MOBILE_WALLET_AREAS.rainbow,
-                    styles.mobileWalletLabel,
-                    "12.8%",
-                    "1.7%"
-                  )}
-
-                  {renderHitButton("Continue with Family", MOBILE_FAMILY_AREA, onFamilyClick, "24px")}
-                  {renderHitButton("Connect MetaMask", MOBILE_WALLET_AREAS.metamask, () =>
-                    onWalletClick("metamask")
-                  )}
-                  {renderHitButton("Connect Rabby Wallet", MOBILE_WALLET_AREAS.rabby, () =>
-                    onWalletClick("rabby")
-                  )}
-                  {renderHitButton("Connect Rainbow Wallet", MOBILE_WALLET_AREAS.rainbow, () =>
-                    onWalletClick("rainbow")
-                  )}
-                  {renderHitButton("Connect Other Wallet", MOBILE_WALLET_AREAS.other, () =>
-                    onWalletClick("other")
-                  )}
                 </div>
               </div>
             </div>
