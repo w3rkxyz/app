@@ -14,7 +14,7 @@ import { useWalletClient } from "wagmi";
 import CreatePostModal from "@/views/profile/CreatePostModal";
 import ProfilePostCard from "@/components/Cards/ProfilePostCard";
 import getLensAccountData from "@/utils/getLensProfile";
-import { client } from "@/client";
+import { client, getLensClient } from "@/client";
 
 const LENS_TESTNET_CHAIN_ID = 37111;
 const FOLLOW_CONFIRM_TIMEOUT_MS = 120000;
@@ -534,6 +534,25 @@ export default function Profile() {
     console.info(`[follow] ${event}`, data || {});
   }, []);
 
+  const resolveActiveSessionClient = useCallback(async () => {
+    if (sessionClient) {
+      return sessionClient;
+    }
+
+    try {
+      const resumedClient = await getLensClient();
+      if ((resumedClient as any)?.isSessionClient?.()) {
+        return resumedClient as any;
+      }
+    } catch (error) {
+      logFollow("failed to resume session client", {
+        error: String((error as any)?.message || error),
+      }, "error");
+    }
+
+    return null;
+  }, [logFollow, sessionClient]);
+
   const handleOpenJobModal = () => {
     if (isOwnProfile) {
       setIsJobModalOpen(true);
@@ -622,13 +641,14 @@ export default function Profile() {
     return true;
   }, [logFollow, walletClient]);
 
-  const getSessionObserverAddress = useCallback(async () => {
-    if (!sessionClient) {
+  const getSessionObserverAddress = useCallback(async (activeSessionClient?: any) => {
+    const resolvedSessionClient = activeSessionClient || await resolveActiveSessionClient();
+    if (!resolvedSessionClient) {
       return "";
     }
 
     try {
-      const authenticatedUser = await sessionClient.getAuthenticatedUser().unwrapOr(null);
+      const authenticatedUser = await resolvedSessionClient.getAuthenticatedUser().unwrapOr(null);
       return authenticatedUser?.address || "";
     } catch (error) {
       logFollow("failed to resolve session observer address", {
@@ -636,7 +656,7 @@ export default function Profile() {
       }, "error");
       return "";
     }
-  }, [logFollow, sessionClient]);
+  }, [logFollow, resolveActiveSessionClient]);
 
   useEffect(() => {
     let active = true;
@@ -892,7 +912,8 @@ export default function Profile() {
       context,
     } = params;
 
-    if (!sessionClient) {
+    const activeSessionClient = await resolveActiveSessionClient();
+    if (!activeSessionClient) {
       toast.error("Please connect your wallet and sign in to Lens.");
       return { ok: false, nextFollowing: !wasFollowing, effectiveObserverAddress: observerAddress };
     }
@@ -902,7 +923,7 @@ export default function Profile() {
       return { ok: false, nextFollowing: !wasFollowing, effectiveObserverAddress: observerAddress };
     }
 
-    const sessionObserverAddress = await getSessionObserverAddress();
+    const sessionObserverAddress = await getSessionObserverAddress(activeSessionClient);
     const effectiveObserverAddress = sessionObserverAddress || observerAddress;
     const canFollowNow = Boolean(effectiveObserverAddress)
       && Boolean(targetAddress)
@@ -962,8 +983,8 @@ export default function Profile() {
 
     try {
       const operation = wasFollowing
-        ? await unfollow(sessionClient, { account: evmAddress(targetAddress) })
-        : await follow(sessionClient, { account: evmAddress(targetAddress) });
+        ? await unfollow(activeSessionClient, { account: evmAddress(targetAddress) })
+        : await follow(activeSessionClient, { account: evmAddress(targetAddress) });
 
       if (operation.isErr()) {
         toast.error(operation.error.message || "Failed to update follow status.");
@@ -1038,8 +1059,8 @@ export default function Profile() {
       const nextFollowing = !wasFollowing;
       const resolution = await resolveLensOperationToTxHashOrReceipt({
         identifier: txIdentifier,
-        sessionClient,
-        statusClient: sessionClient ?? client,
+        sessionClient: activeSessionClient,
+        statusClient: activeSessionClient,
         observerAddress: effectiveObserverAddress,
         profileAddress: targetAddress,
         expectedFollowing: nextFollowing,
@@ -1075,8 +1096,8 @@ export default function Profile() {
     lensBackendEndpoint,
     logFollow,
     observerAddress,
-    sessionClient,
     sessionProfileAddress,
+    resolveActiveSessionClient,
     walletClient,
   ]);
 
@@ -1091,7 +1112,8 @@ export default function Profile() {
     setConnectionsError("");
 
     try {
-      const queryClient = sessionClient ?? client;
+      const activeSessionClient = await resolveActiveSessionClient();
+      const queryClient = activeSessionClient ?? client;
       const result = tab === "followers"
         ? await fetchFollowers(queryClient, { account: evmAddress(profileAddress) })
         : await fetchFollowing(queryClient, { account: evmAddress(profileAddress) });
@@ -1132,7 +1154,7 @@ export default function Profile() {
     } finally {
       setConnectionsLoading(false);
     }
-  }, [logFollow, observerAddress, profileAddress, sessionClient]);
+  }, [logFollow, observerAddress, profileAddress, resolveActiveSessionClient]);
 
   useEffect(() => {
     if (!isConnectionsModalOpen) {
@@ -1207,11 +1229,6 @@ export default function Profile() {
   };
 
   const handleConnectionFollowToggle = async (account: ConnectionAccount) => {
-    if (!sessionClient) {
-      toast.error("Please connect your wallet and sign in to Lens.");
-      return;
-    }
-
     setConnectionFollowSubmitting((prev) => ({ ...prev, [account.address]: true }));
     const wasFollowing = account.isFollowedByMe;
 
@@ -1269,7 +1286,7 @@ export default function Profile() {
     ? "bg-white text-[#212121] border border-[#212121] hover:bg-[#F7F7F7]"
     : "bg-[#212121] text-white hover:bg-[#333]";
   const connectionsModalTitle = connectionsTab === "followers" ? "Followers" : "Following";
-  const showConnectionFollowButtons = Boolean(sessionClient);
+  const showConnectionFollowButtons = Boolean(observerAddress);
 
   if (!normalizedHandle) {
     return (
