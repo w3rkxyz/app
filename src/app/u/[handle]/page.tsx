@@ -90,24 +90,39 @@ function parseProfilePost(post: any): ProfilePost | null {
 }
 
 function getFollowCount(account: any, key: "followers" | "following") {
-  return (
-    account?.graphFollowStats?.[key] ??
-    account?.graphsFollowStats?.[key] ??
-    account?.stats?.[key] ??
-    0
-  );
+  const value = account?.graphFollowStats?.[key]
+    ?? account?.graphsFollowStats?.[key]
+    ?? account?.stats?.graphFollowStats?.[key]
+    ?? account?.stats?.graphsFollowStats?.[key]
+    ?? account?.stats?.[key]
+    ?? 0;
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function isFollowingFromStatus(value: any) {
+  const state = getFollowStatusState(value);
+  return state.optimistic || state.onChain;
+}
+
+function isFollowingOnChainFromStatus(value: any) {
+  return getFollowStatusState(value).onChain;
+}
+
+function getFollowStatusState(value: any) {
   if (typeof value === "boolean") {
-    return value;
+    return { optimistic: value, onChain: value };
   }
 
   if (value && typeof value === "object") {
-    return Boolean(value.optimistic || value.onChain);
+    return {
+      optimistic: Boolean(value.optimistic),
+      onChain: Boolean(value.onChain),
+    };
   }
 
-  return false;
+  return { optimistic: false, onChain: false };
 }
 
 function normalizeHandleValue(value: string | null | undefined) {
@@ -138,6 +153,60 @@ function isOperationStatusUnsupportedError(errorMessages: string[]) {
       || normalized.includes("unknown argument")
       || normalized.includes("unknown type \"operationstatus\"");
   });
+}
+
+async function fetchAccountFollowCountsFromNetwork(params: {
+  endpoint: string;
+  accountAddress: string;
+  onLog?: (event: string, data?: Record<string, unknown>) => void;
+}) {
+  const { endpoint, accountAddress, onLog } = params;
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        query: "query AccountFollowCounts($account: EvmAddress!) { accountStats(request: { account: $account }) { graphFollowStats { followers following } } }",
+        variables: { account: accountAddress },
+      }),
+    });
+
+    const payload = await response.json().catch(() => null);
+    const errorMessages = Array.isArray(payload?.errors)
+      ? payload.errors.map((error: any) => String(error?.message || "unknown GraphQL error"))
+      : [];
+
+    if (errorMessages.length > 0) {
+      onLog?.("account follow counts network query returned errors", {
+        endpoint,
+        accountAddress,
+        errors: errorMessages,
+      });
+      return null;
+    }
+
+    const followers = Number(payload?.data?.accountStats?.graphFollowStats?.followers);
+    const following = Number(payload?.data?.accountStats?.graphFollowStats?.following);
+    if (!Number.isFinite(followers) || !Number.isFinite(following)) {
+      onLog?.("account follow counts network query returned non-numeric values", {
+        endpoint,
+        accountAddress,
+        followers: payload?.data?.accountStats?.graphFollowStats?.followers ?? null,
+        following: payload?.data?.accountStats?.graphFollowStats?.following ?? null,
+      });
+      return null;
+    }
+
+    return { followers, following };
+  } catch (error) {
+    onLog?.("account follow counts network query failed", {
+      endpoint,
+      accountAddress,
+      error: String((error as any)?.message || error),
+    });
+    return null;
+  }
 }
 
 type LensOperationResolution = {
@@ -309,15 +378,17 @@ async function resolveLensOperationToTxHashOrReceipt(params: {
     }
 
     const currentStatus = statusResult.value?.[0]?.isFollowing;
-    const normalized = isFollowingFromStatus(currentStatus);
+    const normalizedOnChain = isFollowingOnChainFromStatus(currentStatus);
+    const normalizedOptimistic = isFollowingFromStatus(currentStatus);
     onLog?.("follow-status fallback poll result", {
       identifier,
-      currentStatus: typeof currentStatus === "object" ? currentStatus?.__typename || "object" : currentStatus,
-      normalized,
+      currentStatus,
+      normalizedOnChain,
+      normalizedOptimistic,
       expectedFollowing,
     });
 
-    if (normalized === expectedFollowing) {
+    if (normalizedOnChain === expectedFollowing) {
       return {
         status: "confirmed",
         source: "follow-status-fallback",
@@ -530,7 +601,7 @@ export default function Profile() {
 
     const initialFollowState = lensAccount?.operations?.isFollowedByMe;
     if (typeof initialFollowState !== "undefined") {
-      setIsFollowing(isFollowingFromStatus(initialFollowState));
+      setIsFollowing(isFollowingOnChainFromStatus(initialFollowState));
     }
   }, [canCheckFollowStatus, lensAccount?.operations?.isFollowedByMe]);
 
@@ -597,11 +668,18 @@ export default function Profile() {
 
     try {
       const queryClient = sessionClient ?? client;
-      const accountResult = await fetchAccount(queryClient, {
-        address: evmAddress(profileAddress),
-      });
+      const [accountResult, networkCounts] = await Promise.all([
+        fetchAccount(queryClient, {
+          address: evmAddress(profileAddress),
+        }),
+        fetchAccountFollowCountsFromNetwork({
+          endpoint: lensBackendEndpoint,
+          accountAddress: profileAddress,
+          onLog: (event, data) => logFollow(event, data),
+        }),
+      ]);
 
-      if (accountResult.isErr()) {
+      if (accountResult.isErr() && !networkCounts) {
         logFollow("failed to refresh account snapshot", {
           reason,
           profileAddress,
@@ -610,14 +688,12 @@ export default function Profile() {
         return;
       }
 
-      const freshAccount = accountResult.value;
-      if (!freshAccount) {
-        logFollow("account snapshot empty", { reason, profileAddress }, "warn");
-        return;
-      }
+      const freshAccount = accountResult.isOk() ? accountResult.value : null;
+      const fallbackFollowers = getFollowCount(freshAccount, "followers");
+      const fallbackFollowing = getFollowCount(freshAccount, "following");
+      const freshFollowers = networkCounts?.followers ?? fallbackFollowers;
+      const freshFollowing = networkCounts?.following ?? fallbackFollowing;
 
-      const freshFollowers = getFollowCount(freshAccount, "followers");
-      const freshFollowing = getFollowCount(freshAccount, "following");
       setFollowersCount(freshFollowers);
       setFollowingCount(freshFollowing);
 
@@ -632,6 +708,7 @@ export default function Profile() {
         profileAddress,
         followers: freshFollowers,
         following: freshFollowing,
+        source: networkCounts ? "network-accountStats" : "account-fallback",
         canFollowTypename: freshCanFollowTypename || null,
       });
     } catch (error) {
@@ -641,7 +718,7 @@ export default function Profile() {
         error: String((error as any)?.message || error),
       }, "error");
     }
-  }, [logFollow, profileAddress, sessionClient]);
+  }, [lensBackendEndpoint, logFollow, profileAddress, sessionClient]);
 
   const refreshFollowStatus = useCallback(async (options?: { observerAddressOverride?: string; reason?: string }) => {
     const effectiveObserverAddress = options?.observerAddressOverride || observerAddress;
@@ -686,13 +763,15 @@ export default function Profile() {
       }
 
       const currentStatus = result.value?.[0]?.isFollowing;
-      setIsFollowing(isFollowingFromStatus(currentStatus));
+      const statusState = getFollowStatusState(currentStatus);
+      setIsFollowing(statusState.onChain);
       logFollow("refresh status response", {
         reason: options?.reason || "follow-status-refresh",
         observerAddress: effectiveObserverAddress,
         profileAddress,
         currentStatus,
-        normalized: isFollowingFromStatus(currentStatus),
+        normalizedOnChain: statusState.onChain,
+        normalizedOptimistic: statusState.optimistic,
       });
     } catch (error) {
       logFollow("failed to fetch follow status", {
