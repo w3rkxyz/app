@@ -65,6 +65,22 @@
   pointer-events: none;
 }
 
+.desktopWalletLabel {
+  position: absolute;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  height: 2.2%;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: clamp(10px, 1.02vw, 13px);
+  font-weight: 600;
+  line-height: 1;
+  pointer-events: none;
+}
+
 .brandLogo {
   width: 100%;
   height: auto;
@@ -140,6 +156,22 @@
   height: 14%;
   background: #ffffff;
   z-index: 2;
+  pointer-events: none;
+}
+
+.mobileWalletLabel {
+  position: absolute;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  height: 2.1%;
+  padding: 0 5px;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: clamp(8px, 2.4vw, 11px);
+  font-weight: 600;
+  line-height: 1;
   pointer-events: none;
 }
 

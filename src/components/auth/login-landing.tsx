@@ -200,6 +200,26 @@ const LoginLanding = () => {
     />
   );
 
+  const renderWalletLabel = (
+    label: string,
+    area: HitArea,
+    className: string,
+    leftOffset: string,
+    topOffset: string
+  ) => (
+    <div
+      key={`${label}-${area.top}-${area.left}`}
+      aria-hidden="true"
+      className={className}
+      style={{
+        left: `calc(${area.left} + ${leftOffset})`,
+        top: `calc(${area.top} + ${topOffset})`,
+      }}
+    >
+      {label}
+    </div>
+  );
+
   return (
     <ConnectKitButton.Custom>
       {({ show }) => {
@@ -237,6 +257,20 @@ const LoginLanding = () => {
                       sizes="(max-width: 767px) 0px, (max-width: 1024px) 540px, 600px"
                     />
                     <div className={styles.desktopLogoMask} aria-hidden="true" />
+                    {renderWalletLabel(
+                      "Rabby Wallet",
+                      DESKTOP_WALLET_AREAS.rabby,
+                      styles.desktopWalletLabel,
+                      "12.8%",
+                      "1.8%"
+                    )}
+                    {renderWalletLabel(
+                      "Rainbow Wallet",
+                      DESKTOP_WALLET_AREAS.rainbow,
+                      styles.desktopWalletLabel,
+                      "12.8%",
+                      "1.8%"
+                    )}
 
                     {renderHitButton("Continue with Family", DESKTOP_FAMILY_AREA, onFamilyClick, "24px")}
                     {renderHitButton("Connect MetaMask", DESKTOP_WALLET_AREAS.metamask, () =>
@@ -288,6 +322,20 @@ const LoginLanding = () => {
                     sizes="100vw"
                   />
                   <div className={styles.mobileLogoMask} aria-hidden="true" />
+                  {renderWalletLabel(
+                    "Rabby Wallet",
+                    MOBILE_WALLET_AREAS.rabby,
+                    styles.mobileWalletLabel,
+                    "12.8%",
+                    "1.7%"
+                  )}
+                  {renderWalletLabel(
+                    "Rainbow Wallet",
+                    MOBILE_WALLET_AREAS.rainbow,
+                    styles.mobileWalletLabel,
+                    "12.8%",
+                    "1.7%"
+                  )}
 
                   {renderHitButton("Continue with Family", MOBILE_FAMILY_AREA, onFamilyClick, "24px")}
                   {renderHitButton("Connect MetaMask", MOBILE_WALLET_AREAS.metamask, () =>
