@@ -1639,9 +1639,6 @@ export default function Profile() {
                               <p className="text-[13px] text-[#6C6C6C] truncate">{account.handle}</p>
                             </>
                           )}
-                          {account.bio ? (
-                            <p className="mt-[4px] text-[13px] text-[#6C6C6C]">{account.bio}</p>
-                          ) : null}
                           {!account.profilePath ? (
                             <p className="mt-[6px] text-[12px] text-[#A1A1AA]">No handle available</p>
                           ) : null}
