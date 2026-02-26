@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useParams, useSearchParams } from "next/navigation";
 import { useSelector } from "react-redux";
 import { evmAddress, useAccount as useLensAccount, useSessionClient } from "@lens-protocol/react";
-import { fetchAccount, fetchFollowStatus, fetchPosts, follow, unfollow } from "@lens-protocol/client/actions";
+import { fetchAccount, fetchFollowers, fetchFollowStatus, fetchFollowing, fetchPosts, follow, unfollow } from "@lens-protocol/client/actions";
 import { handleOperationWith } from "@lens-protocol/client/viem";
 import { PlusIcon } from "lucide-react";
 import toast from "react-hot-toast";
@@ -20,6 +20,9 @@ const LENS_TESTNET_CHAIN_ID = 37111;
 const FOLLOW_CONFIRM_TIMEOUT_MS = 120000;
 const FOLLOW_POLL_INTERVAL_MS = 1500;
 const DEFAULT_LENS_GRAPHQL_ENDPOINT = "https://api.testnet.lens.xyz/graphql";
+const DEFAULT_PROFILE_AVATAR = "https://static.hey.xyz/images/default.png";
+
+type ConnectionsTab = "followers" | "following";
 
 function getDomain(url: string) {
   return url.replace(/https?:\/\//, "").replace(/\/$/, "");
@@ -52,6 +55,56 @@ type ProfilePost = {
   tags: string[];
   paymentAmount: string;
 };
+
+type ConnectionAccount = {
+  address: string;
+  localName: string;
+  displayName: string;
+  handle: string;
+  profilePath: string;
+  picture: string;
+  bio: string;
+  isFollowedByMe: boolean;
+  canFollowByProtocol: boolean;
+  isSelf: boolean;
+};
+
+function shortenAddress(value: string | null | undefined) {
+  if (!value) return "Unknown";
+  if (value.length <= 10) return value;
+  return `${value.slice(0, 6)}...${value.slice(-4)}`;
+}
+
+function toConnectionAccount(account: any, observerAddress: string) {
+  if (!account?.address) return null;
+
+  const localName = account?.username?.localName || "";
+  const displayName = account?.metadata?.name || localName || shortenAddress(account?.address);
+  const handle = localName ? `@${localName}` : shortenAddress(account?.address);
+  const profilePath = localName ? `/u/${encodeURIComponent(localName)}` : "";
+  const picture = account?.metadata?.picture || DEFAULT_PROFILE_AVATAR;
+  const bio = account?.metadata?.bio || "";
+  const isSelf = Boolean(observerAddress)
+    && observerAddress.toLowerCase() === String(account.address).toLowerCase();
+  const isFollowedByMe = Boolean(account?.operations?.isFollowedByMe);
+  const canFollowTypename = account?.operations?.canFollow?.__typename;
+  const canFollowByProtocol = canFollowTypename
+    ? canFollowTypename !== "AccountFollowOperationValidationFailed"
+    : true;
+
+  return {
+    address: String(account.address),
+    localName,
+    displayName,
+    handle,
+    profilePath,
+    picture,
+    bio,
+    isFollowedByMe,
+    canFollowByProtocol,
+    isSelf,
+  } satisfies ConnectionAccount;
+}
 
 function parseProfilePost(post: any): ProfilePost | null {
   const attributes = readAttributeMap(post?.metadata);
@@ -214,6 +267,12 @@ type LensOperationResolution = {
   source: "tx-hash" | "operation-status" | "follow-status-fallback";
   txHash?: string;
   reason?: string;
+};
+
+type FollowToggleExecutionResult = {
+  ok: boolean;
+  nextFollowing: boolean;
+  effectiveObserverAddress: string;
 };
 
 async function pollLensOperationStatusEndpoint(params: {
@@ -429,6 +488,12 @@ export default function Profile() {
   const [canFollowByProtocol, setCanFollowByProtocol] = useState(true);
   const [sessionProfileAddress, setSessionProfileAddress] = useState("");
   const [followDebugLines, setFollowDebugLines] = useState<string[]>([]);
+  const [isConnectionsModalOpen, setIsConnectionsModalOpen] = useState(false);
+  const [connectionsTab, setConnectionsTab] = useState<ConnectionsTab>("followers");
+  const [connectionsLoading, setConnectionsLoading] = useState(false);
+  const [connectionsError, setConnectionsError] = useState("");
+  const [connectionAccounts, setConnectionAccounts] = useState<ConnectionAccount[]>([]);
+  const [connectionFollowSubmitting, setConnectionFollowSubmitting] = useState<Record<string, boolean>>({});
 
   const {
     data: lensAccount,
@@ -475,6 +540,15 @@ export default function Profile() {
     }
   };
   const handleCloseJobModal = () => setIsJobModalOpen(false);
+  const openConnectionsModal = useCallback((tab: ConnectionsTab) => {
+    setConnectionsTab(tab);
+    setConnectionsError("");
+    setIsConnectionsModalOpen(true);
+  }, []);
+  const closeConnectionsModal = useCallback(() => {
+    setIsConnectionsModalOpen(false);
+    setConnectionsError("");
+  }, []);
 
   const ensureLensTestnetChain = useCallback(async () => {
     if (!walletClient) {
@@ -592,6 +666,21 @@ export default function Profile() {
       active = false;
     };
   }, [logFollow, sessionClient]);
+
+  useEffect(() => {
+    if (!isConnectionsModalOpen) {
+      return undefined;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeConnectionsModal();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [closeConnectionsModal, isConnectionsModalOpen]);
 
   useEffect(() => {
     if (!canCheckFollowStatus) {
@@ -786,6 +875,272 @@ export default function Profile() {
     }
   }, [logFollow, observerAddress, profileAddress, refreshProfileSnapshot, sessionClient]);
 
+  const executeFollowToggle = useCallback(async (params: {
+    targetAddress: string;
+    targetHandleLabel: string;
+    targetUsername: string;
+    wasFollowing: boolean;
+    canFollowByProtocol: boolean;
+    context: "profile-page" | "connections-list";
+  }): Promise<FollowToggleExecutionResult> => {
+    const {
+      targetAddress,
+      targetHandleLabel,
+      targetUsername,
+      wasFollowing,
+      canFollowByProtocol: canFollowForTarget,
+      context,
+    } = params;
+
+    if (!sessionClient) {
+      toast.error("Please connect your wallet and sign in to Lens.");
+      return { ok: false, nextFollowing: !wasFollowing, effectiveObserverAddress: observerAddress };
+    }
+
+    if (!walletClient) {
+      toast.error("Wallet not ready. Reconnect and try again.");
+      return { ok: false, nextFollowing: !wasFollowing, effectiveObserverAddress: observerAddress };
+    }
+
+    const sessionObserverAddress = await getSessionObserverAddress();
+    const effectiveObserverAddress = sessionObserverAddress || observerAddress;
+    const canFollowNow = Boolean(effectiveObserverAddress)
+      && Boolean(targetAddress)
+      && effectiveObserverAddress.toLowerCase() !== targetAddress.toLowerCase();
+
+    const runtimeChainId = await walletClient.getChainId().catch(() => walletClient.chain?.id);
+    logFollow("click", {
+      context,
+      walletAddress: walletClient.account?.address,
+      chainId: runtimeChainId,
+      observerAddress: effectiveObserverAddress,
+      observerAddressFromSession: sessionObserverAddress || null,
+      observerAddressFromState: observerAddress || null,
+      targetProfileAddress: targetAddress,
+      targetHandle: targetHandleLabel,
+      targetUsername,
+      canFollowNow,
+      canFollowByProtocol: canFollowForTarget,
+      isFollowing: wasFollowing,
+      lensBackendEndpoint,
+    });
+
+    if (sessionObserverAddress && sessionObserverAddress !== sessionProfileAddress) {
+      setSessionProfileAddress(sessionObserverAddress);
+    }
+
+    if (!canFollowNow) {
+      toast.error("Please connect your wallet and sign in to Lens.");
+      return { ok: false, nextFollowing: !wasFollowing, effectiveObserverAddress };
+    }
+
+    if (!wasFollowing && !canFollowForTarget) {
+      toast.error("This profile cannot be followed right now.");
+      return { ok: false, nextFollowing: !wasFollowing, effectiveObserverAddress };
+    }
+
+    const isLensTestnet = await ensureLensTestnetChain();
+    if (!isLensTestnet) {
+      logFollow("wallet switch failed", {
+        context,
+        requiredChainId: LENS_TESTNET_CHAIN_ID,
+      }, "warn");
+      return { ok: false, nextFollowing: !wasFollowing, effectiveObserverAddress };
+    }
+
+    const chainBeforeSigning = await walletClient.getChainId().catch(() => walletClient.chain?.id);
+    logFollow("wallet chain before signing", {
+      context,
+      chainId: chainBeforeSigning,
+      requiredChainId: LENS_TESTNET_CHAIN_ID,
+    });
+
+    if (chainBeforeSigning !== LENS_TESTNET_CHAIN_ID) {
+      toast.error("Wallet is not on Lens Chain Testnet (37111).");
+      return { ok: false, nextFollowing: !wasFollowing, effectiveObserverAddress };
+    }
+
+    try {
+      const operation = wasFollowing
+        ? await unfollow(sessionClient, { account: evmAddress(targetAddress) })
+        : await follow(sessionClient, { account: evmAddress(targetAddress) });
+
+      if (operation.isErr()) {
+        toast.error(operation.error.message || "Failed to update follow status.");
+        logFollow("mutation response", {
+          context,
+          action: wasFollowing ? "unfollow" : "follow",
+          ok: false,
+          error: operation.error?.message || "unknown follow mutation error",
+        }, "error");
+        return { ok: false, nextFollowing: !wasFollowing, effectiveObserverAddress };
+      }
+
+      const operationValue: any = operation.value;
+      logFollow("mutation response", {
+        context,
+        action: wasFollowing ? "unfollow" : "follow",
+        ok: true,
+        typename: operationValue?.__typename || null,
+        hash: operationValue?.hash || null,
+        reason: operationValue?.reason || null,
+      });
+
+      if (
+        operationValue?.__typename === "SelfFundedTransactionRequest"
+        || operationValue?.__typename === "SponsoredTransactionRequest"
+      ) {
+        logFollow("mutation transaction request", {
+          context,
+          action: wasFollowing ? "unfollow" : "follow",
+          requestType: operationValue.__typename,
+          from: operationValue?.raw?.from || null,
+          to: operationValue?.raw?.to || null,
+          chainId: operationValue?.raw?.chainId || null,
+        });
+      }
+
+      const chainRightBeforeSigning = await walletClient.getChainId().catch(() => walletClient.chain?.id);
+      logFollow("wallet chain right before signing", {
+        context,
+        chainId: chainRightBeforeSigning,
+        requiredChainId: LENS_TESTNET_CHAIN_ID,
+      });
+
+      if (chainRightBeforeSigning !== LENS_TESTNET_CHAIN_ID) {
+        toast.error("Wallet switched away from Lens Chain Testnet (37111).");
+        return { ok: false, nextFollowing: !wasFollowing, effectiveObserverAddress };
+      }
+
+      const operationHandler = handleOperationWith(walletClient as any) as any;
+      const txResult = await operationHandler(operationValue);
+      logFollow("handleOperationWith return value", txResult.isErr()
+        ? {
+          context,
+          ok: false,
+          action: wasFollowing ? "unfollow" : "follow",
+          error: txResult.error?.message || "unknown transaction handler error",
+        }
+        : {
+          context,
+          ok: true,
+          action: wasFollowing ? "unfollow" : "follow",
+          identifier: String(txResult.value),
+          looksLikeTxHash: isTxHashIdentifier(String(txResult.value)),
+        });
+
+      if (txResult.isErr()) {
+        toast.error(txResult.error.message || "Failed to submit follow transaction.");
+        return { ok: false, nextFollowing: !wasFollowing, effectiveObserverAddress };
+      }
+
+      const txIdentifier = String(txResult.value);
+      const nextFollowing = !wasFollowing;
+      const resolution = await resolveLensOperationToTxHashOrReceipt({
+        identifier: txIdentifier,
+        sessionClient,
+        statusClient: sessionClient ?? client,
+        observerAddress: effectiveObserverAddress,
+        profileAddress: targetAddress,
+        expectedFollowing: nextFollowing,
+        endpoint: lensBackendEndpoint,
+        onLog: (event, data) => logFollow(event, { context, ...data }),
+      });
+
+      logFollow("operation resolution result", {
+        context,
+        action: wasFollowing ? "unfollow" : "follow",
+        identifier: txIdentifier,
+        resolution,
+      });
+
+      if (resolution.status !== "confirmed") {
+        toast.error(resolution.reason || "Follow operation was not confirmed.");
+        return { ok: false, nextFollowing, effectiveObserverAddress };
+      }
+
+      return { ok: true, nextFollowing, effectiveObserverAddress };
+    } catch (error: any) {
+      logFollow("follow toggle exception", {
+        context,
+        error: error?.message || String(error),
+        stack: error?.stack || null,
+      }, "error");
+      toast.error(error?.message || "Failed to update follow status.");
+      return { ok: false, nextFollowing: !wasFollowing, effectiveObserverAddress };
+    }
+  }, [
+    ensureLensTestnetChain,
+    getSessionObserverAddress,
+    lensBackendEndpoint,
+    logFollow,
+    observerAddress,
+    sessionClient,
+    sessionProfileAddress,
+    walletClient,
+  ]);
+
+  const loadConnections = useCallback(async (tab: ConnectionsTab, reason: string) => {
+    if (!profileAddress) {
+      setConnectionAccounts([]);
+      setConnectionsError("Unable to load this profile's connections.");
+      return;
+    }
+
+    setConnectionsLoading(true);
+    setConnectionsError("");
+
+    try {
+      const queryClient = sessionClient ?? client;
+      const result = tab === "followers"
+        ? await fetchFollowers(queryClient, { account: evmAddress(profileAddress) })
+        : await fetchFollowing(queryClient, { account: evmAddress(profileAddress) });
+
+      if (result.isErr()) {
+        setConnectionAccounts([]);
+        setConnectionsError(result.error?.message || `Failed to load ${tab}.`);
+        logFollow("connections load failed", {
+          reason,
+          tab,
+          profileAddress,
+          error: result.error?.message || "unknown connections query error",
+        }, "error");
+        return;
+      }
+
+      const accounts = (result.value?.items || [])
+        .map((item: any) => (tab === "followers" ? item?.follower : item?.following))
+        .map((entry: any) => toConnectionAccount(entry, observerAddress))
+        .filter((entry: ConnectionAccount | null): entry is ConnectionAccount => Boolean(entry));
+
+      setConnectionAccounts(accounts);
+      logFollow("connections loaded", {
+        reason,
+        tab,
+        profileAddress,
+        count: accounts.length,
+      });
+    } catch (error) {
+      setConnectionAccounts([]);
+      setConnectionsError(`Failed to load ${tab}.`);
+      logFollow("connections load exception", {
+        reason,
+        tab,
+        profileAddress,
+        error: String((error as any)?.message || error),
+      }, "error");
+    } finally {
+      setConnectionsLoading(false);
+    }
+  }, [logFollow, observerAddress, profileAddress, sessionClient]);
+
+  useEffect(() => {
+    if (!isConnectionsModalOpen) {
+      return;
+    }
+    void loadConnections(connectionsTab, "open-or-tab-change");
+  }, [connectionsTab, isConnectionsModalOpen, loadConnections]);
+
   useEffect(() => {
     void refreshFollowStatus();
   }, [refreshFollowStatus]);
@@ -797,7 +1152,7 @@ export default function Profile() {
   const displayName = accountData?.displayName || normalizedHandle || "User";
   const handle = accountData?.handle || (normalizedHandle ? `@${normalizedHandle}` : "@user");
   const coverPicture = accountData?.coverPicture || "";
-  const profilePicture = accountData?.picture || "https://static.hey.xyz/images/default.png";
+  const profilePicture = accountData?.picture || DEFAULT_PROFILE_AVATAR;
   const about = accountData?.bio || "";
   const jobTitle = accountData?.attributes?.["job title"] || "";
   const website = accountData?.attributes?.website || "";
@@ -820,182 +1175,73 @@ export default function Profile() {
   }, [lensAccount]);
 
   const handleFollowToggle = async () => {
+    setFollowSubmitting(true);
+    const wasFollowing = isFollowing;
+    let effectiveObserverAddress = observerAddress;
+
+    try {
+      const result = await executeFollowToggle({
+        targetAddress: profileAddress,
+        targetHandleLabel: handle,
+        targetUsername: viewedHandle,
+        wasFollowing,
+        canFollowByProtocol,
+        context: "profile-page",
+      });
+
+      effectiveObserverAddress = result.effectiveObserverAddress || observerAddress;
+      if (!result.ok) {
+        return;
+      }
+
+      setIsFollowing(result.nextFollowing);
+      setFollowersCount((count) => Math.max(0, count + (result.nextFollowing ? 1 : -1)));
+      toast.success(result.nextFollowing ? `You are now following ${handle}` : `You unfollowed ${handle}`);
+    } finally {
+      await refreshFollowStatus({
+        observerAddressOverride: effectiveObserverAddress,
+        reason: "post-follow-toggle",
+      });
+      setFollowSubmitting(false);
+    }
+  };
+
+  const handleConnectionFollowToggle = async (account: ConnectionAccount) => {
     if (!sessionClient) {
       toast.error("Please connect your wallet and sign in to Lens.");
       return;
     }
 
-    if (!walletClient) {
-      toast.error("Wallet not ready. Reconnect and try again.");
-      return;
-    }
-
-    const sessionObserverAddress = await getSessionObserverAddress();
-    const effectiveObserverAddress = sessionObserverAddress || observerAddress;
-    const canFollowNow = Boolean(effectiveObserverAddress)
-      && Boolean(profileAddress)
-      && effectiveObserverAddress.toLowerCase() !== profileAddress.toLowerCase();
-
-    const runtimeChainId = await walletClient.getChainId().catch(() => walletClient.chain?.id);
-    logFollow("click", {
-      walletAddress: walletClient.account?.address,
-      chainId: runtimeChainId,
-      observerAddress: effectiveObserverAddress,
-      observerAddressFromSession: sessionObserverAddress || null,
-      observerAddressFromState: observerAddress || null,
-      targetProfileAddress: profileAddress,
-      targetHandle: handle,
-      targetUsername: viewedHandle,
-      canFollowNow,
-      canFollowByProtocol,
-      isFollowing,
-      lensBackendEndpoint,
-    });
-
-    if (sessionObserverAddress && sessionObserverAddress !== sessionProfileAddress) {
-      setSessionProfileAddress(sessionObserverAddress);
-    }
-
-    if (!canFollowNow) {
-      toast.error("Please connect your wallet and sign in to Lens.");
-      return;
-    }
-
-    if (!isFollowing && !canFollowByProtocol) {
-      toast.error("This profile cannot be followed right now.");
-      return;
-    }
-
-    const isLensTestnet = await ensureLensTestnetChain();
-    if (!isLensTestnet) {
-      logFollow("wallet switch failed", {
-        requiredChainId: LENS_TESTNET_CHAIN_ID,
-      }, "warn");
-      return;
-    }
-
-    const chainBeforeSigning = await walletClient.getChainId().catch(() => walletClient.chain?.id);
-    logFollow("wallet chain before signing", {
-      chainId: chainBeforeSigning,
-      requiredChainId: LENS_TESTNET_CHAIN_ID,
-    });
-
-    if (chainBeforeSigning !== LENS_TESTNET_CHAIN_ID) {
-      toast.error("Wallet is not on Lens Chain Testnet (37111).");
-      return;
-    }
-
-    setFollowSubmitting(true);
-
-    const wasFollowing = isFollowing;
+    setConnectionFollowSubmitting((prev) => ({ ...prev, [account.address]: true }));
+    const wasFollowing = account.isFollowedByMe;
 
     try {
-      const operation = wasFollowing
-        ? await unfollow(sessionClient, { account: evmAddress(profileAddress) })
-        : await follow(sessionClient, { account: evmAddress(profileAddress) });
+      const result = await executeFollowToggle({
+        targetAddress: account.address,
+        targetHandleLabel: account.handle,
+        targetUsername: account.localName,
+        wasFollowing,
+        canFollowByProtocol: account.canFollowByProtocol,
+        context: "connections-list",
+      });
 
-      if (operation.isErr()) {
-        toast.error(operation.error.message || "Failed to update follow status.");
-        logFollow("mutation response", {
-          action: wasFollowing ? "unfollow" : "follow",
-          ok: false,
-          error: operation.error?.message || "unknown follow mutation error",
-        }, "error");
+      if (!result.ok) {
         return;
       }
 
-      const operationValue: any = operation.value;
-      logFollow("mutation response", {
-        action: wasFollowing ? "unfollow" : "follow",
-        ok: true,
-        typename: operationValue?.__typename || null,
-        hash: operationValue?.hash || null,
-        reason: operationValue?.reason || null,
-      });
-
-      if (
-        operationValue?.__typename === "SelfFundedTransactionRequest"
-        || operationValue?.__typename === "SponsoredTransactionRequest"
-      ) {
-        logFollow("mutation transaction request", {
-          action: wasFollowing ? "unfollow" : "follow",
-          requestType: operationValue.__typename,
-          from: operationValue?.raw?.from || null,
-          to: operationValue?.raw?.to || null,
-          chainId: operationValue?.raw?.chainId || null,
-        });
-      }
-
-      const chainRightBeforeSigning = await walletClient.getChainId().catch(() => walletClient.chain?.id);
-      logFollow("wallet chain right before signing", {
-        chainId: chainRightBeforeSigning,
-        requiredChainId: LENS_TESTNET_CHAIN_ID,
-      });
-
-      if (chainRightBeforeSigning !== LENS_TESTNET_CHAIN_ID) {
-        toast.error("Wallet switched away from Lens Chain Testnet (37111).");
-        return;
-      }
-
-      const operationHandler = handleOperationWith(walletClient as any) as any;
-      const txResult = await operationHandler(operationValue);
-      logFollow("handleOperationWith return value", txResult.isErr()
-        ? {
-          ok: false,
-          action: wasFollowing ? "unfollow" : "follow",
-          error: txResult.error?.message || "unknown transaction handler error",
-        }
-        : {
-          ok: true,
-          action: wasFollowing ? "unfollow" : "follow",
-          identifier: String(txResult.value),
-          looksLikeTxHash: isTxHashIdentifier(String(txResult.value)),
-        });
-
-      if (txResult.isErr()) {
-        toast.error(txResult.error.message || "Failed to submit follow transaction.");
-        return;
-      }
-
-      const txIdentifier = String(txResult.value);
-      const nextFollowing = !wasFollowing;
-      const resolution = await resolveLensOperationToTxHashOrReceipt({
-        identifier: txIdentifier,
-        sessionClient,
-        statusClient: sessionClient ?? client,
-        observerAddress: effectiveObserverAddress,
-        profileAddress,
-        expectedFollowing: nextFollowing,
-        endpoint: lensBackendEndpoint,
-        onLog: (event, data) => logFollow(event, data),
-      });
-
-      logFollow("operation resolution result", {
-        action: wasFollowing ? "unfollow" : "follow",
-        identifier: txIdentifier,
-        resolution,
-      });
-
-      if (resolution.status !== "confirmed") {
-        toast.error(resolution.reason || "Follow operation was not confirmed.");
-        return;
-      }
-
-      setIsFollowing(nextFollowing);
-      setFollowersCount((count) => Math.max(0, count + (nextFollowing ? 1 : -1)));
-      toast.success(nextFollowing ? `You are now following ${handle}` : `You unfollowed ${handle}`);
-    } catch (error: any) {
-      logFollow("follow toggle exception", {
-        error: error?.message || String(error),
-        stack: error?.stack || null,
-      }, "error");
-      toast.error(error?.message || "Failed to update follow status.");
+      setConnectionAccounts((prev) => prev.map((entry) => (
+        entry.address === account.address
+          ? { ...entry, isFollowedByMe: result.nextFollowing }
+          : entry
+      )));
+      toast.success(result.nextFollowing ? `You are now following ${account.handle}` : `You unfollowed ${account.handle}`);
+      await loadConnections(connectionsTab, "post-connections-follow-toggle");
     } finally {
-      await refreshFollowStatus({
-        observerAddressOverride: sessionObserverAddress || observerAddress,
-        reason: "post-follow-toggle",
+      setConnectionFollowSubmitting((prev) => {
+        const next = { ...prev };
+        delete next[account.address];
+        return next;
       });
-      setFollowSubmitting(false);
     }
   };
 
@@ -1022,6 +1268,8 @@ export default function Profile() {
   const followButtonClassName = isFollowing
     ? "bg-white text-[#212121] border border-[#212121] hover:bg-[#F7F7F7]"
     : "bg-[#212121] text-white hover:bg-[#333]";
+  const connectionsModalTitle = connectionsTab === "followers" ? "Followers" : "Following";
+  const showConnectionFollowButtons = Boolean(sessionClient);
 
   if (!normalizedHandle) {
     return (
@@ -1152,22 +1400,30 @@ export default function Profile() {
             ) : null}
 
             <div className="flex gap-[16px] my-[16px] sm:py-0 py-[16px]">
-              <span className="leading-[20px]">
+              <button
+                type="button"
+                onClick={() => openConnectionsModal("followers")}
+                className="leading-[20px] text-left cursor-pointer group"
+              >
                 <span className="font-semibold sm:text-[14px] text-[20px] text-[#212121]">
                   {followersCount}
                 </span>
-                <span className="font-medium sm:text-[12px] text-[16px] text-[#6C6C6C] ml-1">
+                <span className="font-medium sm:text-[12px] text-[16px] text-[#6C6C6C] ml-1 group-hover:underline">
                   Followers
                 </span>
-              </span>
-              <span className=" leading-[20px]">
+              </button>
+              <button
+                type="button"
+                onClick={() => openConnectionsModal("following")}
+                className="leading-[20px] text-left cursor-pointer group"
+              >
                 <span className="font-semibold sm:text-[14px] text-[20px] text-[#212121]">
                   {followingCount}
                 </span>
-                <span className="font-medium sm:text-[12px] text-[16px] text-[#6C6C6C] ml-1">
+                <span className="font-medium sm:text-[12px] text-[16px] text-[#6C6C6C] ml-1 group-hover:underline">
                   Following
                 </span>
-              </span>
+              </button>
             </div>
             <hr className="bg-[##8C8C8C33] h-[1px] mb-0" />
 
@@ -1275,6 +1531,135 @@ export default function Profile() {
             </div>
           </div>
         </div>
+
+        {isConnectionsModalOpen && (
+          <div
+            className="fixed inset-0 z-[99990] bg-black/35 flex items-center justify-center p-[16px]"
+            onClick={closeConnectionsModal}
+          >
+            <div
+              className="w-full max-w-[700px] max-h-[85vh] rounded-[12px] border border-[#E4E4E7] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.15)] overflow-hidden"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="px-[20px] py-[14px] border-b border-[#E4E4E7] flex items-center justify-between">
+                <h3 className="text-[18px] font-semibold text-[#212121]">{connectionsModalTitle}</h3>
+                <button
+                  type="button"
+                  onClick={closeConnectionsModal}
+                  className="h-[34px] px-[12px] rounded-[8px] border border-[#D4D4D8] text-[13px] font-medium text-[#212121] hover:bg-[#F7F7F7]"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="px-[20px] py-[10px] border-b border-[#E4E4E7] flex gap-[8px]">
+                <button
+                  type="button"
+                  onClick={() => setConnectionsTab("followers")}
+                  className={`h-[34px] px-[12px] rounded-[8px] border text-[13px] font-medium ${
+                    connectionsTab === "followers"
+                      ? "bg-[#212121] text-white border-[#212121]"
+                      : "bg-white text-[#212121] border-[#D4D4D8] hover:bg-[#F7F7F7]"
+                  }`}
+                >
+                  Followers
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConnectionsTab("following")}
+                  className={`h-[34px] px-[12px] rounded-[8px] border text-[13px] font-medium ${
+                    connectionsTab === "following"
+                      ? "bg-[#212121] text-white border-[#212121]"
+                      : "bg-white text-[#212121] border-[#D4D4D8] hover:bg-[#F7F7F7]"
+                  }`}
+                >
+                  Following
+                </button>
+              </div>
+
+              <div className="max-h-[58vh] overflow-y-auto">
+                {connectionsLoading ? (
+                  <p className="px-[20px] py-[22px] text-[14px] text-[#6C6C6C]">
+                    Loading {connectionsTab}...
+                  </p>
+                ) : connectionsError ? (
+                  <div className="px-[20px] py-[22px]">
+                    <p className="text-[14px] text-[#B91C1C]">{connectionsError}</p>
+                    <button
+                      type="button"
+                      onClick={() => void loadConnections(connectionsTab, "retry")}
+                      className="mt-[10px] h-[34px] px-[12px] rounded-[8px] border border-[#D4D4D8] text-[13px] font-medium text-[#212121] hover:bg-[#F7F7F7]"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                ) : connectionAccounts.length === 0 ? (
+                  <p className="px-[20px] py-[22px] text-[14px] text-[#6C6C6C]">
+                    No {connectionsTab} found.
+                  </p>
+                ) : (
+                  connectionAccounts.map((account) => {
+                    const rowSubmitting = Boolean(connectionFollowSubmitting[account.address]);
+                    const rowDisabled = rowSubmitting || (!account.canFollowByProtocol && !account.isFollowedByMe);
+                    const rowLabel = rowSubmitting
+                      ? account.isFollowedByMe
+                        ? "Unfollowing..."
+                        : "Following..."
+                      : !account.canFollowByProtocol && !account.isFollowedByMe
+                        ? "Cannot Follow"
+                        : account.isFollowedByMe
+                          ? "Unfollow"
+                          : "Follow";
+
+                    return (
+                      <div
+                        key={`${connectionsTab}-${account.address}`}
+                        className="px-[20px] py-[14px] border-b border-[#F4F4F5] flex items-start gap-[12px]"
+                      >
+                        <div className="w-[44px] h-[44px] rounded-full overflow-hidden border border-[#E4E4E7] relative shrink-0 bg-[#F4F4F5]">
+                          <Image src={account.picture || DEFAULT_PROFILE_AVATAR} alt={account.displayName} fill className="object-cover" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[14px] font-semibold text-[#212121] truncate">{account.displayName}</p>
+                          <p className="text-[13px] text-[#6C6C6C] truncate">{account.handle}</p>
+                          {account.bio ? (
+                            <p className="mt-[4px] text-[13px] text-[#6C6C6C]">{account.bio}</p>
+                          ) : null}
+                          {account.profilePath ? (
+                            <Link
+                              href={account.profilePath}
+                              onClick={closeConnectionsModal}
+                              className="inline-block mt-[6px] text-[13px] font-medium text-[#212121] underline hover:opacity-80"
+                            >
+                              View profile
+                            </Link>
+                          ) : (
+                            <p className="mt-[6px] text-[12px] text-[#A1A1AA]">No handle available</p>
+                          )}
+                        </div>
+
+                        {showConnectionFollowButtons && !account.isSelf ? (
+                          <button
+                            type="button"
+                            onClick={() => void handleConnectionFollowToggle(account)}
+                            disabled={rowDisabled}
+                            className={`h-[36px] min-w-[108px] px-[12px] rounded-full text-[13px] font-medium transition-colors ${
+                              account.isFollowedByMe
+                                ? "bg-white text-[#212121] border border-[#212121] hover:bg-[#F7F7F7]"
+                                : "bg-[#212121] text-white hover:bg-[#333]"
+                            } disabled:opacity-60 disabled:cursor-not-allowed`}
+                          >
+                            {rowLabel}
+                          </button>
+                        ) : null}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {isJobModalOpen && (
           <div className="fixed inset-0 z-[99991] overflow-y-auto bg-gray-800/50 flex justify-center items-center sm:items-end cursor-auto">
