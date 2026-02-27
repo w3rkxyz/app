@@ -34,6 +34,7 @@ const XMTP_API_URLS = {
 const XMTP_ENABLED_IDENTIFIERS_KEY = "w3rk:xmtp:enabled-identifiers";
 const XMTP_LAST_ENV_KEY = "w3rk:xmtp:last-env";
 const XMTP_ENABLED_SESSION_MAP_KEY = "w3rk:xmtp:enabled-session-map";
+const XMTP_DB_KEY_STORAGE_PREFIX = "w3rk:xmtp:db-key";
 
 export type XMTPConnectStage =
   | "idle"
@@ -174,6 +175,93 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       }
     }
   };
+
+  const bytesToBase64 = useCallback((bytes: Uint8Array) => {
+    let binary = "";
+    for (const byte of bytes) {
+      binary += String.fromCharCode(byte);
+    }
+
+    if (typeof window !== "undefined" && typeof window.btoa === "function") {
+      return window.btoa(binary);
+    }
+
+    return "";
+  }, []);
+
+  const base64ToBytes = useCallback((value: string) => {
+    if (typeof window !== "undefined" && typeof window.atob === "function") {
+      const binary = window.atob(value);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return bytes;
+    }
+
+    return new Uint8Array();
+  }, []);
+
+  const buildDbKeyStorageKey = useCallback(
+    (env: "local" | "dev" | "production", identifier: string) =>
+      `${XMTP_DB_KEY_STORAGE_PREFIX}:${env}:${identifier.toLowerCase()}`,
+    []
+  );
+
+  const loadDbEncryptionKey = useCallback(
+    (env: "local" | "dev" | "production", identifier: string): Uint8Array | undefined => {
+      if (typeof window === "undefined") {
+        return undefined;
+      }
+
+      const storageKey = buildDbKeyStorageKey(env, identifier);
+      const raw = window.localStorage.getItem(storageKey);
+      if (!raw) {
+        return undefined;
+      }
+
+      try {
+        const bytes = base64ToBytes(raw);
+        return bytes.length > 0 ? bytes : undefined;
+      } catch {
+        return undefined;
+      }
+    },
+    [base64ToBytes, buildDbKeyStorageKey]
+  );
+
+  const storeDbEncryptionKey = useCallback(
+    (env: "local" | "dev" | "production", identifier: string, key: Uint8Array) => {
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      const storageKey = buildDbKeyStorageKey(env, identifier);
+      window.localStorage.setItem(storageKey, bytesToBase64(key));
+    },
+    [buildDbKeyStorageKey, bytesToBase64]
+  );
+
+  const getOrCreateDbEncryptionKey = useCallback(
+    (env: "local" | "dev" | "production", identifier: string): Uint8Array => {
+      const existing = loadDbEncryptionKey(env, identifier);
+      if (existing) {
+        return existing;
+      }
+
+      const generated = new Uint8Array(32);
+      if (typeof globalThis.crypto !== "undefined" && typeof globalThis.crypto.getRandomValues === "function") {
+        globalThis.crypto.getRandomValues(generated);
+      } else {
+        for (let i = 0; i < generated.length; i += 1) {
+          generated[i] = Math.floor(Math.random() * 256);
+        }
+      }
+      storeDbEncryptionKey(env, identifier, generated);
+      return generated;
+    },
+    [loadDbEncryptionKey, storeDbEncryptionKey]
+  );
 
   const getActiveSessionKeys = useCallback(() => {
     const keys = [
@@ -507,8 +595,12 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       updateStage("restore_session");
       try {
         logDebug("build:primary:start", { identifier: primaryIdentifier.identifier });
+        const primaryDbEncryptionKey = loadDbEncryptionKey(env, primaryIdentifier.identifier);
         const builtClient = await withTimeout(
-          Client.build(primaryIdentifier, { env }),
+          Client.build(primaryIdentifier, {
+            env,
+            ...(primaryDbEncryptionKey ? { dbEncryptionKey: primaryDbEncryptionKey } : {}),
+          }),
           8000,
           "Restoring XMTP session timed out."
         );
@@ -545,8 +637,12 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       if (fallbackIdentifier) {
         try {
           logDebug("build:fallback:start", { identifier: fallbackIdentifier.identifier });
+          const fallbackDbEncryptionKey = loadDbEncryptionKey(env, fallbackIdentifier.identifier);
           const builtFallbackClient = await withTimeout(
-            Client.build(fallbackIdentifier, { env }),
+            Client.build(fallbackIdentifier, {
+              env,
+              ...(fallbackDbEncryptionKey ? { dbEncryptionKey: fallbackDbEncryptionKey } : {}),
+            }),
             8000,
             "Restoring XMTP session timed out."
           );
@@ -650,21 +746,27 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         activeSigner: EOASigner | SCWSigner,
         mode: "primary" | "eoa_fallback"
       ) => {
+        const signerIdentifier = await activeSigner.getIdentifier();
+        const dbEncryptionKey = getOrCreateDbEncryptionKey(env, signerIdentifier.identifier);
+
         updateStage("create_client");
         logDebug("create:start", {
           mode,
           env,
           disableAutoRegister: true,
           signerType: activeSigner.type,
+          signerIdentifier: signerIdentifier.identifier,
         });
         const createdClient = await withTimeout(
           Client.create(activeSigner, {
             env,
             disableAutoRegister: true,
+            dbEncryptionKey,
           }),
           120000,
           "Creating XMTP client timed out."
         );
+        storeDbEncryptionKey(env, signerIdentifier.identifier, dbEncryptionKey);
         logDebug("create:success", {
           mode,
           inboxId: (createdClient as { inboxId?: string }).inboxId ?? null,
@@ -938,6 +1040,9 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     xmtpAddress,
     logDebug,
     logError,
+    loadDbEncryptionKey,
+    getOrCreateDbEncryptionKey,
+    storeDbEncryptionKey,
     persistEnabledState,
     expectedSigningAddress,
     actualWalletClientAddress,
@@ -1029,8 +1134,12 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
               attempt: attempts,
             });
 
+            const dbEncryptionKey = loadDbEncryptionKey(env, identifier.identifier);
             const builtClient = await withTimeout(
-              Client.build(identifier, { env }),
+              Client.build(identifier, {
+                env,
+                ...(dbEncryptionKey ? { dbEncryptionKey } : {}),
+              }),
               3000,
               "Restoring XMTP session timed out."
             );
@@ -1076,6 +1185,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     dispatch,
     getPersistedIdentifiers,
     getPersistedSessionState,
+    loadDbEncryptionKey,
     logDebug,
     logError,
     walletClientAccountAddress,
