@@ -29,7 +29,9 @@ const TESTNET_STORAGE_ENV: StorageEnvironmentConfig = {
   statusPollingInterval: 500,
 };
 
-const lensApiUrl = (process.env.NEXT_PUBLIC_LENS_API_URL || "").toLowerCase();
+const lensApiUrl = (
+  process.env.NEXT_PUBLIC_LENS_API_URL || "https://api.testnet.lens.xyz/graphql"
+).toLowerCase();
 const lensChainIdEnv = process.env.NEXT_PUBLIC_LENS_CHAIN_ID;
 const chainIdOverride = Number(lensChainIdEnv);
 const hasChainOverride = Number.isFinite(chainIdOverride);
