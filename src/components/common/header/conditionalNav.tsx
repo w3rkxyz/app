@@ -77,7 +77,7 @@ const ConditionalNav = () => {
     };
   }, [authenticatedUser, dispatch, sessionLoading]);
 
-  if (pathname === "/" || pathname.startsWith("/login")) {
+  if (pathname === "/" || pathname.startsWith("/login") || pathname.startsWith("/onboarding")) {
     return null;
   }
 

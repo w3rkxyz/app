@@ -8,14 +8,27 @@ import { useAccount, useWalletClient } from "wagmi";
 import { Oval } from "react-loader-spinner";
 import { Account, evmAddress, uri, ManagedAccountsVisibility } from "@lens-protocol/client";
 import { useLogin, useAccountsAvailable, SessionClient } from "@lens-protocol/react";
-import { canCreateUsername, createAccountWithUsername } from "@lens-protocol/client/actions";
+import {
+  canCreateUsername,
+  createAccountWithUsername,
+  fetchAccount as fetchLensAccount,
+} from "@lens-protocol/client/actions";
 import { signMessageWith, handleOperationWith } from "@lens-protocol/client/viem";
-import { client } from "@/client";
+import { client, getPublicClient } from "@/client";
 import { jsonToDataURI } from "@/utils/dataUriHelpers";
 import { toast } from "react-hot-toast";
 
 const LENS_TESTNET_CHAIN_ID = 37111;
 const LENS_TESTNET_APP = "0xC75A89145d765c396fd75CbD16380Eb184Bd2ca7";
+const MINT_ACCOUNT_LOOKUP_ATTEMPTS = 12;
+const MINT_ACCOUNT_LOOKUP_INTERVAL_MS = 1000;
+
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+type SelectAccountOptions = {
+  redirectPath?: string;
+  toastMessage?: string;
+};
 
 const getErrMsg = (error: unknown, fallback: string) => {
   if (error && typeof error === "object" && "message" in error) {
@@ -25,6 +38,37 @@ const getErrMsg = (error: unknown, fallback: string) => {
     }
   }
   return fallback;
+};
+
+const isSignatureRejected = (error: unknown) => {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const err = error as {
+    code?: unknown;
+    message?: unknown;
+    shortMessage?: unknown;
+    reason?: unknown;
+  };
+
+  if (err.code === 4001 || err.code === "ACTION_REJECTED") {
+    return true;
+  }
+
+  const text = [err.message, err.shortMessage, err.reason]
+    .filter((value): value is string => typeof value === "string")
+    .join(" ")
+    .toLowerCase();
+
+  return (
+    text.includes("user rejected") ||
+    text.includes("rejected the request") ||
+    text.includes("denied transaction signature") ||
+    text.includes("request rejected") ||
+    text.includes("cancelled") ||
+    text.includes("canceled")
+  );
 };
 
 export default function LoginForm({ owner }: { owner: string }) {
@@ -72,6 +116,30 @@ export default function LoginForm({ owner }: { owner: string }) {
   const profileCount = availableAccounts?.items.length ?? 0;
   const showPrepare = walletReady && !accountsLoading && !availableAccounts && !accountsError;
   const singleAccount = profileCount === 1 ? availableAccounts?.items[0]?.account : null;
+
+  const waitForMintedAccount = useCallback(async (localName: string) => {
+    const publicClient = getPublicClient();
+    for (let attempt = 0; attempt < MINT_ACCOUNT_LOOKUP_ATTEMPTS; attempt += 1) {
+      try {
+        const lookupResult = await fetchLensAccount(publicClient, {
+          username: {
+            localName,
+          },
+        });
+        if (lookupResult.isOk() && lookupResult.value) {
+          return lookupResult.value;
+        }
+      } catch {
+        // Continue retrying; indexers may lag shortly after mint.
+      }
+
+      if (attempt < MINT_ACCOUNT_LOOKUP_ATTEMPTS - 1) {
+        await wait(MINT_ACCOUNT_LOOKUP_INTERVAL_MS);
+      }
+    }
+
+    return null;
+  }, []);
 
   const ensureLensChain = useCallback(async () => {
     if (!walletClient) {
@@ -183,83 +251,9 @@ export default function LoginForm({ owner }: { owner: string }) {
     }
   };
 
-  const handleSubmit = async () => {
-    if (sessionClient === null || handle.trim() === "" || !walletClient) {
-      return;
-    }
-
-    setShowError(false);
-    setAuthError(null);
-    setMintSuccessMessage(null);
-    setCreatingProfile(true);
-
-    const result = await canCreateUsername(sessionClient, {
-      localName: handle,
-    });
-
-    if (result.isErr()) {
-      setErrorMessage("Sorry, that handle is not available.");
-      setShowError(true);
-      setCreatingProfile(false);
-      return;
-    }
-
-    switch (result.value.__typename) {
-      case "NamespaceOperationValidationPassed": {
-        const metadata = {
-          name: handle,
-          bio: "",
-          picture: "",
-          coverPicture: "",
-          attributes: [],
-        };
-
-        const metadataURI = await jsonToDataURI(metadata);
-
-        const accountParams = {
-          username: { localName: handle },
-          metadataUri: uri(metadataURI),
-        };
-
-        try {
-          await createAccountWithUsername(sessionClient, accountParams).andThen(
-            handleOperationWith(walletClient)
-          );
-
-          setCreatingProfile(false);
-          setMintSuccessMessage("Profile minted successfully. Redirecting to onboarding...");
-          setSessionClient(null);
-          setHandle("");
-          dispatch(displayLoginModal({ display: false }));
-          router.push("/onboarding");
-        } catch {
-          setCreatingProfile(false);
-          setErrorMessage("Failed to create profile. Please try again.");
-          setShowError(true);
-        }
-        break;
-      }
-      case "NamespaceOperationValidationFailed":
-        setErrorMessage(result.value.reason);
-        setShowError(true);
-        setCreatingProfile(false);
-        break;
-      case "NamespaceOperationValidationUnknown":
-        setErrorMessage("Sorry, something went wrong. Please try again.");
-        setShowError(true);
-        setCreatingProfile(false);
-        break;
-      case "UsernameTaken":
-        setErrorMessage("Sorry, that handle is not available.");
-        setShowError(true);
-        setCreatingProfile(false);
-        break;
-    }
-  };
-
-  const handleSelectAccount = useCallback(async (account: Account) => {
+  const handleSelectAccount = useCallback(async (account: Account, options?: SelectAccountOptions) => {
     if (!walletClient) {
-      return;
+      return false;
     }
 
     setAuthError(null);
@@ -267,7 +261,7 @@ export default function LoginForm({ owner }: { owner: string }) {
     try {
       const canContinue = await ensureLensChain();
       if (!canContinue) {
-        return;
+        return false;
       }
 
       const appAddress = process.env.NEXT_PUBLIC_APP_ADDRESS_TESTNET || LENS_TESTNET_APP;
@@ -289,27 +283,142 @@ export default function LoginForm({ owner }: { owner: string }) {
             },
           };
 
-      await authenticate({
+      const authenticated = await authenticate({
         ...authRequest,
         signMessage: async (message: string) => {
           return await walletClient.signMessage({ message });
         },
       });
 
+      if (authenticated.isErr()) {
+        if (isSignatureRejected(authenticated.error)) {
+          setAuthError("Signature request was cancelled. Please sign to continue.");
+          return;
+        }
+
+        const msg = getErrMsg(authenticated.error, "Lens authentication failed");
+        setAuthError(msg);
+        return;
+      }
+
       const profile = getLensAccountData(account);
       dispatch(setLensProfile({ profile }));
       dispatch(displayLoginModal({ display: false }));
+      localStorage.setItem("activeHandle", profile.userLink.toLowerCase());
 
-      toast.success("Login successful", { position: "top-center" });
+      toast.success(options?.toastMessage || "Login successful", { position: "top-center" });
 
-      if (profile.userLink) {
+      if (options?.redirectPath) {
+        router.push(options.redirectPath);
+      } else if (profile.userLink) {
         router.push(`/u/${profile.userLink}`);
       }
+
+      return true;
     } catch (error: unknown) {
       const msg = getErrMsg(error, "Lens authentication failed");
       setAuthError(msg);
+      return false;
     }
   }, [authenticate, dispatch, ensureLensChain, router, wallet.address, walletClient]);
+
+  const handleSubmit = async () => {
+    if (sessionClient === null || handle.trim() === "" || !walletClient) {
+      return;
+    }
+
+    const requestedHandle = handle.trim().toLowerCase();
+
+    setShowError(false);
+    setAuthError(null);
+    setMintSuccessMessage(null);
+    setCreatingProfile(true);
+
+    try {
+      const result = await canCreateUsername(sessionClient, {
+        localName: requestedHandle,
+      });
+
+      if (result.isErr()) {
+        setErrorMessage("Sorry, that handle is not available.");
+        setShowError(true);
+        return;
+      }
+
+      switch (result.value.__typename) {
+        case "NamespaceOperationValidationPassed":
+          break;
+        case "NamespaceOperationValidationFailed":
+          setErrorMessage(result.value.reason);
+          setShowError(true);
+          return;
+        case "NamespaceOperationValidationUnknown":
+          setErrorMessage("Sorry, something went wrong. Please try again.");
+          setShowError(true);
+          return;
+        case "UsernameTaken":
+          setErrorMessage("Sorry, that handle is not available.");
+          setShowError(true);
+          return;
+      }
+
+      const metadata = {
+        name: requestedHandle,
+        bio: "",
+        picture: "",
+        coverPicture: "",
+        attributes: [],
+      };
+
+      const metadataURI = await jsonToDataURI(metadata);
+
+      const accountParams = {
+        username: { localName: requestedHandle },
+        metadataUri: uri(metadataURI),
+      };
+
+      await createAccountWithUsername(sessionClient, accountParams).andThen(
+        handleOperationWith(walletClient)
+      );
+
+      setMintSuccessMessage("Profile minted successfully. Activating your account...");
+
+      const mintedAccount = await waitForMintedAccount(requestedHandle);
+      if (!mintedAccount) {
+        setSessionClient(null);
+        setErrorMessage(
+          `Profile minted, but @${requestedHandle} is still indexing. Please sign in again in a few seconds.`
+        );
+        setShowError(true);
+        setMintSuccessMessage(null);
+        return;
+      }
+
+      const switched = await handleSelectAccount(mintedAccount, {
+        redirectPath: "/onboarding",
+        toastMessage: "Profile created. Continue onboarding.",
+      });
+
+      if (!switched) {
+        setSessionClient(null);
+        setErrorMessage(
+          `Profile @${requestedHandle} was created, but could not be activated. Please sign in again and select it.`
+        );
+        setShowError(true);
+        setMintSuccessMessage(null);
+        return;
+      }
+
+      setSessionClient(null);
+      setHandle("");
+    } catch (error: unknown) {
+      setErrorMessage(getErrMsg(error, "Failed to create profile. Please try again."));
+      setShowError(true);
+      setMintSuccessMessage(null);
+    } finally {
+      setCreatingProfile(false);
+    }
+  };
 
   const handleCloseModal = () => {
     dispatch(displayLoginModal({ display: false }));
@@ -346,6 +455,7 @@ export default function LoginForm({ owner }: { owner: string }) {
       accountsLoading ||
       authenticateLoading ||
       continuing ||
+      creatingProfile ||
       !walletReady ||
       !isWalletContextReady
     ) {
@@ -366,6 +476,7 @@ export default function LoginForm({ owner }: { owner: string }) {
     accountsLoading,
     authenticateLoading,
     continuing,
+    creatingProfile,
     handleSelectAccount,
     isWalletContextReady,
     singleAccount,

@@ -12,6 +12,7 @@ import JobDetailDrawer from "@/components/find-work/job-detail-drawer";
 import JobDetailModal from "@/components/find-work/job-detail-modal";
 import CreateServiceModal from "@/components/find-work/create-service-modal";
 import { SVGAdminSupport, SVGBlockChain, SVGCampaign, SVGCode, SVGDesignPallete, SVGInfo, SVGLock, SVGUsers, SVGUserSound } from "@/assets/list-svg-icon";
+import { getOnboardingFeedPosts } from "@/utils/onboardingPosts";
 
 interface JobData {
   username: string;
@@ -73,10 +74,37 @@ const FindTalent = () => {
   const [isCreateServiceModalOpen, setIsCreateServiceModalOpen] = useState(false);
 
   useEffect(() => {
-    fetch("/find-work.json")
-      .then(res => res.json())
-      .then(data => setJobs(data))
-      .catch(err => console.error("Error loading jobs:", err));
+    let active = true;
+
+    const loadJobs = async () => {
+      let seededJobs: JobData[] = [];
+      try {
+        const response = await fetch("/find-work.json");
+        seededJobs = await response.json();
+      } catch (error) {
+        console.error("Error loading jobs:", error);
+      }
+
+      const onboardingServices: JobData[] = getOnboardingFeedPosts("service").map(post => ({
+        username: post.username,
+        profileImage: post.profileImage,
+        jobName: post.jobName,
+        jobIcon: post.jobIcon,
+        description: post.description,
+        contractType: post.contractType,
+        paymentAmount: post.paymentAmount,
+        paidIn: post.paidIn,
+        tags: post.tags,
+      }));
+
+      if (!active) return;
+      setJobs([...onboardingServices, ...seededJobs]);
+    };
+
+    void loadJobs();
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {

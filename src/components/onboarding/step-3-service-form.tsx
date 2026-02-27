@@ -25,7 +25,9 @@ const Step3ServiceForm: React.FC<Step3ServiceFormProps & {
   onToggleCategory,
   onRemoveCategory,
   onBack,
+  onSkip,
   onAddService,
+  submitting = false,
   title = "Create Your First Service",
   subtitle = "Showcase what you can do. Clients will discover your service when searching.",
   stepText = "Step 3 of 3",
@@ -97,9 +99,10 @@ const Step3ServiceForm: React.FC<Step3ServiceFormProps & {
           {!hideNavigation && (
             <NavigationButtons
               onBack={onBack}
+              onSkip={onSkip}
               onContinue={onAddService}
               continueLabel="Add Service"
-              continueDisabled={!isValid}
+              continueDisabled={!isValid || submitting}
               showSkip={true}
             />
           )}
@@ -109,4 +112,3 @@ const Step3ServiceForm: React.FC<Step3ServiceFormProps & {
   }
 
 export default Step3ServiceForm
-
