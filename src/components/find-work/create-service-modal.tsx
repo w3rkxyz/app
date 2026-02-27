@@ -375,7 +375,9 @@ const CreateServiceModal = ({ open, onClose, onPublished }: CreateServiceModalPr
 
     try {
       setSavingData(true);
-      const metadataUri = await uploadMetadataToLensStorage(metadata);
+      const metadataUri = await uploadMetadataToLensStorage(metadata, {
+        chainId: LENS_TESTNET_CHAIN_ID,
+      });
       const result = await post(publishClient, {
         contentUri: uri(metadataUri),
       });

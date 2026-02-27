@@ -40,14 +40,10 @@ const isTestnetTarget =
   lensApiUrl.includes("testnet") ||
   (hasChainOverride && chainIdOverride === TESTNET_STORAGE_ENV.defaultChainId);
 
-const primaryEnv = isTestnetTarget ? TESTNET_STORAGE_ENV : MAINNET_STORAGE_ENV;
-const secondaryEnv = isTestnetTarget ? MAINNET_STORAGE_ENV : TESTNET_STORAGE_ENV;
-
-const primaryStorageClient = StorageClient.create(primaryEnv);
-const secondaryStorageClient = StorageClient.create(secondaryEnv);
+const defaultEnv = isTestnetTarget ? TESTNET_STORAGE_ENV : MAINNET_STORAGE_ENV;
 
 // Storage client used by settings/profile uploads + URI resolving.
-export const storageClient = primaryStorageClient;
+export const storageClient = StorageClient.create(defaultEnv);
 
 const isRetryableUploadError = (error: unknown): boolean => {
   if (!error || typeof error !== "object") {
@@ -79,29 +75,38 @@ type UploadAttempt = {
   chainId: number;
 };
 
-const buildUploadAttempts = (): UploadAttempt[] => {
+type UploadConfig = {
+  chainId?: number;
+};
+
+const resolveEnvForUpload = (config?: UploadConfig): StorageEnvironmentConfig => {
+  if (config?.chainId === TESTNET_STORAGE_ENV.defaultChainId) {
+    return TESTNET_STORAGE_ENV;
+  }
+
+  if (config?.chainId === MAINNET_STORAGE_ENV.defaultChainId) {
+    return MAINNET_STORAGE_ENV;
+  }
+
+  return defaultEnv;
+};
+
+const buildUploadAttempts = (config?: UploadConfig): UploadAttempt[] => {
+  const env = resolveEnvForUpload(config);
+  const client = StorageClient.create(env);
+  const preferredChainId = config?.chainId ?? (hasChainOverride ? chainIdOverride : env.defaultChainId);
+
   const attempts: UploadAttempt[] = [
     {
-      client: primaryStorageClient,
-      chainId: hasChainOverride ? chainIdOverride : primaryStorageClient.env.defaultChainId,
-    },
-    {
-      client: secondaryStorageClient,
-      chainId: hasChainOverride ? chainIdOverride : secondaryStorageClient.env.defaultChainId,
+      client,
+      chainId: preferredChainId,
     },
   ];
 
-  if (hasChainOverride && chainIdOverride !== primaryStorageClient.env.defaultChainId) {
+  if (preferredChainId !== env.defaultChainId) {
     attempts.push({
-      client: primaryStorageClient,
-      chainId: primaryStorageClient.env.defaultChainId,
-    });
-  }
-
-  if (hasChainOverride && chainIdOverride !== secondaryStorageClient.env.defaultChainId) {
-    attempts.push({
-      client: secondaryStorageClient,
-      chainId: secondaryStorageClient.env.defaultChainId,
+      client,
+      chainId: env.defaultChainId,
     });
   }
 
@@ -117,9 +122,10 @@ const buildUploadAttempts = (): UploadAttempt[] => {
 };
 
 const uploadWithStorageFallback = async <T>(
-  uploadFn: (client: StorageClient, chainId: number) => Promise<T>
+  uploadFn: (client: StorageClient, chainId: number) => Promise<T>,
+  config?: UploadConfig
 ): Promise<T> => {
-  const attempts = buildUploadAttempts();
+  const attempts = buildUploadAttempts(config);
   let lastError: unknown = null;
 
   for (let i = 0; i < attempts.length; i += 1) {
@@ -166,12 +172,17 @@ const uploadMetadataAsFile = async (
  * @param metadata - The metadata object to upload
  * @returns The URI string pointing to the uploaded metadata
  */
-export const uploadMetadataToLensStorage = async (metadata: any): Promise<string> => {
+export const uploadMetadataToLensStorage = async (
+  metadata: any,
+  config?: UploadConfig
+): Promise<string> => {
   try {
-    const { uri } = await uploadWithStorageFallback((client, chainId) =>
-      client.uploadAsJson(metadata, {
-        acl: immutable(chainId),
-      })
+    const { uri } = await uploadWithStorageFallback(
+      (client, chainId) =>
+        client.uploadAsJson(metadata, {
+          acl: immutable(chainId),
+        }),
+      config
     );
     return uri;
   } catch (error) {
@@ -181,8 +192,9 @@ export const uploadMetadataToLensStorage = async (metadata: any): Promise<string
     );
 
     try {
-      const { uri } = await uploadWithStorageFallback((client, chainId) =>
-        uploadMetadataAsFile(metadata, client, chainId)
+      const { uri } = await uploadWithStorageFallback(
+        (client, chainId) => uploadMetadataAsFile(metadata, client, chainId),
+        config
       );
       return uri;
     } catch (fallbackError) {
@@ -195,12 +207,17 @@ export const uploadMetadataToLensStorage = async (metadata: any): Promise<string
 /**
  * Uploads a file asset (image/video/etc) to Lens Storage and returns the URI.
  */
-export const uploadFileToLensStorage = async (file: File): Promise<string> => {
+export const uploadFileToLensStorage = async (
+  file: File,
+  config?: UploadConfig
+): Promise<string> => {
   try {
-    const { uri } = await uploadWithStorageFallback((client, chainId) =>
-      client.uploadFile(file, {
-        acl: immutable(chainId),
-      })
+    const { uri } = await uploadWithStorageFallback(
+      (client, chainId) =>
+        client.uploadFile(file, {
+          acl: immutable(chainId),
+        }),
+      config
     );
     return uri;
   } catch (error) {
