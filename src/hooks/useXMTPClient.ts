@@ -382,7 +382,11 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
   const findPersistedSession = useCallback(
     (env: XMTPEnv): PersistedSession | null => {
       const store = readSessionStore();
-      const sessions = identityKeys
+      const scopedKeys = unique([
+        ...identityKeys,
+        ...identifierCandidates.map(identifier => `identifier:${identifier}`),
+      ]);
+      const sessions = scopedKeys
         .map(key => store.records[key])
         .filter((value): value is PersistedSession => Boolean(value))
         .filter(session => session.env === env)
@@ -390,7 +394,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
       return sessions[0] ?? null;
     },
-    [identityKeys, readSessionStore]
+    [identityKeys, identifierCandidates, readSessionStore]
   );
 
   const persistSession = useCallback(
@@ -449,13 +453,8 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         const matches = inboxMatches && installationMatches;
         attempt.matchesPersistedInstallation = matches;
         attempt.installationInInbox = matches;
-
         if (!matches) {
           attempt.error = "installation_mismatch";
-          return {
-            ready: false,
-            attempt,
-          };
         }
       }
 
@@ -710,13 +709,19 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       return client;
     }
 
-    const env = resolveEnv();
+    const resolvedEnv = resolveEnv();
+    const envCandidates = unique<XMTPEnv>([
+      resolvedEnv,
+      "dev",
+      "production",
+      "local",
+    ]);
     const attempts: RestoreAttemptDebug[] = [];
 
-    if (identifierCandidates.length === 0 || identityKeys.length === 0) {
+    if (identifierCandidates.length === 0) {
       persistRestoreDebug({
         result: "not_restored",
-        envCandidates: [env],
+        envCandidates,
         identifierCandidates,
         attempts,
         reason: "missing_identity",
@@ -729,11 +734,13 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     setConnectStage("restore_session");
 
     try {
-      const session = findPersistedSession(env);
-      if (!session) {
+      const sessions = envCandidates
+        .map(env => findPersistedSession(env))
+        .filter((value): value is PersistedSession => Boolean(value));
+      if (sessions.length === 0) {
         persistRestoreDebug({
           result: "not_restored",
-          envCandidates: [env],
+          envCandidates,
           identifierCandidates,
           attempts,
           reason: "no_persisted_session",
@@ -741,99 +748,108 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         return undefined;
       }
 
-      logDebug("restore:start", {
-        env,
-        identifier: session.identifier,
+      sessions.sort((a, b) => {
+        const aPrimary = a.identifier === primaryIdentifier ? 0 : 1;
+        const bPrimary = b.identifier === primaryIdentifier ? 0 : 1;
+        if (aPrimary !== bPrimary) {
+          return aPrimary - bPrimary;
+        }
+        const aEnvIndex = envCandidates.indexOf(a.env);
+        const bEnvIndex = envCandidates.indexOf(b.env);
+        if (aEnvIndex !== bEnvIndex) {
+          return aEnvIndex - bEnvIndex;
+        }
+        return Date.parse(b.updatedAt) - Date.parse(a.updatedAt);
       });
 
-      try {
-        const builtClient = await withTimeout(
-          Client.build(
-            {
-              identifier: session.identifier,
-              identifierKind: IdentifierKind.Ethereum,
-            },
-            {
-              env,
-              dbEncryptionKey: fromBase64(session.dbEncryptionKey),
-            }
-          ),
-          12000,
-          "Restoring XMTP session timed out."
-        );
-
-        const { ready, attempt } = await verifyClientReady(builtClient, env, session.identifier, {
-          inboxId: session.inboxId,
-          installationId: session.installationId,
-        });
-
-        attempts.push(attempt);
-
-        if (!ready) {
-          builtClient.close();
-          persistRestoreDebug({
-            result: "not_restored",
-            envCandidates: [env],
-            identifierCandidates,
-            attempts,
-            reason: "session_not_ready",
-          });
-          return undefined;
-        }
-
-        const refreshedSession: PersistedSession = {
-          ...session,
-          inboxId: (builtClient as { inboxId?: string }).inboxId,
-          installationId: (builtClient as { installationId?: string }).installationId,
-          updatedAt: new Date().toISOString(),
-        };
-
-        persistSession(refreshedSession);
-        setClient(builtClient);
-        setConnectStage("connected");
-
-        persistRestoreDebug({
-          result: "restored",
-          envCandidates: [env],
-          identifierCandidates,
-          attempts,
-          restoredEnv: env,
-          restoredIdentifier: session.identifier,
-        });
-
-        return builtClient;
-      } catch (error) {
-        attempts.push({
+      for (const session of sessions) {
+        const env = session.env;
+        logDebug("restore:start", {
           env,
           identifier: session.identifier,
-          usedDbEncryptionKey: true,
-          build: "failed",
-          inboxId: null,
-          installationId: null,
-          matchesPersistedInstallation: null,
-          registrationCheckFailed: false,
-          installationInInbox: null,
-          conversationAccess: null,
-          isRegistered: null,
-          canMessageReady: null,
-          error: stringifyError(error),
         });
 
-        persistRestoreDebug({
-          result: "not_restored",
-          envCandidates: [env],
-          identifierCandidates,
-          attempts,
-          reason: "build_failed",
-        });
+        try {
+          const builtClient = await withTimeout(
+            Client.build(
+              {
+                identifier: session.identifier,
+                identifierKind: IdentifierKind.Ethereum,
+              },
+              {
+                env,
+                dbEncryptionKey: fromBase64(session.dbEncryptionKey),
+              }
+            ),
+            12000,
+            "Restoring XMTP session timed out."
+          );
 
-        return undefined;
+          const { ready, attempt } = await verifyClientReady(builtClient, env, session.identifier, {
+            inboxId: session.inboxId,
+            installationId: session.installationId,
+          });
+          attempts.push(attempt);
+
+          if (!ready) {
+            builtClient.close();
+            continue;
+          }
+
+          const refreshedSession: PersistedSession = {
+            ...session,
+            inboxId: (builtClient as { inboxId?: string }).inboxId,
+            installationId: (builtClient as { installationId?: string }).installationId,
+            updatedAt: new Date().toISOString(),
+          };
+
+          persistSession(refreshedSession);
+          setClient(builtClient);
+          setConnectStage("connected");
+
+          persistRestoreDebug({
+            result: "restored",
+            envCandidates,
+            identifierCandidates,
+            attempts,
+            restoredEnv: env,
+            restoredIdentifier: session.identifier,
+          });
+
+          return builtClient;
+        } catch (error) {
+          attempts.push({
+            env,
+            identifier: session.identifier,
+            usedDbEncryptionKey: true,
+            build: "failed",
+            inboxId: null,
+            installationId: null,
+            matchesPersistedInstallation: null,
+            registrationCheckFailed: false,
+            installationInInbox: null,
+            conversationAccess: null,
+            isRegistered: null,
+            canMessageReady: null,
+            error: stringifyError(error),
+          });
+          continue;
+        }
       }
+
+      persistRestoreDebug({
+        result: "not_restored",
+        envCandidates,
+        identifierCandidates,
+        attempts,
+        reason: "session_not_ready",
+      });
+      return undefined;
     } catch (error) {
       dispatch(setError(error as Error));
       persistRestoreDebug({
         result: "error",
-        envCandidates: [env],
+        envCandidates,
         identifierCandidates,
         attempts,
         reason: "restore_exception",
@@ -848,10 +864,10 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     dispatch,
     findPersistedSession,
     identifierCandidates,
-    identityKeys.length,
     logDebug,
     persistRestoreDebug,
     persistSession,
+    primaryIdentifier,
     resolveEnv,
     setClient,
     verifyClientReady,
