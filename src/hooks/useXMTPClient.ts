@@ -33,6 +33,7 @@ const XMTP_API_URLS = {
 } as const;
 const XMTP_ENABLED_IDENTIFIERS_KEY = "w3rk:xmtp:enabled-identifiers";
 const XMTP_LAST_ENV_KEY = "w3rk:xmtp:last-env";
+const XMTP_ENABLED_SESSION_MAP_KEY = "w3rk:xmtp:enabled-session-map";
 
 export type XMTPConnectStage =
   | "idle"
@@ -50,6 +51,12 @@ type XMTPConnectOptions = {
 };
 
 const XMTP_MAX_INSTALLATIONS = 10;
+type XMTPSessionState = {
+  identifiers: string[];
+  env?: "local" | "dev" | "production";
+};
+
+type XMTPSessionMap = Record<string, XMTPSessionState>;
 
 export function useXMTPClient(params?: UseXMTPClientParams) {
   const dispatch = useDispatch();
@@ -168,6 +175,84 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     }
   };
 
+  const getActiveSessionKeys = useCallback(() => {
+    const keys = [
+      lensProfileId ? `lens:id:${lensProfileId}` : null,
+      lensHandle ? `lens:handle:${lensHandle.toLowerCase().replace(/^@/, "")}` : null,
+      lensAccountAddress ? `lens:address:${lensAccountAddress.toLowerCase()}` : null,
+      walletAddress ? `wallet:${walletAddress.toLowerCase()}` : null,
+      walletClientAccountAddress ? `walletClient:${walletClientAccountAddress}` : null,
+    ].filter((value): value is string => Boolean(value));
+
+    return Array.from(new Set(keys));
+  }, [
+    lensAccountAddress,
+    lensHandle,
+    lensProfileId,
+    walletAddress,
+    walletClientAccountAddress,
+  ]);
+
+  const getPersistedSessionMap = useCallback((): XMTPSessionMap => {
+    if (typeof window === "undefined") {
+      return {};
+    }
+
+    try {
+      const raw = window.localStorage.getItem(XMTP_ENABLED_SESSION_MAP_KEY);
+      if (!raw) {
+        return {};
+      }
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") {
+        return {};
+      }
+
+      const entries = Object.entries(parsed as Record<string, unknown>);
+      const normalized = entries.reduce<XMTPSessionMap>((acc, [key, value]) => {
+        if (!value || typeof value !== "object") {
+          return acc;
+        }
+        const maybeState = value as { identifiers?: unknown; env?: unknown };
+        const identifiers = Array.isArray(maybeState.identifiers)
+          ? maybeState.identifiers
+              .filter((item): item is string => typeof item === "string")
+              .map(item => item.toLowerCase())
+              .filter(item => item.startsWith("0x") && item.length === 42)
+          : [];
+        const env =
+          maybeState.env === "local" || maybeState.env === "dev" || maybeState.env === "production"
+            ? maybeState.env
+            : undefined;
+
+        if (identifiers.length > 0 || env) {
+          acc[key] = { identifiers, env };
+        }
+        return acc;
+      }, {});
+
+      return normalized;
+    } catch {
+      return {};
+    }
+  }, []);
+
+  const getPersistedSessionState = useCallback(() => {
+    const sessionMap = getPersistedSessionMap();
+    const sessionKeys = getActiveSessionKeys();
+    if (sessionKeys.length === 0) {
+      return { identifiers: [] as string[], env: undefined as XMTPSessionState["env"] };
+    }
+
+    const identifiers = Array.from(
+      new Set(
+        sessionKeys.flatMap(key => sessionMap[key]?.identifiers ?? [])
+      )
+    );
+    const env = sessionKeys.map(key => sessionMap[key]?.env).find(Boolean);
+    return { identifiers, env };
+  }, [getActiveSessionKeys, getPersistedSessionMap]);
+
   const getPersistedIdentifiers = useCallback(() => {
     if (typeof window === "undefined") {
       return [] as string[];
@@ -210,21 +295,48 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
       window.localStorage.setItem(XMTP_ENABLED_IDENTIFIERS_KEY, JSON.stringify(merged));
       window.localStorage.setItem(XMTP_LAST_ENV_KEY, env);
+
+      const sessionKeys = getActiveSessionKeys();
+      if (sessionKeys.length > 0) {
+        const currentSessionMap = getPersistedSessionMap();
+        for (const key of sessionKeys) {
+          const existing = currentSessionMap[key]?.identifiers ?? [];
+          currentSessionMap[key] = {
+            identifiers: Array.from(new Set([...existing, ...merged])),
+            env,
+          };
+        }
+        window.localStorage.setItem(XMTP_ENABLED_SESSION_MAP_KEY, JSON.stringify(currentSessionMap));
+      }
     },
-    [getPersistedIdentifiers, walletAddress, xmtpAddress]
+    [
+      getActiveSessionKeys,
+      getPersistedIdentifiers,
+      getPersistedSessionMap,
+      walletAddress,
+      xmtpAddress,
+    ]
   );
 
   const wasXMTPEnabled = useCallback(() => {
-    const activeCandidates = [xmtpAddress, walletAddress]
+    const activeCandidates = [xmtpAddress, walletAddress, walletClientAccountAddress]
       .filter((value): value is string => Boolean(value))
       .map(value => value.toLowerCase());
-    if (!activeCandidates.length) {
-      return false;
-    }
 
+    const sessionState = getPersistedSessionState();
     const persisted = getPersistedIdentifiers();
-    return activeCandidates.some(candidate => persisted.includes(candidate));
-  }, [getPersistedIdentifiers, walletAddress, xmtpAddress]);
+    const hasAddressMatch =
+      activeCandidates.length > 0 && activeCandidates.some(candidate => persisted.includes(candidate));
+    const hasSessionMatch = sessionState.identifiers.length > 0;
+
+    return hasAddressMatch || hasSessionMatch;
+  }, [
+    getPersistedIdentifiers,
+    getPersistedSessionState,
+    walletAddress,
+    walletClientAccountAddress,
+    xmtpAddress,
+  ]);
 
   /**
    * Create and connect to an XMTP client using a signer
@@ -830,7 +942,14 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
    * Reconnect/initiate an existing XMTP client using `Client.build`
    */
   const initXMTPClient = useCallback(async () => {
-    if (!xmtpAddress) return;
+    const sessionState = getPersistedSessionState();
+    const restoreAddressCandidates = [xmtpAddress, walletAddress, walletClientAccountAddress]
+      .filter((value): value is string => Boolean(value))
+      .map(value => value.toLowerCase())
+      .filter(value => value.startsWith("0x") && value.length === 42);
+    if (restoreAddressCandidates.length === 0 && sessionState.identifiers.length === 0) {
+      return;
+    }
 
     dispatch(setInitializing(true));
     dispatch(setError(null));
@@ -868,6 +987,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         new Set(
           [
             configuredEnv,
+            sessionState.env,
             persistedEnv,
             inferredEnv,
             fallbackEnv,
@@ -880,9 +1000,9 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
       const identifierCandidates = Array.from(
         new Set([
+          ...sessionState.identifiers,
           ...getPersistedIdentifiers(),
-          xmtpAddress.toLowerCase(),
-          walletAddress?.toLowerCase() ?? "",
+          ...restoreAddressCandidates,
         ])
       ).filter(value => value.startsWith("0x") && value.length === 42);
 
@@ -934,8 +1054,10 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
   }, [
     dispatch,
     getPersistedIdentifiers,
+    getPersistedSessionState,
     logDebug,
     logError,
+    walletClientAccountAddress,
     persistEnabledState,
     setClient,
     walletAddress,

@@ -79,7 +79,7 @@ const ConversationsNav = () => {
         return;
       }
 
-      if (!walletAddress && !lensProfile?.address) {
+      if (!walletAddress && !lensProfile?.address && !lensProfile?.id && !lensProfile?.handle) {
         return;
       }
 
@@ -118,6 +118,8 @@ const ConversationsNav = () => {
     createXMTPClient,
     initXMTPClient,
     lensProfile?.address,
+    lensProfile?.handle,
+    lensProfile?.id,
     walletAddress,
   ]);
 
