@@ -180,65 +180,80 @@ const fetchListingsFromGraphQL = async (
   type: W3rkListingType,
   authorAddress?: string
 ): Promise<W3rkListing[]> => {
-  const endpoint = process.env.NEXT_PUBLIC_LENS_API_URL || TESTNET_GRAPHQL;
-  const query = `
-    query Posts($request: PostsRequest!) {
-      posts(request: $request) {
-        items {
-          __typename
-          ... on Post {
-            id
-            author {
-              address
-              owner
-              username {
-                localName
-              }
-              metadata {
-                ... on AccountMetadata {
-                  name
-                  picture
+  try {
+    const params = new URLSearchParams({
+      type,
+      ...(authorAddress ? { author: authorAddress } : {}),
+    });
+
+    const proxyResponse = await fetch(`/api/lens-listings?${params.toString()}`, {
+      cache: "no-store",
+    });
+    const proxyJson = await proxyResponse.json();
+    const proxyItems = proxyJson?.items;
+    if (Array.isArray(proxyItems) && proxyItems.length > 0) {
+      return mapAndFilterListings(proxyItems, type);
+    }
+
+    const endpoint = process.env.NEXT_PUBLIC_LENS_API_URL || TESTNET_GRAPHQL;
+    const query = `
+      query Posts($request: PostsRequest!) {
+        posts(request: $request) {
+          items {
+            __typename
+            ... on Post {
+              id
+              author {
+                address
+                owner
+                username {
+                  localName
+                }
+                metadata {
+                  ... on AccountMetadata {
+                    name
+                    picture
+                  }
                 }
               }
-            }
-            metadata {
-              __typename
-              ... on TextOnlyMetadata {
-                content
-                tags
-                attributes {
-                  key
-                  value
+              metadata {
+                __typename
+                ... on TextOnlyMetadata {
+                  content
+                  tags
+                  attributes {
+                    key
+                    value
+                  }
                 }
               }
             }
           }
         }
       }
-    }
-  `;
-
-  const variables = {
-    request: {
-      filter: {
-        ...(authorAddress ? { authors: [authorAddress] } : {}),
-        metadata: {
-          tags: {
-            all: ["w3rk", type],
+    `;
+    const variables = {
+      request: {
+        filter: {
+          ...(authorAddress ? { authors: [authorAddress] } : {}),
+          metadata: {
+            tags: {
+              all: ["w3rk", type],
+            },
           },
         },
       },
-    },
-  };
+    };
 
-  try {
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
         "content-type": "application/json",
       },
       body: JSON.stringify({ query, variables }),
+      cache: "no-store",
     });
+
     const json = await response.json();
     const items = json?.data?.posts?.items;
     return mapAndFilterListings(Array.isArray(items) ? items : [], type);
