@@ -57,6 +57,8 @@ type XMTPSessionState = {
   identifiers: string[];
   env?: "local" | "dev" | "production";
   lastIdentifier?: string;
+  lastInboxId?: string;
+  lastInstallationId?: string;
 };
 
 type XMTPSessionMap = Record<string, XMTPSessionState>;
@@ -65,6 +67,9 @@ type XMTPRestoreAttemptDebug = {
   identifier: string;
   usedDbEncryptionKey: boolean;
   build: "ok" | "failed";
+  inboxId: string | null;
+  installationId: string | null;
+  matchesPersistedInstallation: boolean | null;
   registrationCheckFailed: boolean;
   installationInInbox: boolean | null;
   isRegistered: boolean | null;
@@ -514,7 +519,13 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         if (!value || typeof value !== "object") {
           return acc;
         }
-        const maybeState = value as { identifiers?: unknown; env?: unknown; lastIdentifier?: unknown };
+        const maybeState = value as {
+          identifiers?: unknown;
+          env?: unknown;
+          lastIdentifier?: unknown;
+          lastInboxId?: unknown;
+          lastInstallationId?: unknown;
+        };
         const identifiers = Array.isArray(maybeState.identifiers)
           ? maybeState.identifiers
               .filter((item): item is string => typeof item === "string")
@@ -533,9 +544,23 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           lastIdentifier && lastIdentifier.startsWith("0x") && lastIdentifier.length === 42
             ? lastIdentifier
             : undefined;
+        const lastInboxId =
+          typeof maybeState.lastInboxId === "string" && maybeState.lastInboxId.length > 0
+            ? maybeState.lastInboxId
+            : undefined;
+        const lastInstallationId =
+          typeof maybeState.lastInstallationId === "string" && maybeState.lastInstallationId.length > 0
+            ? maybeState.lastInstallationId
+            : undefined;
 
-        if (identifiers.length > 0 || env || normalizedLastIdentifier) {
-          acc[key] = { identifiers, env, lastIdentifier: normalizedLastIdentifier };
+        if (identifiers.length > 0 || env || normalizedLastIdentifier || lastInboxId || lastInstallationId) {
+          acc[key] = {
+            identifiers,
+            env,
+            lastIdentifier: normalizedLastIdentifier,
+            lastInboxId,
+            lastInstallationId,
+          };
         }
         return acc;
       }, {});
@@ -560,7 +585,11 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     );
     const env = sessionKeys.map(key => sessionMap[key]?.env).find(Boolean);
     const lastIdentifier = sessionKeys.map(key => sessionMap[key]?.lastIdentifier).find(Boolean);
-    return { identifiers, env, lastIdentifier };
+    const lastInboxId = sessionKeys.map(key => sessionMap[key]?.lastInboxId).find(Boolean);
+    const lastInstallationId = sessionKeys
+      .map(key => sessionMap[key]?.lastInstallationId)
+      .find(Boolean);
+    return { identifiers, env, lastIdentifier, lastInboxId, lastInstallationId };
   }, [getActiveSessionKeys, getPersistedSessionMap]);
 
   const getPersistedIdentifiers = useCallback(() => {
@@ -589,7 +618,11 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
   }, []);
 
   const persistEnabledState = useCallback(
-    (env: "local" | "dev" | "production", identifiers: string[] = []) => {
+    (
+      env: "local" | "dev" | "production",
+      identifiers: string[] = [],
+      sessionMeta?: { inboxId?: string | null; installationId?: string | null }
+    ) => {
       if (typeof window === "undefined") {
         return;
       }
@@ -621,6 +654,9 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
             identifiers: Array.from(new Set([...existing, ...currentSessionIdentifiers])),
             env,
             lastIdentifier: preferredIdentifier ?? currentSessionMap[key]?.lastIdentifier,
+            lastInboxId: sessionMeta?.inboxId ?? currentSessionMap[key]?.lastInboxId,
+            lastInstallationId:
+              sessionMeta?.installationId ?? currentSessionMap[key]?.lastInstallationId,
           };
         }
         window.localStorage.setItem(XMTP_ENABLED_SESSION_MAP_KEY, JSON.stringify(currentSessionMap));
@@ -878,7 +914,10 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
             ]);
           }
           setClient(builtClient);
-          persistEnabledState(env, [primaryIdentifier.identifier]);
+          persistEnabledState(env, [primaryIdentifier.identifier], {
+            inboxId: (builtClient as { inboxId?: string }).inboxId ?? null,
+            installationId: (builtClient as { installationId?: string }).installationId ?? null,
+          });
           updateStage("connected");
           return builtClient;
         }
@@ -960,7 +999,11 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
               ]);
             }
             setClient(builtFallbackClient);
-            persistEnabledState(env, [fallbackIdentifier.identifier]);
+            persistEnabledState(env, [fallbackIdentifier.identifier], {
+              inboxId: (builtFallbackClient as { inboxId?: string }).inboxId ?? null,
+              installationId:
+                (builtFallbackClient as { installationId?: string }).installationId ?? null,
+            });
             updateStage("connected");
             return builtFallbackClient;
           }
@@ -1186,7 +1229,10 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         const directClient = await connectAndRegister(signer, "primary");
 
         setClient(directClient);
-        persistEnabledState(env, [xmtpAddress ?? ""]);
+        persistEnabledState(env, [xmtpAddress ?? ""], {
+          inboxId: (directClient as { inboxId?: string }).inboxId ?? null,
+          installationId: (directClient as { installationId?: string }).installationId ?? null,
+        });
         updateStage("connected");
         logDebug("create:connected", { mode: "primary" });
         return directClient;
@@ -1212,7 +1258,11 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
               createError
             );
             setClient(recoveredClient);
-            persistEnabledState(env, [xmtpAddress ?? ""]);
+            persistEnabledState(env, [xmtpAddress ?? ""], {
+              inboxId: (recoveredClient as { inboxId?: string }).inboxId ?? null,
+              installationId:
+                (recoveredClient as { installationId?: string }).installationId ?? null,
+            });
             updateStage("connected");
             logDebug("create:connected", { mode: "primary_installation_limit_recovery" });
             return recoveredClient;
@@ -1258,7 +1308,10 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
             failedMethod = "Client.create";
             const fallbackClient = await connectAndRegister(fallbackSigner, "eoa_fallback");
             setClient(fallbackClient);
-            persistEnabledState(env, [walletAddress ?? ""]);
+            persistEnabledState(env, [walletAddress ?? ""], {
+              inboxId: (fallbackClient as { inboxId?: string }).inboxId ?? null,
+              installationId: (fallbackClient as { installationId?: string }).installationId ?? null,
+            });
             updateStage("connected");
             logDebug("create:connected", { mode: "eoa_fallback" });
             return fallbackClient;
@@ -1295,7 +1348,11 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                   fallbackError
                 );
                 setClient(recoveredClient);
-                persistEnabledState(env, [walletAddress ?? ""]);
+                persistEnabledState(env, [walletAddress ?? ""], {
+                  inboxId: (recoveredClient as { inboxId?: string }).inboxId ?? null,
+                  installationId:
+                    (recoveredClient as { installationId?: string }).installationId ?? null,
+                });
                 updateStage("connected");
                 logDebug("create:connected", { mode: "eoa_fallback_installation_limit_recovery" });
                 return recoveredClient;
@@ -1455,6 +1512,8 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         identifier,
         identifierKind: IdentifierKind.Ethereum,
       }));
+      const expectedInboxId = sessionState.lastInboxId ?? null;
+      const expectedInstallationId = sessionState.lastInstallationId ?? null;
       const isInstallationLimitError = (error: unknown) => {
         if (!(error instanceof Error)) {
           return false;
@@ -1506,6 +1565,9 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                 identifier: identifier.identifier,
                 usedDbEncryptionKey: Boolean(options.dbEncryptionKey),
                 build: "failed",
+                inboxId: null,
+                installationId: null,
+                matchesPersistedInstallation: null,
                 registrationCheckFailed: false,
                 installationInInbox: null,
                 isRegistered: null,
@@ -1526,6 +1588,18 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                   "Restoring XMTP session timed out."
                 );
                 attemptDebug.build = "ok";
+                const builtInboxId = (builtClient as { inboxId?: string }).inboxId ?? null;
+                const builtInstallationId =
+                  (builtClient as { installationId?: string }).installationId ?? null;
+                attemptDebug.inboxId = builtInboxId;
+                attemptDebug.installationId = builtInstallationId;
+                const matchesPersistedInstallation = Boolean(
+                  expectedInstallationId &&
+                    builtInstallationId &&
+                    builtInstallationId === expectedInstallationId &&
+                    (!expectedInboxId || builtInboxId === expectedInboxId)
+                );
+                attemptDebug.matchesPersistedInstallation = matchesPersistedInstallation;
 
                 let isRegistered = false;
                 try {
@@ -1590,10 +1664,17 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                 attemptDebug.canMessageReady = canMessageReady;
                 restoreAttempts.push(attemptDebug);
 
-                const isUsable = isRegistered || installationInInbox || canMessageReady;
+                const isUsable =
+                  isRegistered ||
+                  installationInInbox ||
+                  canMessageReady ||
+                  matchesPersistedInstallation;
                 if (isUsable) {
                   setClient(builtClient);
-                  persistEnabledState(env, [identifier.identifier]);
+                  persistEnabledState(env, [identifier.identifier], {
+                    inboxId: builtInboxId,
+                    installationId: builtInstallationId,
+                  });
                   persistRestoreDebug({
                     result: "restored",
                     identity: baseIdentity,
