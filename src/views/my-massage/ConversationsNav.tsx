@@ -95,13 +95,7 @@ const ConversationsNav = () => {
         }
 
         // Silent restore only: never trigger wallet signatures automatically on page load.
-        for (let attempt = 0; attempt < 3; attempt += 1) {
-          const restoredClient = await initXMTPClient();
-          if (restoredClient || cancelled) {
-            break;
-          }
-          await new Promise(resolve => setTimeout(resolve, 300 * (attempt + 1)));
-        }
+        await initXMTPClient();
       } catch (error) {
         if (!cancelled) {
           console.warn("XMTP auto-restore failed:", error);
@@ -233,17 +227,19 @@ const ConversationsNav = () => {
             </p>
             <button
               onClick={handleEnable}
-              disabled={connectingXMTP || isRestoring || initializing}
+              disabled={connectingXMTP}
               className="px-6 py-2 bg-gray-900 text-white text-sm rounded-full hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {connectingXMTP
                 ? "Connecting..."
                 : isRestoring || initializing
-                  ? "Restoring..."
+                  ? "Enable"
                   : "Enable"}
             </button>
             {(connectingXMTP || isRestoring || initializing) && (
-              <p className="text-xs text-gray-500 mt-2">{stageLabel[connectStage] ?? "Connecting..."}</p>
+              <p className="text-xs text-gray-500 mt-2">
+                {connectingXMTP ? stageLabel[connectStage] ?? "Connecting..." : "Checking existing XMTP session..."}
+              </p>
             )}
           </div>
         </div>

@@ -991,16 +991,9 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         lensChainId === LENS_MAINNET_CHAIN_ID ? "production" : "dev";
       const envCandidates = Array.from(
         new Set(
-          [
-            configuredEnv,
-            sessionState.env,
-            persistedEnv,
-            inferredEnv,
-            fallbackEnv,
-            "production",
-            "dev",
-            "local",
-          ].filter((value): value is "local" | "dev" | "production" => Boolean(value))
+          [configuredEnv, sessionState.env, persistedEnv, inferredEnv, fallbackEnv].filter(
+            (value): value is "local" | "dev" | "production" => Boolean(value)
+          )
         )
       );
 
@@ -1012,29 +1005,38 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         ])
       )
         .filter(value => value.startsWith("0x") && value.length === 42)
-        .slice(0, 12);
+        .slice(0, 4);
 
       const identifiers: Identifier[] = identifierCandidates.map(identifier => ({
         identifier,
         identifierKind: IdentifierKind.Ethereum,
       }));
 
-      for (const env of envCandidates) {
-        for (const identifier of identifiers) {
+      const MAX_BUILD_ATTEMPTS = 6;
+      let attempts = 0;
+
+      for (const identifier of identifiers) {
+        for (const env of envCandidates) {
+          if (attempts >= MAX_BUILD_ATTEMPTS) {
+            break;
+          }
+          attempts += 1;
+
           try {
             logDebug("init:build:start", {
               env,
               identifier: identifier.identifier,
+              attempt: attempts,
             });
 
             const builtClient = await withTimeout(
               Client.build(identifier, { env }),
-              7000,
+              3000,
               "Restoring XMTP session timed out."
             );
             const isRegistered = await withTimeout(
               builtClient.isRegistered(),
-              8000,
+              4000,
               "Checking XMTP registration timed out."
             );
 
@@ -1057,6 +1059,9 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
               identifier: identifier.identifier,
             });
           }
+        }
+        if (attempts >= MAX_BUILD_ATTEMPTS) {
+          break;
         }
       }
 
