@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import getLensAccountData from "@/utils/getLensProfile";
 import { useAccount, useWalletClient } from "wagmi";
 import { Oval } from "react-loader-spinner";
-import { useModal } from "connectkit";
 import { Account, evmAddress, uri, ManagedAccountsVisibility } from "@lens-protocol/client";
 import { useLogin, useAccountsAvailable, SessionClient } from "@lens-protocol/react";
 import {
@@ -81,7 +80,6 @@ export default function LoginForm({ owner }: { owner: string }) {
   const dispatch = useDispatch();
   const router = useRouter();
   const { data: walletClient } = useWalletClient();
-  const { open: connectKitOpen, setOpen: setConnectKitOpen } = useModal();
   const wallet = useAccount();
   const autoSelectedAccountRef = useRef<string | null>(null);
   const lastWalletAddressRef = useRef<string | null>(null);
@@ -95,6 +93,8 @@ export default function LoginForm({ owner }: { owner: string }) {
   const [continuing, setContinuing] = useState(false);
   const [mintSuccessMessage, setMintSuccessMessage] = useState<string | null>(null);
   const [autoSelecting, setAutoSelecting] = useState(false);
+  const [pendingMintedAccount, setPendingMintedAccount] = useState<Account | null>(null);
+  const [activatingMintedAccount, setActivatingMintedAccount] = useState(false);
 
   const managedBy = useMemo(
     () => walletClient?.account.address ?? evmAddress(owner),
@@ -204,28 +204,6 @@ export default function LoginForm({ owner }: { owner: string }) {
     }
   }, [walletClient]);
 
-  const runWithFamilyModal = useCallback(
-    async <T,>(operation: () => Promise<T>): Promise<T> => {
-      let openedForOperation = false;
-
-      if (isFamilyConnectorActive && !connectKitOpen) {
-        setConnectKitOpen(true);
-        openedForOperation = true;
-        await wait(180);
-      }
-
-      try {
-        return await operation();
-      } finally {
-        if (openedForOperation) {
-          await wait(120);
-          setConnectKitOpen(false);
-        }
-      }
-    },
-    [connectKitOpen, isFamilyConnectorActive, setConnectKitOpen]
-  );
-
   const authenticateUser = useCallback(async () => {
     if (!walletClient) {
       setAuthError("Wallet not ready. Reconnect and try again.");
@@ -245,15 +223,13 @@ export default function LoginForm({ owner }: { owner: string }) {
 
       const appAddress = process.env.NEXT_PUBLIC_APP_ADDRESS_TESTNET || LENS_TESTNET_APP;
 
-      const authenticated = await runWithFamilyModal(() =>
-        client.login({
-          onboardingUser: {
-            app: evmAddress(appAddress),
-            wallet: walletClient.account.address,
-          },
-          signMessage: signMessageWith(walletClient),
-        })
-      );
+      const authenticated = await client.login({
+        onboardingUser: {
+          app: evmAddress(appAddress),
+          wallet: walletClient.account.address,
+        },
+        signMessage: signMessageWith(walletClient),
+      });
 
       if (authenticated.isErr()) {
         const msg = getErrMsg(authenticated.error, "Lens login failed");
@@ -271,12 +247,13 @@ export default function LoginForm({ owner }: { owner: string }) {
     } finally {
       setContinuing(false);
     }
-  }, [ensureLensChain, runWithFamilyModal, walletClient]);
+  }, [ensureLensChain, walletClient]);
 
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value;
     setHandle(input);
     setMintSuccessMessage(null);
+    setPendingMintedAccount(null);
 
     if (/^\d/.test(input)) {
       setErrorMessage("Sorry, handles cannot start with a number.");
@@ -321,14 +298,12 @@ export default function LoginForm({ owner }: { owner: string }) {
             },
           };
 
-      const authenticated = await runWithFamilyModal(() =>
-        authenticate({
-          ...authRequest,
-          signMessage: async (message: string) => {
-            return await walletClient.signMessage({ message });
-          },
-        })
-      );
+      const authenticated = await authenticate({
+        ...authRequest,
+        signMessage: async (message: string) => {
+          return await walletClient.signMessage({ message });
+        },
+      });
 
       if (authenticated.isErr()) {
         if (isSignatureRejected(authenticated.error)) {
@@ -362,7 +337,31 @@ export default function LoginForm({ owner }: { owner: string }) {
       setAuthError(msg);
       return false;
     }
-  }, [authenticate, dispatch, ensureLensChain, router, runWithFamilyModal, wallet.address, walletClient]);
+  }, [authenticate, dispatch, ensureLensChain, router, wallet.address, walletClient]);
+
+  const activateMintedAccount = useCallback(async () => {
+    if (!pendingMintedAccount) {
+      return;
+    }
+
+    setActivatingMintedAccount(true);
+    try {
+      const switched = await handleSelectAccount(pendingMintedAccount, {
+        redirectPath: "/onboarding",
+        toastMessage: "Profile created. Continue onboarding.",
+      });
+
+      if (!switched) {
+        return;
+      }
+
+      setPendingMintedAccount(null);
+      setSessionClient(null);
+      setHandle("");
+    } finally {
+      setActivatingMintedAccount(false);
+    }
+  }, [handleSelectAccount, pendingMintedAccount]);
 
   const handleSubmit = async () => {
     if (sessionClient === null || handle.trim() === "" || !walletClient) {
@@ -374,6 +373,7 @@ export default function LoginForm({ owner }: { owner: string }) {
     setShowError(false);
     setAuthError(null);
     setMintSuccessMessage(null);
+    setPendingMintedAccount(null);
     setCreatingProfile(true);
 
     try {
@@ -419,8 +419,8 @@ export default function LoginForm({ owner }: { owner: string }) {
         metadataUri: uri(metadataURI),
       };
 
-      const mintResult = await runWithFamilyModal(() =>
-        createAccountWithUsername(sessionClient, accountParams).andThen(handleOperationWith(walletClient))
+      const mintResult = await createAccountWithUsername(sessionClient, accountParams).andThen(
+        handleOperationWith(walletClient)
       );
 
       if (mintResult.isErr()) {
@@ -437,6 +437,12 @@ export default function LoginForm({ owner }: { owner: string }) {
         );
         setShowError(true);
         setMintSuccessMessage(null);
+        return;
+      }
+
+      if (isFamilyConnectorActive) {
+        setPendingMintedAccount(mintedAccount);
+        setMintSuccessMessage("Profile minted. Click Continue to activate and start onboarding.");
         return;
       }
 
@@ -485,6 +491,8 @@ export default function LoginForm({ owner }: { owner: string }) {
       setShowError(false);
       setAuthError(null);
       setMintSuccessMessage(null);
+      setPendingMintedAccount(null);
+      setActivatingMintedAccount(false);
       return;
     }
 
@@ -495,6 +503,8 @@ export default function LoginForm({ owner }: { owner: string }) {
       setShowError(false);
       setAuthError(null);
       setMintSuccessMessage(null);
+      setPendingMintedAccount(null);
+      setActivatingMintedAccount(false);
       localStorage.removeItem("activeHandle");
     }
 
@@ -508,6 +518,7 @@ export default function LoginForm({ owner }: { owner: string }) {
       authenticateLoading ||
       continuing ||
       creatingProfile ||
+      isFamilyConnectorActive ||
       !walletReady ||
       !isWalletContextReady
     ) {
@@ -530,6 +541,7 @@ export default function LoginForm({ owner }: { owner: string }) {
     continuing,
     creatingProfile,
     handleSelectAccount,
+    isFamilyConnectorActive,
     isWalletContextReady,
     singleAccount,
     walletReady,
@@ -652,6 +664,16 @@ export default function LoginForm({ owner }: { owner: string }) {
                   {mintSuccessMessage}
                 </span>
               )}
+              {pendingMintedAccount && (
+                <button
+                  type="button"
+                  className="h-[44px] w-full rounded-[12px] bg-[#0F172A] px-[14px] text-[14px] font-semibold text-white transition hover:bg-[#1E293B] disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={activateMintedAccount}
+                  disabled={activatingMintedAccount || authenticateLoading || continuing}
+                >
+                  {activatingMintedAccount ? "Waiting for signature..." : "Continue to onboarding"}
+                </button>
+              )}
               {showError && (
                 <span className="rounded-[12px] border border-[#FECACA] bg-[#FEF2F2] px-[12px] py-[10px] text-[12px] leading-[1.4] text-[#B91C1C]">
                   {errorMessage}
@@ -693,10 +715,28 @@ export default function LoginForm({ owner }: { owner: string }) {
             </>
           )}
 
-          {singleAccount && !accountsLoading && !autoSelecting && (
+          {singleAccount && !accountsLoading && !autoSelecting && !isFamilyConnectorActive && (
             <span className="rounded-[12px] border border-[#DBEAFE] bg-[#EFF6FF] px-[12px] py-[10px] text-[12px] leading-[1.4] text-[#1D4ED8]">
               Profile detected. Completing authentication...
             </span>
+          )}
+
+          {singleAccount && !accountsLoading && !autoSelecting && isFamilyConnectorActive && (
+            <>
+              <span className="rounded-[12px] border border-[#DBEAFE] bg-[#EFF6FF] px-[12px] py-[10px] text-[12px] leading-[1.4] text-[#1D4ED8]">
+                Profile detected. Continue to sign in with Family.
+              </span>
+              <button
+                type="button"
+                className="h-[44px] w-full rounded-[12px] bg-[#0F172A] px-[14px] text-[14px] font-semibold text-white transition hover:bg-[#1E293B] disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={() => {
+                  void handleSelectAccount(singleAccount);
+                }}
+                disabled={authenticateLoading || continuing || creatingProfile || activatingMintedAccount}
+              >
+                Continue as @{singleAccount.username?.localName || singleAccount.address.slice(0, 8)}
+              </button>
+            </>
           )}
 
           {authError && (
