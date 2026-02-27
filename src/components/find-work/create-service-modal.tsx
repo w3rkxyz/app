@@ -16,10 +16,33 @@ import {
   Users,
   HelpCircle,
 } from "lucide-react";
+import { MetadataAttributeType, textOnly } from "@lens-protocol/metadata";
+import toast from "react-hot-toast";
+import { evmAddress } from "@lens-protocol/client";
+import { fetchAccount as fetchLensAccount, post } from "@lens-protocol/client/actions";
+import { handleOperationWith } from "@lens-protocol/client/viem";
+import { useLogin, useSessionClient, uri } from "@lens-protocol/react";
+import { useDispatch, useSelector } from "react-redux";
+import { useWalletClient } from "wagmi";
+import { uploadMetadataToLensStorage } from "@/utils/storage-client";
+import { client, getLensClient } from "@/client";
+import { displayLoginModal } from "@/redux/app";
 
 interface CreateServiceModalProps {
   open: boolean;
   onClose: () => void;
+  onPublished?: (listing?: {
+    id?: string;
+    username: string;
+    profileImage: string;
+    jobName: string;
+    jobIcon: string;
+    description: string;
+    contractType: string;
+    paymentAmount: string;
+    paidIn: string;
+    tags: string[];
+  }) => void | Promise<void>;
 }
 
 const paymentTokens = ["Ethereum (ETH)", "USDC (USDC)", "GHO (GHO)", "Bonsai (BONSAI)"];
@@ -60,12 +83,27 @@ const categoryIconMap: Record<
   Other: HelpCircle,
 };
 
-const CreateServiceModal = ({ open, onClose }: CreateServiceModalProps) => {
+const removeAtSymbol = (text: string) => (text.startsWith("@") ? text.slice(1) : text);
+const extractTokenSymbol = (token: string) => {
+  const match = token.match(/\(([^)]+)\)/);
+  return match ? match[1] : token;
+};
+const isTxHash = (value: string) => /^0x[a-fA-F0-9]{64}$/.test(value);
+const LENS_TESTNET_CHAIN_ID = 37111;
+const LENS_TESTNET_APP = "0xC75A89145d765c396fd75CbD16380Eb184Bd2ca7";
+
+const CreateServiceModal = ({ open, onClose, onPublished }: CreateServiceModalProps) => {
+  const dispatch = useDispatch();
+  const { data: sessionClient } = useSessionClient();
+  const { data: walletClient } = useWalletClient();
+  const { execute: authenticate } = useLogin();
+  const { user: profile } = useSelector((state: any) => state.app);
   const [serviceTitle, setServiceTitle] = React.useState("");
   const [serviceDescription, setServiceDescription] = React.useState("");
   const [rateAmount, setRateAmount] = React.useState("");
   const [selectedTokens, setSelectedTokens] = React.useState<string[]>(["Ethereum (ETH)"]);
   const [selectedCategories, setSelectedCategories] = React.useState<string[]>([]);
+  const [savingData, setSavingData] = React.useState(false);
   const [isTokenDropdownOpen, setIsTokenDropdownOpen] = React.useState(false);
   const [tokenSearch, setTokenSearch] = React.useState("");
   const tokenDropdownRef = React.useRef<HTMLDivElement | null>(null);
@@ -140,6 +178,288 @@ const CreateServiceModal = ({ open, onClose }: CreateServiceModalProps) => {
   const selectedTokenIcon = tokenIconMap[selectedToken] ?? "/icons/eth.svg";
 
   if (!open) return null;
+
+  const resetForm = () => {
+    setServiceTitle("");
+    setServiceDescription("");
+    setRateAmount("");
+    setSelectedTokens(["Ethereum (ETH)"]);
+    setSelectedCategories([]);
+    setTokenSearch("");
+    setIsTokenDropdownOpen(false);
+    setCategorySearch("");
+    setIsCategoryDropdownOpen(false);
+  };
+
+  const ensureLensChain = async (): Promise<boolean> => {
+    if (!walletClient) {
+      return false;
+    }
+
+    const currentChainId = walletClient.chain?.id;
+    if (currentChainId === LENS_TESTNET_CHAIN_ID) {
+      return true;
+    }
+
+    try {
+      await walletClient.switchChain({ id: LENS_TESTNET_CHAIN_ID });
+      return true;
+    } catch (error: any) {
+      if (error?.code !== 4902) {
+        toast.error("Please switch to Lens Chain Testnet to continue.");
+        return false;
+      }
+
+      try {
+        await walletClient.addChain({
+          chain: {
+            id: LENS_TESTNET_CHAIN_ID,
+            name: "Lens Chain Testnet",
+            nativeCurrency: {
+              name: "GHO",
+              symbol: "GHO",
+              decimals: 18,
+            },
+            rpcUrls: {
+              default: { http: ["https://rpc.testnet.lens.xyz"] },
+            },
+            blockExplorers: {
+              default: {
+                name: "Lens Explorer",
+                url: "https://block-explorer.testnet.lens.xyz",
+              },
+            },
+          },
+        });
+        await walletClient.switchChain({ id: LENS_TESTNET_CHAIN_ID });
+        return true;
+      } catch {
+        toast.error("Could not add Lens Chain Testnet to your wallet.");
+        return false;
+      }
+    }
+  };
+
+  const ensureSessionForPublish = async () => {
+    if (sessionClient) {
+      return sessionClient;
+    }
+
+    if (!walletClient?.account.address) {
+      dispatch(displayLoginModal({ display: true }));
+      toast.error("Connect your wallet, then sign in to Lens.");
+      return null;
+    }
+
+    const profileAddress = profile?.address;
+    if (!profileAddress) {
+      dispatch(displayLoginModal({ display: true }));
+      toast.error("Please sign in to Lens first.");
+      return null;
+    }
+
+    const onLensChain = await ensureLensChain();
+    if (!onLensChain) {
+      return null;
+    }
+
+    const accountResult = await fetchLensAccount(client, { address: profileAddress });
+    const lensAccount: any = accountResult.unwrapOr(null);
+
+    if (!lensAccount?.address) {
+      dispatch(displayLoginModal({ display: true }));
+      toast.error("Could not load your Lens profile. Please sign in again.");
+      return null;
+    }
+
+    const appAddress = process.env.NEXT_PUBLIC_APP_ADDRESS_TESTNET || LENS_TESTNET_APP;
+    const connectedWallet = walletClient.account.address.toLowerCase();
+    const ownerAddress = String(lensAccount.owner || "").toLowerCase();
+    const isOwner = ownerAddress === connectedWallet;
+
+    const authRequest = isOwner
+      ? {
+          accountOwner: {
+            account: lensAccount.address,
+            app: evmAddress(appAddress),
+            owner: walletClient.account.address,
+          },
+        }
+      : {
+          accountManager: {
+            account: lensAccount.address,
+            app: evmAddress(appAddress),
+            manager: walletClient.account.address,
+          },
+        };
+
+    try {
+      const authenticated = await authenticate({
+        ...authRequest,
+        signMessage: async (message: string) => walletClient.signMessage({ message }),
+      });
+
+      if (authenticated.isErr()) {
+        dispatch(displayLoginModal({ display: true }));
+        toast.error(authenticated.error.message || "Lens authentication failed.");
+        return null;
+      }
+    } catch (error: any) {
+      dispatch(displayLoginModal({ display: true }));
+      toast.error(error?.message || "Lens authentication failed.");
+      return null;
+    }
+
+    const resumed = await getLensClient();
+    if (!resumed.isSessionClient()) {
+      dispatch(displayLoginModal({ display: true }));
+      toast.error("Please finish signing in to Lens.");
+      return null;
+    }
+
+    return resumed;
+  };
+
+  const handlePublish = async () => {
+    const publishClient = await ensureSessionForPublish();
+    if (!publishClient) {
+      return;
+    }
+
+    const profileHandle =
+      (typeof profile?.userLink === "string" && profile.userLink.trim()) ||
+      (typeof profile?.handle === "string" && removeAtSymbol(profile.handle.trim())) ||
+      "";
+
+    const allTags = [...new Set([...selectedCategories, "service", "w3rk"])];
+    const content = `🛠 Ready for work!\n\nJust listed my services on @w3rkxyz as a ${serviceTitle}\n\nFor more details please visit ${
+      profileHandle ? `www.w3rk.xyz/${profileHandle}` : "www.w3rk.xyz"
+    }`;
+
+    const metadata = textOnly({
+      content,
+      tags: allTags,
+      attributes: [
+        {
+          key: "paid in",
+          value: selectedTokens.join(", "),
+          type: MetadataAttributeType.STRING,
+        },
+        {
+          key: "payement type",
+          value: "hourly",
+          type: MetadataAttributeType.STRING,
+        },
+        {
+          key: "hourly",
+          value: rateAmount,
+          type: MetadataAttributeType.STRING,
+        },
+        {
+          key: "post type",
+          value: "service",
+          type: MetadataAttributeType.STRING,
+        },
+        {
+          key: "title",
+          value: serviceTitle,
+          type: MetadataAttributeType.STRING,
+        },
+        {
+          key: "content",
+          value: serviceDescription,
+          type: MetadataAttributeType.STRING,
+        },
+      ],
+    });
+
+    try {
+      setSavingData(true);
+      const metadataUri = await uploadMetadataToLensStorage(metadata, {
+        chainId: LENS_TESTNET_CHAIN_ID,
+        environment: "production",
+      });
+      const result = await post(publishClient, {
+        contentUri: uri(metadataUri),
+      });
+
+      if (result.isErr()) {
+        toast.error(result.error.message);
+        return;
+      }
+
+      const operationValue: any = result.value;
+      if (operationValue?.__typename === "PostOperationValidationFailed") {
+        toast.error(operationValue.reason || "Post validation failed.");
+        return;
+      }
+
+      if (operationValue?.__typename === "TransactionWillFail") {
+        toast.error(operationValue.reason || "Transaction will fail.");
+        return;
+      }
+
+      if (
+        operationValue?.__typename === "SelfFundedTransactionRequest" ||
+        operationValue?.__typename === "SponsoredTransactionRequest"
+      ) {
+        if (!walletClient) {
+          toast.error("Connect your wallet to complete this Lens transaction.");
+          return;
+        }
+
+        const operationHandler = handleOperationWith(walletClient as any) as any;
+        const txResult = await operationHandler(operationValue);
+        if (txResult.isErr()) {
+          toast.error(txResult.error?.message || "Failed to submit Lens transaction.");
+          return;
+        }
+
+        const txIdentifier = String(txResult.value ?? "");
+        if (isTxHash(txIdentifier)) {
+          const waitResult = await publishClient.waitForTransaction(txIdentifier);
+          if (waitResult.isErr()) {
+            toast.error(waitResult.error?.message || "Lens transaction was not confirmed.");
+            return;
+          }
+        }
+      } else if (operationValue?.__typename === "PostResponse" && isTxHash(operationValue.hash)) {
+        const waitResult = await publishClient.waitForTransaction(operationValue.hash);
+        if (waitResult.isErr()) {
+          toast.error(waitResult.error?.message || "Lens transaction was not confirmed.");
+          return;
+        }
+      }
+
+      const optimisticListing = {
+        id: `${Date.now()}`,
+        username:
+          (typeof profile?.displayName === "string" && profile.displayName.trim()) ||
+          (typeof profile?.userLink === "string" && profile.userLink.trim()) ||
+          "Lens User",
+        profileImage:
+          (typeof profile?.picture === "string" && profile.picture.trim()) ||
+          "https://static.hey.xyz/images/default.png",
+        jobName: serviceTitle,
+        jobIcon: "",
+        description: serviceDescription,
+        contractType: "hourly",
+        paymentAmount: `$${rateAmount}/hr`,
+        paidIn: extractTokenSymbol(selectedTokens[0] || ""),
+        tags: selectedCategories,
+      };
+
+      resetForm();
+      await onPublished?.(optimisticListing);
+      onClose();
+      toast.success("Service posted on Lens.");
+    } catch (error: any) {
+      console.error("Failed to publish service:", error);
+      toast.error(error?.message || "Failed to publish service. Please try again.");
+    } finally {
+      setSavingData(false);
+    }
+  };
 
   return (
     <div
@@ -375,15 +695,17 @@ const CreateServiceModal = ({ open, onClose }: CreateServiceModalProps) => {
           <footer className="flex items-center justify-end px-[24px] py-[16px] border-t border-[#E4E4E7] bg-[#F9FAFB]">
             <button
               type="button"
+              onClick={handlePublish}
               className="inline-flex h-[40px] items-center justify-center rounded-[999px] bg-[#111827] px-[18px] text-[14px] font-semibold leading-[20px] text-white shadow-[0_10px_25px_rgba(15,23,42,0.35)] hover:bg-black disabled:opacity-60 disabled:cursor-not-allowed"
               disabled={
+                savingData ||
                 !serviceTitle ||
                 !serviceDescription ||
                 !rateAmount ||
                 selectedCategories.length === 0
               }
             >
-              Add Service
+              {savingData ? "Publishing..." : "Add Service"}
             </button>
           </footer>
         </div>

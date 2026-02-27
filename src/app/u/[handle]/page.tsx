@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useParams, useSearchParams } from "next/navigation";
 import { useSelector } from "react-redux";
 import { evmAddress, useAccount as useLensAccount, useSessionClient } from "@lens-protocol/react";
-import { fetchAccount, fetchFollowers, fetchFollowStatus, fetchFollowing, fetchPosts, follow, unfollow } from "@lens-protocol/client/actions";
+import { fetchAccount, fetchFollowers, fetchFollowStatus, fetchFollowing, follow, unfollow } from "@lens-protocol/client/actions";
 import { handleOperationWith } from "@lens-protocol/client/viem";
 import { CheckIcon, PlusIcon } from "lucide-react";
 import toast from "react-hot-toast";
@@ -14,6 +14,7 @@ import { useWalletClient } from "wagmi";
 import CreatePostModal from "@/views/profile/CreatePostModal";
 import ProfilePostCard from "@/components/Cards/ProfilePostCard";
 import getLensAccountData from "@/utils/getLensProfile";
+import { fetchAuthorListings } from "@/utils/lens-find-posts";
 import { client, getLensClient } from "@/client";
 
 const LENS_TESTNET_CHAIN_ID = 37111;
@@ -34,21 +35,8 @@ function toAbsoluteUrl(url: string) {
   return `https://${url}`;
 }
 
-function readAttributeMap(metadata: any): Record<string, string> {
-  const map: Record<string, string> = {};
-  const attributes = metadata?.attributes;
-  if (!Array.isArray(attributes)) return map;
-
-  attributes.forEach((attribute: any) => {
-    if (attribute?.key && typeof attribute?.value === "string") {
-      map[attribute.key] = attribute.value;
-    }
-  });
-
-  return map;
-}
-
 type ProfilePost = {
+  id: string;
   type: "job" | "service";
   title: string;
   description: string;
@@ -106,40 +94,16 @@ function toConnectionAccount(account: any, observerAddress: string) {
   } satisfies ConnectionAccount;
 }
 
-function parseProfilePost(post: any): ProfilePost | null {
-  const attributes = readAttributeMap(post?.metadata);
-  const rawType = (attributes["post type"] || "").toLowerCase();
-  const type: "job" | "service" = rawType === "service" ? "service" : "job";
-
-  const title = attributes["title"] || "Untitled Post";
-  const description = attributes["content"] || post?.metadata?.content || "";
-
-  const paymentType = (attributes["payement type"] || attributes["payment type"] || "").toLowerCase();
-  const hourly = attributes["hourly"];
-  const fixed = attributes["fixed"];
-
-  let paymentAmount = "";
-  if (paymentType === "hourly" && hourly) {
-    paymentAmount = `$${hourly}/hr`;
-  } else if (fixed) {
-    paymentAmount = `$${fixed}`;
-  } else if (hourly) {
-    paymentAmount = `$${hourly}/hr`;
-  } else {
-    paymentAmount = "$0";
+function parsePostOrderKey(id: string): bigint | null {
+  if (!/^\d+$/.test(id)) {
+    return null;
   }
 
-  const tags = Array.isArray(post?.metadata?.tags)
-    ? post.metadata.tags.filter((tag: string) => !["w3rk", "job", "service"].includes(tag))
-    : [];
-
-  return {
-    type,
-    title,
-    description,
-    tags,
-    paymentAmount,
-  };
+  try {
+    return BigInt(id);
+  } catch {
+    return null;
+  }
 }
 
 function getFollowCount(account: any, key: "followers" | "following") {
@@ -733,28 +697,55 @@ export default function Profile() {
       setPostsLoading(true);
 
       try {
-        const result = await fetchPosts(client, {
-          filter: {
-            authors: [lensAccount.address],
-          },
-        });
-
+        const [jobPosts, servicePosts] = await Promise.all([
+          fetchAuthorListings("job", lensAccount.address),
+          fetchAuthorListings("service", lensAccount.address),
+        ]);
         if (!active) return;
 
-        if (result.isErr()) {
-          console.error("Failed to load posts:", result.error);
-          setProfilePosts([]);
-          return;
-        }
+        const merged = [
+          ...jobPosts.map(post => ({
+            id: post.id,
+            type: "job" as const,
+            title: post.jobName,
+            description: post.description,
+            tags: post.tags,
+            paymentAmount: post.paymentAmount,
+          })),
+          ...servicePosts.map(post => ({
+            id: post.id,
+            type: "service" as const,
+            title: post.jobName,
+            description: post.description,
+            tags: post.tags,
+            paymentAmount: post.paymentAmount,
+          })),
+        ];
 
-        const posts = result.value?.items
-          ?.map(parseProfilePost)
-          .filter((post): post is ProfilePost => Boolean(post)) ?? [];
+        const deduped = new Map<string, ProfilePost>();
+        merged.forEach(post => {
+          const key = `${post.type}|${post.id}|${post.title}|${post.description}`;
+          if (!deduped.has(key)) {
+            deduped.set(key, post);
+          }
+        });
+
+        const posts = [...deduped.values()].sort((a, b) => {
+          const aKey = parsePostOrderKey(a.id);
+          const bKey = parsePostOrderKey(b.id);
+          if (aKey === null || bKey === null) {
+            return 0;
+          }
+          if (aKey === bKey) {
+            return 0;
+          }
+          return aKey > bKey ? -1 : 1;
+        });
 
         setProfilePosts(posts);
       } catch (error) {
         if (!active) return;
-        console.error("Failed to load posts:", error);
+        console.error("Failed to load profile listings:", error);
         setProfilePosts([]);
       } finally {
         if (active) {
