@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import getLensAccountData from "@/utils/getLensProfile";
 import { useAccount, useWalletClient } from "wagmi";
 import { Oval } from "react-loader-spinner";
+import { useModal } from "connectkit";
 import { Account, evmAddress, uri, ManagedAccountsVisibility } from "@lens-protocol/client";
 import { useLogin, useAccountsAvailable, SessionClient } from "@lens-protocol/react";
 import {
@@ -71,10 +72,16 @@ const isSignatureRejected = (error: unknown) => {
   );
 };
 
+const isFamilyModalVisibilityError = (error: unknown) => {
+  const message = getErrMsg(error, "").toLowerCase();
+  return message.includes("family integrated modal is not visible");
+};
+
 export default function LoginForm({ owner }: { owner: string }) {
   const dispatch = useDispatch();
   const router = useRouter();
   const { data: walletClient } = useWalletClient();
+  const { open: connectKitOpen, setOpen: setConnectKitOpen } = useModal();
   const wallet = useAccount();
   const autoSelectedAccountRef = useRef<string | null>(null);
   const lastWalletAddressRef = useRef<string | null>(null);
@@ -116,6 +123,11 @@ export default function LoginForm({ owner }: { owner: string }) {
   const profileCount = availableAccounts?.items.length ?? 0;
   const showPrepare = walletReady && !accountsLoading && !availableAccounts && !accountsError;
   const singleAccount = profileCount === 1 ? availableAccounts?.items[0]?.account : null;
+  const isFamilyConnectorActive = useMemo(() => {
+    const connectorId = wallet.connector?.id?.toLowerCase() ?? "";
+    const connectorName = wallet.connector?.name?.toLowerCase() ?? "";
+    return connectorId.includes("family") || connectorName.includes("family");
+  }, [wallet.connector?.id, wallet.connector?.name]);
 
   const waitForMintedAccount = useCallback(async (localName: string) => {
     const publicClient = getPublicClient();
@@ -377,9 +389,26 @@ export default function LoginForm({ owner }: { owner: string }) {
         metadataUri: uri(metadataURI),
       };
 
-      await createAccountWithUsername(sessionClient, accountParams).andThen(
-        handleOperationWith(walletClient)
-      );
+      let openedFamilyModalForMint = false;
+      if (isFamilyConnectorActive && !connectKitOpen) {
+        setConnectKitOpen(true);
+        openedFamilyModalForMint = true;
+        await wait(120);
+      }
+
+      try {
+        const mintResult = await createAccountWithUsername(sessionClient, accountParams).andThen(
+          handleOperationWith(walletClient)
+        );
+
+        if (mintResult.isErr()) {
+          throw mintResult.error;
+        }
+      } finally {
+        if (openedFamilyModalForMint) {
+          setConnectKitOpen(false);
+        }
+      }
 
       setMintSuccessMessage("Profile minted successfully. Activating your account...");
 
@@ -412,7 +441,13 @@ export default function LoginForm({ owner }: { owner: string }) {
       setSessionClient(null);
       setHandle("");
     } catch (error: unknown) {
-      setErrorMessage(getErrMsg(error, "Failed to create profile. Please try again."));
+      if (isFamilyModalVisibilityError(error)) {
+        setErrorMessage(
+          "Family approval window was not visible. Please retry and confirm the mint transaction in the Family modal."
+        );
+      } else {
+        setErrorMessage(getErrMsg(error, "Failed to create profile. Please try again."));
+      }
       setShowError(true);
       setMintSuccessMessage(null);
     } finally {
