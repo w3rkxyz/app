@@ -177,19 +177,31 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     }
   };
 
-  const verifyBuiltClientUsable = useCallback(
+  const verifyBuiltClientReady = useCallback(
     async (
       builtClient: Client<unknown>,
+      identifier: string,
       context: Record<string, unknown>
     ): Promise<boolean> => {
       try {
-        await withTimeout(
-          builtClient.conversations.list({ limit: 1n }),
+        const normalizedIdentifier = identifier.toLowerCase();
+        const canMessageMap = await withTimeout(
+          builtClient.canMessage([
+            {
+              identifier: normalizedIdentifier,
+              identifierKind: IdentifierKind.Ethereum,
+            },
+          ]),
           5000,
-          "Verifying XMTP client usability timed out."
+          "Verifying XMTP client readiness timed out."
         );
-        logDebug("restore:verify:usable", context);
-        return true;
+        const isReady = Boolean(canMessageMap.get(normalizedIdentifier));
+        logDebug("restore:verify:ready", {
+          ...context,
+          normalizedIdentifier,
+          isReady,
+        });
+        return isReady;
       } catch (error) {
         logError("restore:verify:failed", error, context);
         return false;
@@ -676,7 +688,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
         const isUsable =
           isRegistered ||
-          (await verifyBuiltClientUsable(builtClient, {
+          (await verifyBuiltClientReady(builtClient, primaryIdentifier.identifier, {
             phase: "create:build:primary",
             env,
             identifier: primaryIdentifier.identifier,
@@ -745,12 +757,16 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
           const isUsable =
             isRegistered ||
-            (await verifyBuiltClientUsable(builtFallbackClient, {
+            (await verifyBuiltClientReady(
+              builtFallbackClient,
+              fallbackIdentifier.identifier,
+              {
               phase: "create:build:fallback",
               env,
               identifier: fallbackIdentifier.identifier,
               registrationCheckFailed,
-            }));
+              }
+            ));
 
           if (isUsable) {
             logDebug("build:fallback:registered:reuse_client");
@@ -1152,7 +1168,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     getOrCreateDbEncryptionKey,
     storeDbEncryptionKeyForRelatedIdentifiers,
     persistEnabledState,
-    verifyBuiltClientUsable,
+    verifyBuiltClientReady,
     expectedSigningAddress,
     actualWalletClientAddress,
     walletClientAccountAddress,
@@ -1294,7 +1310,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
               const isUsable =
                 isRegistered ||
-                (await verifyBuiltClientUsable(builtClient, {
+                (await verifyBuiltClientReady(builtClient, identifier.identifier, {
                   phase: "init:build",
                   env,
                   identifier: identifier.identifier,
@@ -1339,7 +1355,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     walletClientAccountAddress,
     persistEnabledState,
     setClient,
-    verifyBuiltClientUsable,
+    verifyBuiltClientReady,
     walletAddress,
     walletClient,
     xmtpAddress,
