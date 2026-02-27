@@ -30,7 +30,18 @@ import PaymentTokensDropdown from "../onboarding/payment-tokens-dropdown";
 interface CreateJobModalProps {
   open: boolean;
   onClose: () => void;
-  onPublished?: () => void | Promise<void>;
+  onPublished?: (listing?: {
+    id?: string;
+    username: string;
+    profileImage: string;
+    jobName: string;
+    jobIcon: string;
+    description: string;
+    contractType: string;
+    paymentAmount: string;
+    paidIn: string;
+    tags: string[];
+  }) => void | Promise<void>;
 }
 
 const jobCategories = [
@@ -63,6 +74,10 @@ const categoryIconMap: Record<
 };
 
 const removeAtSymbol = (text: string) => (text.startsWith("@") ? text.slice(1) : text);
+const extractTokenSymbol = (token: string) => {
+  const match = token.match(/\(([^)]+)\)/);
+  return match ? match[1] : token;
+};
 const LENS_TESTNET_CHAIN_ID = 37111;
 const LENS_TESTNET_APP = "0xC75A89145d765c396fd75CbD16380Eb184Bd2ca7";
 
@@ -348,8 +363,26 @@ const CreateJobModal = ({ open, onClose, onPublished }: CreateJobModalProps) => 
         return;
       }
 
+      const optimisticListing = {
+        id: `${Date.now()}`,
+        username:
+          (typeof profile?.displayName === "string" && profile.displayName.trim()) ||
+          (typeof profile?.userLink === "string" && profile.userLink.trim()) ||
+          "Lens User",
+        profileImage:
+          (typeof profile?.picture === "string" && profile.picture.trim()) ||
+          "https://static.hey.xyz/images/default.png",
+        jobName: jobTitle,
+        jobIcon: "",
+        description: jobDescription,
+        contractType: "fixed",
+        paymentAmount: `$${budget}`,
+        paidIn: extractTokenSymbol(selectedTokens[0] || ""),
+        tags: selectedCategories,
+      };
+
       resetForm();
-      await onPublished?.();
+      await onPublished?.(optimisticListing);
       onClose();
       toast.success("Job posted on Lens.");
     } catch (error: any) {

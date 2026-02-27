@@ -170,7 +170,6 @@ export const mapLensPostToW3rkListing = (
 export const fetchW3rkListings = async (type: W3rkListingType): Promise<W3rkListing[]> => {
   const result = await fetchPosts(client, {
     filter: {
-      feeds: [{ globalFeed: true }],
       metadata: {
         tags: {
           all: ["w3rk", type],

@@ -186,8 +186,14 @@ const FindTalent = () => {
       setIsHourlyRateDropdownOpen(false);
     }
   };
-  const handleServicePublished = () => {
+  const handleServicePublished = (listing?: JobData) => {
+    if (listing) {
+      setJobs(prev => [listing, ...prev]);
+    }
     void loadServices();
+    window.setTimeout(() => {
+      void loadServices();
+    }, 4000);
   };
 
   return (

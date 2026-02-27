@@ -146,8 +146,14 @@ const FindWork = () => {
       setIsCategoryDropdownOpen(false);
     }
   };
-  const handleJobPublished = () => {
+  const handleJobPublished = (listing?: JobData) => {
+    if (listing) {
+      setJobs(prev => [listing, ...prev]);
+    }
     void loadJobs();
+    window.setTimeout(() => {
+      void loadJobs();
+    }, 4000);
   };
 
   return (
