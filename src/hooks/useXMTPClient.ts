@@ -1205,11 +1205,26 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                 6000,
                 "Restoring XMTP session timed out."
               );
-              const isRegistered = await withTimeout(
-                builtClient.isRegistered(),
-                6000,
-                "Checking XMTP registration timed out."
-              );
+              let isRegistered = false;
+              try {
+                isRegistered = await withTimeout(
+                  builtClient.isRegistered(),
+                  8000,
+                  "Checking XMTP registration timed out."
+                );
+              } catch (registrationCheckError) {
+                if (wasXMTPEnabled()) {
+                  logDebug("init:build:registration_check_failed_but_restoring", {
+                    env,
+                    identifier: identifier.identifier,
+                    usedDbEncryptionKey: Boolean(options.dbEncryptionKey),
+                  });
+                  setClient(builtClient);
+                  persistEnabledState(env, [identifier.identifier]);
+                  return builtClient;
+                }
+                throw registrationCheckError;
+              }
 
               logDebug("init:build:result", {
                 env,
@@ -1252,6 +1267,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     loadDbEncryptionKey,
     logDebug,
     logError,
+    wasXMTPEnabled,
     walletClientAccountAddress,
     persistEnabledState,
     setClient,

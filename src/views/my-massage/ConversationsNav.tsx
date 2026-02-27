@@ -133,12 +133,6 @@ const ConversationsNav = () => {
     const toastId = toast.loading(stageLabel.idle);
     try {
       attemptedRestoreKeyRef.current = "";
-      const restoredClient = await initXMTPClient();
-      if (restoredClient) {
-        toast.success("XMTP connected", { id: toastId });
-        return;
-      }
-
       await createXMTPClient({
         onStage: stage => {
           const message = stageLabel[stage] ?? "Connecting XMTP...";
