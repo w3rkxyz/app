@@ -1301,8 +1301,8 @@ export default function Profile() {
   }
 
   return (
-    <div className="bg-white min-h-screen w-full overflow-x-hidden">
-      <div className="px-[156px] profile-md:px-[80px] profile-sm:px-[20px] sm:p-[0px] sm:pt-[60px] pt-[90px] sm:w-full pb-[40px]">
+    <div className="bg-white min-h-screen">
+      <div className="px-[156px] profile-md:px-[80px] profile-sm:px-[20px] sm:p-[0px] sm:pt-[60px] pt-[90px] sm:w-full mb-[40px]">
         <div className="relative w-full">
           <div className="w-full sm:h-[226] aspect-[1344/201] relative sm:rounded-none rounded-t-[12px] overflow-hidden bg-[#C0E0E7]">
             {coverPicture ? (
