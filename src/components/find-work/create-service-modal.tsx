@@ -18,10 +18,14 @@ import {
 } from "lucide-react";
 import { MetadataAttributeType, textOnly } from "@lens-protocol/metadata";
 import toast from "react-hot-toast";
-import { post } from "@lens-protocol/client/actions";
-import { useSessionClient, uri } from "@lens-protocol/react";
-import { useSelector } from "react-redux";
+import { evmAddress } from "@lens-protocol/client";
+import { fetchAccount as fetchLensAccount, post } from "@lens-protocol/client/actions";
+import { useLogin, useSessionClient, uri } from "@lens-protocol/react";
+import { useDispatch, useSelector } from "react-redux";
+import { useWalletClient } from "wagmi";
 import { uploadMetadataToLensStorage } from "@/utils/storage-client";
+import { client, getLensClient } from "@/client";
+import { displayLoginModal } from "@/redux/app";
 
 interface CreateServiceModalProps {
   open: boolean;
@@ -68,9 +72,14 @@ const categoryIconMap: Record<
 };
 
 const removeAtSymbol = (text: string) => (text.startsWith("@") ? text.slice(1) : text);
+const LENS_TESTNET_CHAIN_ID = 37111;
+const LENS_TESTNET_APP = "0xC75A89145d765c396fd75CbD16380Eb184Bd2ca7";
 
 const CreateServiceModal = ({ open, onClose, onPublished }: CreateServiceModalProps) => {
+  const dispatch = useDispatch();
   const { data: sessionClient } = useSessionClient();
+  const { data: walletClient } = useWalletClient();
+  const { execute: authenticate } = useLogin();
   const { user: profile } = useSelector((state: any) => state.app);
   const [serviceTitle, setServiceTitle] = React.useState("");
   const [serviceDescription, setServiceDescription] = React.useState("");
@@ -165,9 +174,138 @@ const CreateServiceModal = ({ open, onClose, onPublished }: CreateServiceModalPr
     setIsCategoryDropdownOpen(false);
   };
 
+  const ensureLensChain = async (): Promise<boolean> => {
+    if (!walletClient) {
+      return false;
+    }
+
+    const currentChainId = walletClient.chain?.id;
+    if (currentChainId === LENS_TESTNET_CHAIN_ID) {
+      return true;
+    }
+
+    try {
+      await walletClient.switchChain({ id: LENS_TESTNET_CHAIN_ID });
+      return true;
+    } catch (error: any) {
+      if (error?.code !== 4902) {
+        toast.error("Please switch to Lens Chain Testnet to continue.");
+        return false;
+      }
+
+      try {
+        await walletClient.addChain({
+          chain: {
+            id: LENS_TESTNET_CHAIN_ID,
+            name: "Lens Chain Testnet",
+            nativeCurrency: {
+              name: "GHO",
+              symbol: "GHO",
+              decimals: 18,
+            },
+            rpcUrls: {
+              default: { http: ["https://rpc.testnet.lens.xyz"] },
+            },
+            blockExplorers: {
+              default: {
+                name: "Lens Explorer",
+                url: "https://block-explorer.testnet.lens.xyz",
+              },
+            },
+          },
+        });
+        await walletClient.switchChain({ id: LENS_TESTNET_CHAIN_ID });
+        return true;
+      } catch {
+        toast.error("Could not add Lens Chain Testnet to your wallet.");
+        return false;
+      }
+    }
+  };
+
+  const ensureSessionForPublish = async () => {
+    if (sessionClient) {
+      return sessionClient;
+    }
+
+    if (!walletClient?.account.address) {
+      dispatch(displayLoginModal({ display: true }));
+      toast.error("Connect your wallet, then sign in to Lens.");
+      return null;
+    }
+
+    const profileAddress = profile?.address;
+    if (!profileAddress) {
+      dispatch(displayLoginModal({ display: true }));
+      toast.error("Please sign in to Lens first.");
+      return null;
+    }
+
+    const onLensChain = await ensureLensChain();
+    if (!onLensChain) {
+      return null;
+    }
+
+    const accountResult = await fetchLensAccount(client, { address: profileAddress });
+    const lensAccount: any = accountResult.unwrapOr(null);
+
+    if (!lensAccount?.address) {
+      dispatch(displayLoginModal({ display: true }));
+      toast.error("Could not load your Lens profile. Please sign in again.");
+      return null;
+    }
+
+    const appAddress = process.env.NEXT_PUBLIC_APP_ADDRESS_TESTNET || LENS_TESTNET_APP;
+    const connectedWallet = walletClient.account.address.toLowerCase();
+    const ownerAddress = String(lensAccount.owner || "").toLowerCase();
+    const isOwner = ownerAddress === connectedWallet;
+
+    const authRequest = isOwner
+      ? {
+          accountOwner: {
+            account: lensAccount.address,
+            app: evmAddress(appAddress),
+            owner: walletClient.account.address,
+          },
+        }
+      : {
+          accountManager: {
+            account: lensAccount.address,
+            app: evmAddress(appAddress),
+            manager: walletClient.account.address,
+          },
+        };
+
+    try {
+      const authenticated = await authenticate({
+        ...authRequest,
+        signMessage: async (message: string) => walletClient.signMessage({ message }),
+      });
+
+      if (authenticated.isErr()) {
+        dispatch(displayLoginModal({ display: true }));
+        toast.error(authenticated.error.message || "Lens authentication failed.");
+        return null;
+      }
+    } catch (error: any) {
+      dispatch(displayLoginModal({ display: true }));
+      toast.error(error?.message || "Lens authentication failed.");
+      return null;
+    }
+
+    const resumed = await getLensClient();
+    if (!resumed.isSessionClient()) {
+      dispatch(displayLoginModal({ display: true }));
+      toast.error("Please finish signing in to Lens.");
+      return null;
+    }
+
+    return resumed;
+  };
+
   const handlePublish = async () => {
-    if (!sessionClient) {
-      toast.error("Please connect your wallet and sign in to Lens.");
+    const publishClient = await ensureSessionForPublish();
+    if (!publishClient) {
       return;
     }
 
@@ -221,7 +359,7 @@ const CreateServiceModal = ({ open, onClose, onPublished }: CreateServiceModalPr
     try {
       setSavingData(true);
       const metadataUri = await uploadMetadataToLensStorage(metadata);
-      const result = await post(sessionClient, {
+      const result = await post(publishClient, {
         contentUri: uri(metadataUri),
       });
 
