@@ -104,7 +104,11 @@ const ConversationsNav = () => {
         restoreInFlightRef.current = true;
 
         // Silent restore only: never trigger wallet signatures automatically on page load.
-        await initXMTPClient();
+        const restoredClient = await initXMTPClient();
+        if (!restoredClient && !cancelled) {
+          await new Promise(resolve => setTimeout(resolve, 900));
+          await initXMTPClient();
+        }
       } catch (error) {
         if (!cancelled) {
           console.warn("XMTP auto-restore failed:", error);

@@ -1144,7 +1144,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           : null;
       const inferredEnv: "dev" | "production" =
         lensChainId === LENS_MAINNET_CHAIN_ID ? "production" : "dev";
-      const envCandidates = Array.from(
+      const envCandidatesBase = Array.from(
         new Set(
           [
             configuredEnv,
@@ -1160,6 +1160,8 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           )
         )
       );
+      const envCandidates =
+        envCandidatesBase.length > 0 ? envCandidatesBase : ([fallbackEnv] as ("local" | "dev" | "production")[]);
 
       const identifierCandidates = Array.from(
         new Set([
@@ -1170,14 +1172,14 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         ])
       )
         .filter(value => value.startsWith("0x") && value.length === 42)
-        .slice(0, 8);
+        .slice(0, 6);
 
       const identifiers: Identifier[] = identifierCandidates.map(identifier => ({
         identifier,
         identifierKind: IdentifierKind.Ethereum,
       }));
 
-      const MAX_BUILD_ATTEMPTS = 12;
+      const MAX_BUILD_ATTEMPTS = 6;
       let attempts = 0;
 
       for (const identifier of identifiers) {
@@ -1202,28 +1204,28 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
             for (const options of buildOptions) {
               const builtClient = await withTimeout(
                 Client.build(identifier, options),
-                6000,
+                4000,
                 "Restoring XMTP session timed out."
               );
               let isRegistered = false;
+              let registrationCheckFailed = false;
               try {
                 isRegistered = await withTimeout(
                   builtClient.isRegistered(),
-                  8000,
+                  4000,
                   "Checking XMTP registration timed out."
                 );
               } catch (registrationCheckError) {
-                if (wasXMTPEnabled()) {
-                  logDebug("init:build:registration_check_failed_but_restoring", {
-                    env,
-                    identifier: identifier.identifier,
-                    usedDbEncryptionKey: Boolean(options.dbEncryptionKey),
-                  });
-                  setClient(builtClient);
-                  persistEnabledState(env, [identifier.identifier]);
-                  return builtClient;
-                }
-                throw registrationCheckError;
+                registrationCheckFailed = true;
+                logDebug("init:build:registration_check_failed", {
+                  env,
+                  identifier: identifier.identifier,
+                  usedDbEncryptionKey: Boolean(options.dbEncryptionKey),
+                  reason:
+                    registrationCheckError instanceof Error
+                      ? registrationCheckError.message
+                      : "unknown",
+                });
               }
 
               logDebug("init:build:result", {
@@ -1231,9 +1233,11 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                 identifier: identifier.identifier,
                 isRegistered,
                 usedDbEncryptionKey: Boolean(options.dbEncryptionKey),
+                registrationCheckFailed,
               });
 
-              if (isRegistered) {
+              const allowKnownEnabledRestore = wasXMTPEnabled() && (registrationCheckFailed || !isRegistered);
+              if (isRegistered || allowKnownEnabledRestore) {
                 setClient(builtClient);
                 persistEnabledState(env, [identifier.identifier]);
                 return builtClient;
