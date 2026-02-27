@@ -12,6 +12,8 @@ import { useXMTP } from "@/app/XMTPContext";
 import { useXMTPClient } from "@/hooks/useXMTPClient";
 import toast from "react-hot-toast";
 
+const XMTP_RESTORE_DEBUG_KEY = "w3rk:xmtp:restore-debug:last";
+
 const stageLabel: Record<string, string> = {
   idle: "Preparing XMTP...",
   prompt_signature: "Check your wallet to sign",
@@ -43,6 +45,38 @@ const ConversationsNav = () => {
   const attemptedRestoreKeyRef = useRef("");
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const handleCopyDebug = async () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const payload = window.localStorage.getItem(XMTP_RESTORE_DEBUG_KEY);
+    if (!payload) {
+      toast.error("No XMTP debug data found yet.");
+      return;
+    }
+
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(payload);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = payload;
+        textArea.setAttribute("readonly", "true");
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+      toast.success("Copied XMTP debug data.");
+    } catch (error) {
+      toast.error("Failed to copy XMTP debug data.");
+      console.error("Failed to copy XMTP debug data:", error);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -241,6 +275,13 @@ const ConversationsNav = () => {
               className="px-6 py-2 bg-gray-900 text-white text-sm rounded-full hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {connectingXMTP ? "Connecting..." : "Enable"}
+            </button>
+            <button
+              type="button"
+              onClick={handleCopyDebug}
+              className="mt-3 text-xs text-[#6C6C6C] underline hover:text-[#444]"
+            >
+              Copy XMTP debug
             </button>
             {connectingXMTP && (
               <p className="text-xs text-gray-500 mt-2">

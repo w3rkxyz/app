@@ -35,6 +35,7 @@ const XMTP_ENABLED_IDENTIFIERS_KEY = "w3rk:xmtp:enabled-identifiers";
 const XMTP_LAST_ENV_KEY = "w3rk:xmtp:last-env";
 const XMTP_ENABLED_SESSION_MAP_KEY = "w3rk:xmtp:enabled-session-map";
 const XMTP_DB_KEY_STORAGE_PREFIX = "w3rk:xmtp:db-key";
+const XMTP_RESTORE_DEBUG_KEY = "w3rk:xmtp:restore-debug:last";
 
 export type XMTPConnectStage =
   | "idle"
@@ -59,6 +60,35 @@ type XMTPSessionState = {
 };
 
 type XMTPSessionMap = Record<string, XMTPSessionState>;
+type XMTPRestoreAttemptDebug = {
+  env: "local" | "dev" | "production";
+  identifier: string;
+  usedDbEncryptionKey: boolean;
+  build: "ok" | "failed";
+  registrationCheckFailed: boolean;
+  isRegistered: boolean | null;
+  canMessageReady: boolean | null;
+  error?: string;
+};
+type XMTPRestoreDebugSnapshot = {
+  timestamp: string;
+  result: "restored" | "not_restored" | "error";
+  identity: {
+    walletAddress: string | null;
+    lensAccountAddress: string | null;
+    lensProfileId: string | null;
+    lensHandle: string | null;
+    xmtpAddress: string | null;
+    isScwIdentity: boolean;
+  };
+  envCandidates: ("local" | "dev" | "production")[];
+  identifierCandidates: string[];
+  attempts: XMTPRestoreAttemptDebug[];
+  restoredEnv?: "local" | "dev" | "production";
+  restoredIdentifier?: string;
+  reason?: string;
+  error?: string;
+};
 
 export function useXMTPClient(params?: UseXMTPClientParams) {
   const dispatch = useDispatch();
@@ -130,6 +160,68 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     [walletAddress, lensAccountAddress, xmtpAddress, lensProfileId, lensHandle, isScwIdentity]
   );
 
+  const stringifyError = useCallback((error: unknown) => {
+    if (error instanceof Error) {
+      return error.message;
+    }
+    if (typeof error === "string") {
+      return error;
+    }
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return String(error);
+    }
+  }, []);
+
+  const persistRestoreDebug = useCallback(
+    (
+      payload: Omit<XMTPRestoreDebugSnapshot, "timestamp" | "identity"> & {
+        timestamp?: string;
+        identity?: XMTPRestoreDebugSnapshot["identity"];
+      }
+    ) => {
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      const snapshot: XMTPRestoreDebugSnapshot = {
+        timestamp: payload.timestamp ?? new Date().toISOString(),
+        identity: payload.identity ?? {
+          walletAddress: walletAddress?.toLowerCase() ?? null,
+          lensAccountAddress: lensAccountAddress?.toLowerCase() ?? null,
+          lensProfileId: lensProfileId ?? null,
+          lensHandle: lensHandle ?? null,
+          xmtpAddress: xmtpAddress ?? null,
+          isScwIdentity,
+        },
+        result: payload.result,
+        envCandidates: payload.envCandidates,
+        identifierCandidates: payload.identifierCandidates,
+        attempts: payload.attempts,
+        restoredEnv: payload.restoredEnv,
+        restoredIdentifier: payload.restoredIdentifier,
+        reason: payload.reason,
+        error: payload.error,
+      };
+
+      try {
+        window.localStorage.setItem(XMTP_RESTORE_DEBUG_KEY, JSON.stringify(snapshot));
+      } catch (error) {
+        logError("restore:debug:persist_failed", error);
+      }
+    },
+    [
+      isScwIdentity,
+      lensAccountAddress,
+      lensHandle,
+      lensProfileId,
+      logError,
+      walletAddress,
+      xmtpAddress,
+    ]
+  );
+
   const signWithEthereumProvider = useCallback(
     async (message: string, accountAddress: Address | null): Promise<string | null> => {
       if (typeof window === "undefined") {
@@ -181,7 +273,10 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     async (
       builtClient: Client<unknown>,
       identifier: string,
-      context: Record<string, unknown>
+      context: Record<string, unknown>,
+      options?: {
+        onError?: (error: unknown) => void;
+      }
     ): Promise<boolean> => {
       try {
         const normalizedIdentifier = identifier.toLowerCase();
@@ -204,6 +299,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         return isReady;
       } catch (error) {
         logError("restore:verify:failed", error, context);
+        options?.onError?.(error);
         return false;
       }
     },
@@ -1184,7 +1280,26 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       .filter((value): value is string => Boolean(value))
       .map(value => value.toLowerCase())
       .filter(value => value.startsWith("0x") && value.length === 42);
+    const restoreAttempts: XMTPRestoreAttemptDebug[] = [];
+
+    const baseIdentity = {
+      walletAddress: walletAddress?.toLowerCase() ?? null,
+      lensAccountAddress: lensAccountAddress?.toLowerCase() ?? null,
+      lensProfileId: lensProfileId ?? null,
+      lensHandle: lensHandle ?? null,
+      xmtpAddress: xmtpAddress ?? null,
+      isScwIdentity,
+    };
+
     if (restoreAddressCandidates.length === 0 && sessionState.identifiers.length === 0) {
+      persistRestoreDebug({
+        result: "not_restored",
+        identity: baseIdentity,
+        envCandidates: [],
+        identifierCandidates: [],
+        attempts: restoreAttempts,
+        reason: "missing_restore_identifiers",
+      });
       return;
     }
 
@@ -1255,6 +1370,18 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         identifierKind: IdentifierKind.Ethereum,
       }));
 
+      if (identifierCandidates.length === 0) {
+        persistRestoreDebug({
+          result: "not_restored",
+          identity: baseIdentity,
+          envCandidates,
+          identifierCandidates,
+          attempts: restoreAttempts,
+          reason: "identifier_candidates_empty",
+        });
+        return undefined;
+      }
+
       const MAX_BUILD_ATTEMPTS = 6;
       let attempts = 0;
 
@@ -1278,53 +1405,101 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
               : [{ env }];
 
             for (const options of buildOptions) {
-              const builtClient = await withTimeout(
-                Client.build(identifier, options),
-                4000,
-                "Restoring XMTP session timed out."
-              );
-              let isRegistered = false;
-              let registrationCheckFailed = false;
-              try {
-                isRegistered = await withTimeout(
-                  builtClient.isRegistered(),
-                  10000,
-                  "Checking XMTP registration timed out."
-                );
-              } catch (registrationCheckError) {
-                registrationCheckFailed = true;
-                logError("init:build:registration_check_failed", registrationCheckError, {
-                  env,
-                  identifier: identifier.identifier,
-                  usedDbEncryptionKey: Boolean(options.dbEncryptionKey),
-                });
-              }
-
-              logDebug("init:build:result", {
+              const attemptDebug: XMTPRestoreAttemptDebug = {
                 env,
                 identifier: identifier.identifier,
-                isRegistered,
                 usedDbEncryptionKey: Boolean(options.dbEncryptionKey),
-                registrationCheckFailed,
-              });
+                build: "failed",
+                registrationCheckFailed: false,
+                isRegistered: null,
+                canMessageReady: null,
+              };
+              const appendAttemptError = (label: string, error: unknown) => {
+                const message = stringifyError(error);
+                attemptDebug.error = attemptDebug.error
+                  ? `${attemptDebug.error} | ${label}:${message}`
+                  : `${label}:${message}`;
+              };
 
-              const isUsable =
-                isRegistered ||
-                (await verifyBuiltClientReady(builtClient, identifier.identifier, {
-                  phase: "init:build",
+              let builtClient: Client<unknown> | undefined;
+              try {
+                builtClient = await withTimeout(
+                  Client.build(identifier, options),
+                  4000,
+                  "Restoring XMTP session timed out."
+                );
+                attemptDebug.build = "ok";
+
+                let isRegistered = false;
+                try {
+                  isRegistered = await withTimeout(
+                    builtClient.isRegistered(),
+                    10000,
+                    "Checking XMTP registration timed out."
+                  );
+                } catch (registrationCheckError) {
+                  attemptDebug.registrationCheckFailed = true;
+                  appendAttemptError("isRegistered", registrationCheckError);
+                  logError("init:build:registration_check_failed", registrationCheckError, {
+                    env,
+                    identifier: identifier.identifier,
+                    usedDbEncryptionKey: Boolean(options.dbEncryptionKey),
+                  });
+                }
+                attemptDebug.isRegistered = isRegistered;
+
+                logDebug("init:build:result", {
                   env,
                   identifier: identifier.identifier,
+                  isRegistered,
                   usedDbEncryptionKey: Boolean(options.dbEncryptionKey),
-                  registrationCheckFailed,
-                }));
+                  registrationCheckFailed: attemptDebug.registrationCheckFailed,
+                });
 
-              if (isUsable) {
-                setClient(builtClient);
-                persistEnabledState(env, [identifier.identifier]);
-                return builtClient;
+                const canMessageReady = isRegistered
+                  ? true
+                  : await verifyBuiltClientReady(
+                      builtClient,
+                      identifier.identifier,
+                      {
+                        phase: "init:build",
+                        env,
+                        identifier: identifier.identifier,
+                        usedDbEncryptionKey: Boolean(options.dbEncryptionKey),
+                        registrationCheckFailed: attemptDebug.registrationCheckFailed,
+                      },
+                      {
+                        onError: verifyError => appendAttemptError("canMessage", verifyError),
+                      }
+                    );
+                attemptDebug.canMessageReady = canMessageReady;
+                restoreAttempts.push(attemptDebug);
+
+                const isUsable = isRegistered || canMessageReady;
+                if (isUsable) {
+                  setClient(builtClient);
+                  persistEnabledState(env, [identifier.identifier]);
+                  persistRestoreDebug({
+                    result: "restored",
+                    identity: baseIdentity,
+                    envCandidates,
+                    identifierCandidates,
+                    attempts: restoreAttempts,
+                    restoredEnv: env,
+                    restoredIdentifier: identifier.identifier,
+                  });
+                  return builtClient;
+                }
+
+                builtClient.close();
+              } catch (buildError) {
+                appendAttemptError("build", buildError);
+                restoreAttempts.push(attemptDebug);
+                if (builtClient) {
+                  builtClient.close();
+                }
+                throw buildError;
               }
-
-              builtClient.close();
             }
           } catch (error) {
             logError("init:build:failed", error, {
@@ -1338,20 +1513,43 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         }
       }
 
+      persistRestoreDebug({
+        result: "not_restored",
+        identity: baseIdentity,
+        envCandidates,
+        identifierCandidates,
+        attempts: restoreAttempts,
+        reason: "no_usable_restore_candidate",
+      });
       return undefined;
     } catch (error) {
       dispatch(setError(error as Error));
       console.error("Failed to init XMTP client:", error);
+      persistRestoreDebug({
+        result: "error",
+        identity: baseIdentity,
+        envCandidates: [],
+        identifierCandidates: [],
+        attempts: restoreAttempts,
+        error: stringifyError(error),
+        reason: "init_exception",
+      });
     } finally {
       dispatch(setInitializing(false));
     }
   }, [
     dispatch,
+    isScwIdentity,
+    lensAccountAddress,
+    lensHandle,
+    lensProfileId,
+    persistRestoreDebug,
     getPersistedIdentifiers,
     getPersistedSessionState,
     loadDbEncryptionKey,
     logDebug,
     logError,
+    stringifyError,
     walletClientAccountAddress,
     persistEnabledState,
     setClient,
