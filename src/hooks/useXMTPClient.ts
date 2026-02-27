@@ -306,6 +306,26 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       }
     ): Promise<boolean> => {
       try {
+        const localConversations = await withTimeout(
+          builtClient.conversations.list(),
+          6000,
+          "Listing XMTP conversations timed out."
+        );
+        const hasConversationAccess = Array.isArray(localConversations);
+        logDebug("restore:verify:conversation_access", {
+          ...context,
+          hasConversationAccess,
+          conversationCount: hasConversationAccess ? localConversations.length : null,
+        });
+        if (hasConversationAccess) {
+          return true;
+        }
+      } catch (error) {
+        logError("restore:verify:conversation_access_failed", error, context);
+        options?.onError?.(error);
+      }
+
+      try {
         const normalizedIdentifier = identifier.toLowerCase();
         const canMessageMap = await withTimeout(
           builtClient.canMessage([
@@ -1261,6 +1281,13 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           logDebug("create:register:success", { mode });
         }
 
+        persistLastSuccessfulConnection(
+          env,
+          signerIdentifier.identifier,
+          createdClient as { inboxId?: string; installationId?: string },
+          dbEncryptionKey
+        );
+
         return createdClient;
       };
 
@@ -1573,10 +1600,19 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
   const initXMTPClient = useCallback(async () => {
     const sessionState = getPersistedSessionState();
     const lastSuccessfulConnection = getLastSuccessfulConnection();
-    const restoreAddressCandidates = [xmtpAddress, walletAddress, walletClientAccountAddress]
+    const restoreAddressCandidatesBase = [xmtpAddress, walletAddress, walletClientAccountAddress]
       .filter((value): value is string => Boolean(value))
       .map(value => value.toLowerCase())
       .filter(value => value.startsWith("0x") && value.length === 42);
+    const restoreAddressCandidates = isScwIdentity
+      ? Array.from(
+          new Set(
+            [xmtpAddress?.toLowerCase(), ...restoreAddressCandidatesBase].filter(
+              (value): value is string => Boolean(value)
+            )
+          )
+        )
+      : restoreAddressCandidatesBase;
     const restoreAttempts: XMTPRestoreAttemptDebug[] = [];
 
     const baseIdentity = {
@@ -1654,6 +1690,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
       const identifierCandidates = Array.from(
         new Set([
+          ...(isScwIdentity && xmtpAddress ? [xmtpAddress.toLowerCase()] : []),
           ...(lastSuccessfulConnection?.identifier
             ? [lastSuccessfulConnection.identifier]
             : []),
