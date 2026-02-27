@@ -31,10 +31,10 @@ const XMTP_API_URLS = {
   dev: "https://api.dev.xmtp.network:5558",
   production: "https://api.production.xmtp.network:5558",
 } as const;
-const XMTP_ENABLED_IDENTIFIERS_KEY = "w3rk:xmtp:enabled-identifiers";
 const XMTP_LAST_ENV_KEY = "w3rk:xmtp:last-env";
 const XMTP_ENABLED_SESSION_MAP_KEY = "w3rk:xmtp:enabled-session-map";
-const XMTP_DB_KEY_STORAGE_PREFIX = "w3rk:xmtp:db-key";
+const XMTP_DB_KEY_STORAGE_LEGACY_PREFIX = "w3rk:xmtp:db-key";
+const XMTP_DB_KEY_STORAGE_SUFFIX = "dbEncryptionKey";
 const XMTP_RESTORE_DEBUG_KEY = "w3rk:xmtp:restore-debug:last";
 const XMTP_LAST_SUCCESSFUL_CONNECTION_KEY = "w3rk:xmtp:last-successful-connection";
 const XMTP_LAST_SUCCESSFUL_CONNECTION_MAP_KEY = "w3rk:xmtp:last-successful-connection-map";
@@ -81,6 +81,7 @@ type XMTPRestoreAttemptDebug = {
   identifier: string;
   usedDbEncryptionKey: boolean;
   build: "ok" | "failed";
+  buildErrorType: "missing_identity" | "db_key_mismatch" | "environment_mismatch" | "other" | null;
   inboxId: string | null;
   installationId: string | null;
   matchesPersistedInstallation: boolean | null;
@@ -94,6 +95,7 @@ type XMTPRestoreAttemptDebug = {
 type XMTPRestoreDebugSnapshot = {
   timestamp: string;
   result: "restored" | "not_restored" | "error";
+  origin?: string | null;
   identity: {
     walletAddress: string | null;
     lensAccountAddress: string | null;
@@ -217,6 +219,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
       const snapshot: XMTPRestoreDebugSnapshot = {
         timestamp: payload.timestamp ?? new Date().toISOString(),
+        origin: typeof window !== "undefined" ? window.location.origin : null,
         identity: payload.identity ?? {
           walletAddress: walletAddress?.toLowerCase() ?? null,
           lensAccountAddress: lensAccountAddress?.toLowerCase() ?? null,
@@ -416,10 +419,28 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     return new Uint8Array();
   }, []);
 
+  const normalizeIdentifierAddress = useCallback((identifier: string) => {
+    const normalized = identifier.toLowerCase();
+    if (!normalized.startsWith("0x") || normalized.length !== 42) {
+      return null;
+    }
+    return normalized;
+  }, []);
+
   const buildDbKeyStorageKey = useCallback(
-    (env: "local" | "dev" | "production", identifier: string) =>
-      `${XMTP_DB_KEY_STORAGE_PREFIX}:${env}:${identifier.toLowerCase()}`,
-    []
+    (env: "local" | "dev" | "production", identifier: string) => {
+      const normalized = normalizeIdentifierAddress(identifier);
+      return normalized ? `xmtp:${env}:${normalized}:${XMTP_DB_KEY_STORAGE_SUFFIX}` : null;
+    },
+    [normalizeIdentifierAddress]
+  );
+
+  const buildLegacyDbKeyStorageKey = useCallback(
+    (env: "local" | "dev" | "production", identifier: string) => {
+      const normalized = normalizeIdentifierAddress(identifier);
+      return normalized ? `${XMTP_DB_KEY_STORAGE_LEGACY_PREFIX}:${env}:${normalized}` : null;
+    },
+    [normalizeIdentifierAddress]
   );
 
   const loadDbEncryptionKey = useCallback(
@@ -429,19 +450,31 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       }
 
       const storageKey = buildDbKeyStorageKey(env, identifier);
+      const legacyStorageKey = buildLegacyDbKeyStorageKey(env, identifier);
+      if (!storageKey) {
+        return undefined;
+      }
       const raw = window.localStorage.getItem(storageKey);
-      if (!raw) {
+      const legacyRaw =
+        !raw && legacyStorageKey ? window.localStorage.getItem(legacyStorageKey) : null;
+      const value = raw ?? legacyRaw;
+      if (!value) {
         return undefined;
       }
 
+      if (!raw && legacyRaw) {
+        // Migrate once to the canonical storage key format.
+        window.localStorage.setItem(storageKey, legacyRaw);
+      }
+
       try {
-        const bytes = base64ToBytes(raw);
+        const bytes = base64ToBytes(value);
         return bytes.length > 0 ? bytes : undefined;
       } catch {
         return undefined;
       }
     },
-    [base64ToBytes, buildDbKeyStorageKey]
+    [base64ToBytes, buildDbKeyStorageKey, buildLegacyDbKeyStorageKey]
   );
 
   const storeDbEncryptionKey = useCallback(
@@ -451,9 +484,24 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       }
 
       const storageKey = buildDbKeyStorageKey(env, identifier);
-      window.localStorage.setItem(storageKey, bytesToBase64(key));
+      const legacyStorageKey = buildLegacyDbKeyStorageKey(env, identifier);
+      if (!storageKey) {
+        return;
+      }
+
+      // Never overwrite an existing key for the same env + wallet identifier.
+      const existing = window.localStorage.getItem(storageKey);
+      if (existing) {
+        return;
+      }
+
+      const encoded = bytesToBase64(key);
+      window.localStorage.setItem(storageKey, encoded);
+      if (legacyStorageKey && !window.localStorage.getItem(legacyStorageKey)) {
+        window.localStorage.setItem(legacyStorageKey, encoded);
+      }
     },
-    [buildDbKeyStorageKey, bytesToBase64]
+    [buildDbKeyStorageKey, buildLegacyDbKeyStorageKey, bytesToBase64]
   );
 
   const removeDbEncryptionKey = useCallback(
@@ -463,9 +511,91 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       }
 
       const storageKey = buildDbKeyStorageKey(env, identifier);
-      window.localStorage.removeItem(storageKey);
+      const legacyStorageKey = buildLegacyDbKeyStorageKey(env, identifier);
+      if (storageKey) {
+        window.localStorage.removeItem(storageKey);
+      }
+      if (legacyStorageKey) {
+        window.localStorage.removeItem(legacyStorageKey);
+      }
     },
-    [buildDbKeyStorageKey]
+    [buildDbKeyStorageKey, buildLegacyDbKeyStorageKey]
+  );
+
+  const getPreferredEnv = useCallback((): "local" | "dev" | "production" => {
+    const configuredEnvRaw =
+      process.env.NEXT_PUBLIC_XMTP_ENV ?? process.env.NEXT_PUBLIC_XMTP_ENVIRONMENT;
+    if (
+      configuredEnvRaw === "local" ||
+      configuredEnvRaw === "dev" ||
+      configuredEnvRaw === "production"
+    ) {
+      return configuredEnvRaw;
+    }
+
+    const fallbackEnv = getEnv();
+    const walletChainId =
+      typeof walletClient?.chain?.id === "number" ? BigInt(walletClient.chain.id) : null;
+    const configuredLensChainId =
+      process.env.NEXT_PUBLIC_LENS_CHAIN_ID &&
+      Number.isFinite(Number(process.env.NEXT_PUBLIC_LENS_CHAIN_ID))
+        ? BigInt(process.env.NEXT_PUBLIC_LENS_CHAIN_ID)
+        : null;
+    const lensChainId =
+      walletChainId ??
+      configuredLensChainId ??
+      (fallbackEnv === "production" ? LENS_MAINNET_CHAIN_ID : LENS_TESTNET_CHAIN_ID);
+    return lensChainId === LENS_MAINNET_CHAIN_ID ? "production" : "dev";
+  }, [walletClient]);
+
+  const classifyBuildError = useCallback((error: unknown) => {
+    const message = stringifyError(error).toLowerCase();
+    if (
+      message.includes("missing identity update") ||
+      message.includes("identity") ||
+      message.includes("not registered") ||
+      message.includes("not found")
+    ) {
+      return "missing_identity" as const;
+    }
+    if (
+      message.includes("db") ||
+      message.includes("decrypt") ||
+      message.includes("encryption key") ||
+      message.includes("invalid key")
+    ) {
+      return "db_key_mismatch" as const;
+    }
+    if (
+      message.includes("wrong env") ||
+      message.includes("environment") ||
+      message.includes("api.") ||
+      message.includes("failed to fetch")
+    ) {
+      return "environment_mismatch" as const;
+    }
+    return "other" as const;
+  }, [stringifyError]);
+
+  const shouldRotateDbKey = useCallback((error: unknown) => {
+    const classified = classifyBuildError(error);
+    return classified === "db_key_mismatch";
+  }, [classifyBuildError]);
+
+  const buildEnvCandidates = useCallback(
+    (
+      preferredEnv: "local" | "dev" | "production",
+      sessionEnv?: "local" | "dev" | "production",
+      lastSuccessfulEnv?: "local" | "dev" | "production"
+    ) =>
+      Array.from(
+        new Set(
+          [preferredEnv, sessionEnv, lastSuccessfulEnv].filter(
+            (value): value is "local" | "dev" | "production" => Boolean(value)
+          )
+        )
+      ),
+    []
   );
 
   const getOrCreateDbEncryptionKey = useCallback(
@@ -783,31 +913,6 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     };
   }, [getActiveSessionKeys, getPersistedSessionMap]);
 
-  const getPersistedIdentifiers = useCallback(() => {
-    if (typeof window === "undefined") {
-      return [] as string[];
-    }
-
-    try {
-      const raw = window.localStorage.getItem(XMTP_ENABLED_IDENTIFIERS_KEY);
-      if (!raw) {
-        return [] as string[];
-      }
-
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) {
-        return [] as string[];
-      }
-
-      return parsed
-        .filter((value): value is string => typeof value === "string")
-        .map(value => value.toLowerCase())
-        .filter(value => value.startsWith("0x") && value.length === 42);
-    } catch {
-      return [] as string[];
-    }
-  }, []);
-
   const persistEnabledState = useCallback(
     (
       env: "local" | "dev" | "production",
@@ -826,14 +931,6 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         )
       );
       const preferredIdentifier = currentSessionIdentifiers[0];
-      const persisted = getPersistedIdentifiers();
-      const merged = Array.from(
-        new Set(
-          [...persisted, ...currentSessionIdentifiers]
-        )
-      );
-
-      window.localStorage.setItem(XMTP_ENABLED_IDENTIFIERS_KEY, JSON.stringify(merged));
       window.localStorage.setItem(XMTP_LAST_ENV_KEY, env);
 
       const sessionKeys = getActiveSessionKeys();
@@ -855,7 +952,6 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     },
     [
       getActiveSessionKeys,
-      getPersistedIdentifiers,
       getPersistedSessionMap,
       walletAddress,
       walletClientAccountAddress,
@@ -864,23 +960,13 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
   );
 
   const wasXMTPEnabled = useCallback(() => {
-    const activeCandidates = [xmtpAddress, walletAddress, walletClientAccountAddress]
-      .filter((value): value is string => Boolean(value))
-      .map(value => value.toLowerCase());
-
     const sessionState = getPersistedSessionState();
-    const persisted = getPersistedIdentifiers();
-    const hasAddressMatch =
-      activeCandidates.length > 0 && activeCandidates.some(candidate => persisted.includes(candidate));
     const hasSessionMatch = sessionState.identifiers.length > 0;
-
-    return hasAddressMatch || hasSessionMatch;
+    const hasLastSuccessful = Boolean(getLastSuccessfulConnection());
+    return hasSessionMatch || hasLastSuccessful;
   }, [
-    getPersistedIdentifiers,
+    getLastSuccessfulConnection,
     getPersistedSessionState,
-    walletAddress,
-    walletClientAccountAddress,
-    xmtpAddress,
   ]);
 
   /**
@@ -983,14 +1069,15 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           messageHash,
           signatureLength: signature.length,
         });
-        return hexToBytes(signature);
+        const normalizedSignature = signature.startsWith("0x")
+          ? (signature as `0x${string}`)
+          : (`0x${signature}` as `0x${string}`);
+        return hexToBytes(normalizedSignature);
       };
 
-      // Do not mix XMTP environments during a single enable attempt.
-      // If XMTP env is not explicitly configured, infer it from active Lens chain.
+      // Resolve a single canonical env for both create + future restore attempts.
       const configuredEnvRaw =
         process.env.NEXT_PUBLIC_XMTP_ENV ?? process.env.NEXT_PUBLIC_XMTP_ENVIRONMENT;
-      const fallbackEnv = getEnv();
       const walletChainId =
         typeof walletClient?.chain?.id === "number" ? BigInt(walletClient.chain.id) : null;
       const configuredLensChainId =
@@ -998,18 +1085,11 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         Number.isFinite(Number(process.env.NEXT_PUBLIC_LENS_CHAIN_ID))
           ? BigInt(process.env.NEXT_PUBLIC_LENS_CHAIN_ID)
           : null;
+      const env = getPreferredEnv();
       const lensChainId =
         walletChainId ??
         configuredLensChainId ??
-        (fallbackEnv === "production" ? LENS_MAINNET_CHAIN_ID : LENS_TESTNET_CHAIN_ID);
-      const env: "local" | "dev" | "production" =
-        configuredEnvRaw === "local" ||
-        configuredEnvRaw === "dev" ||
-        configuredEnvRaw === "production"
-          ? configuredEnvRaw
-          : lensChainId === LENS_MAINNET_CHAIN_ID
-            ? "production"
-            : "dev";
+        (env === "production" ? LENS_MAINNET_CHAIN_ID : LENS_TESTNET_CHAIN_ID);
       const lensRpcFromWallet = walletClient?.chain?.rpcUrls?.default?.http?.[0] ?? null;
       const lensPublicRpcFromWallet = walletClient?.chain?.rpcUrls?.public?.http?.[0] ?? null;
       const xmtpApiUrl = XMTP_API_URLS[env];
@@ -1642,6 +1722,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     storeDbEncryptionKey,
     persistEnabledState,
     persistLastSuccessfulConnection,
+    getPreferredEnv,
     verifyBuiltClientInstallation,
     verifyBuiltClientReady,
     expectedSigningAddress,
@@ -1695,53 +1776,18 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     dispatch(setError(null));
 
     try {
-      const configuredEnvRaw =
-        process.env.NEXT_PUBLIC_XMTP_ENV ?? process.env.NEXT_PUBLIC_XMTP_ENVIRONMENT;
-      const fallbackEnv = getEnv();
       const persistedEnvRaw =
         typeof window !== "undefined" ? window.localStorage.getItem(XMTP_LAST_ENV_KEY) : null;
       const persistedEnv =
         persistedEnvRaw === "local" || persistedEnvRaw === "dev" || persistedEnvRaw === "production"
           ? persistedEnvRaw
-          : null;
-      const walletChainId =
-        typeof walletClient?.chain?.id === "number" ? BigInt(walletClient.chain.id) : null;
-      const configuredLensChainId =
-        process.env.NEXT_PUBLIC_LENS_CHAIN_ID &&
-        Number.isFinite(Number(process.env.NEXT_PUBLIC_LENS_CHAIN_ID))
-          ? BigInt(process.env.NEXT_PUBLIC_LENS_CHAIN_ID)
-          : null;
-      const lensChainId =
-        walletChainId ??
-        configuredLensChainId ??
-        (fallbackEnv === "production" ? LENS_MAINNET_CHAIN_ID : LENS_TESTNET_CHAIN_ID);
-      const configuredEnv =
-        configuredEnvRaw === "local" ||
-        configuredEnvRaw === "dev" ||
-        configuredEnvRaw === "production"
-          ? configuredEnvRaw
-          : null;
-      const inferredEnv: "dev" | "production" =
-        lensChainId === LENS_MAINNET_CHAIN_ID ? "production" : "dev";
-      const envCandidatesBase = Array.from(
-        new Set(
-          [
-            lastSuccessfulConnection?.env,
-            configuredEnv,
-            sessionState.env,
-            persistedEnv,
-            inferredEnv,
-            fallbackEnv,
-            "production",
-            "dev",
-            "local",
-          ].filter(
-            (value): value is "local" | "dev" | "production" => Boolean(value)
-          )
-        )
+          : undefined;
+      const preferredEnv = getPreferredEnv();
+      const envCandidates = buildEnvCandidates(
+        preferredEnv,
+        sessionState.env ?? persistedEnv,
+        lastSuccessfulConnection?.env
       );
-      const envCandidates =
-        envCandidatesBase.length > 0 ? envCandidatesBase : ([fallbackEnv] as ("local" | "dev" | "production")[]);
 
       const identifierCandidates = Array.from(
         new Set([
@@ -1753,7 +1799,6 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           ...sessionState.identifierHints,
           ...sessionState.identifiers,
           ...restoreAddressCandidates,
-          ...getPersistedIdentifiers(),
         ])
       )
         .filter(value => value.startsWith("0x") && value.length === 42)
@@ -1774,16 +1819,6 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           : []),
         ...sessionState.installationHints,
       ];
-      const isInstallationLimitError = (error: unknown) => {
-        if (!(error instanceof Error)) {
-          return false;
-        }
-        const message = error.message?.toLowerCase() ?? "";
-        return (
-          message.includes("cannot register a new installation") &&
-          message.includes("installations")
-        );
-      };
 
       if (identifierCandidates.length === 0) {
         persistRestoreDebug({
@@ -1865,11 +1900,14 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                 : [{ env, source: "none" as const }];
 
             for (const options of buildOptions) {
+              const optionDbEncryptionKey =
+                "dbEncryptionKey" in options ? options.dbEncryptionKey : undefined;
               const attemptDebug: XMTPRestoreAttemptDebug = {
                 env,
                 identifier: identifier.identifier,
-                usedDbEncryptionKey: Boolean(options.dbEncryptionKey),
+                usedDbEncryptionKey: Boolean(optionDbEncryptionKey),
                 build: "failed",
+                buildErrorType: null,
                 inboxId: null,
                 installationId: null,
                 matchesPersistedInstallation: null,
@@ -1963,7 +2001,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                   logError("init:build:registration_check_failed", registrationCheckError, {
                     env,
                     identifier: identifier.identifier,
-                    usedDbEncryptionKey: Boolean(options.dbEncryptionKey),
+                    usedDbEncryptionKey: Boolean(optionDbEncryptionKey),
                   });
                 }
                 attemptDebug.isRegistered = isRegistered;
@@ -1972,7 +2010,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                   env,
                   identifier: identifier.identifier,
                   isRegistered,
-                  usedDbEncryptionKey: Boolean(options.dbEncryptionKey),
+                  usedDbEncryptionKey: Boolean(optionDbEncryptionKey),
                   registrationCheckFailed: attemptDebug.registrationCheckFailed,
                 });
                 const installationInInbox = isRegistered
@@ -1984,7 +2022,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                         phase: "init:build",
                         env,
                         identifier: identifier.identifier,
-                        usedDbEncryptionKey: Boolean(options.dbEncryptionKey),
+                        usedDbEncryptionKey: Boolean(optionDbEncryptionKey),
                         registrationCheckFailed: attemptDebug.registrationCheckFailed,
                       },
                       {
@@ -2003,7 +2041,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                         phase: "init:build",
                         env,
                         identifier: identifier.identifier,
-                        usedDbEncryptionKey: Boolean(options.dbEncryptionKey),
+                        usedDbEncryptionKey: Boolean(optionDbEncryptionKey),
                         registrationCheckFailed: attemptDebug.registrationCheckFailed,
                       },
                       {
@@ -2044,7 +2082,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                     env,
                     identifier.identifier,
                     builtClient as { inboxId?: string; installationId?: string },
-                    options.dbEncryptionKey
+                    optionDbEncryptionKey
                   );
                   persistRestoreDebug({
                     result: "restored",
@@ -2061,13 +2099,13 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                 builtClient.close();
               } catch (buildError) {
                 appendAttemptError("build", buildError);
+                attemptDebug.buildErrorType = classifyBuildError(buildError);
                 restoreAttempts.push(attemptDebug);
                 if (builtClient) {
                   builtClient.close();
                 }
-                if (attemptDebug.usedDbEncryptionKey && isInstallationLimitError(buildError)) {
-                  // This indicates a stale local DB key for this identifier/env.
-                  // Remove it so subsequent restore attempts can try without the stale key.
+                if (attemptDebug.usedDbEncryptionKey && shouldRotateDbKey(buildError)) {
+                  // Rotate only on key mismatch/decryption issues, never for unrelated build errors.
                   removeDbEncryptionKey(env, identifier.identifier);
                   logDebug("init:build:stale_db_key_removed", {
                     env,
@@ -2078,6 +2116,8 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                   env,
                   identifier: identifier.identifier,
                   usedDbEncryptionKey: attemptDebug.usedDbEncryptionKey,
+                  buildErrorType: attemptDebug.buildErrorType,
+                  buildErrorMessage: stringifyError(buildError),
                 });
                 continue;
               }
@@ -2128,12 +2168,15 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     lensHandle,
     lensProfileId,
     persistRestoreDebug,
-    getPersistedIdentifiers,
+    buildEnvCandidates,
+    classifyBuildError,
+    getPreferredEnv,
     getPersistedSessionState,
     loadDbEncryptionKey,
     logDebug,
     logError,
     removeDbEncryptionKey,
+    shouldRotateDbKey,
     stringifyError,
     walletClientAccountAddress,
     persistEnabledState,
@@ -2142,7 +2185,6 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     verifyBuiltClientInstallation,
     verifyBuiltClientReady,
     walletAddress,
-    walletClient,
     xmtpAddress,
   ]);
 

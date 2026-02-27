@@ -29,9 +29,9 @@ const stageLabel: Record<string, string> = {
 const ConversationsNav = () => {
   const { list, conversations, stream, activeConversation, loading } = useConversations();
   const { client } = useXMTP();
-  const { address: walletAddress } = useAccount();
+  const { address: walletAddress, isConnected } = useAccount();
   const lensProfile = useSelector((state: RootState) => state.app.user);
-  const { createXMTPClient, initXMTPClient, connectingXMTP, connectStage } =
+  const { createXMTPClient, initXMTPClient, connectingXMTP, connectStage, initializing } =
     useXMTPClient({
       walletAddress,
       lensAccountAddress: lensProfile?.address,
@@ -45,6 +45,8 @@ const ConversationsNav = () => {
   const attemptedRestoreKeyRef = useRef("");
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [restoreFailed, setRestoreFailed] = useState(false);
+  const [restoring, setRestoring] = useState(false);
 
   const handleCopyDebug = async () => {
     if (typeof window === "undefined") {
@@ -119,6 +121,12 @@ const ConversationsNav = () => {
         return;
       }
 
+      if (!isConnected) {
+        setRestoreFailed(false);
+        attemptedRestoreKeyRef.current = "";
+        return;
+      }
+
       if (!walletAddress && !lensProfile?.address && !lensProfile?.id && !lensProfile?.handle) {
         return;
       }
@@ -141,19 +149,22 @@ const ConversationsNav = () => {
       try {
         attemptedRestoreKeyRef.current = restoreKey;
         restoreInFlightRef.current = true;
+        setRestoring(true);
+        setRestoreFailed(false);
 
         // Silent restore only: never trigger wallet signatures automatically on page load.
         const restoredClient = await initXMTPClient();
         if (!restoredClient && !cancelled) {
-          await new Promise(resolve => setTimeout(resolve, 900));
-          await initXMTPClient();
+          setRestoreFailed(true);
         }
       } catch (error) {
         if (!cancelled) {
+          setRestoreFailed(true);
           console.warn("XMTP auto-restore failed:", error);
         }
       } finally {
         restoreInFlightRef.current = false;
+        setRestoring(false);
       }
     };
 
@@ -165,6 +176,7 @@ const ConversationsNav = () => {
   }, [
     client,
     connectingXMTP,
+    isConnected,
     initXMTPClient,
     lensProfile?.address,
     lensProfile?.handle,
@@ -177,6 +189,7 @@ const ConversationsNav = () => {
     try {
       manualEnableInFlightRef.current = true;
       attemptedRestoreKeyRef.current = "";
+      setRestoreFailed(false);
       await createXMTPClient({
         onStage: stage => {
           const message = stageLabel[stage] ?? "Connecting XMTP...";
@@ -203,6 +216,21 @@ const ConversationsNav = () => {
       manualEnableInFlightRef.current = false;
     }
   };
+
+  const showConnectWalletState = !client && !isConnected;
+  const showEnableState =
+    !client &&
+    isConnected &&
+    !connectingXMTP &&
+    restoreFailed &&
+    !restoring &&
+    !initializing;
+  const showRestoreState =
+    !client &&
+    isConnected &&
+    !showEnableState &&
+    !connectingXMTP &&
+    (restoring || initializing || !restoreFailed);
 
   return (
     <div
@@ -264,6 +292,22 @@ const ConversationsNav = () => {
             </div>
           )}
         </>
+      ) : showConnectWalletState ? (
+        <div className="h-screen w-full bg-white flex items-center justify-center">
+          <div className="text-center flex flex-col items-center justify-center">
+            <Image src="/images/ChatsCircle.svg" alt="Connect wallet" width={64} height={64} />
+            <p className="text-gray-500 text-lg mb-2">Connect Wallet</p>
+            <p className="text-xs text-gray-500">Connect your wallet to access messages.</p>
+          </div>
+        </div>
+      ) : showRestoreState ? (
+        <div className="h-screen w-full bg-white flex items-center justify-center">
+          <div className="text-center flex flex-col items-center justify-center">
+            <Image src="/images/ChatsCircle.svg" alt="Restoring messages" width={64} height={64} />
+            <p className="text-gray-500 text-lg mb-2">Restoring Messages...</p>
+            <p className="text-xs text-gray-500">Checking existing XMTP session...</p>
+          </div>
+        </div>
       ) : (
         <div className="h-screen w-full bg-white flex items-center justify-center">
           <div className="text-center flex flex-col items-center justify-center">
