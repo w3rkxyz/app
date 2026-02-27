@@ -39,6 +39,7 @@ const ConversationsNav = () => {
 
   const stopStreamRef = useRef<(() => void) | null>(null);
   const restoreInFlightRef = useRef(false);
+  const attemptedRestoreKeyRef = useRef("");
   const [isRestoring, setIsRestoring] = useState(false);
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -84,11 +85,23 @@ const ConversationsNav = () => {
         return;
       }
 
+      const restoreKey = [
+        walletAddress?.toLowerCase() ?? "",
+        lensProfile?.address?.toLowerCase() ?? "",
+        lensProfile?.id ?? "",
+        lensProfile?.handle?.toLowerCase() ?? "",
+      ].join("|");
+
+      if (attemptedRestoreKeyRef.current === restoreKey) {
+        return;
+      }
+
       if (restoreInFlightRef.current) {
         return;
       }
 
       try {
+        attemptedRestoreKeyRef.current = restoreKey;
         restoreInFlightRef.current = true;
         if (!cancelled) {
           setIsRestoring(true);
@@ -127,6 +140,7 @@ const ConversationsNav = () => {
   const handleEnable = async () => {
     const toastId = toast.loading(stageLabel.idle);
     try {
+      attemptedRestoreKeyRef.current = "";
       const restoredClient = await initXMTPClient();
       if (restoredClient) {
         toast.success("XMTP connected", { id: toastId });

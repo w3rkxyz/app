@@ -1140,12 +1140,12 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                 env,
                 ...(dbEncryptionKey ? { dbEncryptionKey } : {}),
               }),
-              3000,
+              10000,
               "Restoring XMTP session timed out."
             );
             const isRegistered = await withTimeout(
               builtClient.isRegistered(),
-              4000,
+              10000,
               "Checking XMTP registration timed out."
             );
 
