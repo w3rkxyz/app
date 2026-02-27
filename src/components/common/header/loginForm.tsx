@@ -128,6 +128,19 @@ export default function LoginForm({ owner }: { owner: string }) {
     const connectorName = wallet.connector?.name?.toLowerCase() ?? "";
     return connectorId.includes("family") || connectorName.includes("family");
   }, [wallet.connector?.id, wallet.connector?.name]);
+  const isKnownAutoSignConnector = useMemo(() => {
+    const connectorId = wallet.connector?.id?.toLowerCase() ?? "";
+    const connectorName = wallet.connector?.name?.toLowerCase() ?? "";
+    const connectorFingerprint = `${connectorId} ${connectorName}`;
+
+    return (
+      connectorFingerprint.includes("metamask") ||
+      connectorFingerprint.includes("meta mask") ||
+      connectorFingerprint.includes("rabby") ||
+      connectorFingerprint.includes("rainbow")
+    );
+  }, [wallet.connector?.id, wallet.connector?.name]);
+  const requiresManualContinue = isFamilyConnectorActive || !isKnownAutoSignConnector;
 
   const waitForMintedAccount = useCallback(async (localName: string) => {
     const publicClient = getPublicClient();
@@ -518,7 +531,7 @@ export default function LoginForm({ owner }: { owner: string }) {
       authenticateLoading ||
       continuing ||
       creatingProfile ||
-      isFamilyConnectorActive ||
+      requiresManualContinue ||
       !walletReady ||
       !isWalletContextReady
     ) {
@@ -541,7 +554,7 @@ export default function LoginForm({ owner }: { owner: string }) {
     continuing,
     creatingProfile,
     handleSelectAccount,
-    isFamilyConnectorActive,
+    requiresManualContinue,
     isWalletContextReady,
     singleAccount,
     walletReady,
@@ -715,16 +728,18 @@ export default function LoginForm({ owner }: { owner: string }) {
             </>
           )}
 
-          {singleAccount && !accountsLoading && !autoSelecting && !isFamilyConnectorActive && (
+          {singleAccount && !accountsLoading && !autoSelecting && !requiresManualContinue && (
             <span className="rounded-[12px] border border-[#DBEAFE] bg-[#EFF6FF] px-[12px] py-[10px] text-[12px] leading-[1.4] text-[#1D4ED8]">
               Profile detected. Completing authentication...
             </span>
           )}
 
-          {singleAccount && !accountsLoading && !autoSelecting && isFamilyConnectorActive && (
+          {singleAccount && !accountsLoading && !autoSelecting && requiresManualContinue && (
             <>
               <span className="rounded-[12px] border border-[#DBEAFE] bg-[#EFF6FF] px-[12px] py-[10px] text-[12px] leading-[1.4] text-[#1D4ED8]">
-                Profile detected. Continue to sign in with Family.
+                {isFamilyConnectorActive
+                  ? "Profile detected. Continue to sign in with Family."
+                  : "Profile detected. Continue to finish sign-in."}
               </span>
               <button
                 type="button"
