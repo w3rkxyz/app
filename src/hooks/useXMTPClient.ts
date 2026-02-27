@@ -465,22 +465,6 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     [buildDbKeyStorageKey]
   );
 
-  const storeDbEncryptionKeyForRelatedIdentifiers = useCallback(
-    (env: "local" | "dev" | "production", key: Uint8Array, identifiers: string[]) => {
-      const normalized = Array.from(
-        new Set(
-          identifiers
-            .map(identifier => identifier.toLowerCase())
-            .filter(identifier => identifier.startsWith("0x") && identifier.length === 42)
-        )
-      );
-      for (const identifier of normalized) {
-        storeDbEncryptionKey(env, identifier, key);
-      }
-    },
-    [storeDbEncryptionKey]
-  );
-
   const getOrCreateDbEncryptionKey = useCallback(
     (env: "local" | "dev" | "production", identifier: string): Uint8Array => {
       const existing = loadDbEncryptionKey(env, identifier);
@@ -1038,12 +1022,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         if (isUsable) {
           logDebug("build:primary:registered:reuse_client");
           if (primaryDbEncryptionKey) {
-            storeDbEncryptionKeyForRelatedIdentifiers(env, primaryDbEncryptionKey, [
-              primaryIdentifier.identifier,
-              xmtpAddress ?? "",
-              walletAddress ?? "",
-              walletClientAccountAddress ?? "",
-            ]);
+            storeDbEncryptionKey(env, primaryIdentifier.identifier, primaryDbEncryptionKey);
           }
           setClient(builtClient);
           persistEnabledState(env, [primaryIdentifier.identifier], {
@@ -1129,12 +1108,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           if (isUsable) {
             logDebug("build:fallback:registered:reuse_client");
             if (fallbackDbEncryptionKey) {
-              storeDbEncryptionKeyForRelatedIdentifiers(env, fallbackDbEncryptionKey, [
-                fallbackIdentifier.identifier,
-                xmtpAddress ?? "",
-                walletAddress ?? "",
-                walletClientAccountAddress ?? "",
-              ]);
+              storeDbEncryptionKey(env, fallbackIdentifier.identifier, fallbackDbEncryptionKey);
             }
             setClient(builtFallbackClient);
             persistEnabledState(env, [fallbackIdentifier.identifier], {
@@ -1253,12 +1227,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           120000,
           "Creating XMTP client timed out."
         );
-        storeDbEncryptionKeyForRelatedIdentifiers(env, dbEncryptionKey, [
-          signerIdentifier.identifier,
-          xmtpAddress ?? "",
-          walletAddress ?? "",
-          walletClientAccountAddress ?? "",
-        ]);
+        storeDbEncryptionKey(env, signerIdentifier.identifier, dbEncryptionKey);
         logDebug("create:success", {
           mode,
           inboxId: (createdClient as { inboxId?: string }).inboxId ?? null,
@@ -1588,14 +1557,13 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     logError,
     loadDbEncryptionKey,
     getOrCreateDbEncryptionKey,
-    storeDbEncryptionKeyForRelatedIdentifiers,
+    storeDbEncryptionKey,
     persistEnabledState,
     persistLastSuccessfulConnection,
     verifyBuiltClientInstallation,
     verifyBuiltClientReady,
     expectedSigningAddress,
     actualWalletClientAddress,
-    walletClientAccountAddress,
     signingAddress,
   ]);
 
