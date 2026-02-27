@@ -77,9 +77,18 @@ type UploadAttempt = {
 
 type UploadConfig = {
   chainId?: number;
+  environment?: "production" | "staging";
 };
 
 const resolveEnvForUpload = (config?: UploadConfig): StorageEnvironmentConfig => {
+  if (config?.environment === "production") {
+    return MAINNET_STORAGE_ENV;
+  }
+
+  if (config?.environment === "staging") {
+    return TESTNET_STORAGE_ENV;
+  }
+
   if (config?.chainId === TESTNET_STORAGE_ENV.defaultChainId) {
     return TESTNET_STORAGE_ENV;
   }
@@ -158,8 +167,7 @@ const uploadMetadataAsFile = async (
   const metadataFile = new File(
     [JSON.stringify(metadata)],
     "metadata.json",
-    // Use text/plain for broader compatibility in strict CORS/proxy environments.
-    { type: "text/plain;charset=utf-8" }
+    { type: "application/json" }
   );
 
   return client.uploadFile(metadataFile, {
