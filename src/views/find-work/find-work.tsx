@@ -1,33 +1,27 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import Image from "next/image";
-import Link from "next/link";
-import {
-  Search,
-  Bell,
-  ChevronDown,
-  Link2 as LinkIcon,
-  Code,
-  Palette,
-  MessageCircle,
-  TrendingUp,
-  Headphones,
-  ShoppingBag,
-  Shield,
-  Users,
-  HelpCircle,
-  Plus,
-} from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Search, ChevronDown, Plus } from "lucide-react";
 import JobDetailDrawer from "@/components/find-work/job-detail-drawer";
 import JobDetailModal from "@/components/find-work/job-detail-modal";
 import CreateJobModal from "@/components/find-work/create-job-modal";
 
 import FindWorkJobCard from "@/components/Cards/FindWorkJobCard";
-import { SVGAdminSupport, SVGBlockChain, SVGCampaign, SVGCode, SVGDesignPallete, SVGInfo, SVGLock, SVGUsers, SVGUserSound } from "@/assets/list-svg-icon";
-import { getOnboardingFeedPosts } from "@/utils/onboardingPosts";
+import {
+  SVGAdminSupport,
+  SVGBlockChain,
+  SVGCampaign,
+  SVGCode,
+  SVGDesignPallete,
+  SVGInfo,
+  SVGLock,
+  SVGUsers,
+  SVGUserSound,
+} from "@/assets/list-svg-icon";
+import { fetchW3rkListings } from "@/utils/lens-find-posts";
 
 interface JobData {
+  id?: string;
   username: string;
   profileImage: string;
   jobName: string;
@@ -59,6 +53,7 @@ const categories: Category[] = [
 
 const FindWork = () => {
   const [jobs, setJobs] = useState<JobData[]>([]);
+  const [jobsLoading, setJobsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [searchText, setSearchText] = useState("");
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
@@ -70,39 +65,22 @@ const FindWork = () => {
   const tabletDropdownRef = useRef<HTMLDivElement>(null);
   const [isCreateJobModalOpen, setIsCreateJobModalOpen] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-
-    const loadJobs = async () => {
-      let seededJobs: JobData[] = [];
-      try {
-        const response = await fetch("/find-work.json");
-        seededJobs = await response.json();
-      } catch (error) {
-        console.error("Error loading jobs:", error);
-      }
-
-      const onboardingJobs: JobData[] = getOnboardingFeedPosts("job").map(post => ({
-        username: post.username,
-        profileImage: post.profileImage,
-        jobName: post.jobName,
-        jobIcon: post.jobIcon,
-        description: post.description,
-        contractType: post.contractType,
-        paymentAmount: post.paymentAmount,
-        paidIn: post.paidIn,
-        tags: post.tags,
-      }));
-
-      if (!active) return;
-      setJobs([...onboardingJobs, ...seededJobs]);
-    };
-
-    void loadJobs();
-    return () => {
-      active = false;
-    };
+  const loadJobs = useCallback(async () => {
+    setJobsLoading(true);
+    try {
+      const listings = await fetchW3rkListings("job");
+      setJobs(listings);
+    } catch (error) {
+      console.error("Error loading Lens jobs:", error);
+      setJobs([]);
+    } finally {
+      setJobsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadJobs();
+  }, [loadJobs]);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -151,7 +129,9 @@ const FindWork = () => {
       job.username.toLowerCase().includes(searchText.toLowerCase());
 
     const matchesCategory =
-      !selectedCategory || selectedCategory === "All" || job.tags.some(tag => tag === selectedCategory);
+      !selectedCategory ||
+      selectedCategory === "All" ||
+      job.tags.some(tag => tag === selectedCategory);
 
     return matchesSearch && matchesCategory;
   });
@@ -165,6 +145,9 @@ const FindWork = () => {
     if (closeDropdown) {
       setIsCategoryDropdownOpen(false);
     }
+  };
+  const handleJobPublished = () => {
+    void loadJobs();
   };
 
   return (
@@ -195,8 +178,9 @@ const FindWork = () => {
                 </div>
                 <ChevronDown
                   size={20}
-                  className={`text-[#818181] transition-transform ${isCategoryDropdownOpen ? "rotate-180" : ""
-                    }`}
+                  className={`text-[#818181] transition-transform ${
+                    isCategoryDropdownOpen ? "rotate-180" : ""
+                  }`}
                 />
               </button>
               {isCategoryDropdownOpen && (
@@ -208,17 +192,19 @@ const FindWork = () => {
                       <button
                         key={category.name}
                         onClick={() => handleCategorySelection(category.name, true)}
-                        className={`w-full flex items-center gap-[12px] px-[12px] py-[10px] rounded-[8px] text-left transition-colors ${isSelected ? "bg-[#EEEEEE]" : "hover:bg-[#F5F5F5]"
-                          }`}
+                        className={`w-full flex items-center gap-[12px] px-[12px] py-[10px] rounded-[8px] text-left transition-colors ${
+                          isSelected ? "bg-[#EEEEEE]" : "hover:bg-[#F5F5F5]"
+                        }`}
                       >
                         <span className="flex-shrink-0" style={getCategoryIconStyle(isSelected)}>
                           <IconComponent size={20} />
                         </span>
                         <span
-                          className={`text-[16px] leading-[24px] tracking-[0px] align-middle ${isSelected
+                          className={`text-[16px] leading-[24px] tracking-[0px] align-middle ${
+                            isSelected
                               ? "font-semibold text-[#212121]"
                               : "font-medium text-[#818181]"
-                            }`}
+                          }`}
                         >
                           {category.name}
                         </span>
@@ -230,7 +216,10 @@ const FindWork = () => {
             </div>
           </div>
 
-          <div className="hidden md:max-lg:grid grid-cols-2 gap-[12px] w-full" ref={tabletDropdownRef}>
+          <div
+            className="hidden md:max-lg:grid grid-cols-2 gap-[12px] w-full"
+            ref={tabletDropdownRef}
+          >
             <div className="relative">
               <Search
                 className="absolute left-[16px] top-1/2 transform -translate-y-1/2 text-[#A0A0A0]"
@@ -252,7 +241,10 @@ const FindWork = () => {
                 <div className="flex items-center gap-[12px] min-w-0">
                   {selectedCategoryData && (
                     <>
-                      <selectedCategoryData.icon size={20} className="text-[#818181] flex-shrink-0" />
+                      <selectedCategoryData.icon
+                        size={20}
+                        className="text-[#818181] flex-shrink-0"
+                      />
                       <span className="text-[16px] font-medium text-[#212121] truncate">
                         {selectedCategory}
                       </span>
@@ -264,8 +256,9 @@ const FindWork = () => {
                 </div>
                 <ChevronDown
                   size={20}
-                  className={`text-[#818181] transition-transform ${isCategoryDropdownOpen ? "rotate-180" : ""
-                    }`}
+                  className={`text-[#818181] transition-transform ${
+                    isCategoryDropdownOpen ? "rotate-180" : ""
+                  }`}
                 />
               </button>
               {isCategoryDropdownOpen && (
@@ -277,17 +270,19 @@ const FindWork = () => {
                       <button
                         key={category.name}
                         onClick={() => handleCategorySelection(category.name, true)}
-                        className={`w-full flex items-center gap-[12px] px-[12px] py-[10px] rounded-[8px] text-left transition-colors ${isSelected ? "bg-[#EEEEEE]" : "hover:bg-[#F5F5F5]"
-                          }`}
+                        className={`w-full flex items-center gap-[12px] px-[12px] py-[10px] rounded-[8px] text-left transition-colors ${
+                          isSelected ? "bg-[#EEEEEE]" : "hover:bg-[#F5F5F5]"
+                        }`}
                       >
                         <span className="flex-shrink-0" style={getCategoryIconStyle(isSelected)}>
                           <IconComponent size={20} />
                         </span>
                         <span
-                          className={`text-[16px] leading-[24px] tracking-[0px] align-middle ${isSelected
+                          className={`text-[16px] leading-[24px] tracking-[0px] align-middle ${
+                            isSelected
                               ? "font-semibold text-[#212121]"
                               : "font-medium text-[#818181]"
-                            }`}
+                          }`}
                         >
                           {category.name}
                         </span>
@@ -333,10 +328,11 @@ const FindWork = () => {
                           <IconComponent size={20} className="flex-shrink-0 text-[#818181]" />
                         </span>
                         <span
-                          className={`text-[16px] leading-[24px] tracking-[0px] align-middle ${isSelected
+                          className={`text-[16px] leading-[24px] tracking-[0px] align-middle ${
+                            isSelected
                               ? "font-semibold text-[#212121]"
                               : "font-medium text-[#818181]"
-                            }`}
+                          }`}
                         >
                           {category.name}
                         </span>
@@ -357,7 +353,11 @@ const FindWork = () => {
           </div>
 
           <div className="flex-1 flex flex-col w-full mt-5 md:w-auto sm:gap-[16px] md:gap-0 md:min-w-0 md:max-lg:mt-0">
-            {filteredJobs.length === 0 ? (
+            {jobsLoading ? (
+              <div className="bg-white rounded-[8px] p-[32px] text-center text-[#7A7A7A] text-[15px]">
+                Loading jobs...
+              </div>
+            ) : filteredJobs.length === 0 ? (
               <div className="bg-white rounded-[8px] p-[32px] text-center text-[#7A7A7A] text-[15px]">
                 No jobs found
               </div>
@@ -392,6 +392,7 @@ const FindWork = () => {
       <CreateJobModal
         open={isCreateJobModalOpen}
         onClose={() => setIsCreateJobModalOpen(false)}
+        onPublished={handleJobPublished}
       />
     </div>
   );
