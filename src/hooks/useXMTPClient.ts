@@ -37,6 +37,7 @@ const XMTP_ENABLED_SESSION_MAP_KEY = "w3rk:xmtp:enabled-session-map";
 const XMTP_DB_KEY_STORAGE_PREFIX = "w3rk:xmtp:db-key";
 const XMTP_RESTORE_DEBUG_KEY = "w3rk:xmtp:restore-debug:last";
 const XMTP_LAST_SUCCESSFUL_CONNECTION_KEY = "w3rk:xmtp:last-successful-connection";
+const XMTP_LAST_SUCCESSFUL_CONNECTION_MAP_KEY = "w3rk:xmtp:last-successful-connection-map";
 
 export type XMTPConnectStage =
   | "idle"
@@ -85,6 +86,7 @@ type XMTPRestoreAttemptDebug = {
   matchesPersistedInstallation: boolean | null;
   registrationCheckFailed: boolean;
   installationInInbox: boolean | null;
+  conversationAccess: boolean | null;
   isRegistered: boolean | null;
   canMessageReady: boolean | null;
   error?: string;
@@ -116,6 +118,7 @@ type XMTPLastSuccessfulConnection = {
   dbEncryptionKey?: string;
   savedAt: string;
 };
+type XMTPLastSuccessfulConnectionMap = Record<string, XMTPLastSuccessfulConnection>;
 
 export function useXMTPClient(params?: UseXMTPClientParams) {
   const dispatch = useDispatch();
@@ -486,22 +489,20 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     [loadDbEncryptionKey, storeDbEncryptionKey]
   );
 
-  const getLastSuccessfulConnection = useCallback((): XMTPLastSuccessfulConnection | null => {
-    if (typeof window === "undefined") {
-      return null;
-    }
-
-    try {
-      const raw = window.localStorage.getItem(XMTP_LAST_SUCCESSFUL_CONNECTION_KEY);
-      if (!raw) {
+  const normalizeLastSuccessful = useCallback(
+    (value: unknown): XMTPLastSuccessfulConnection | null => {
+      if (!value || typeof value !== "object") {
         return null;
       }
-      const parsed = JSON.parse(raw) as Partial<XMTPLastSuccessfulConnection>;
+      const parsed = value as Partial<XMTPLastSuccessfulConnection>;
       if (
-        !parsed ||
-        (parsed.env !== "local" && parsed.env !== "dev" && parsed.env !== "production") ||
-        typeof parsed.identifier !== "string"
+        parsed.env !== "local" &&
+        parsed.env !== "dev" &&
+        parsed.env !== "production"
       ) {
+        return null;
+      }
+      if (typeof parsed.identifier !== "string") {
         return null;
       }
 
@@ -523,10 +524,61 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
             ? parsed.savedAt
             : new Date().toISOString(),
       };
+    },
+    []
+  );
+
+  const getCurrentSessionKeysForLastSuccessful = useCallback(() => {
+    const keys = [
+      lensProfileId ? `lens:id:${lensProfileId}` : null,
+      lensHandle ? `lens:handle:${lensHandle.toLowerCase().replace(/^@/, "")}` : null,
+      lensAccountAddress ? `lens:address:${lensAccountAddress.toLowerCase()}` : null,
+      walletAddress ? `wallet:${walletAddress.toLowerCase()}` : null,
+      walletClientAccountAddress ? `walletClient:${walletClientAccountAddress}` : null,
+      xmtpAddress ? `xmtp:${xmtpAddress.toLowerCase()}` : null,
+    ].filter((value): value is string => Boolean(value));
+    return Array.from(new Set(keys));
+  }, [
+    lensAccountAddress,
+    lensHandle,
+    lensProfileId,
+    walletAddress,
+    walletClientAccountAddress,
+    xmtpAddress,
+  ]);
+
+  const getLastSuccessfulConnection = useCallback((): XMTPLastSuccessfulConnection | null => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    try {
+      const rawMap = window.localStorage.getItem(XMTP_LAST_SUCCESSFUL_CONNECTION_MAP_KEY);
+      if (rawMap) {
+        const parsedMap = JSON.parse(rawMap) as Record<string, unknown>;
+        const currentSessionKeys = getCurrentSessionKeysForLastSuccessful();
+        const candidates = currentSessionKeys
+          .map(key => normalizeLastSuccessful(parsedMap[key]))
+          .filter((item): item is XMTPLastSuccessfulConnection => Boolean(item))
+          .sort((a, b) => Date.parse(b.savedAt) - Date.parse(a.savedAt));
+        if (candidates.length > 0) {
+          return candidates[0];
+        }
+      }
+    } catch {
+      // Fall through to legacy key.
+    }
+
+    try {
+      const raw = window.localStorage.getItem(XMTP_LAST_SUCCESSFUL_CONNECTION_KEY);
+      if (!raw) {
+        return null;
+      }
+      return normalizeLastSuccessful(JSON.parse(raw));
     } catch {
       return null;
     }
-  }, []);
+  }, [getCurrentSessionKeysForLastSuccessful, normalizeLastSuccessful]);
 
   const persistLastSuccessfulConnection = useCallback(
     (
@@ -557,9 +609,27 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       };
 
       try {
+        // Legacy single-slot key for backward compatibility.
+        window.localStorage.setItem(XMTP_LAST_SUCCESSFUL_CONNECTION_KEY, JSON.stringify(payload));
+
+        const rawMap = window.localStorage.getItem(XMTP_LAST_SUCCESSFUL_CONNECTION_MAP_KEY);
+        const parsedMap =
+          rawMap && typeof rawMap === "string"
+            ? (JSON.parse(rawMap) as Record<string, unknown>)
+            : {};
+        const nextMap: XMTPLastSuccessfulConnectionMap = {};
+        for (const [key, value] of Object.entries(parsedMap)) {
+          const normalized = normalizeLastSuccessful(value);
+          if (normalized) {
+            nextMap[key] = normalized;
+          }
+        }
+        for (const sessionKey of getCurrentSessionKeysForLastSuccessful()) {
+          nextMap[sessionKey] = payload;
+        }
         window.localStorage.setItem(
-          XMTP_LAST_SUCCESSFUL_CONNECTION_KEY,
-          JSON.stringify(payload)
+          XMTP_LAST_SUCCESSFUL_CONNECTION_MAP_KEY,
+          JSON.stringify(nextMap)
         );
       } catch (error) {
         logError("restore:last_successful:persist_failed", error, {
@@ -568,7 +638,12 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         });
       }
     },
-    [bytesToBase64, logError]
+    [
+      bytesToBase64,
+      getCurrentSessionKeysForLastSuccessful,
+      logError,
+      normalizeLastSuccessful,
+    ]
   );
 
   const getActiveSessionKeys = useCallback(() => {
@@ -1800,6 +1875,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                 matchesPersistedInstallation: null,
                 registrationCheckFailed: false,
                 installationInInbox: null,
+                conversationAccess: null,
                 isRegistered: null,
                 canMessageReady: null,
               };
@@ -1935,10 +2011,26 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                       }
                     );
                 attemptDebug.canMessageReady = canMessageReady;
+                let hasConversationAccessForLastSuccessful = false;
+                if (isLastSuccessfulExactBuild) {
+                  try {
+                    const conversations = await withTimeout(
+                      builtClient.conversations.list(),
+                      6000,
+                      "Listing XMTP conversations timed out."
+                    );
+                    hasConversationAccessForLastSuccessful = Array.isArray(conversations);
+                    attemptDebug.conversationAccess = hasConversationAccessForLastSuccessful;
+                  } catch (conversationError) {
+                    appendAttemptError("conversationList", conversationError);
+                    attemptDebug.conversationAccess = false;
+                  }
+                }
                 restoreAttempts.push(attemptDebug);
 
                 const isUsable =
                   matchesLastSuccessfulInstallation ||
+                  hasConversationAccessForLastSuccessful ||
                   isRegistered ||
                   installationInInbox ||
                   canMessageReady;
