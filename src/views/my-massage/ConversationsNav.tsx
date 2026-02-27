@@ -12,6 +12,8 @@ import { useXMTP } from "@/app/XMTPContext";
 import { useXMTPClient } from "@/hooks/useXMTPClient";
 import toast from "react-hot-toast";
 
+const XMTP_RESTORE_DEBUG_KEY = "w3rk:xmtp:restore-debug:last";
+
 const stageLabel: Record<string, string> = {
   idle: "Preparing XMTP...",
   prompt_signature: "Check your wallet to sign",
@@ -29,16 +31,52 @@ const ConversationsNav = () => {
   const { client } = useXMTP();
   const { address: walletAddress } = useAccount();
   const lensProfile = useSelector((state: RootState) => state.app.user);
-  const { createXMTPClient, initXMTPClient, connectingXMTP, connectStage } = useXMTPClient({
-    walletAddress,
-    lensAccountAddress: lensProfile?.address,
-    lensProfileId: lensProfile?.id,
-    lensHandle: lensProfile?.handle,
-  });
+  const { createXMTPClient, initXMTPClient, connectingXMTP, connectStage } =
+    useXMTPClient({
+      walletAddress,
+      lensAccountAddress: lensProfile?.address,
+      lensProfileId: lensProfile?.id,
+      lensHandle: lensProfile?.handle,
+    });
 
   const stopStreamRef = useRef<(() => void) | null>(null);
+  const restoreInFlightRef = useRef(false);
+  const manualEnableInFlightRef = useRef(false);
+  const attemptedRestoreKeyRef = useRef("");
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const handleCopyDebug = async () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const payload = window.localStorage.getItem(XMTP_RESTORE_DEBUG_KEY);
+    if (!payload) {
+      toast.error("No XMTP debug data found yet.");
+      return;
+    }
+
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(payload);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = payload;
+        textArea.setAttribute("readonly", "true");
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+      toast.success("Copied XMTP debug data.");
+    } catch (error) {
+      toast.error("Failed to copy XMTP debug data.");
+      console.error("Failed to copy XMTP debug data:", error);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -77,16 +115,45 @@ const ConversationsNav = () => {
         return;
       }
 
-      if (!walletAddress && !lensProfile?.address) {
+      if (manualEnableInFlightRef.current) {
+        return;
+      }
+
+      if (!walletAddress && !lensProfile?.address && !lensProfile?.id && !lensProfile?.handle) {
+        return;
+      }
+
+      const restoreKey = [
+        walletAddress?.toLowerCase() ?? "",
+        lensProfile?.address?.toLowerCase() ?? "",
+        lensProfile?.id ?? "",
+        lensProfile?.handle?.toLowerCase() ?? "",
+      ].join("|");
+
+      if (attemptedRestoreKeyRef.current === restoreKey) {
+        return;
+      }
+
+      if (restoreInFlightRef.current) {
         return;
       }
 
       try {
-        await initXMTPClient();
+        attemptedRestoreKeyRef.current = restoreKey;
+        restoreInFlightRef.current = true;
+
+        // Silent restore only: never trigger wallet signatures automatically on page load.
+        const restoredClient = await initXMTPClient();
+        if (!restoredClient && !cancelled) {
+          await new Promise(resolve => setTimeout(resolve, 900));
+          await initXMTPClient();
+        }
       } catch (error) {
         if (!cancelled) {
           console.warn("XMTP auto-restore failed:", error);
         }
+      } finally {
+        restoreInFlightRef.current = false;
       }
     };
 
@@ -95,11 +162,21 @@ const ConversationsNav = () => {
     return () => {
       cancelled = true;
     };
-  }, [client, connectingXMTP, initXMTPClient, lensProfile?.address, walletAddress]);
+  }, [
+    client,
+    connectingXMTP,
+    initXMTPClient,
+    lensProfile?.address,
+    lensProfile?.handle,
+    lensProfile?.id,
+    walletAddress,
+  ]);
 
   const handleEnable = async () => {
     const toastId = toast.loading(stageLabel.idle);
     try {
+      manualEnableInFlightRef.current = true;
+      attemptedRestoreKeyRef.current = "";
       await createXMTPClient({
         onStage: stage => {
           const message = stageLabel[stage] ?? "Connecting XMTP...";
@@ -122,6 +199,8 @@ const ConversationsNav = () => {
           : "Failed to connect XMTP. Please retry.";
       toast.error(message, { id: toastId });
       console.error("Failed to connect XMTP:", error);
+    } finally {
+      manualEnableInFlightRef.current = false;
     }
   };
 
@@ -197,8 +276,17 @@ const ConversationsNav = () => {
             >
               {connectingXMTP ? "Connecting..." : "Enable"}
             </button>
+            <button
+              type="button"
+              onClick={handleCopyDebug}
+              className="mt-3 text-xs text-[#6C6C6C] underline hover:text-[#444]"
+            >
+              Copy XMTP debug
+            </button>
             {connectingXMTP && (
-              <p className="text-xs text-gray-500 mt-2">{stageLabel[connectStage] ?? "Connecting..."}</p>
+              <p className="text-xs text-gray-500 mt-2">
+                {stageLabel[connectStage] ?? "Connecting..."}
+              </p>
             )}
           </div>
         </div>

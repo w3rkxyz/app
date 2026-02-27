@@ -31,6 +31,13 @@ const XMTP_API_URLS = {
   dev: "https://api.dev.xmtp.network:5558",
   production: "https://api.production.xmtp.network:5558",
 } as const;
+const XMTP_ENABLED_IDENTIFIERS_KEY = "w3rk:xmtp:enabled-identifiers";
+const XMTP_LAST_ENV_KEY = "w3rk:xmtp:last-env";
+const XMTP_ENABLED_SESSION_MAP_KEY = "w3rk:xmtp:enabled-session-map";
+const XMTP_DB_KEY_STORAGE_PREFIX = "w3rk:xmtp:db-key";
+const XMTP_RESTORE_DEBUG_KEY = "w3rk:xmtp:restore-debug:last";
+const XMTP_LAST_SUCCESSFUL_CONNECTION_KEY = "w3rk:xmtp:last-successful-connection";
+const XMTP_LAST_SUCCESSFUL_CONNECTION_MAP_KEY = "w3rk:xmtp:last-successful-connection-map";
 
 export type XMTPConnectStage =
   | "idle"
@@ -48,6 +55,70 @@ type XMTPConnectOptions = {
 };
 
 const XMTP_MAX_INSTALLATIONS = 10;
+type XMTPSessionState = {
+  identifiers: string[];
+  env?: "local" | "dev" | "production";
+  lastIdentifier?: string;
+  lastInboxId?: string;
+  lastInstallationId?: string;
+};
+type XMTPSessionStateResolved = {
+  identifiers: string[];
+  env?: "local" | "dev" | "production";
+  lastIdentifier?: string;
+  lastInboxId?: string;
+  lastInstallationId?: string;
+  identifierHints: string[];
+  installationHints: Array<{
+    inboxId?: string;
+    installationId?: string;
+  }>;
+};
+
+type XMTPSessionMap = Record<string, XMTPSessionState>;
+type XMTPRestoreAttemptDebug = {
+  env: "local" | "dev" | "production";
+  identifier: string;
+  usedDbEncryptionKey: boolean;
+  build: "ok" | "failed";
+  inboxId: string | null;
+  installationId: string | null;
+  matchesPersistedInstallation: boolean | null;
+  registrationCheckFailed: boolean;
+  installationInInbox: boolean | null;
+  conversationAccess: boolean | null;
+  isRegistered: boolean | null;
+  canMessageReady: boolean | null;
+  error?: string;
+};
+type XMTPRestoreDebugSnapshot = {
+  timestamp: string;
+  result: "restored" | "not_restored" | "error";
+  identity: {
+    walletAddress: string | null;
+    lensAccountAddress: string | null;
+    lensProfileId: string | null;
+    lensHandle: string | null;
+    xmtpAddress: string | null;
+    isScwIdentity: boolean;
+  };
+  envCandidates: ("local" | "dev" | "production")[];
+  identifierCandidates: string[];
+  attempts: XMTPRestoreAttemptDebug[];
+  restoredEnv?: "local" | "dev" | "production";
+  restoredIdentifier?: string;
+  reason?: string;
+  error?: string;
+};
+type XMTPLastSuccessfulConnection = {
+  env: "local" | "dev" | "production";
+  identifier: string;
+  inboxId?: string;
+  installationId?: string;
+  dbEncryptionKey?: string;
+  savedAt: string;
+};
+type XMTPLastSuccessfulConnectionMap = Record<string, XMTPLastSuccessfulConnection>;
 
 export function useXMTPClient(params?: UseXMTPClientParams) {
   const dispatch = useDispatch();
@@ -119,6 +190,68 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     [walletAddress, lensAccountAddress, xmtpAddress, lensProfileId, lensHandle, isScwIdentity]
   );
 
+  const stringifyError = useCallback((error: unknown) => {
+    if (error instanceof Error) {
+      return error.message;
+    }
+    if (typeof error === "string") {
+      return error;
+    }
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return String(error);
+    }
+  }, []);
+
+  const persistRestoreDebug = useCallback(
+    (
+      payload: Omit<XMTPRestoreDebugSnapshot, "timestamp" | "identity"> & {
+        timestamp?: string;
+        identity?: XMTPRestoreDebugSnapshot["identity"];
+      }
+    ) => {
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      const snapshot: XMTPRestoreDebugSnapshot = {
+        timestamp: payload.timestamp ?? new Date().toISOString(),
+        identity: payload.identity ?? {
+          walletAddress: walletAddress?.toLowerCase() ?? null,
+          lensAccountAddress: lensAccountAddress?.toLowerCase() ?? null,
+          lensProfileId: lensProfileId ?? null,
+          lensHandle: lensHandle ?? null,
+          xmtpAddress: xmtpAddress ?? null,
+          isScwIdentity,
+        },
+        result: payload.result,
+        envCandidates: payload.envCandidates,
+        identifierCandidates: payload.identifierCandidates,
+        attempts: payload.attempts,
+        restoredEnv: payload.restoredEnv,
+        restoredIdentifier: payload.restoredIdentifier,
+        reason: payload.reason,
+        error: payload.error,
+      };
+
+      try {
+        window.localStorage.setItem(XMTP_RESTORE_DEBUG_KEY, JSON.stringify(snapshot));
+      } catch (error) {
+        logError("restore:debug:persist_failed", error);
+      }
+    },
+    [
+      isScwIdentity,
+      lensAccountAddress,
+      lensHandle,
+      lensProfileId,
+      logError,
+      walletAddress,
+      xmtpAddress,
+    ]
+  );
+
   const signWithEthereumProvider = useCallback(
     async (message: string, accountAddress: Address | null): Promise<string | null> => {
       if (typeof window === "undefined") {
@@ -165,6 +298,590 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       }
     }
   };
+
+  const verifyBuiltClientReady = useCallback(
+    async (
+      builtClient: Client<unknown>,
+      identifier: string,
+      context: Record<string, unknown>,
+      options?: {
+        onError?: (error: unknown) => void;
+      }
+    ): Promise<boolean> => {
+      try {
+        const normalizedIdentifier = identifier.toLowerCase();
+        const canMessageMap = await withTimeout(
+          builtClient.canMessage([
+            {
+              identifier: normalizedIdentifier,
+              identifierKind: IdentifierKind.Ethereum,
+            },
+          ]),
+          5000,
+          "Verifying XMTP client readiness timed out."
+        );
+        const isReady = Boolean(canMessageMap.get(normalizedIdentifier));
+        logDebug("restore:verify:ready", {
+          ...context,
+          normalizedIdentifier,
+          isReady,
+        });
+        return isReady;
+      } catch (error) {
+        logError("restore:verify:failed", error, context);
+        options?.onError?.(error);
+        return false;
+      }
+    },
+    [logDebug, logError]
+  );
+
+  const verifyBuiltClientInstallation = useCallback(
+    async (
+      builtClient: Client<unknown>,
+      env: "local" | "dev" | "production",
+      context: Record<string, unknown>,
+      options?: {
+        onError?: (error: unknown) => void;
+      }
+    ): Promise<boolean> => {
+      const inboxId = (builtClient as { inboxId?: string }).inboxId;
+      const installationIdBytes = (builtClient as { installationIdBytes?: Uint8Array }).installationIdBytes;
+      if (!inboxId || !installationIdBytes || installationIdBytes.length === 0) {
+        return false;
+      }
+
+      try {
+        const [inboxState] = await withTimeout(
+          Client.fetchInboxStates([inboxId], env),
+          10000,
+          "Checking XMTP inbox state timed out."
+        );
+        const installations = inboxState?.installations ?? [];
+        const hasInstallation = installations.some(installation => {
+          const bytes = installation.bytes;
+          if (bytes.length !== installationIdBytes.length) {
+            return false;
+          }
+          for (let i = 0; i < bytes.length; i += 1) {
+            if (bytes[i] !== installationIdBytes[i]) {
+              return false;
+            }
+          }
+          return true;
+        });
+
+        logDebug("restore:verify:installation_membership", {
+          ...context,
+          inboxId,
+          installationCount: installations.length,
+          hasInstallation,
+        });
+        return hasInstallation;
+      } catch (error) {
+        logError("restore:verify:installation_membership_failed", error, {
+          ...context,
+          inboxId,
+        });
+        options?.onError?.(error);
+        return false;
+      }
+    },
+    [logDebug, logError]
+  );
+
+  const bytesToBase64 = useCallback((bytes: Uint8Array) => {
+    let binary = "";
+    for (const byte of bytes) {
+      binary += String.fromCharCode(byte);
+    }
+
+    if (typeof window !== "undefined" && typeof window.btoa === "function") {
+      return window.btoa(binary);
+    }
+
+    return "";
+  }, []);
+
+  const base64ToBytes = useCallback((value: string) => {
+    if (typeof window !== "undefined" && typeof window.atob === "function") {
+      const binary = window.atob(value);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return bytes;
+    }
+
+    return new Uint8Array();
+  }, []);
+
+  const buildDbKeyStorageKey = useCallback(
+    (env: "local" | "dev" | "production", identifier: string) =>
+      `${XMTP_DB_KEY_STORAGE_PREFIX}:${env}:${identifier.toLowerCase()}`,
+    []
+  );
+
+  const loadDbEncryptionKey = useCallback(
+    (env: "local" | "dev" | "production", identifier: string): Uint8Array | undefined => {
+      if (typeof window === "undefined") {
+        return undefined;
+      }
+
+      const storageKey = buildDbKeyStorageKey(env, identifier);
+      const raw = window.localStorage.getItem(storageKey);
+      if (!raw) {
+        return undefined;
+      }
+
+      try {
+        const bytes = base64ToBytes(raw);
+        return bytes.length > 0 ? bytes : undefined;
+      } catch {
+        return undefined;
+      }
+    },
+    [base64ToBytes, buildDbKeyStorageKey]
+  );
+
+  const storeDbEncryptionKey = useCallback(
+    (env: "local" | "dev" | "production", identifier: string, key: Uint8Array) => {
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      const storageKey = buildDbKeyStorageKey(env, identifier);
+      window.localStorage.setItem(storageKey, bytesToBase64(key));
+    },
+    [buildDbKeyStorageKey, bytesToBase64]
+  );
+
+  const removeDbEncryptionKey = useCallback(
+    (env: "local" | "dev" | "production", identifier: string) => {
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      const storageKey = buildDbKeyStorageKey(env, identifier);
+      window.localStorage.removeItem(storageKey);
+    },
+    [buildDbKeyStorageKey]
+  );
+
+  const getOrCreateDbEncryptionKey = useCallback(
+    (env: "local" | "dev" | "production", identifier: string): Uint8Array => {
+      const existing = loadDbEncryptionKey(env, identifier);
+      if (existing) {
+        return existing;
+      }
+
+      const generated = new Uint8Array(32);
+      if (typeof globalThis.crypto !== "undefined" && typeof globalThis.crypto.getRandomValues === "function") {
+        globalThis.crypto.getRandomValues(generated);
+      } else {
+        for (let i = 0; i < generated.length; i += 1) {
+          generated[i] = Math.floor(Math.random() * 256);
+        }
+      }
+      storeDbEncryptionKey(env, identifier, generated);
+      return generated;
+    },
+    [loadDbEncryptionKey, storeDbEncryptionKey]
+  );
+
+  const normalizeLastSuccessful = useCallback(
+    (value: unknown): XMTPLastSuccessfulConnection | null => {
+      if (!value || typeof value !== "object") {
+        return null;
+      }
+      const parsed = value as Partial<XMTPLastSuccessfulConnection>;
+      if (
+        parsed.env !== "local" &&
+        parsed.env !== "dev" &&
+        parsed.env !== "production"
+      ) {
+        return null;
+      }
+      if (typeof parsed.identifier !== "string") {
+        return null;
+      }
+
+      const normalizedIdentifier = parsed.identifier.toLowerCase();
+      if (!normalizedIdentifier.startsWith("0x") || normalizedIdentifier.length !== 42) {
+        return null;
+      }
+
+      return {
+        env: parsed.env,
+        identifier: normalizedIdentifier,
+        inboxId: typeof parsed.inboxId === "string" ? parsed.inboxId : undefined,
+        installationId:
+          typeof parsed.installationId === "string" ? parsed.installationId : undefined,
+        dbEncryptionKey:
+          typeof parsed.dbEncryptionKey === "string" ? parsed.dbEncryptionKey : undefined,
+        savedAt:
+          typeof parsed.savedAt === "string" && parsed.savedAt.length > 0
+            ? parsed.savedAt
+            : new Date().toISOString(),
+      };
+    },
+    []
+  );
+
+  const getCurrentSessionKeysForLastSuccessful = useCallback(() => {
+    const keys = [
+      lensProfileId ? `lens:id:${lensProfileId}` : null,
+      lensHandle ? `lens:handle:${lensHandle.toLowerCase().replace(/^@/, "")}` : null,
+      lensAccountAddress ? `lens:address:${lensAccountAddress.toLowerCase()}` : null,
+      walletAddress ? `wallet:${walletAddress.toLowerCase()}` : null,
+      walletClientAccountAddress ? `walletClient:${walletClientAccountAddress}` : null,
+      xmtpAddress ? `xmtp:${xmtpAddress.toLowerCase()}` : null,
+    ].filter((value): value is string => Boolean(value));
+    return Array.from(new Set(keys));
+  }, [
+    lensAccountAddress,
+    lensHandle,
+    lensProfileId,
+    walletAddress,
+    walletClientAccountAddress,
+    xmtpAddress,
+  ]);
+
+  const getLastSuccessfulConnection = useCallback((): XMTPLastSuccessfulConnection | null => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    try {
+      const rawMap = window.localStorage.getItem(XMTP_LAST_SUCCESSFUL_CONNECTION_MAP_KEY);
+      if (rawMap) {
+        const parsedMap = JSON.parse(rawMap) as Record<string, unknown>;
+        const currentSessionKeys = getCurrentSessionKeysForLastSuccessful();
+        const candidates = currentSessionKeys
+          .map(key => normalizeLastSuccessful(parsedMap[key]))
+          .filter((item): item is XMTPLastSuccessfulConnection => Boolean(item))
+          .sort((a, b) => Date.parse(b.savedAt) - Date.parse(a.savedAt));
+        if (candidates.length > 0) {
+          return candidates[0];
+        }
+      }
+    } catch {
+      // Fall through to legacy key.
+    }
+
+    try {
+      const raw = window.localStorage.getItem(XMTP_LAST_SUCCESSFUL_CONNECTION_KEY);
+      if (!raw) {
+        return null;
+      }
+      return normalizeLastSuccessful(JSON.parse(raw));
+    } catch {
+      return null;
+    }
+  }, [getCurrentSessionKeysForLastSuccessful, normalizeLastSuccessful]);
+
+  const persistLastSuccessfulConnection = useCallback(
+    (
+      env: "local" | "dev" | "production",
+      identifier: string,
+      clientLike: { inboxId?: string; installationId?: string },
+      dbEncryptionKey?: Uint8Array
+    ) => {
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      const normalizedIdentifier = identifier.toLowerCase();
+      if (!normalizedIdentifier.startsWith("0x") || normalizedIdentifier.length !== 42) {
+        return;
+      }
+
+      const payload: XMTPLastSuccessfulConnection = {
+        env,
+        identifier: normalizedIdentifier,
+        inboxId: clientLike.inboxId,
+        installationId: clientLike.installationId,
+        dbEncryptionKey:
+          dbEncryptionKey && dbEncryptionKey.length > 0
+            ? bytesToBase64(dbEncryptionKey)
+            : undefined,
+        savedAt: new Date().toISOString(),
+      };
+
+      try {
+        // Legacy single-slot key for backward compatibility.
+        window.localStorage.setItem(XMTP_LAST_SUCCESSFUL_CONNECTION_KEY, JSON.stringify(payload));
+
+        const rawMap = window.localStorage.getItem(XMTP_LAST_SUCCESSFUL_CONNECTION_MAP_KEY);
+        const parsedMap =
+          rawMap && typeof rawMap === "string"
+            ? (JSON.parse(rawMap) as Record<string, unknown>)
+            : {};
+        const nextMap: XMTPLastSuccessfulConnectionMap = {};
+        for (const [key, value] of Object.entries(parsedMap)) {
+          const normalized = normalizeLastSuccessful(value);
+          if (normalized) {
+            nextMap[key] = normalized;
+          }
+        }
+        for (const sessionKey of getCurrentSessionKeysForLastSuccessful()) {
+          nextMap[sessionKey] = payload;
+        }
+        window.localStorage.setItem(
+          XMTP_LAST_SUCCESSFUL_CONNECTION_MAP_KEY,
+          JSON.stringify(nextMap)
+        );
+      } catch (error) {
+        logError("restore:last_successful:persist_failed", error, {
+          env,
+          identifier: normalizedIdentifier,
+        });
+      }
+    },
+    [
+      bytesToBase64,
+      getCurrentSessionKeysForLastSuccessful,
+      logError,
+      normalizeLastSuccessful,
+    ]
+  );
+
+  const getActiveSessionKeys = useCallback(() => {
+    const keys = [
+      lensProfileId ? `lens:id:${lensProfileId}` : null,
+      lensHandle ? `lens:handle:${lensHandle.toLowerCase().replace(/^@/, "")}` : null,
+      lensAccountAddress ? `lens:address:${lensAccountAddress.toLowerCase()}` : null,
+      walletAddress ? `wallet:${walletAddress.toLowerCase()}` : null,
+      walletClientAccountAddress ? `walletClient:${walletClientAccountAddress}` : null,
+    ].filter((value): value is string => Boolean(value));
+
+    return Array.from(new Set(keys));
+  }, [
+    lensAccountAddress,
+    lensHandle,
+    lensProfileId,
+    walletAddress,
+    walletClientAccountAddress,
+  ]);
+
+  const getPersistedSessionMap = useCallback((): XMTPSessionMap => {
+    if (typeof window === "undefined") {
+      return {};
+    }
+
+    try {
+      const raw = window.localStorage.getItem(XMTP_ENABLED_SESSION_MAP_KEY);
+      if (!raw) {
+        return {};
+      }
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") {
+        return {};
+      }
+
+      const entries = Object.entries(parsed as Record<string, unknown>);
+      const normalized = entries.reduce<XMTPSessionMap>((acc, [key, value]) => {
+        if (!value || typeof value !== "object") {
+          return acc;
+        }
+        const maybeState = value as {
+          identifiers?: unknown;
+          env?: unknown;
+          lastIdentifier?: unknown;
+          lastInboxId?: unknown;
+          lastInstallationId?: unknown;
+        };
+        const identifiers = Array.isArray(maybeState.identifiers)
+          ? maybeState.identifiers
+              .filter((item): item is string => typeof item === "string")
+              .map(item => item.toLowerCase())
+              .filter(item => item.startsWith("0x") && item.length === 42)
+          : [];
+        const env =
+          maybeState.env === "local" || maybeState.env === "dev" || maybeState.env === "production"
+            ? maybeState.env
+            : undefined;
+        const lastIdentifier =
+          typeof maybeState.lastIdentifier === "string"
+            ? maybeState.lastIdentifier.toLowerCase()
+            : undefined;
+        const normalizedLastIdentifier =
+          lastIdentifier && lastIdentifier.startsWith("0x") && lastIdentifier.length === 42
+            ? lastIdentifier
+            : undefined;
+        const lastInboxId =
+          typeof maybeState.lastInboxId === "string" && maybeState.lastInboxId.length > 0
+            ? maybeState.lastInboxId
+            : undefined;
+        const lastInstallationId =
+          typeof maybeState.lastInstallationId === "string" && maybeState.lastInstallationId.length > 0
+            ? maybeState.lastInstallationId
+            : undefined;
+
+        if (identifiers.length > 0 || env || normalizedLastIdentifier || lastInboxId || lastInstallationId) {
+          acc[key] = {
+            identifiers,
+            env,
+            lastIdentifier: normalizedLastIdentifier,
+            lastInboxId,
+            lastInstallationId,
+          };
+        }
+        return acc;
+      }, {});
+
+      return normalized;
+    } catch {
+      return {};
+    }
+  }, []);
+
+  const getPersistedSessionState = useCallback((): XMTPSessionStateResolved => {
+    const sessionMap = getPersistedSessionMap();
+    const sessionKeys = getActiveSessionKeys();
+    if (sessionKeys.length === 0) {
+      return {
+        identifiers: [],
+        env: undefined,
+        identifierHints: [],
+        installationHints: [],
+      };
+    }
+
+    const identifiers = Array.from(
+      new Set(
+        sessionKeys.flatMap(key => sessionMap[key]?.identifiers ?? [])
+      )
+    );
+    const env = sessionKeys.map(key => sessionMap[key]?.env).find(Boolean);
+    const lastIdentifier = sessionKeys.map(key => sessionMap[key]?.lastIdentifier).find(Boolean);
+    const lastInboxId = sessionKeys.map(key => sessionMap[key]?.lastInboxId).find(Boolean);
+    const lastInstallationId = sessionKeys
+      .map(key => sessionMap[key]?.lastInstallationId)
+      .find(Boolean);
+    const identifierHints = Array.from(
+      new Set(
+        sessionKeys
+          .map(key => sessionMap[key]?.lastIdentifier)
+          .filter((value): value is string => Boolean(value))
+      )
+    );
+    const installationHints = sessionKeys
+      .map(key => ({
+        inboxId: sessionMap[key]?.lastInboxId,
+        installationId: sessionMap[key]?.lastInstallationId,
+      }))
+      .filter(hint => Boolean(hint.inboxId || hint.installationId));
+    return {
+      identifiers,
+      env,
+      lastIdentifier,
+      lastInboxId,
+      lastInstallationId,
+      identifierHints,
+      installationHints,
+    };
+  }, [getActiveSessionKeys, getPersistedSessionMap]);
+
+  const getPersistedIdentifiers = useCallback(() => {
+    if (typeof window === "undefined") {
+      return [] as string[];
+    }
+
+    try {
+      const raw = window.localStorage.getItem(XMTP_ENABLED_IDENTIFIERS_KEY);
+      if (!raw) {
+        return [] as string[];
+      }
+
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        return [] as string[];
+      }
+
+      return parsed
+        .filter((value): value is string => typeof value === "string")
+        .map(value => value.toLowerCase())
+        .filter(value => value.startsWith("0x") && value.length === 42);
+    } catch {
+      return [] as string[];
+    }
+  }, []);
+
+  const persistEnabledState = useCallback(
+    (
+      env: "local" | "dev" | "production",
+      identifiers: string[] = [],
+      sessionMeta?: { inboxId?: string | null; installationId?: string | null }
+    ) => {
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      const currentSessionIdentifiers = Array.from(
+        new Set(
+          [...identifiers, xmtpAddress ?? "", walletAddress ?? "", walletClientAccountAddress ?? ""]
+            .map(value => value.toLowerCase())
+            .filter(value => value.startsWith("0x") && value.length === 42)
+        )
+      );
+      const preferredIdentifier = currentSessionIdentifiers[0];
+      const persisted = getPersistedIdentifiers();
+      const merged = Array.from(
+        new Set(
+          [...persisted, ...currentSessionIdentifiers]
+        )
+      );
+
+      window.localStorage.setItem(XMTP_ENABLED_IDENTIFIERS_KEY, JSON.stringify(merged));
+      window.localStorage.setItem(XMTP_LAST_ENV_KEY, env);
+
+      const sessionKeys = getActiveSessionKeys();
+      if (sessionKeys.length > 0) {
+        const currentSessionMap = getPersistedSessionMap();
+        for (const key of sessionKeys) {
+          const existing = currentSessionMap[key]?.identifiers ?? [];
+          currentSessionMap[key] = {
+            identifiers: Array.from(new Set([...existing, ...currentSessionIdentifiers])),
+            env,
+            lastIdentifier: preferredIdentifier ?? currentSessionMap[key]?.lastIdentifier,
+            lastInboxId: sessionMeta?.inboxId ?? currentSessionMap[key]?.lastInboxId,
+            lastInstallationId:
+              sessionMeta?.installationId ?? currentSessionMap[key]?.lastInstallationId,
+          };
+        }
+        window.localStorage.setItem(XMTP_ENABLED_SESSION_MAP_KEY, JSON.stringify(currentSessionMap));
+      }
+    },
+    [
+      getActiveSessionKeys,
+      getPersistedIdentifiers,
+      getPersistedSessionMap,
+      walletAddress,
+      walletClientAccountAddress,
+      xmtpAddress,
+    ]
+  );
+
+  const wasXMTPEnabled = useCallback(() => {
+    const activeCandidates = [xmtpAddress, walletAddress, walletClientAccountAddress]
+      .filter((value): value is string => Boolean(value))
+      .map(value => value.toLowerCase());
+
+    const sessionState = getPersistedSessionState();
+    const persisted = getPersistedIdentifiers();
+    const hasAddressMatch =
+      activeCandidates.length > 0 && activeCandidates.some(candidate => persisted.includes(candidate));
+    const hasSessionMatch = sessionState.identifiers.length > 0;
+
+    return hasAddressMatch || hasSessionMatch;
+  }, [
+    getPersistedIdentifiers,
+    getPersistedSessionState,
+    walletAddress,
+    walletClientAccountAddress,
+    xmtpAddress,
+  ]);
 
   /**
    * Create and connect to an XMTP client using a signer
@@ -329,8 +1046,12 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       updateStage("restore_session");
       try {
         logDebug("build:primary:start", { identifier: primaryIdentifier.identifier });
+        const primaryDbEncryptionKey = loadDbEncryptionKey(env, primaryIdentifier.identifier);
         const builtClient = await withTimeout(
-          Client.build(primaryIdentifier, { env }),
+          Client.build(primaryIdentifier, {
+            env,
+            ...(primaryDbEncryptionKey ? { dbEncryptionKey: primaryDbEncryptionKey } : {}),
+          }),
           8000,
           "Restoring XMTP session timed out."
         );
@@ -338,16 +1059,57 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
         updateStage("check_registration");
         logDebug("build:primary:isRegistered:start");
-        const isRegistered = await withTimeout(
-          builtClient.isRegistered(),
-          10000,
-          "Checking XMTP registration timed out."
-        );
+        let isRegistered = false;
+        let registrationCheckFailed = false;
+        try {
+          isRegistered = await withTimeout(
+            builtClient.isRegistered(),
+            10000,
+            "Checking XMTP registration timed out."
+          );
+        } catch (registrationCheckError) {
+          registrationCheckFailed = true;
+          logError("build:primary:isRegistered:failed", registrationCheckError, {
+            env,
+            identifier: primaryIdentifier.identifier,
+          });
+        }
         logDebug("build:primary:isRegistered:result", { isRegistered });
+        const hasInstallation = isRegistered
+          ? true
+          : await verifyBuiltClientInstallation(builtClient, env, {
+              phase: "create:build:primary",
+              env,
+              identifier: primaryIdentifier.identifier,
+              registrationCheckFailed,
+            });
 
-        if (isRegistered) {
+        const isUsable =
+          isRegistered ||
+          hasInstallation ||
+          (await verifyBuiltClientReady(builtClient, primaryIdentifier.identifier, {
+            phase: "create:build:primary",
+            env,
+            identifier: primaryIdentifier.identifier,
+            registrationCheckFailed,
+          }));
+
+        if (isUsable) {
           logDebug("build:primary:registered:reuse_client");
+          if (primaryDbEncryptionKey) {
+            storeDbEncryptionKey(env, primaryIdentifier.identifier, primaryDbEncryptionKey);
+          }
           setClient(builtClient);
+          persistEnabledState(env, [primaryIdentifier.identifier], {
+            inboxId: (builtClient as { inboxId?: string }).inboxId ?? null,
+            installationId: (builtClient as { installationId?: string }).installationId ?? null,
+          });
+          persistLastSuccessfulConnection(
+            env,
+            primaryIdentifier.identifier,
+            builtClient as { inboxId?: string; installationId?: string },
+            primaryDbEncryptionKey
+          );
           updateStage("connected");
           return builtClient;
         }
@@ -366,8 +1128,12 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       if (fallbackIdentifier) {
         try {
           logDebug("build:fallback:start", { identifier: fallbackIdentifier.identifier });
+          const fallbackDbEncryptionKey = loadDbEncryptionKey(env, fallbackIdentifier.identifier);
           const builtFallbackClient = await withTimeout(
-            Client.build(fallbackIdentifier, { env }),
+            Client.build(fallbackIdentifier, {
+              env,
+              ...(fallbackDbEncryptionKey ? { dbEncryptionKey: fallbackDbEncryptionKey } : {}),
+            }),
             8000,
             "Restoring XMTP session timed out."
           );
@@ -375,16 +1141,62 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
           updateStage("check_registration");
           logDebug("build:fallback:isRegistered:start");
-          const isRegistered = await withTimeout(
-            builtFallbackClient.isRegistered(),
-            10000,
-            "Checking XMTP registration timed out."
-          );
+          let isRegistered = false;
+          let registrationCheckFailed = false;
+          try {
+            isRegistered = await withTimeout(
+              builtFallbackClient.isRegistered(),
+              10000,
+              "Checking XMTP registration timed out."
+            );
+          } catch (registrationCheckError) {
+            registrationCheckFailed = true;
+            logError("build:fallback:isRegistered:failed", registrationCheckError, {
+              env,
+              identifier: fallbackIdentifier.identifier,
+            });
+          }
           logDebug("build:fallback:isRegistered:result", { isRegistered });
+          const hasInstallation = isRegistered
+            ? true
+            : await verifyBuiltClientInstallation(builtFallbackClient, env, {
+                phase: "create:build:fallback",
+                env,
+                identifier: fallbackIdentifier.identifier,
+                registrationCheckFailed,
+              });
 
-          if (isRegistered) {
+          const isUsable =
+            isRegistered ||
+            hasInstallation ||
+            (await verifyBuiltClientReady(
+              builtFallbackClient,
+              fallbackIdentifier.identifier,
+              {
+              phase: "create:build:fallback",
+              env,
+              identifier: fallbackIdentifier.identifier,
+              registrationCheckFailed,
+              }
+            ));
+
+          if (isUsable) {
             logDebug("build:fallback:registered:reuse_client");
+            if (fallbackDbEncryptionKey) {
+              storeDbEncryptionKey(env, fallbackIdentifier.identifier, fallbackDbEncryptionKey);
+            }
             setClient(builtFallbackClient);
+            persistEnabledState(env, [fallbackIdentifier.identifier], {
+              inboxId: (builtFallbackClient as { inboxId?: string }).inboxId ?? null,
+              installationId:
+                (builtFallbackClient as { installationId?: string }).installationId ?? null,
+            });
+            persistLastSuccessfulConnection(
+              env,
+              fallbackIdentifier.identifier,
+              builtFallbackClient as { inboxId?: string; installationId?: string },
+              fallbackDbEncryptionKey
+            );
             updateStage("connected");
             return builtFallbackClient;
           }
@@ -470,21 +1282,27 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         activeSigner: EOASigner | SCWSigner,
         mode: "primary" | "eoa_fallback"
       ) => {
+        const signerIdentifier = await activeSigner.getIdentifier();
+        const dbEncryptionKey = getOrCreateDbEncryptionKey(env, signerIdentifier.identifier);
+
         updateStage("create_client");
         logDebug("create:start", {
           mode,
           env,
           disableAutoRegister: true,
           signerType: activeSigner.type,
+          signerIdentifier: signerIdentifier.identifier,
         });
         const createdClient = await withTimeout(
           Client.create(activeSigner, {
             env,
             disableAutoRegister: true,
+            dbEncryptionKey,
           }),
           120000,
           "Creating XMTP client timed out."
         );
+        storeDbEncryptionKey(env, signerIdentifier.identifier, dbEncryptionKey);
         logDebug("create:success", {
           mode,
           inboxId: (createdClient as { inboxId?: string }).inboxId ?? null,
@@ -517,6 +1335,13 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           await withTimeout(createdClient.register(), 90000, "XMTP registration timed out.");
           logDebug("create:register:success", { mode });
         }
+
+        persistLastSuccessfulConnection(
+          env,
+          signerIdentifier.identifier,
+          createdClient as { inboxId?: string; installationId?: string },
+          dbEncryptionKey
+        );
 
         return createdClient;
       };
@@ -597,8 +1422,22 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
       try {
         const directClient = await connectAndRegister(signer, "primary");
+        const directIdentifier = xmtpAddress?.toLowerCase() ?? "";
+        const directDbKey = directIdentifier
+          ? loadDbEncryptionKey(env, directIdentifier)
+          : undefined;
 
         setClient(directClient);
+        persistEnabledState(env, [xmtpAddress ?? ""], {
+          inboxId: (directClient as { inboxId?: string }).inboxId ?? null,
+          installationId: (directClient as { installationId?: string }).installationId ?? null,
+        });
+        persistLastSuccessfulConnection(
+          env,
+          directIdentifier,
+          directClient as { inboxId?: string; installationId?: string },
+          directDbKey
+        );
         updateStage("connected");
         logDebug("create:connected", { mode: "primary" });
         return directClient;
@@ -623,7 +1462,22 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
               "primary",
               createError
             );
+            const recoveredIdentifier = xmtpAddress?.toLowerCase() ?? "";
+            const recoveredDbKey = recoveredIdentifier
+              ? loadDbEncryptionKey(env, recoveredIdentifier)
+              : undefined;
             setClient(recoveredClient);
+            persistEnabledState(env, [xmtpAddress ?? ""], {
+              inboxId: (recoveredClient as { inboxId?: string }).inboxId ?? null,
+              installationId:
+                (recoveredClient as { installationId?: string }).installationId ?? null,
+            });
+            persistLastSuccessfulConnection(
+              env,
+              recoveredIdentifier,
+              recoveredClient as { inboxId?: string; installationId?: string },
+              recoveredDbKey
+            );
             updateStage("connected");
             logDebug("create:connected", { mode: "primary_installation_limit_recovery" });
             return recoveredClient;
@@ -668,7 +1522,21 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
             failedMethod = "Client.create";
             const fallbackClient = await connectAndRegister(fallbackSigner, "eoa_fallback");
+            const fallbackIdentifier = walletAddress?.toLowerCase() ?? "";
+            const fallbackDbKey = fallbackIdentifier
+              ? loadDbEncryptionKey(env, fallbackIdentifier)
+              : undefined;
             setClient(fallbackClient);
+            persistEnabledState(env, [walletAddress ?? ""], {
+              inboxId: (fallbackClient as { inboxId?: string }).inboxId ?? null,
+              installationId: (fallbackClient as { installationId?: string }).installationId ?? null,
+            });
+            persistLastSuccessfulConnection(
+              env,
+              fallbackIdentifier,
+              fallbackClient as { inboxId?: string; installationId?: string },
+              fallbackDbKey
+            );
             updateStage("connected");
             logDebug("create:connected", { mode: "eoa_fallback" });
             return fallbackClient;
@@ -704,7 +1572,22 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                   "eoa_fallback",
                   fallbackError
                 );
+                const recoveredIdentifier = walletAddress?.toLowerCase() ?? "";
+                const recoveredDbKey = recoveredIdentifier
+                  ? loadDbEncryptionKey(env, recoveredIdentifier)
+                  : undefined;
                 setClient(recoveredClient);
+                persistEnabledState(env, [walletAddress ?? ""], {
+                  inboxId: (recoveredClient as { inboxId?: string }).inboxId ?? null,
+                  installationId:
+                    (recoveredClient as { installationId?: string }).installationId ?? null,
+                });
+                persistLastSuccessfulConnection(
+                  env,
+                  recoveredIdentifier,
+                  recoveredClient as { inboxId?: string; installationId?: string },
+                  recoveredDbKey
+                );
                 updateStage("connected");
                 logDebug("create:connected", { mode: "eoa_fallback_installation_limit_recovery" });
                 return recoveredClient;
@@ -754,6 +1637,13 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     xmtpAddress,
     logDebug,
     logError,
+    loadDbEncryptionKey,
+    getOrCreateDbEncryptionKey,
+    storeDbEncryptionKey,
+    persistEnabledState,
+    persistLastSuccessfulConnection,
+    verifyBuiltClientInstallation,
+    verifyBuiltClientReady,
     expectedSigningAddress,
     actualWalletClientAddress,
     signingAddress,
@@ -763,7 +1653,43 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
    * Reconnect/initiate an existing XMTP client using `Client.build`
    */
   const initXMTPClient = useCallback(async () => {
-    if (!xmtpAddress) return;
+    const sessionState = getPersistedSessionState();
+    const lastSuccessfulConnection = getLastSuccessfulConnection();
+    const restoreAddressCandidatesBase = [xmtpAddress, walletAddress, walletClientAccountAddress]
+      .filter((value): value is string => Boolean(value))
+      .map(value => value.toLowerCase())
+      .filter(value => value.startsWith("0x") && value.length === 42);
+    const restoreAddressCandidates = isScwIdentity
+      ? Array.from(
+          new Set(
+            [xmtpAddress?.toLowerCase(), ...restoreAddressCandidatesBase].filter(
+              (value): value is string => Boolean(value)
+            )
+          )
+        )
+      : restoreAddressCandidatesBase;
+    const restoreAttempts: XMTPRestoreAttemptDebug[] = [];
+
+    const baseIdentity = {
+      walletAddress: walletAddress?.toLowerCase() ?? null,
+      lensAccountAddress: lensAccountAddress?.toLowerCase() ?? null,
+      lensProfileId: lensProfileId ?? null,
+      lensHandle: lensHandle ?? null,
+      xmtpAddress: xmtpAddress ?? null,
+      isScwIdentity,
+    };
+
+    if (restoreAddressCandidates.length === 0 && sessionState.identifiers.length === 0) {
+      persistRestoreDebug({
+        result: "not_restored",
+        identity: baseIdentity,
+        envCandidates: [],
+        identifierCandidates: [],
+        attempts: restoreAttempts,
+        reason: "missing_restore_identifiers",
+      });
+      return;
+    }
 
     dispatch(setInitializing(true));
     dispatch(setError(null));
@@ -772,6 +1698,12 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       const configuredEnvRaw =
         process.env.NEXT_PUBLIC_XMTP_ENV ?? process.env.NEXT_PUBLIC_XMTP_ENVIRONMENT;
       const fallbackEnv = getEnv();
+      const persistedEnvRaw =
+        typeof window !== "undefined" ? window.localStorage.getItem(XMTP_LAST_ENV_KEY) : null;
+      const persistedEnv =
+        persistedEnvRaw === "local" || persistedEnvRaw === "dev" || persistedEnvRaw === "production"
+          ? persistedEnvRaw
+          : null;
       const walletChainId =
         typeof walletClient?.chain?.id === "number" ? BigInt(walletClient.chain.id) : null;
       const configuredLensChainId =
@@ -783,67 +1715,436 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         walletChainId ??
         configuredLensChainId ??
         (fallbackEnv === "production" ? LENS_MAINNET_CHAIN_ID : LENS_TESTNET_CHAIN_ID);
-      const env: "local" | "dev" | "production" =
+      const configuredEnv =
         configuredEnvRaw === "local" ||
         configuredEnvRaw === "dev" ||
         configuredEnvRaw === "production"
           ? configuredEnvRaw
-          : lensChainId === LENS_MAINNET_CHAIN_ID
-            ? "production"
-            : "dev";
+          : null;
+      const inferredEnv: "dev" | "production" =
+        lensChainId === LENS_MAINNET_CHAIN_ID ? "production" : "dev";
+      const envCandidatesBase = Array.from(
+        new Set(
+          [
+            lastSuccessfulConnection?.env,
+            configuredEnv,
+            sessionState.env,
+            persistedEnv,
+            inferredEnv,
+            fallbackEnv,
+            "production",
+            "dev",
+            "local",
+          ].filter(
+            (value): value is "local" | "dev" | "production" => Boolean(value)
+          )
+        )
+      );
+      const envCandidates =
+        envCandidatesBase.length > 0 ? envCandidatesBase : ([fallbackEnv] as ("local" | "dev" | "production")[]);
 
-      const identifiers: Identifier[] = [
-        {
-          identifier: xmtpAddress.toLowerCase(),
-          identifierKind: IdentifierKind.Ethereum,
-        },
+      const identifierCandidates = Array.from(
+        new Set([
+          ...(isScwIdentity && xmtpAddress ? [xmtpAddress.toLowerCase()] : []),
+          ...(lastSuccessfulConnection?.identifier
+            ? [lastSuccessfulConnection.identifier]
+            : []),
+          ...(sessionState.lastIdentifier ? [sessionState.lastIdentifier] : []),
+          ...sessionState.identifierHints,
+          ...sessionState.identifiers,
+          ...restoreAddressCandidates,
+          ...getPersistedIdentifiers(),
+        ])
+      )
+        .filter(value => value.startsWith("0x") && value.length === 42)
+        .slice(0, 6);
+
+      const identifiers: Identifier[] = identifierCandidates.map(identifier => ({
+        identifier,
+        identifierKind: IdentifierKind.Ethereum,
+      }));
+      const expectedInstallationHints = [
+        ...(sessionState.lastInboxId || sessionState.lastInstallationId
+          ? [
+              {
+                inboxId: sessionState.lastInboxId,
+                installationId: sessionState.lastInstallationId,
+              },
+            ]
+          : []),
+        ...sessionState.installationHints,
       ];
+      const isInstallationLimitError = (error: unknown) => {
+        if (!(error instanceof Error)) {
+          return false;
+        }
+        const message = error.message?.toLowerCase() ?? "";
+        return (
+          message.includes("cannot register a new installation") &&
+          message.includes("installations")
+        );
+      };
 
-      if (walletAddress && walletAddress.toLowerCase() !== xmtpAddress.toLowerCase()) {
-        identifiers.push({
-          identifier: walletAddress.toLowerCase(),
-          identifierKind: IdentifierKind.Ethereum,
+      if (identifierCandidates.length === 0) {
+        persistRestoreDebug({
+          result: "not_restored",
+          identity: baseIdentity,
+          envCandidates,
+          identifierCandidates,
+          attempts: restoreAttempts,
+          reason: "identifier_candidates_empty",
         });
+        return undefined;
       }
 
+      const MAX_BUILD_ATTEMPTS = 6;
+      let attempts = 0;
+
       for (const identifier of identifiers) {
-        try {
-          logDebug("init:build:start", {
-            env,
-            identifier: identifier.identifier,
-          });
-
-          const builtClient = await Client.build(identifier, { env });
-          const isRegistered = await builtClient.isRegistered();
-
-          logDebug("init:build:result", {
-            env,
-            identifier: identifier.identifier,
-            isRegistered,
-          });
-
-          if (isRegistered) {
-            setClient(builtClient);
-            return builtClient;
+        for (const env of envCandidates) {
+          if (attempts >= MAX_BUILD_ATTEMPTS) {
+            break;
           }
+          attempts += 1;
 
-          builtClient.close();
-        } catch (error) {
-          logError("init:build:failed", error, {
-            env,
-            identifier: identifier.identifier,
-          });
+          try {
+            logDebug("init:build:start", {
+              env,
+              identifier: identifier.identifier,
+              attempt: attempts,
+            });
+
+            const dbEncryptionKey = loadDbEncryptionKey(env, identifier.identifier);
+            const keyCandidates: Uint8Array[] = [];
+            const seenKeys = new Set<string>();
+            const addKeyCandidate = (key: Uint8Array | undefined) => {
+              if (!key || key.length === 0) {
+                return;
+              }
+              const fingerprint = bytesToBase64(key);
+              if (!fingerprint || seenKeys.has(fingerprint)) {
+                return;
+              }
+              seenKeys.add(fingerprint);
+              keyCandidates.push(key);
+            };
+
+            if (
+              lastSuccessfulConnection &&
+              lastSuccessfulConnection.env === env &&
+              lastSuccessfulConnection.identifier === identifier.identifier &&
+              lastSuccessfulConnection.dbEncryptionKey
+            ) {
+              try {
+                addKeyCandidate(base64ToBytes(lastSuccessfulConnection.dbEncryptionKey));
+              } catch {
+                // ignore malformed persisted key data
+              }
+            }
+
+            addKeyCandidate(dbEncryptionKey);
+            const buildOptions =
+              keyCandidates.length > 0
+                ? [
+                    ...keyCandidates.map((key, index) => ({
+                      env,
+                      dbEncryptionKey: key,
+                      source:
+                        index === 0 &&
+                        Boolean(
+                          lastSuccessfulConnection &&
+                            lastSuccessfulConnection.env === env &&
+                            lastSuccessfulConnection.identifier === identifier.identifier &&
+                            lastSuccessfulConnection.dbEncryptionKey
+                        )
+                          ? ("last_successful" as const)
+                          : ("persisted" as const),
+                    })),
+                    { env, source: "none" as const },
+                  ]
+                : [{ env, source: "none" as const }];
+
+            for (const options of buildOptions) {
+              const attemptDebug: XMTPRestoreAttemptDebug = {
+                env,
+                identifier: identifier.identifier,
+                usedDbEncryptionKey: Boolean(options.dbEncryptionKey),
+                build: "failed",
+                inboxId: null,
+                installationId: null,
+                matchesPersistedInstallation: null,
+                registrationCheckFailed: false,
+                installationInInbox: null,
+                conversationAccess: null,
+                isRegistered: null,
+                canMessageReady: null,
+              };
+              const appendAttemptError = (label: string, error: unknown) => {
+                const message = stringifyError(error);
+                attemptDebug.error = attemptDebug.error
+                  ? `${attemptDebug.error} | ${label}:${message}`
+                  : `${label}:${message}`;
+              };
+
+              let builtClient: Client<unknown> | undefined;
+              try {
+                builtClient = await withTimeout(
+                  Client.build(identifier, options),
+                  4000,
+                  "Restoring XMTP session timed out."
+                );
+                attemptDebug.build = "ok";
+                const builtInboxId = (builtClient as { inboxId?: string }).inboxId ?? null;
+                const builtInstallationId =
+                  (builtClient as { installationId?: string }).installationId ?? null;
+                attemptDebug.inboxId = builtInboxId;
+                attemptDebug.installationId = builtInstallationId;
+                const matchesLastSuccessfulInstallation = Boolean(
+                  options.source === "last_successful" &&
+                    lastSuccessfulConnection &&
+                    env === lastSuccessfulConnection.env &&
+                    identifier.identifier === lastSuccessfulConnection.identifier &&
+                    lastSuccessfulConnection.installationId &&
+                    builtInstallationId &&
+                    builtInstallationId === lastSuccessfulConnection.installationId &&
+                    (!lastSuccessfulConnection.inboxId ||
+                      builtInboxId === lastSuccessfulConnection.inboxId)
+                );
+                const isLastSuccessfulExactBuild =
+                  options.source === "last_successful" &&
+                  Boolean(lastSuccessfulConnection) &&
+                  env === lastSuccessfulConnection?.env &&
+                  identifier.identifier === lastSuccessfulConnection?.identifier &&
+                  Boolean(options.dbEncryptionKey) &&
+                  (!lastSuccessfulConnection?.inboxId ||
+                    builtInboxId === lastSuccessfulConnection.inboxId);
+                if (isLastSuccessfulExactBuild && !matchesLastSuccessfulInstallation) {
+                  appendAttemptError(
+                    "lastSuccessfulMismatch",
+                    `Expected installation ${lastSuccessfulConnection?.installationId ?? "unknown"} but got ${builtInstallationId ?? "unknown"}`
+                  );
+                }
+                const matchesPersistedInstallation = expectedInstallationHints.some(hint => {
+                  const installationMatches =
+                    Boolean(hint.installationId) &&
+                    Boolean(builtInstallationId) &&
+                    hint.installationId === builtInstallationId;
+                  const inboxMatches =
+                    Boolean(hint.inboxId) &&
+                    Boolean(builtInboxId) &&
+                    hint.inboxId === builtInboxId;
+                  if (!installationMatches && !inboxMatches) {
+                    return false;
+                  }
+                  if (hint.inboxId && builtInboxId && hint.inboxId !== builtInboxId) {
+                    return false;
+                  }
+                  if (
+                    hint.installationId &&
+                    builtInstallationId &&
+                    hint.installationId !== builtInstallationId
+                  ) {
+                    return false;
+                  }
+                  return true;
+                });
+                attemptDebug.matchesPersistedInstallation = matchesPersistedInstallation;
+
+                let isRegistered = false;
+                try {
+                  isRegistered = await withTimeout(
+                    builtClient.isRegistered(),
+                    10000,
+                    "Checking XMTP registration timed out."
+                  );
+                } catch (registrationCheckError) {
+                  attemptDebug.registrationCheckFailed = true;
+                  appendAttemptError("isRegistered", registrationCheckError);
+                  logError("init:build:registration_check_failed", registrationCheckError, {
+                    env,
+                    identifier: identifier.identifier,
+                    usedDbEncryptionKey: Boolean(options.dbEncryptionKey),
+                  });
+                }
+                attemptDebug.isRegistered = isRegistered;
+
+                logDebug("init:build:result", {
+                  env,
+                  identifier: identifier.identifier,
+                  isRegistered,
+                  usedDbEncryptionKey: Boolean(options.dbEncryptionKey),
+                  registrationCheckFailed: attemptDebug.registrationCheckFailed,
+                });
+                const installationInInbox = isRegistered
+                  ? true
+                  : await verifyBuiltClientInstallation(
+                      builtClient,
+                      env,
+                      {
+                        phase: "init:build",
+                        env,
+                        identifier: identifier.identifier,
+                        usedDbEncryptionKey: Boolean(options.dbEncryptionKey),
+                        registrationCheckFailed: attemptDebug.registrationCheckFailed,
+                      },
+                      {
+                        onError: installationError =>
+                          appendAttemptError("installationMembership", installationError),
+                      }
+                    );
+                attemptDebug.installationInInbox = installationInInbox;
+
+                const canMessageReady = isRegistered || installationInInbox
+                  ? true
+                  : await verifyBuiltClientReady(
+                      builtClient,
+                      identifier.identifier,
+                      {
+                        phase: "init:build",
+                        env,
+                        identifier: identifier.identifier,
+                        usedDbEncryptionKey: Boolean(options.dbEncryptionKey),
+                        registrationCheckFailed: attemptDebug.registrationCheckFailed,
+                      },
+                      {
+                        onError: verifyError => appendAttemptError("canMessage", verifyError),
+                      }
+                    );
+                attemptDebug.canMessageReady = canMessageReady;
+                let hasConversationAccessForLastSuccessful = false;
+                if (isLastSuccessfulExactBuild) {
+                  try {
+                    const conversations = await withTimeout(
+                      builtClient.conversations.list(),
+                      6000,
+                      "Listing XMTP conversations timed out."
+                    );
+                    hasConversationAccessForLastSuccessful = Array.isArray(conversations);
+                    attemptDebug.conversationAccess = hasConversationAccessForLastSuccessful;
+                  } catch (conversationError) {
+                    appendAttemptError("conversationList", conversationError);
+                    attemptDebug.conversationAccess = false;
+                  }
+                }
+                restoreAttempts.push(attemptDebug);
+
+                const isUsable =
+                  matchesLastSuccessfulInstallation ||
+                  hasConversationAccessForLastSuccessful ||
+                  isRegistered ||
+                  installationInInbox ||
+                  canMessageReady;
+                if (isUsable) {
+                  setClient(builtClient);
+                  persistEnabledState(env, [identifier.identifier], {
+                    inboxId: builtInboxId,
+                    installationId: builtInstallationId,
+                  });
+                  persistLastSuccessfulConnection(
+                    env,
+                    identifier.identifier,
+                    builtClient as { inboxId?: string; installationId?: string },
+                    options.dbEncryptionKey
+                  );
+                  persistRestoreDebug({
+                    result: "restored",
+                    identity: baseIdentity,
+                    envCandidates,
+                    identifierCandidates,
+                    attempts: restoreAttempts,
+                    restoredEnv: env,
+                    restoredIdentifier: identifier.identifier,
+                  });
+                  return builtClient;
+                }
+
+                builtClient.close();
+              } catch (buildError) {
+                appendAttemptError("build", buildError);
+                restoreAttempts.push(attemptDebug);
+                if (builtClient) {
+                  builtClient.close();
+                }
+                if (attemptDebug.usedDbEncryptionKey && isInstallationLimitError(buildError)) {
+                  // This indicates a stale local DB key for this identifier/env.
+                  // Remove it so subsequent restore attempts can try without the stale key.
+                  removeDbEncryptionKey(env, identifier.identifier);
+                  logDebug("init:build:stale_db_key_removed", {
+                    env,
+                    identifier: identifier.identifier,
+                  });
+                }
+                logError("init:build:option_failed", buildError, {
+                  env,
+                  identifier: identifier.identifier,
+                  usedDbEncryptionKey: attemptDebug.usedDbEncryptionKey,
+                });
+                continue;
+              }
+            }
+          } catch (error) {
+            logError("init:build:failed", error, {
+              env,
+              identifier: identifier.identifier,
+            });
+          }
+        }
+        if (attempts >= MAX_BUILD_ATTEMPTS) {
+          break;
         }
       }
 
+      persistRestoreDebug({
+        result: "not_restored",
+        identity: baseIdentity,
+        envCandidates,
+        identifierCandidates,
+        attempts: restoreAttempts,
+        reason: "no_usable_restore_candidate",
+      });
       return undefined;
     } catch (error) {
       dispatch(setError(error as Error));
       console.error("Failed to init XMTP client:", error);
+      persistRestoreDebug({
+        result: "error",
+        identity: baseIdentity,
+        envCandidates: [],
+        identifierCandidates: [],
+        attempts: restoreAttempts,
+        error: stringifyError(error),
+        reason: "init_exception",
+      });
     } finally {
       dispatch(setInitializing(false));
     }
-  }, [dispatch, logDebug, logError, setClient, walletAddress, walletClient, xmtpAddress]);
+  }, [
+    dispatch,
+    base64ToBytes,
+    bytesToBase64,
+    getLastSuccessfulConnection,
+    isScwIdentity,
+    lensAccountAddress,
+    lensHandle,
+    lensProfileId,
+    persistRestoreDebug,
+    getPersistedIdentifiers,
+    getPersistedSessionState,
+    loadDbEncryptionKey,
+    logDebug,
+    logError,
+    removeDbEncryptionKey,
+    stringifyError,
+    walletClientAccountAddress,
+    persistEnabledState,
+    persistLastSuccessfulConnection,
+    setClient,
+    verifyBuiltClientInstallation,
+    verifyBuiltClientReady,
+    walletAddress,
+    walletClient,
+    xmtpAddress,
+  ]);
 
   return {
     client,
@@ -854,5 +2155,6 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     connectStage,
     createXMTPClient,
     initXMTPClient,
+    wasXMTPEnabled,
   };
 }
