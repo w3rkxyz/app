@@ -1,6 +1,3 @@
-import { fetchPosts } from "@lens-protocol/client/actions";
-import { client } from "@/client";
-
 export type W3rkListingType = "job" | "service";
 
 export interface W3rkListing {
@@ -180,72 +177,59 @@ const fetchListingsFromGraphQL = async (
   type: W3rkListingType,
   authorAddress?: string
 ): Promise<W3rkListing[]> => {
-  try {
-    const params = new URLSearchParams({
-      type,
-      ...(authorAddress ? { author: authorAddress } : {}),
-    });
-
-    const proxyResponse = await fetch(`/api/lens-listings?${params.toString()}`, {
-      cache: "no-store",
-    });
-    const proxyJson = await proxyResponse.json();
-    const proxyItems = proxyJson?.items;
-    if (Array.isArray(proxyItems) && proxyItems.length > 0) {
-      return mapAndFilterListings(proxyItems, type);
-    }
-
-    const endpoint = process.env.NEXT_PUBLIC_LENS_API_URL || TESTNET_GRAPHQL;
-    const query = `
-      query Posts($request: PostsRequest!) {
-        posts(request: $request) {
-          items {
-            __typename
-            ... on Post {
-              id
-              author {
-                address
-                owner
-                username {
-                  localName
-                }
-                metadata {
-                  ... on AccountMetadata {
-                    name
-                    picture
-                  }
-                }
+  const query = `
+    query Posts($request: PostsRequest!) {
+      posts(request: $request) {
+        items {
+          __typename
+          ... on Post {
+            id
+            author {
+              address
+              owner
+              username {
+                localName
               }
               metadata {
-                __typename
-                ... on TextOnlyMetadata {
-                  content
-                  tags
-                  attributes {
-                    key
-                    value
-                  }
+                ... on AccountMetadata {
+                  name
+                  picture
+                }
+              }
+            }
+            metadata {
+              __typename
+              ... on TextOnlyMetadata {
+                content
+                tags
+                attributes {
+                  key
+                  value
                 }
               }
             }
           }
         }
       }
-    `;
-    const variables = {
-      request: {
-        filter: {
-          ...(authorAddress ? { authors: [authorAddress] } : {}),
-          metadata: {
-            tags: {
-              all: ["w3rk", type],
-            },
+    }
+  `;
+
+  const variables = {
+    request: {
+      pageSize: 50,
+      filter: {
+        ...(authorAddress ? { authors: [authorAddress] } : {}),
+        metadata: {
+          tags: {
+            all: ["w3rk", type],
           },
         },
       },
-    };
+    },
+  };
 
-    const response = await fetch(endpoint, {
+  try {
+    const response = await fetch(TESTNET_GRAPHQL, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -253,36 +237,16 @@ const fetchListingsFromGraphQL = async (
       body: JSON.stringify({ query, variables }),
       cache: "no-store",
     });
-
     const json = await response.json();
     const items = json?.data?.posts?.items;
     return mapAndFilterListings(Array.isArray(items) ? items : [], type);
   } catch (error) {
-    console.error("GraphQL listings fallback failed:", error);
+    console.error("GraphQL listings fetch failed:", error);
     return [];
   }
 };
 
 export const fetchW3rkListings = async (type: W3rkListingType): Promise<W3rkListing[]> => {
-  const result = await fetchPosts(client, {
-    filter: {
-      metadata: {
-        tags: {
-          all: ["w3rk", type],
-        },
-      },
-    },
-  });
-
-  if (!result.isErr()) {
-    const mapped = mapAndFilterListings(result.value?.items || [], type);
-    if (mapped.length > 0) {
-      return mapped;
-    }
-  } else {
-    console.error("Lens SDK listing fetch failed:", result.error.message);
-  }
-
   return fetchListingsFromGraphQL(type);
 };
 
@@ -293,21 +257,5 @@ export const fetchAuthorListings = async (
   if (!authorAddress) {
     return [];
   }
-
-  const result = await fetchPosts(client, {
-    filter: {
-      authors: [authorAddress as any],
-    },
-  });
-
-  if (!result.isErr()) {
-    const mapped = mapAndFilterListings(result.value?.items || [], type);
-    if (mapped.length > 0) {
-      return mapped;
-    }
-  } else {
-    console.error("Lens SDK author fetch failed:", result.error.message);
-  }
-
   return fetchListingsFromGraphQL(type, authorAddress);
 };

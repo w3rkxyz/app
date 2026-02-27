@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ items: [] }, { status: 200 });
   }
 
-  const endpoint = process.env.NEXT_PUBLIC_LENS_API_URL || TESTNET_GRAPHQL;
+  const endpoint = TESTNET_GRAPHQL;
   const query = `
     query Posts($request: PostsRequest!) {
       posts(request: $request) {
@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
 
   const variables = {
     request: {
+      pageSize: 50,
       filter: {
         ...(author ? { authors: [author] } : {}),
         metadata: {
