@@ -8,7 +8,7 @@ import { useSelector } from "react-redux";
 import { evmAddress, useAccount as useLensAccount, useSessionClient } from "@lens-protocol/react";
 import { fetchAccount, fetchFollowers, fetchFollowStatus, fetchFollowing, fetchPosts, follow, unfollow } from "@lens-protocol/client/actions";
 import { handleOperationWith } from "@lens-protocol/client/viem";
-import { PlusIcon } from "lucide-react";
+import { CheckIcon, PlusIcon } from "lucide-react";
 import toast from "react-hot-toast";
 import { useWalletClient } from "wagmi";
 import CreatePostModal from "@/views/profile/CreatePostModal";
@@ -1254,17 +1254,11 @@ export default function Profile() {
     }
   }, [followDebugLines]);
 
-  const followButtonLabel = followSubmitting
-    ? isFollowing
-      ? "Unfollowing..."
-      : "Following..."
-    : followStatusLoading
-      ? "Loading..."
-      : !canFollowByProtocol && !isFollowing
-        ? "Cannot Follow"
-      : isFollowing
-        ? "Unfollow"
-        : "Follow";
+  const followButtonLabel = !canFollowByProtocol && !isFollowing
+    ? "Cannot Follow"
+    : isFollowing
+      ? "Following"
+      : "Follow";
   const followButtonClassName = isFollowing
     ? "bg-white text-[#212121] border border-[#212121] hover:bg-[#F7F7F7]"
     : "bg-[#212121] text-white hover:bg-[#333]";
@@ -1363,24 +1357,6 @@ export default function Profile() {
               <p className="text-[14px] text-[#6C6C6C] leading-[20px] mb-[16px]">{about}</p>
             ) : null}
 
-            {!isOwnProfile ? (
-              <div className="flex items-center gap-[10px] my-[16px]">
-                <button
-                  className={`flex-1 h-[40px] flex items-center justify-center gap-2 rounded-full py-2 px-4 text-[14px] font-medium transition-colors ${followButtonClassName}`}
-                  onClick={handleFollowToggle}
-                  disabled={followSubmitting || followStatusLoading || (!canFollowByProtocol && !isFollowing)}
-                >
-                  {followButtonLabel}
-                </button>
-                <Link
-                  href={messageUrl}
-                  className="flex-1 h-[40px] flex items-center justify-center rounded-full border border-[#212121] bg-white text-[#212121] py-2 px-4 text-[14px] font-medium hover:bg-[#F7F7F7] transition-colors"
-                >
-                  Message
-                </Link>
-              </div>
-            ) : null}
-
             {showFollowDebug ? (
               <div className="my-[12px] rounded-[10px] border border-[#E4E4E7] bg-[#FAFAFA] p-[10px]">
                 <div className="mb-[8px] flex items-center justify-between">
@@ -1399,7 +1375,7 @@ export default function Profile() {
               </div>
             ) : null}
 
-            <div className="flex gap-[16px] my-[16px] sm:py-0 py-[16px]">
+            <div className="flex gap-[16px] mt-[16px] mb-[10px]">
               <button
                 type="button"
                 onClick={() => openConnectionsModal("followers")}
@@ -1425,6 +1401,26 @@ export default function Profile() {
                 </span>
               </button>
             </div>
+
+            {!isOwnProfile ? (
+              <div className="flex items-center gap-[8px] mb-[16px]">
+                <button
+                  className={`h-[34px] inline-flex items-center justify-center gap-1.5 rounded-full px-[12px] text-[13px] font-medium transition-colors ${followButtonClassName}`}
+                  onClick={handleFollowToggle}
+                  disabled={followSubmitting || followStatusLoading || (!canFollowByProtocol && !isFollowing)}
+                >
+                  {isFollowing ? <CheckIcon className="w-4 h-4" /> : <PlusIcon className="w-4 h-4" />}
+                  {followButtonLabel}
+                </button>
+                <Link
+                  href={messageUrl}
+                  className="h-[34px] inline-flex items-center justify-center rounded-full border border-[#212121] bg-white text-[#212121] px-[12px] text-[13px] font-medium hover:bg-[#F7F7F7] transition-colors"
+                >
+                  Message
+                </Link>
+              </div>
+            ) : null}
+
             <hr className="bg-[##8C8C8C33] h-[1px] mb-0" />
 
             <div className="flex gap-[12px] my-[16px]">
