@@ -39,6 +39,7 @@ const ConversationsNav = () => {
 
   const stopStreamRef = useRef<(() => void) | null>(null);
   const restoreInFlightRef = useRef(false);
+  const manualEnableInFlightRef = useRef(false);
   const attemptedRestoreKeyRef = useRef("");
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -77,6 +78,10 @@ const ConversationsNav = () => {
 
     const restoreClient = async () => {
       if (client || connectingXMTP) {
+        return;
+      }
+
+      if (manualEnableInFlightRef.current) {
         return;
       }
 
@@ -136,6 +141,7 @@ const ConversationsNav = () => {
   const handleEnable = async () => {
     const toastId = toast.loading(stageLabel.idle);
     try {
+      manualEnableInFlightRef.current = true;
       attemptedRestoreKeyRef.current = "";
       await createXMTPClient({
         onStage: stage => {
@@ -159,6 +165,8 @@ const ConversationsNav = () => {
           : "Failed to connect XMTP. Please retry.";
       toast.error(message, { id: toastId });
       console.error("Failed to connect XMTP:", error);
+    } finally {
+      manualEnableInFlightRef.current = false;
     }
   };
 

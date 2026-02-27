@@ -1212,7 +1212,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
               try {
                 isRegistered = await withTimeout(
                   builtClient.isRegistered(),
-                  4000,
+                  10000,
                   "Checking XMTP registration timed out."
                 );
               } catch (registrationCheckError) {
@@ -1236,8 +1236,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                 registrationCheckFailed,
               });
 
-              const allowKnownEnabledRestore = wasXMTPEnabled() && (registrationCheckFailed || !isRegistered);
-              if (isRegistered || allowKnownEnabledRestore) {
+              if (isRegistered) {
                 setClient(builtClient);
                 persistEnabledState(env, [identifier.identifier]);
                 return builtClient;
@@ -1271,7 +1270,6 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     loadDbEncryptionKey,
     logDebug,
     logError,
-    wasXMTPEnabled,
     walletClientAccountAddress,
     persistEnabledState,
     setClient,
