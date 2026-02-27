@@ -204,6 +204,28 @@ export default function LoginForm({ owner }: { owner: string }) {
     }
   }, [walletClient]);
 
+  const runWithFamilyModal = useCallback(
+    async <T,>(operation: () => Promise<T>): Promise<T> => {
+      let openedForOperation = false;
+
+      if (isFamilyConnectorActive && !connectKitOpen) {
+        setConnectKitOpen(true);
+        openedForOperation = true;
+        await wait(180);
+      }
+
+      try {
+        return await operation();
+      } finally {
+        if (openedForOperation) {
+          await wait(120);
+          setConnectKitOpen(false);
+        }
+      }
+    },
+    [connectKitOpen, isFamilyConnectorActive, setConnectKitOpen]
+  );
+
   const authenticateUser = useCallback(async () => {
     if (!walletClient) {
       setAuthError("Wallet not ready. Reconnect and try again.");
@@ -223,13 +245,15 @@ export default function LoginForm({ owner }: { owner: string }) {
 
       const appAddress = process.env.NEXT_PUBLIC_APP_ADDRESS_TESTNET || LENS_TESTNET_APP;
 
-      const authenticated = await client.login({
-        onboardingUser: {
-          app: evmAddress(appAddress),
-          wallet: walletClient.account.address,
-        },
-        signMessage: signMessageWith(walletClient),
-      });
+      const authenticated = await runWithFamilyModal(() =>
+        client.login({
+          onboardingUser: {
+            app: evmAddress(appAddress),
+            wallet: walletClient.account.address,
+          },
+          signMessage: signMessageWith(walletClient),
+        })
+      );
 
       if (authenticated.isErr()) {
         const msg = getErrMsg(authenticated.error, "Lens login failed");
@@ -240,12 +264,14 @@ export default function LoginForm({ owner }: { owner: string }) {
 
       setSessionClient(authenticated.value);
     } catch (error: unknown) {
-      const msg = getErrMsg(error, "Lens login failed");
+      const msg = isFamilyModalVisibilityError(error)
+        ? "Family approval window was not visible. Please retry and confirm in Family."
+        : getErrMsg(error, "Lens login failed");
       setAuthError(msg);
     } finally {
       setContinuing(false);
     }
-  }, [ensureLensChain, walletClient]);
+  }, [ensureLensChain, runWithFamilyModal, walletClient]);
 
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value;
@@ -295,22 +321,24 @@ export default function LoginForm({ owner }: { owner: string }) {
             },
           };
 
-      const authenticated = await authenticate({
-        ...authRequest,
-        signMessage: async (message: string) => {
-          return await walletClient.signMessage({ message });
-        },
-      });
+      const authenticated = await runWithFamilyModal(() =>
+        authenticate({
+          ...authRequest,
+          signMessage: async (message: string) => {
+            return await walletClient.signMessage({ message });
+          },
+        })
+      );
 
       if (authenticated.isErr()) {
         if (isSignatureRejected(authenticated.error)) {
           setAuthError("Signature request was cancelled. Please sign to continue.");
-          return;
+          return false;
         }
 
         const msg = getErrMsg(authenticated.error, "Lens authentication failed");
         setAuthError(msg);
-        return;
+        return false;
       }
 
       const profile = getLensAccountData(account);
@@ -328,11 +356,13 @@ export default function LoginForm({ owner }: { owner: string }) {
 
       return true;
     } catch (error: unknown) {
-      const msg = getErrMsg(error, "Lens authentication failed");
+      const msg = isFamilyModalVisibilityError(error)
+        ? "Family approval window was not visible. Please retry and confirm in Family."
+        : getErrMsg(error, "Lens authentication failed");
       setAuthError(msg);
       return false;
     }
-  }, [authenticate, dispatch, ensureLensChain, router, wallet.address, walletClient]);
+  }, [authenticate, dispatch, ensureLensChain, router, runWithFamilyModal, wallet.address, walletClient]);
 
   const handleSubmit = async () => {
     if (sessionClient === null || handle.trim() === "" || !walletClient) {
@@ -389,25 +419,12 @@ export default function LoginForm({ owner }: { owner: string }) {
         metadataUri: uri(metadataURI),
       };
 
-      let openedFamilyModalForMint = false;
-      if (isFamilyConnectorActive && !connectKitOpen) {
-        setConnectKitOpen(true);
-        openedFamilyModalForMint = true;
-        await wait(120);
-      }
+      const mintResult = await runWithFamilyModal(() =>
+        createAccountWithUsername(sessionClient, accountParams).andThen(handleOperationWith(walletClient))
+      );
 
-      try {
-        const mintResult = await createAccountWithUsername(sessionClient, accountParams).andThen(
-          handleOperationWith(walletClient)
-        );
-
-        if (mintResult.isErr()) {
-          throw mintResult.error;
-        }
-      } finally {
-        if (openedFamilyModalForMint) {
-          setConnectKitOpen(false);
-        }
+      if (mintResult.isErr()) {
+        throw mintResult.error;
       }
 
       setMintSuccessMessage("Profile minted successfully. Activating your account...");
