@@ -182,9 +182,30 @@ export const fetchW3rkListings = async (type: W3rkListingType): Promise<W3rkList
     throw new Error(result.error.message);
   }
 
-  const mapped = (result.value?.items || [])
+  return (result.value?.items || [])
     .map(item => mapLensPostToW3rkListing(item, type))
     .filter((item): item is W3rkListing => Boolean(item));
+};
 
-  return mapped;
+export const fetchAuthorListings = async (
+  type: W3rkListingType,
+  authorAddress?: string
+): Promise<W3rkListing[]> => {
+  if (!authorAddress) {
+    return [];
+  }
+
+  const result = await fetchPosts(client, {
+    filter: {
+      authors: [authorAddress as any],
+    },
+  });
+
+  if (result.isErr()) {
+    return [];
+  }
+
+  return (result.value?.items || [])
+    .map(item => mapLensPostToW3rkListing(item, type))
+    .filter((item): item is W3rkListing => Boolean(item));
 };

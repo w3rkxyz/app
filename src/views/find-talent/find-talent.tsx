@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { Search, ChevronDown, Plus } from "lucide-react";
+import { useSelector } from "react-redux";
 import JobDetailDrawer from "@/components/find-work/job-detail-drawer";
 import JobDetailModal from "@/components/find-work/job-detail-modal";
 import CreateServiceModal from "@/components/find-work/create-service-modal";
@@ -17,7 +18,7 @@ import {
   SVGUsers,
   SVGUserSound,
 } from "@/assets/list-svg-icon";
-import { fetchW3rkListings } from "@/utils/lens-find-posts";
+import { fetchAuthorListings, fetchW3rkListings } from "@/utils/lens-find-posts";
 
 interface JobData {
   id?: string;
@@ -64,6 +65,7 @@ const hourlyRates: HourlyRate[] = [
 ];
 
 const FindTalent = () => {
+  const { user: profile } = useSelector((state: any) => state.app);
   const [jobs, setJobs] = useState<JobData[]>([]);
   const [jobsLoading, setJobsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
@@ -80,18 +82,39 @@ const FindTalent = () => {
   const tabletFiltersRef = useRef<HTMLDivElement>(null);
   const [isCreateServiceModalOpen, setIsCreateServiceModalOpen] = useState(false);
 
+  const mergeListings = useCallback((primary: JobData[], secondary: JobData[]): JobData[] => {
+    const seen = new Set<string>();
+    const merged: JobData[] = [];
+
+    [...primary, ...secondary].forEach(item => {
+      const key =
+        item.id ||
+        `${item.username}|${item.jobName}|${item.description}|${item.paymentAmount}|${item.paidIn}`;
+      if (seen.has(key)) {
+        return;
+      }
+      seen.add(key);
+      merged.push(item);
+    });
+
+    return merged;
+  }, []);
+
   const loadServices = useCallback(async () => {
     setJobsLoading(true);
     try {
-      const listings = await fetchW3rkListings("service");
-      setJobs(listings);
+      const [taggedListings, authorListings] = await Promise.all([
+        fetchW3rkListings("service"),
+        fetchAuthorListings("service", profile?.address),
+      ]);
+      const fresh = mergeListings(taggedListings, authorListings);
+      setJobs(prev => mergeListings(fresh, prev));
     } catch (error) {
       console.error("Error loading Lens services:", error);
-      setJobs([]);
     } finally {
       setJobsLoading(false);
     }
-  }, []);
+  }, [mergeListings, profile?.address]);
 
   useEffect(() => {
     void loadServices();
@@ -188,7 +211,7 @@ const FindTalent = () => {
   };
   const handleServicePublished = (listing?: JobData) => {
     if (listing) {
-      setJobs(prev => [listing, ...prev]);
+      setJobs(prev => mergeListings([listing], prev));
     }
     void loadServices();
     window.setTimeout(() => {

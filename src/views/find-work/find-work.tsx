@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Search, ChevronDown, Plus } from "lucide-react";
+import { useSelector } from "react-redux";
 import JobDetailDrawer from "@/components/find-work/job-detail-drawer";
 import JobDetailModal from "@/components/find-work/job-detail-modal";
 import CreateJobModal from "@/components/find-work/create-job-modal";
@@ -18,7 +19,7 @@ import {
   SVGUsers,
   SVGUserSound,
 } from "@/assets/list-svg-icon";
-import { fetchW3rkListings } from "@/utils/lens-find-posts";
+import { fetchAuthorListings, fetchW3rkListings } from "@/utils/lens-find-posts";
 
 interface JobData {
   id?: string;
@@ -52,6 +53,7 @@ const categories: Category[] = [
 ];
 
 const FindWork = () => {
+  const { user: profile } = useSelector((state: any) => state.app);
   const [jobs, setJobs] = useState<JobData[]>([]);
   const [jobsLoading, setJobsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
@@ -65,18 +67,39 @@ const FindWork = () => {
   const tabletDropdownRef = useRef<HTMLDivElement>(null);
   const [isCreateJobModalOpen, setIsCreateJobModalOpen] = useState(false);
 
+  const mergeListings = useCallback((primary: JobData[], secondary: JobData[]): JobData[] => {
+    const seen = new Set<string>();
+    const merged: JobData[] = [];
+
+    [...primary, ...secondary].forEach(item => {
+      const key =
+        item.id ||
+        `${item.username}|${item.jobName}|${item.description}|${item.paymentAmount}|${item.paidIn}`;
+      if (seen.has(key)) {
+        return;
+      }
+      seen.add(key);
+      merged.push(item);
+    });
+
+    return merged;
+  }, []);
+
   const loadJobs = useCallback(async () => {
     setJobsLoading(true);
     try {
-      const listings = await fetchW3rkListings("job");
-      setJobs(listings);
+      const [taggedListings, authorListings] = await Promise.all([
+        fetchW3rkListings("job"),
+        fetchAuthorListings("job", profile?.address),
+      ]);
+      const fresh = mergeListings(taggedListings, authorListings);
+      setJobs(prev => mergeListings(fresh, prev));
     } catch (error) {
       console.error("Error loading Lens jobs:", error);
-      setJobs([]);
     } finally {
       setJobsLoading(false);
     }
-  }, []);
+  }, [mergeListings, profile?.address]);
 
   useEffect(() => {
     void loadJobs();
@@ -148,7 +171,7 @@ const FindWork = () => {
   };
   const handleJobPublished = (listing?: JobData) => {
     if (listing) {
-      setJobs(prev => [listing, ...prev]);
+      setJobs(prev => mergeListings([listing], prev));
     }
     void loadJobs();
     window.setTimeout(() => {
