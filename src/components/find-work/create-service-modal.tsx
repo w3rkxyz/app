@@ -16,10 +16,17 @@ import {
   Users,
   HelpCircle,
 } from "lucide-react";
+import { MetadataAttributeType, textOnly } from "@lens-protocol/metadata";
+import toast from "react-hot-toast";
+import { post } from "@lens-protocol/client/actions";
+import { useSessionClient, uri } from "@lens-protocol/react";
+import { useSelector } from "react-redux";
+import { uploadMetadataToLensStorage } from "@/utils/storage-client";
 
 interface CreateServiceModalProps {
   open: boolean;
   onClose: () => void;
+  onPublished?: () => void | Promise<void>;
 }
 
 const paymentTokens = ["Ethereum (ETH)", "USDC (USDC)", "GHO (GHO)", "Bonsai (BONSAI)"];
@@ -60,12 +67,17 @@ const categoryIconMap: Record<
   Other: HelpCircle,
 };
 
-const CreateServiceModal = ({ open, onClose }: CreateServiceModalProps) => {
+const removeAtSymbol = (text: string) => (text.startsWith("@") ? text.slice(1) : text);
+
+const CreateServiceModal = ({ open, onClose, onPublished }: CreateServiceModalProps) => {
+  const { data: sessionClient } = useSessionClient();
+  const { user: profile } = useSelector((state: any) => state.app);
   const [serviceTitle, setServiceTitle] = React.useState("");
   const [serviceDescription, setServiceDescription] = React.useState("");
   const [rateAmount, setRateAmount] = React.useState("");
   const [selectedTokens, setSelectedTokens] = React.useState<string[]>(["Ethereum (ETH)"]);
   const [selectedCategories, setSelectedCategories] = React.useState<string[]>([]);
+  const [savingData, setSavingData] = React.useState(false);
   const [isTokenDropdownOpen, setIsTokenDropdownOpen] = React.useState(false);
   const [tokenSearch, setTokenSearch] = React.useState("");
   const tokenDropdownRef = React.useRef<HTMLDivElement | null>(null);
@@ -140,6 +152,95 @@ const CreateServiceModal = ({ open, onClose }: CreateServiceModalProps) => {
   const selectedTokenIcon = tokenIconMap[selectedToken] ?? "/icons/eth.svg";
 
   if (!open) return null;
+
+  const resetForm = () => {
+    setServiceTitle("");
+    setServiceDescription("");
+    setRateAmount("");
+    setSelectedTokens(["Ethereum (ETH)"]);
+    setSelectedCategories([]);
+    setTokenSearch("");
+    setIsTokenDropdownOpen(false);
+    setCategorySearch("");
+    setIsCategoryDropdownOpen(false);
+  };
+
+  const handlePublish = async () => {
+    if (!sessionClient) {
+      toast.error("Please connect your wallet and sign in to Lens.");
+      return;
+    }
+
+    const profileHandle =
+      (typeof profile?.userLink === "string" && profile.userLink.trim()) ||
+      (typeof profile?.handle === "string" && removeAtSymbol(profile.handle.trim())) ||
+      "";
+
+    const allTags = [...new Set([...selectedCategories, "service", "w3rk"])];
+    const content = `🛠 Ready for work!\n\nJust listed my services on @w3rkxyz as a ${serviceTitle}\n\nFor more details please visit ${
+      profileHandle ? `www.w3rk.xyz/${profileHandle}` : "www.w3rk.xyz"
+    }`;
+
+    const metadata = textOnly({
+      content,
+      tags: allTags,
+      attributes: [
+        {
+          key: "paid in",
+          value: selectedTokens.join(", "),
+          type: MetadataAttributeType.STRING,
+        },
+        {
+          key: "payement type",
+          value: "hourly",
+          type: MetadataAttributeType.STRING,
+        },
+        {
+          key: "hourly",
+          value: rateAmount,
+          type: MetadataAttributeType.STRING,
+        },
+        {
+          key: "post type",
+          value: "service",
+          type: MetadataAttributeType.STRING,
+        },
+        {
+          key: "title",
+          value: serviceTitle,
+          type: MetadataAttributeType.STRING,
+        },
+        {
+          key: "content",
+          value: serviceDescription,
+          type: MetadataAttributeType.STRING,
+        },
+      ],
+    });
+
+    try {
+      setSavingData(true);
+      const metadataUri = await uploadMetadataToLensStorage(metadata);
+      const result = await post(sessionClient, {
+        contentUri: uri(metadataUri),
+      });
+
+      if (result.isErr()) {
+        toast.error(result.error.message);
+        return;
+      }
+
+      resetForm();
+      await onPublished?.();
+      onClose();
+      toast.success("Service posted on Lens.");
+    } catch (error: any) {
+      console.error("Failed to publish service:", error);
+      toast.error(error?.message || "Failed to publish service. Please try again.");
+    } finally {
+      setSavingData(false);
+    }
+  };
 
   return (
     <div
@@ -375,15 +476,17 @@ const CreateServiceModal = ({ open, onClose }: CreateServiceModalProps) => {
           <footer className="flex items-center justify-end px-[24px] py-[16px] border-t border-[#E4E4E7] bg-[#F9FAFB]">
             <button
               type="button"
+              onClick={handlePublish}
               className="inline-flex h-[40px] items-center justify-center rounded-[999px] bg-[#111827] px-[18px] text-[14px] font-semibold leading-[20px] text-white shadow-[0_10px_25px_rgba(15,23,42,0.35)] hover:bg-black disabled:opacity-60 disabled:cursor-not-allowed"
               disabled={
+                savingData ||
                 !serviceTitle ||
                 !serviceDescription ||
                 !rateAmount ||
                 selectedCategories.length === 0
               }
             >
-              Add Service
+              {savingData ? "Publishing..." : "Add Service"}
             </button>
           </footer>
         </div>

@@ -1,11 +1,9 @@
 "use client";
 
 import React from "react";
-import Image from "next/image";
 import {
   X,
   ChevronDown,
-  Plus,
   Link2 as LinkIcon,
   Code,
   Palette,
@@ -17,21 +15,19 @@ import {
   Users,
   HelpCircle,
 } from "lucide-react";
+import { MetadataAttributeType, textOnly } from "@lens-protocol/metadata";
+import toast from "react-hot-toast";
+import { post } from "@lens-protocol/client/actions";
+import { useSessionClient, uri } from "@lens-protocol/react";
+import { useSelector } from "react-redux";
+import { uploadMetadataToLensStorage } from "@/utils/storage-client";
 import PaymentTokensDropdown from "../onboarding/payment-tokens-dropdown";
 
 interface CreateJobModalProps {
   open: boolean;
   onClose: () => void;
+  onPublished?: () => void | Promise<void>;
 }
-
-const paymentTokens = ["Ethereum (ETH)", "USDC (USDC)", "GHO (GHO)", "Bonsai (BONSAI)"];
-
-const tokenIconMap: Record<string, string> = {
-  "Ethereum (ETH)": "/icons/eth.svg",
-  "USDC (USDC)": "/icons/usdc.svg",
-  "GHO (GHO)": "/icons/gho.svg",
-  "Bonsai (BONSAI)": "/icons/bonsai.svg",
-};
 
 const jobCategories = [
   "Design",
@@ -62,16 +58,18 @@ const categoryIconMap: Record<
   Other: HelpCircle,
 };
 
-const CreateJobModal = ({ open, onClose }: CreateJobModalProps) => {
+const removeAtSymbol = (text: string) => (text.startsWith("@") ? text.slice(1) : text);
+
+const CreateJobModal = ({ open, onClose, onPublished }: CreateJobModalProps) => {
+  const { data: sessionClient } = useSessionClient();
+  const { user: profile } = useSelector((state: any) => state.app);
   const [jobTitle, setJobTitle] = React.useState("");
   const [jobDescription, setJobDescription] = React.useState("");
   const [currency, setCurrency] = React.useState("US Dollar");
   const [budget, setBudget] = React.useState("");
   const [selectedTokens, setSelectedTokens] = React.useState<string[]>(["Ethereum (ETH)"]);
   const [selectedCategories, setSelectedCategories] = React.useState<string[]>([]);
-  const [isTokenDropdownOpen, setIsTokenDropdownOpen] = React.useState(false);
-  const [tokenSearch, setTokenSearch] = React.useState("");
-  const tokenDropdownRef = React.useRef<HTMLDivElement | null>(null);
+  const [savingData, setSavingData] = React.useState(false);
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = React.useState(false);
   const [categorySearch, setCategorySearch] = React.useState("");
   const categoryDropdownRef = React.useRef<HTMLDivElement | null>(null);
@@ -88,12 +86,6 @@ const CreateJobModal = ({ open, onClose }: CreateJobModalProps) => {
     };
   }, [open]);
 
-  const selectToken = (token: string) => {
-    setSelectedTokens([token]);
-    setIsTokenDropdownOpen(false);
-    setTokenSearch("");
-  };
-
   const toggleCategory = (category: string) => {
     setSelectedCategories(prev =>
       prev.includes(category) ? prev.filter(c => c !== category) : [...prev, category]
@@ -105,20 +97,6 @@ const CreateJobModal = ({ open, onClose }: CreateJobModalProps) => {
       onClose();
     }
   };
-
-  // Close token dropdown when clicking outside
-  React.useEffect(() => {
-    if (!isTokenDropdownOpen) return;
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (tokenDropdownRef.current && !tokenDropdownRef.current.contains(event.target as Node)) {
-        setIsTokenDropdownOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isTokenDropdownOpen]);
 
   // Close category dropdown when clicking outside
   React.useEffect(() => {
@@ -139,26 +117,110 @@ const CreateJobModal = ({ open, onClose }: CreateJobModalProps) => {
 
   const maxDescriptionLength = 800;
 
-  const selectedToken = selectedTokens[0];
-  const selectedTokenIcon = tokenIconMap[selectedToken] ?? "/icons/eth.svg";
-
   if (!open) return null;
 
+  const resetForm = () => {
+    setJobTitle("");
+    setJobDescription("");
+    setBudget("");
+    setSelectedTokens(["Ethereum (ETH)"]);
+    setSelectedCategories([]);
+    setCategorySearch("");
+    setIsCategoryDropdownOpen(false);
+  };
+
   const handleJobAddToken = () => {
-    setSelectedTokens((prev) => [...prev, 'Ethereum (ETH)']);
-  }
+    setSelectedTokens(prev => [...prev, "Ethereum (ETH)"]);
+  };
 
   const handleJobTokenUpdate = (index: number, tokenName: string, tokenSymbol: string) => {
     setSelectedTokens(prev => {
-      const newTokens = [...prev]
-      newTokens[index] = `${tokenName} (${tokenSymbol})`
-      return newTokens
-    })
-  }
+      const newTokens = [...prev];
+      newTokens[index] = `${tokenName} (${tokenSymbol})`;
+      return newTokens;
+    });
+  };
 
   const handleJobRemoveToken = (index: number) => {
-    setSelectedTokens((prev) => prev.filter((_, i) => i !== index));
-  }
+    setSelectedTokens(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handlePublish = async () => {
+    if (!sessionClient) {
+      toast.error("Please connect your wallet and sign in to Lens.");
+      return;
+    }
+
+    const profileHandle =
+      (typeof profile?.userLink === "string" && profile.userLink.trim()) ||
+      (typeof profile?.handle === "string" && removeAtSymbol(profile.handle.trim())) ||
+      "";
+
+    const allTags = [...new Set([...selectedCategories, "job", "w3rk"])];
+    const content = `📢 Job Opportunity!\n\nJust posted a job on @w3rkxyz for a ${jobTitle}\n\nFor more details please visit ${
+      profileHandle ? `www.w3rk.xyz/${profileHandle}` : "www.w3rk.xyz"
+    }`;
+
+    const metadata = textOnly({
+      content,
+      tags: allTags,
+      attributes: [
+        {
+          key: "paid in",
+          value: selectedTokens.join(", "),
+          type: MetadataAttributeType.STRING,
+        },
+        {
+          key: "payement type",
+          value: "fixed",
+          type: MetadataAttributeType.STRING,
+        },
+        {
+          key: "fixed",
+          value: budget,
+          type: MetadataAttributeType.STRING,
+        },
+        {
+          key: "post type",
+          value: "job",
+          type: MetadataAttributeType.STRING,
+        },
+        {
+          key: "title",
+          value: jobTitle,
+          type: MetadataAttributeType.STRING,
+        },
+        {
+          key: "content",
+          value: jobDescription,
+          type: MetadataAttributeType.STRING,
+        },
+      ],
+    });
+
+    try {
+      setSavingData(true);
+      const metadataUri = await uploadMetadataToLensStorage(metadata);
+      const result = await post(sessionClient, {
+        contentUri: uri(metadataUri),
+      });
+
+      if (result.isErr()) {
+        toast.error(result.error.message);
+        return;
+      }
+
+      resetForm();
+      await onPublished?.();
+      onClose();
+      toast.success("Job posted on Lens.");
+    } catch (error: any) {
+      console.error("Failed to publish job:", error);
+      toast.error(error?.message || "Failed to publish job. Please try again.");
+    } finally {
+      setSavingData(false);
+    }
+  };
 
   return (
     <div
@@ -400,10 +462,17 @@ const CreateJobModal = ({ open, onClose }: CreateJobModalProps) => {
           <footer className="flex items-center justify-end px-[24px] py-[16px] border-t border-[#E4E4E7] bg-[#F9FAFB]">
             <button
               type="button"
+              onClick={handlePublish}
               className="inline-flex h-[40px] items-center justify-center rounded-[999px] bg-[#111827] px-[18px] text-[14px] font-semibold leading-[20px] text-white shadow-[0_10px_25px_rgba(15,23,42,0.35)] hover:bg-black disabled:opacity-60 disabled:cursor-not-allowed"
-              disabled={!jobTitle || !jobDescription || !budget || selectedCategories.length === 0}
+              disabled={
+                savingData ||
+                !jobTitle ||
+                !jobDescription ||
+                !budget ||
+                selectedCategories.length === 0
+              }
             >
-              Publish Job
+              {savingData ? "Publishing..." : "Publish Job"}
             </button>
           </footer>
         </div>

@@ -1,19 +1,26 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
-import {
-  Search,
-  ChevronDown,
-  Link2 as LinkIcon,
-  Plus,
-} from "lucide-react";
+import { Search, ChevronDown, Plus } from "lucide-react";
 import JobDetailDrawer from "@/components/find-work/job-detail-drawer";
 import JobDetailModal from "@/components/find-work/job-detail-modal";
 import CreateServiceModal from "@/components/find-work/create-service-modal";
-import { SVGAdminSupport, SVGBlockChain, SVGCampaign, SVGCode, SVGDesignPallete, SVGInfo, SVGLock, SVGUsers, SVGUserSound } from "@/assets/list-svg-icon";
+import {
+  SVGAdminSupport,
+  SVGBlockChain,
+  SVGCampaign,
+  SVGCode,
+  SVGDesignPallete,
+  SVGInfo,
+  SVGLock,
+  SVGUsers,
+  SVGUserSound,
+} from "@/assets/list-svg-icon";
+import { fetchW3rkListings } from "@/utils/lens-find-posts";
 
 interface JobData {
+  id?: string;
   username: string;
   profileImage: string;
   jobName: string;
@@ -58,6 +65,7 @@ const hourlyRates: HourlyRate[] = [
 
 const FindTalent = () => {
   const [jobs, setJobs] = useState<JobData[]>([]);
+  const [jobsLoading, setJobsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedHourlyRate, setSelectedHourlyRate] = useState<string>("All Rates");
   const [searchText, setSearchText] = useState("");
@@ -72,12 +80,22 @@ const FindTalent = () => {
   const tabletFiltersRef = useRef<HTMLDivElement>(null);
   const [isCreateServiceModalOpen, setIsCreateServiceModalOpen] = useState(false);
 
-  useEffect(() => {
-    fetch("/find-work.json")
-      .then(res => res.json())
-      .then(data => setJobs(data))
-      .catch(err => console.error("Error loading jobs:", err));
+  const loadServices = useCallback(async () => {
+    setJobsLoading(true);
+    try {
+      const listings = await fetchW3rkListings("service");
+      setJobs(listings);
+    } catch (error) {
+      console.error("Error loading Lens services:", error);
+      setJobs([]);
+    } finally {
+      setJobsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadServices();
+  }, [loadServices]);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -136,14 +154,17 @@ const FindTalent = () => {
       job.username.toLowerCase().includes(searchText.toLowerCase());
 
     const matchesCategory =
-      !selectedCategory || selectedCategory === "All" || job.tags.some(tag => tag === selectedCategory);
+      !selectedCategory ||
+      selectedCategory === "All" ||
+      job.tags.some(tag => tag === selectedCategory);
 
     // Filter by hourly rate
     const selectedRate = hourlyRates.find(rate => rate.label === selectedHourlyRate);
     let matchesRate = true;
     if (selectedRate && selectedRate.label !== "All Rates") {
       const jobRate = parsePaymentAmount(job.paymentAmount);
-      matchesRate = jobRate >= selectedRate.min && (selectedRate.max === null || jobRate <= selectedRate.max);
+      matchesRate =
+        jobRate >= selectedRate.min && (selectedRate.max === null || jobRate <= selectedRate.max);
     }
 
     return matchesSearch && matchesCategory && matchesRate;
@@ -164,6 +185,9 @@ const FindTalent = () => {
     if (closeDropdown) {
       setIsHourlyRateDropdownOpen(false);
     }
+  };
+  const handleServicePublished = () => {
+    void loadServices();
   };
 
   return (
@@ -243,9 +267,7 @@ const FindTalent = () => {
                 onClick={() => setIsHourlyRateDropdownOpen(!isHourlyRateDropdownOpen)}
                 className="w-full h-[44px] border border-[#E0E0E0] rounded-[8px] px-[16px] flex items-center justify-between bg-white"
               >
-                <span className="text-[16px] font-medium text-[#212121]">
-                  {selectedHourlyRate}
-                </span>
+                <span className="text-[16px] font-medium text-[#212121]">{selectedHourlyRate}</span>
                 <ChevronDown
                   size={20}
                   className={`text-[#818181] transition-transform ${
@@ -282,7 +304,10 @@ const FindTalent = () => {
             </div>
           </div>
 
-          <div className="hidden md:max-lg:grid grid-cols-2 gap-[12px] w-full" ref={tabletFiltersRef}>
+          <div
+            className="hidden md:max-lg:grid grid-cols-2 gap-[12px] w-full"
+            ref={tabletFiltersRef}
+          >
             <div className="relative col-span-2">
               <Search
                 className="absolute left-[16px] top-1/2 transform -translate-y-1/2 text-[#A0A0A0]"
@@ -304,7 +329,10 @@ const FindTalent = () => {
                 <div className="flex items-center gap-[12px] min-w-0">
                   {selectedCategoryData && (
                     <>
-                      <selectedCategoryData.icon size={20} className="text-[#818181] flex-shrink-0" />
+                      <selectedCategoryData.icon
+                        size={20}
+                        className="text-[#818181] flex-shrink-0"
+                      />
                       <span className="text-[16px] font-medium text-[#212121] truncate">
                         {selectedCategory}
                       </span>
@@ -485,9 +513,13 @@ const FindTalent = () => {
 
           {/* Jobs List */}
           <div className="flex-1 flex flex-col w-full mt-5 md:w-auto sm:gap-[16px] md:gap-0 md:min-w-0 md:max-lg:mt-0">
-            {filteredJobs.length === 0 ? (
+            {jobsLoading ? (
               <div className="bg-white rounded-[8px] p-[32px] text-center text-[#7A7A7A] text-[15px]">
-                No jobs found
+                Loading services...
+              </div>
+            ) : filteredJobs.length === 0 ? (
+              <div className="bg-white rounded-[8px] p-[32px] text-center text-[#7A7A7A] text-[15px]">
+                No services found
               </div>
             ) : (
               filteredJobs.map((job, index) => (
@@ -573,6 +605,7 @@ const FindTalent = () => {
       <CreateServiceModal
         open={isCreateServiceModalOpen}
         onClose={() => setIsCreateServiceModalOpen(false)}
+        onPublished={handleServicePublished}
       />
     </div>
   );
