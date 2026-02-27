@@ -51,6 +51,7 @@ type PersistedSession = {
   env: XMTPEnv;
   identifier: string;
   dbEncryptionKey?: string;
+  dbPath?: string;
   inboxId?: string;
   installationId?: string;
   signerType?: "EOA" | "SCW";
@@ -107,6 +108,9 @@ const isAddress = (value: string) => value.startsWith("0x") && value.length === 
 
 const unique = <T,>(values: T[]) => Array.from(new Set(values));
 
+const buildDbPath = (env: XMTPEnv, identifier: string) =>
+  `w3rk-xmtp-${env}-${identifier.toLowerCase()}.db3`;
+
 const stringifyError = (error: unknown) => {
   if (error instanceof Error) {
     return error.message;
@@ -119,18 +123,6 @@ const stringifyError = (error: unknown) => {
   } catch {
     return String(error);
   }
-};
-
-const toBase64 = (bytes: Uint8Array): string => {
-  if (typeof window !== "undefined" && typeof window.btoa === "function") {
-    let binary = "";
-    for (const byte of bytes) {
-      binary += String.fromCharCode(byte);
-    }
-    return window.btoa(binary);
-  }
-
-  return "";
 };
 
 const fromBase64 = (value: string): Uint8Array => {
@@ -344,6 +336,10 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
             typeof candidate.dbEncryptionKey === "string" && candidate.dbEncryptionKey.length > 0
               ? candidate.dbEncryptionKey
               : undefined,
+          dbPath:
+            typeof candidate.dbPath === "string" && candidate.dbPath.length > 0
+              ? candidate.dbPath
+              : undefined,
           inboxId:
             typeof candidate.inboxId === "string" && candidate.inboxId.length > 0
               ? candidate.inboxId
@@ -413,6 +409,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         identifierCandidates.map(identifier => ({
           env,
           identifier,
+          dbPath: buildDbPath(env, identifier),
           updatedAt: new Date(0).toISOString(),
         }))
       );
@@ -810,6 +807,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                 usedDbEncryptionKey: true,
                 options: {
                   env,
+                  dbPath: session.dbPath ?? buildDbPath(env, session.identifier),
                   dbEncryptionKey: fromBase64(session.dbEncryptionKey),
                 },
               },
@@ -817,6 +815,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                 usedDbEncryptionKey: false,
                 options: {
                   env,
+                  dbPath: session.dbPath ?? buildDbPath(env, session.identifier),
                 },
               },
             ]
@@ -825,6 +824,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                 usedDbEncryptionKey: false,
                 options: {
                   env,
+                  dbPath: session.dbPath ?? buildDbPath(env, session.identifier),
                 },
               },
             ];
@@ -866,6 +866,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
             const refreshedSession: PersistedSession = {
               ...session,
               dbEncryptionKey: buildOption.usedDbEncryptionKey ? session.dbEncryptionKey : undefined,
+              dbPath: session.dbPath ?? buildDbPath(env, session.identifier),
               inboxId: (builtClient as { inboxId?: string }).inboxId,
               installationId: (builtClient as { installationId?: string }).installationId,
               updatedAt: new Date().toISOString(),
@@ -954,15 +955,14 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       signer: EOASigner | SCWSigner,
       signerType: "EOA" | "SCW"
     ) => {
-      const dbEncryptionKeyBytes = new Uint8Array(32);
-      globalThis.crypto.getRandomValues(dbEncryptionKeyBytes);
+      const dbPath = buildDbPath(env, identifier);
 
       setConnectStage("create_client");
       const createdClient = await withTimeout(
         Client.create(signer, {
           env,
           disableAutoRegister: true,
-          dbEncryptionKey: dbEncryptionKeyBytes,
+          dbPath,
         }),
         120000,
         "Creating XMTP client timed out."
@@ -999,7 +999,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       const persistedSession: PersistedSession = {
         env,
         identifier,
-        dbEncryptionKey: toBase64(dbEncryptionKeyBytes),
+        dbPath,
         inboxId: (createdClient as { inboxId?: string }).inboxId,
         installationId: (createdClient as { installationId?: string }).installationId,
         signerType,
@@ -1044,12 +1044,6 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         }
 
         updateStage("build_failed_fallback_create");
-        updateStage("prompt_signature");
-        await withTimeout(
-          requestWalletSignature(`Enable XMTP for w3rk (${primaryIdentifier})`, "preflight"),
-          45000,
-          "Wallet signature timed out."
-        );
 
         const env = resolveEnv();
 
@@ -1153,7 +1147,6 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       logError,
       primaryIdentifier,
       recoverInstallationLimit,
-      requestWalletSignature,
       resolveEnv,
       setClient,
       walletAddress,
