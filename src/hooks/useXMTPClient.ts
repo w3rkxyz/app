@@ -1146,7 +1146,16 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         lensChainId === LENS_MAINNET_CHAIN_ID ? "production" : "dev";
       const envCandidates = Array.from(
         new Set(
-          [configuredEnv, sessionState.env, persistedEnv, inferredEnv, fallbackEnv].filter(
+          [
+            configuredEnv,
+            sessionState.env,
+            persistedEnv,
+            inferredEnv,
+            fallbackEnv,
+            "production",
+            "dev",
+            "local",
+          ].filter(
             (value): value is "local" | "dev" | "production" => Boolean(value)
           )
         )
@@ -1161,14 +1170,14 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         ])
       )
         .filter(value => value.startsWith("0x") && value.length === 42)
-        .slice(0, 6);
+        .slice(0, 8);
 
       const identifiers: Identifier[] = identifierCandidates.map(identifier => ({
         identifier,
         identifierKind: IdentifierKind.Ethereum,
       }));
 
-      const MAX_BUILD_ATTEMPTS = 6;
+      const MAX_BUILD_ATTEMPTS = 12;
       let attempts = 0;
 
       for (const identifier of identifiers) {
@@ -1186,33 +1195,37 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
             });
 
             const dbEncryptionKey = loadDbEncryptionKey(env, identifier.identifier);
-            const builtClient = await withTimeout(
-              Client.build(identifier, {
+            const buildOptions = dbEncryptionKey
+              ? [{ env, dbEncryptionKey }, { env }]
+              : [{ env }];
+
+            for (const options of buildOptions) {
+              const builtClient = await withTimeout(
+                Client.build(identifier, options),
+                6000,
+                "Restoring XMTP session timed out."
+              );
+              const isRegistered = await withTimeout(
+                builtClient.isRegistered(),
+                6000,
+                "Checking XMTP registration timed out."
+              );
+
+              logDebug("init:build:result", {
                 env,
-                ...(dbEncryptionKey ? { dbEncryptionKey } : {}),
-              }),
-              10000,
-              "Restoring XMTP session timed out."
-            );
-            const isRegistered = await withTimeout(
-              builtClient.isRegistered(),
-              10000,
-              "Checking XMTP registration timed out."
-            );
+                identifier: identifier.identifier,
+                isRegistered,
+                usedDbEncryptionKey: Boolean(options.dbEncryptionKey),
+              });
 
-            logDebug("init:build:result", {
-              env,
-              identifier: identifier.identifier,
-              isRegistered,
-            });
+              if (isRegistered) {
+                setClient(builtClient);
+                persistEnabledState(env, [identifier.identifier]);
+                return builtClient;
+              }
 
-            if (isRegistered) {
-              setClient(builtClient);
-              persistEnabledState(env, [identifier.identifier]);
-              return builtClient;
+              builtClient.close();
             }
-
-            builtClient.close();
           } catch (error) {
             logError("init:build:failed", error, {
               env,
