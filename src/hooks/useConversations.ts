@@ -9,7 +9,6 @@ import {
   ConversationType,
 } from "@xmtp/browser-sdk";
 import { useState } from "react";
-import { useXMTPClient } from "./useXMTPClient";
 import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import type { AccountData } from "@/utils/getLensProfile";
@@ -18,8 +17,8 @@ import type { ContentTypes } from "@/app/XMTPContext";
 import { useXMTP } from "@/app/XMTPContext";
 
 export const useConversations = () => {
-  const { client } = useXMTPClient();
-  const { activeConversation, setActiveConversation, setNotOnNetwork, setInvalidUser } = useXMTP();
+  const { client, activeConversation, setActiveConversation, setNotOnNetwork, setInvalidUser } =
+    useXMTP();
   const { addAddressToUser } = useDatabase();
   const xmtpState = useSelector((state: RootState) => state.xmtp);
   const [loading, setLoading] = useState(false);

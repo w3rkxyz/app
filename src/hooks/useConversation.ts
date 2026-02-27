@@ -2,7 +2,6 @@
 
 import type { DecodedMessage, ListMessagesOptions } from "@xmtp/browser-sdk";
 import { useEffect, useMemo, useState } from "react";
-import { useXMTPClient } from "./useXMTPClient";
 import { ContentTypes } from "@/app/XMTPContext";
 import { useXMTP } from "@/app/XMTPContext";
 import type { AccountData } from "@/utils/getLensProfile";
@@ -14,8 +13,8 @@ import { fetchAccount } from "./useSearchAccounts";
 import getLensAccountData from "@/utils/getLensProfile";
 
 export const useConversation = () => {
-  const { client } = useXMTPClient();
-  const { activeConversation, setActiveConversation, notOnNetwork, invalidUser } = useXMTP();
+  const { client, activeConversation, setActiveConversation, notOnNetwork, invalidUser } =
+    useXMTP();
   const { address: walletAddress } = useAccount();
   const lensProfile = useSelector((state: RootState) => state.app.user);
   const activeIdentityAddress = lensProfile?.address ?? walletAddress;
@@ -154,7 +153,7 @@ export const useConversation = () => {
     }
 
     try {
-      const resolvedOptions = options ?? { limit: 200 };
+      const resolvedOptions = options ?? { limit: 200n };
       const msgs = (await activeConversation?.messages(resolvedOptions)) ?? [];
       const sortedMessages = [...msgs].sort((a, b) => {
         if (a.sentAtNs < b.sentAtNs) return -1;

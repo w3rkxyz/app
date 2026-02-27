@@ -6,16 +6,22 @@ import {
   Client,
   IdentifierKind,
   getInboxIdForIdentifier,
-  type SCWSigner,
   type EOASigner,
   type Identifier,
+  type SCWSigner,
 } from "@xmtp/browser-sdk";
-import { hexToBytes, keccak256, stringToHex, type Address } from "viem";
+import { hexToBytes, stringToHex, type Address } from "viem";
 import { useSignMessage, useWalletClient } from "wagmi";
 import { setError, setInitializing } from "@/redux/xmtp";
 import { RootState } from "@/redux/store";
 import { useXMTP } from "@/app/XMTPContext";
-import { getEnv } from "@/utils/xmtpHelpers";
+
+const LENS_TESTNET_CHAIN_ID = 37111n;
+const LENS_MAINNET_CHAIN_ID = 232n;
+const XMTP_MAX_INSTALLATIONS = 10;
+
+const XMTP_SESSION_STORE_KEY = "w3rk:xmtp:session-store:v3";
+const XMTP_RESTORE_DEBUG_KEY = "w3rk:xmtp:restore-debug:last";
 
 type UseXMTPClientParams = {
   walletAddress?: string;
@@ -23,20 +29,6 @@ type UseXMTPClientParams = {
   lensProfileId?: string;
   lensHandle?: string;
 };
-
-const LENS_TESTNET_CHAIN_ID = 37111n;
-const LENS_MAINNET_CHAIN_ID = 232n;
-const XMTP_MAX_INSTALLATIONS = 10;
-
-const XMTP_SESSION_STORE_KEY = "w3rk:xmtp:session-store:v2";
-const XMTP_ENABLED_IDENTIFIERS_KEY = "w3rk:xmtp:enabled-identifiers";
-const XMTP_LAST_ENV_KEY = "w3rk:xmtp:last-env";
-const XMTP_DB_KEY_STORAGE_PREFIX = "w3rk:xmtp:db-key";
-const XMTP_RESTORE_DEBUG_KEY = "w3rk:xmtp:restore-debug:last";
-const XMTP_LAST_SUCCESSFUL_CONNECTION_KEY = "w3rk:xmtp:last-successful-connection";
-const XMTP_LAST_SUCCESSFUL_CONNECTION_MAP_KEY = "w3rk:xmtp:last-successful-connection-map";
-
-type XMTPEnv = "local" | "dev" | "production";
 
 export type XMTPConnectStage =
   | "idle"
@@ -53,19 +45,24 @@ type XMTPConnectOptions = {
   onStage?: (stage: XMTPConnectStage) => void;
 };
 
+type XMTPEnv = "local" | "dev" | "production";
+
 type PersistedSession = {
   env: XMTPEnv;
   identifier: string;
   dbEncryptionKey: string;
   inboxId?: string;
   installationId?: string;
-  signerType?: "SCW" | "EOA";
+  signerType?: "EOA" | "SCW";
   updatedAt: string;
 };
 
-type SessionStore = Record<string, PersistedSession>;
+type SessionStore = {
+  version: 1;
+  records: Record<string, PersistedSession>;
+};
 
-type XMTPRestoreAttemptDebug = {
+type RestoreAttemptDebug = {
   env: XMTPEnv;
   identifier: string;
   usedDbEncryptionKey: boolean;
@@ -81,7 +78,7 @@ type XMTPRestoreAttemptDebug = {
   error?: string;
 };
 
-type XMTPRestoreDebugSnapshot = {
+type RestoreDebugSnapshot = {
   timestamp: string;
   result: "restored" | "not_restored" | "error";
   identity: {
@@ -94,21 +91,11 @@ type XMTPRestoreDebugSnapshot = {
   };
   envCandidates: XMTPEnv[];
   identifierCandidates: string[];
-  attempts: XMTPRestoreAttemptDebug[];
+  attempts: RestoreAttemptDebug[];
   restoredEnv?: XMTPEnv;
   restoredIdentifier?: string;
   reason?: string;
   error?: string;
-};
-
-type RestoreCandidate = {
-  env: XMTPEnv;
-  identifier: string;
-  dbEncryptionKey: string;
-  inboxId?: string;
-  installationId?: string;
-  source: "session_store" | "legacy_last_successful" | "legacy_db_key";
-  updatedAt: string;
 };
 
 const isValidEnv = (value: string | null | undefined): value is XMTPEnv =>
@@ -116,7 +103,23 @@ const isValidEnv = (value: string | null | undefined): value is XMTPEnv =>
 
 const normalizeAddress = (value?: string | null) => value?.toLowerCase() ?? "";
 
-const isAddressCandidate = (value: string) => value.startsWith("0x") && value.length === 42;
+const isAddress = (value: string) => value.startsWith("0x") && value.length === 42;
+
+const unique = <T,>(values: T[]) => Array.from(new Set(values));
+
+const stringifyError = (error: unknown) => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === "string") {
+    return error;
+  }
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+};
 
 const toBase64 = (bytes: Uint8Array): string => {
   if (typeof window !== "undefined" && typeof window.btoa === "function") {
@@ -125,10 +128,6 @@ const toBase64 = (bytes: Uint8Array): string => {
       binary += String.fromCharCode(byte);
     }
     return window.btoa(binary);
-  }
-
-  if (typeof Buffer !== "undefined") {
-    return Buffer.from(bytes).toString("base64");
   }
 
   return "";
@@ -144,20 +143,15 @@ const fromBase64 = (value: string): Uint8Array => {
     return bytes;
   }
 
-  if (typeof Buffer !== "undefined") {
-    return new Uint8Array(Buffer.from(value, "base64"));
-  }
-
   return new Uint8Array();
 };
 
 const withTimeout = async <T,>(
   promise: Promise<T>,
-  timeoutMs = 20000,
-  timeoutMessage = "XMTP operation timed out."
+  timeoutMs: number,
+  timeoutMessage: string
 ): Promise<T> => {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
-
   const timeoutPromise = new Promise<T>((_, reject) => {
     timeoutId = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
   });
@@ -171,7 +165,7 @@ const withTimeout = async <T,>(
   }
 };
 
-const parseInstallationLimitError = (error: unknown) => {
+const isInstallationLimitError = (error: unknown) => {
   if (!(error instanceof Error)) {
     return false;
   }
@@ -192,30 +186,16 @@ const extractInboxIdFromError = (error: unknown) => {
   return match?.[1]?.toLowerCase();
 };
 
-const stringifyError = (error: unknown) => {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  if (typeof error === "string") {
-    return error;
-  }
-  try {
-    return JSON.stringify(error);
-  } catch {
-    return String(error);
-  }
-};
-
 export function useXMTPClient(params?: UseXMTPClientParams) {
   const dispatch = useDispatch();
   const { client, setClient } = useXMTP();
   const xmtpState = useSelector((state: RootState) => state.xmtp);
 
-  const [connectingXMTP, setConnectingXMTP] = useState(false);
-  const [connectStage, setConnectStage] = useState<XMTPConnectStage>("idle");
-
   const { signMessageAsync } = useSignMessage();
   const { data: walletClient } = useWalletClient();
+
+  const [connectingXMTP, setConnectingXMTP] = useState(false);
+  const [connectStage, setConnectStage] = useState<XMTPConnectStage>("idle");
 
   const walletAddress = normalizeAddress(params?.walletAddress);
   const lensAccountAddress = normalizeAddress(params?.lensAccountAddress);
@@ -223,33 +203,50 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
   const lensHandle = params?.lensHandle;
 
   const xmtpAddress = (lensAccountAddress || walletAddress || "").toLowerCase();
-  const walletClientAccountAddress = normalizeAddress(walletClient?.account?.address);
+  const walletClientAddress = normalizeAddress(walletClient?.account?.address);
+  const isScwIdentity = Boolean(lensAccountAddress && walletAddress && lensAccountAddress !== walletAddress);
 
-  const isScwIdentity =
-    Boolean(lensAccountAddress) && Boolean(walletAddress) && lensAccountAddress !== walletAddress;
-
-  const scopeKeys = useMemo(() => {
-    const values = [
+  const identityKeys = useMemo(() => {
+    const keys = [
       lensProfileId ? `lens:id:${lensProfileId}` : null,
       lensHandle ? `lens:handle:${lensHandle.toLowerCase().replace(/^@/, "")}` : null,
       lensAccountAddress ? `lens:address:${lensAccountAddress}` : null,
       walletAddress ? `wallet:${walletAddress}` : null,
-      walletClientAccountAddress ? `walletClient:${walletClientAccountAddress}` : null,
+      walletClientAddress ? `walletClient:${walletClientAddress}` : null,
       xmtpAddress ? `xmtp:${xmtpAddress}` : null,
     ].filter((value): value is string => Boolean(value));
 
-    return Array.from(new Set(values));
-  }, [lensAccountAddress, lensHandle, lensProfileId, walletAddress, walletClientAccountAddress, xmtpAddress]);
+    return unique(keys);
+  }, [lensProfileId, lensHandle, lensAccountAddress, walletAddress, walletClientAddress, xmtpAddress]);
 
   const identifierCandidates = useMemo(() => {
-    const values = [xmtpAddress, walletAddress, walletClientAccountAddress]
-      .filter((value): value is string => Boolean(value))
-      .filter(isAddressCandidate);
-
-    return Array.from(new Set(values));
-  }, [xmtpAddress, walletAddress, walletClientAccountAddress]);
+    return unique([xmtpAddress, walletAddress, walletClientAddress].filter(isAddress));
+  }, [xmtpAddress, walletAddress, walletClientAddress]);
 
   const primaryIdentifier = identifierCandidates[0] ?? "";
+
+  const getConfiguredEnv = useCallback((): XMTPEnv | null => {
+    const configuredEnv =
+      process.env.NEXT_PUBLIC_XMTP_ENV ?? process.env.NEXT_PUBLIC_XMTP_ENVIRONMENT;
+    return isValidEnv(configuredEnv) ? configuredEnv : null;
+  }, []);
+
+  const resolveEnv = useCallback((): XMTPEnv => {
+    const configuredEnv = getConfiguredEnv();
+    if (configuredEnv) {
+      return configuredEnv;
+    }
+
+    const walletChainId =
+      typeof walletClient?.chain?.id === "number" ? BigInt(walletClient.chain.id) : null;
+    const configuredLensChainId =
+      process.env.NEXT_PUBLIC_LENS_CHAIN_ID && Number.isFinite(Number(process.env.NEXT_PUBLIC_LENS_CHAIN_ID))
+        ? BigInt(process.env.NEXT_PUBLIC_LENS_CHAIN_ID)
+        : null;
+
+    const chainId = walletChainId ?? configuredLensChainId ?? LENS_TESTNET_CHAIN_ID;
+    return chainId === LENS_MAINNET_CHAIN_ID ? "production" : "dev";
+  }, [getConfiguredEnv, walletClient?.chain?.id]);
 
   const logDebug = useCallback(
     (event: string, details?: Record<string, unknown>) => {
@@ -284,26 +281,49 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     [walletAddress, lensAccountAddress, xmtpAddress, lensProfileId, lensHandle, isScwIdentity]
   );
 
-  const getLegacyDbKeyStorageKey = useCallback(
-    (env: XMTPEnv, identifier: string) => `${XMTP_DB_KEY_STORAGE_PREFIX}:${env}:${identifier.toLowerCase()}`,
-    []
+  const persistRestoreDebug = useCallback(
+    (payload: Omit<RestoreDebugSnapshot, "timestamp" | "identity">) => {
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      const snapshot: RestoreDebugSnapshot = {
+        timestamp: new Date().toISOString(),
+        identity: {
+          walletAddress: walletAddress || null,
+          lensAccountAddress: lensAccountAddress || null,
+          lensProfileId: lensProfileId ?? null,
+          lensHandle: lensHandle ?? null,
+          xmtpAddress: xmtpAddress || null,
+          isScwIdentity,
+        },
+        ...payload,
+      };
+
+      window.localStorage.setItem(XMTP_RESTORE_DEBUG_KEY, JSON.stringify(snapshot));
+    },
+    [walletAddress, lensAccountAddress, lensProfileId, lensHandle, xmtpAddress, isScwIdentity]
   );
 
   const readSessionStore = useCallback((): SessionStore => {
     if (typeof window === "undefined") {
-      return {};
+      return { version: 1, records: {} };
     }
 
     try {
       const raw = window.localStorage.getItem(XMTP_SESSION_STORE_KEY);
       if (!raw) {
-        return {};
+        return { version: 1, records: {} };
       }
 
-      const parsed = JSON.parse(raw) as Record<string, unknown>;
-      const normalized: SessionStore = {};
+      const parsed = JSON.parse(raw) as Partial<SessionStore>;
+      const records = parsed?.records;
+      if (!records || typeof records !== "object") {
+        return { version: 1, records: {} };
+      }
 
-      for (const [key, value] of Object.entries(parsed)) {
+      const normalizedRecords: Record<string, PersistedSession> = {};
+      for (const [key, value] of Object.entries(records as Record<string, unknown>)) {
         if (!value || typeof value !== "object") {
           continue;
         }
@@ -312,14 +332,14 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         if (
           !isValidEnv(candidate.env) ||
           typeof candidate.identifier !== "string" ||
-          !isAddressCandidate(candidate.identifier.toLowerCase()) ||
+          !isAddress(candidate.identifier.toLowerCase()) ||
           typeof candidate.dbEncryptionKey !== "string" ||
           candidate.dbEncryptionKey.length === 0
         ) {
           continue;
         }
 
-        normalized[key] = {
+        normalizedRecords[key] = {
           env: candidate.env,
           identifier: candidate.identifier.toLowerCase(),
           dbEncryptionKey: candidate.dbEncryptionKey,
@@ -331,7 +351,10 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
             typeof candidate.installationId === "string" && candidate.installationId.length > 0
               ? candidate.installationId
               : undefined,
-          signerType: candidate.signerType === "SCW" || candidate.signerType === "EOA" ? candidate.signerType : undefined,
+          signerType:
+            candidate.signerType === "EOA" || candidate.signerType === "SCW"
+              ? candidate.signerType
+              : undefined,
           updatedAt:
             typeof candidate.updatedAt === "string" && candidate.updatedAt.length > 0
               ? candidate.updatedAt
@@ -339,314 +362,78 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         };
       }
 
-      return normalized;
+      return {
+        version: 1,
+        records: normalizedRecords,
+      };
     } catch {
-      return {};
+      return { version: 1, records: {} };
     }
   }, []);
 
-  const writeSessionStore = useCallback((next: SessionStore) => {
+  const writeSessionStore = useCallback((store: SessionStore) => {
     if (typeof window === "undefined") {
       return;
     }
 
-    window.localStorage.setItem(XMTP_SESSION_STORE_KEY, JSON.stringify(next));
+    window.localStorage.setItem(XMTP_SESSION_STORE_KEY, JSON.stringify(store));
   }, []);
 
-  const getPersistedEnvFromStore = useCallback((): XMTPEnv | null => {
-    const store = readSessionStore();
-    const candidates = scopeKeys
-      .map(scope => store[scope]?.env)
-      .filter((value): value is XMTPEnv => Boolean(value));
+  const findPersistedSession = useCallback(
+    (env: XMTPEnv): PersistedSession | null => {
+      const store = readSessionStore();
+      const sessions = identityKeys
+        .map(key => store.records[key])
+        .filter((value): value is PersistedSession => Boolean(value))
+        .filter(session => session.env === env)
+        .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
 
-    return candidates[0] ?? null;
-  }, [readSessionStore, scopeKeys]);
-
-  const resolveEnvCandidates = useCallback((): XMTPEnv[] => {
-    const configuredRaw = process.env.NEXT_PUBLIC_XMTP_ENV ?? process.env.NEXT_PUBLIC_XMTP_ENVIRONMENT;
-    const configuredEnv = isValidEnv(configuredRaw) ? configuredRaw : null;
-    if (configuredEnv) {
-      return [configuredEnv];
-    }
-
-    const persistedEnv = getPersistedEnvFromStore();
-    const legacyPersistedRaw =
-      typeof window !== "undefined" ? window.localStorage.getItem(XMTP_LAST_ENV_KEY) : null;
-    const legacyPersistedEnv = isValidEnv(legacyPersistedRaw) ? legacyPersistedRaw : null;
-
-    const walletChainId =
-      typeof walletClient?.chain?.id === "number" ? BigInt(walletClient.chain.id) : null;
-    const configuredLensChainId =
-      process.env.NEXT_PUBLIC_LENS_CHAIN_ID && Number.isFinite(Number(process.env.NEXT_PUBLIC_LENS_CHAIN_ID))
-        ? BigInt(process.env.NEXT_PUBLIC_LENS_CHAIN_ID)
-        : null;
-
-    const fallbackEnv = getEnv();
-    const inferredEnv: XMTPEnv =
-      (walletChainId ?? configuredLensChainId ?? (fallbackEnv === "production" ? LENS_MAINNET_CHAIN_ID : LENS_TESTNET_CHAIN_ID)) ===
-      LENS_MAINNET_CHAIN_ID
-        ? "production"
-        : "dev";
-
-    const ordered = [persistedEnv, legacyPersistedEnv, inferredEnv, fallbackEnv].filter(
-      (value): value is XMTPEnv => Boolean(value)
-    );
-
-    return Array.from(new Set(ordered));
-  }, [getPersistedEnvFromStore, walletClient?.chain?.id]);
-
-  const loadLegacyDbEncryptionKey = useCallback(
-    (env: XMTPEnv, identifier: string): string | null => {
-      if (typeof window === "undefined") {
-        return null;
-      }
-
-      const raw = window.localStorage.getItem(getLegacyDbKeyStorageKey(env, identifier));
-      if (!raw) {
-        return null;
-      }
-
-      return raw;
+      return sessions[0] ?? null;
     },
-    [getLegacyDbKeyStorageKey]
-  );
-
-  const storeLegacyDbEncryptionKey = useCallback(
-    (env: XMTPEnv, identifier: string, dbEncryptionKey: string) => {
-      if (typeof window === "undefined") {
-        return;
-      }
-
-      window.localStorage.setItem(getLegacyDbKeyStorageKey(env, identifier), dbEncryptionKey);
-    },
-    [getLegacyDbKeyStorageKey]
-  );
-
-  const readLegacyLastSuccessfulCandidates = useCallback((): RestoreCandidate[] => {
-    if (typeof window === "undefined") {
-      return [];
-    }
-
-    const parseLegacyRecord = (value: unknown): RestoreCandidate | null => {
-      if (!value || typeof value !== "object") {
-        return null;
-      }
-      const parsed = value as {
-        env?: unknown;
-        identifier?: unknown;
-        inboxId?: unknown;
-        installationId?: unknown;
-        dbEncryptionKey?: unknown;
-        savedAt?: unknown;
-      };
-
-      if (typeof parsed.env !== "string" || !isValidEnv(parsed.env)) {
-        return null;
-      }
-      if (typeof parsed.identifier !== "string") {
-        return null;
-      }
-
-      const identifier = parsed.identifier.toLowerCase();
-      if (!isAddressCandidate(identifier)) {
-        return null;
-      }
-
-      if (typeof parsed.dbEncryptionKey !== "string" || parsed.dbEncryptionKey.length === 0) {
-        return null;
-      }
-
-      return {
-        env: parsed.env,
-        identifier,
-        dbEncryptionKey: parsed.dbEncryptionKey,
-        inboxId: typeof parsed.inboxId === "string" ? parsed.inboxId : undefined,
-        installationId: typeof parsed.installationId === "string" ? parsed.installationId : undefined,
-        source: "legacy_last_successful",
-        updatedAt:
-          typeof parsed.savedAt === "string" && parsed.savedAt.length > 0
-            ? parsed.savedAt
-            : new Date().toISOString(),
-      };
-    };
-
-    const results: RestoreCandidate[] = [];
-
-    try {
-      const rawMap = window.localStorage.getItem(XMTP_LAST_SUCCESSFUL_CONNECTION_MAP_KEY);
-      if (rawMap) {
-        const parsed = JSON.parse(rawMap) as Record<string, unknown>;
-        for (const key of scopeKeys) {
-          const candidate = parseLegacyRecord(parsed[key]);
-          if (candidate) {
-            results.push(candidate);
-          }
-        }
-      }
-    } catch {
-      // ignore malformed legacy map
-    }
-
-    try {
-      const raw = window.localStorage.getItem(XMTP_LAST_SUCCESSFUL_CONNECTION_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as unknown;
-        const candidate = parseLegacyRecord(parsed);
-        if (candidate) {
-          results.push(candidate);
-        }
-      }
-    } catch {
-      // ignore malformed legacy key
-    }
-
-    return results;
-  }, [scopeKeys]);
-
-  const persistEnabledIdentifiers = useCallback(
-    (identifier: string) => {
-      if (typeof window === "undefined") {
-        return;
-      }
-
-      const existing = (() => {
-        try {
-          const raw = window.localStorage.getItem(XMTP_ENABLED_IDENTIFIERS_KEY);
-          if (!raw) {
-            return [] as string[];
-          }
-          const parsed = JSON.parse(raw);
-          if (!Array.isArray(parsed)) {
-            return [] as string[];
-          }
-          return parsed
-            .filter((value): value is string => typeof value === "string")
-            .map(value => value.toLowerCase())
-            .filter(isAddressCandidate);
-        } catch {
-          return [] as string[];
-        }
-      })();
-
-      const merged = Array.from(
-        new Set([...existing, ...identifierCandidates, identifier.toLowerCase()].filter(isAddressCandidate))
-      );
-      window.localStorage.setItem(XMTP_ENABLED_IDENTIFIERS_KEY, JSON.stringify(merged));
-    },
-    [identifierCandidates]
+    [identityKeys, readSessionStore]
   );
 
   const persistSession = useCallback(
     (session: PersistedSession) => {
-      if (typeof window === "undefined") {
-        return;
-      }
-
       const store = readSessionStore();
-      const nextStore = { ...store };
+      const records = { ...store.records };
 
-      for (const scope of [...scopeKeys, `identifier:${session.identifier}`]) {
-        nextStore[scope] = session;
+      for (const key of unique([...identityKeys, `identifier:${session.identifier}`])) {
+        records[key] = session;
       }
 
-      writeSessionStore(nextStore);
-      window.localStorage.setItem(XMTP_LAST_ENV_KEY, session.env);
-
-      storeLegacyDbEncryptionKey(session.env, session.identifier, session.dbEncryptionKey);
-      persistEnabledIdentifiers(session.identifier);
-
-      const legacyPayload = {
-        env: session.env,
-        identifier: session.identifier,
-        inboxId: session.inboxId,
-        installationId: session.installationId,
-        dbEncryptionKey: session.dbEncryptionKey,
-        savedAt: session.updatedAt,
-      };
-
-      window.localStorage.setItem(XMTP_LAST_SUCCESSFUL_CONNECTION_KEY, JSON.stringify(legacyPayload));
-
-      try {
-        const rawMap = window.localStorage.getItem(XMTP_LAST_SUCCESSFUL_CONNECTION_MAP_KEY);
-        const parsed = rawMap ? (JSON.parse(rawMap) as Record<string, unknown>) : {};
-        const nextMap: Record<string, unknown> = { ...parsed };
-        for (const scope of [...scopeKeys, `identifier:${session.identifier}`]) {
-          nextMap[scope] = legacyPayload;
-        }
-        window.localStorage.setItem(XMTP_LAST_SUCCESSFUL_CONNECTION_MAP_KEY, JSON.stringify(nextMap));
-      } catch {
-        // ignore malformed legacy map
-      }
+      writeSessionStore({ version: 1, records });
     },
-    [persistEnabledIdentifiers, readSessionStore, scopeKeys, storeLegacyDbEncryptionKey, writeSessionStore]
+    [identityKeys, readSessionStore, writeSessionStore]
   );
 
-  const persistRestoreDebug = useCallback(
-    (
-      payload: Omit<XMTPRestoreDebugSnapshot, "timestamp" | "identity"> & {
-        timestamp?: string;
-        identity?: XMTPRestoreDebugSnapshot["identity"];
-      }
-    ) => {
-      if (typeof window === "undefined") {
-        return;
-      }
+  const verifyConversationAccess = useCallback(async (xmtpClient: Client<unknown>) => {
+    try {
+      await withTimeout(
+        xmtpClient.conversations.list({ limit: 1n }),
+        10000,
+        "Listing XMTP conversations timed out."
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
 
-      const snapshot: XMTPRestoreDebugSnapshot = {
-        timestamp: payload.timestamp ?? new Date().toISOString(),
-        identity: payload.identity ?? {
-          walletAddress: walletAddress || null,
-          lensAccountAddress: lensAccountAddress || null,
-          lensProfileId: lensProfileId ?? null,
-          lensHandle: lensHandle ?? null,
-          xmtpAddress: xmtpAddress || null,
-          isScwIdentity,
-        },
-        result: payload.result,
-        envCandidates: payload.envCandidates,
-        identifierCandidates: payload.identifierCandidates,
-        attempts: payload.attempts,
-        restoredEnv: payload.restoredEnv,
-        restoredIdentifier: payload.restoredIdentifier,
-        reason: payload.reason,
-        error: payload.error,
-      };
-
-      window.localStorage.setItem(XMTP_RESTORE_DEBUG_KEY, JSON.stringify(snapshot));
-    },
-    [walletAddress, lensAccountAddress, lensProfileId, lensHandle, xmtpAddress, isScwIdentity]
-  );
-
-  const checkConversationAccess = useCallback(
-    async (xmtpClient: Client<unknown>) => {
-      try {
-        await withTimeout(
-          xmtpClient.conversations.list({ limit: 1n }),
-          10000,
-          "Checking XMTP conversation access timed out."
-        );
-        return true;
-      } catch {
-        return false;
-      }
-    },
-    []
-  );
-
-  const verifyBuiltClient = useCallback(
+  const verifyClientReady = useCallback(
     async (
-      builtClient: Client<unknown>,
-      identifier: string,
+      xmtpClient: Client<unknown>,
       env: XMTPEnv,
+      identifier: string,
       expected?: { inboxId?: string; installationId?: string }
     ) => {
-      const attempt: XMTPRestoreAttemptDebug = {
+      const attempt: RestoreAttemptDebug = {
         env,
         identifier,
         usedDbEncryptionKey: true,
         build: "ok",
-        inboxId: (builtClient as { inboxId?: string }).inboxId ?? null,
-        installationId: (builtClient as { installationId?: string }).installationId ?? null,
+        inboxId: (xmtpClient as { inboxId?: string }).inboxId ?? null,
+        installationId: (xmtpClient as { installationId?: string }).installationId ?? null,
         matchesPersistedInstallation: null,
         registrationCheckFailed: false,
         installationInInbox: null,
@@ -655,25 +442,26 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         canMessageReady: null,
       };
 
-      const installationMatches =
-        (!expected?.installationId || expected.installationId === attempt.installationId) &&
-        (!expected?.inboxId || expected.inboxId === attempt.inboxId);
+      if (expected?.inboxId || expected?.installationId) {
+        const inboxMatches = !expected.inboxId || expected.inboxId === attempt.inboxId;
+        const installationMatches =
+          !expected.installationId || expected.installationId === attempt.installationId;
+        const matches = inboxMatches && installationMatches;
+        attempt.matchesPersistedInstallation = matches;
+        attempt.installationInInbox = matches;
 
-      attempt.matchesPersistedInstallation =
-        expected?.installationId || expected?.inboxId ? installationMatches : null;
-      attempt.installationInInbox = installationMatches;
-
-      if (!installationMatches) {
-        attempt.error = "installation_mismatch";
-        return {
-          ready: false,
-          attempt,
-        };
+        if (!matches) {
+          attempt.error = "installation_mismatch";
+          return {
+            ready: false,
+            attempt,
+          };
+        }
       }
 
       try {
         attempt.isRegistered = await withTimeout(
-          builtClient.isRegistered(),
+          xmtpClient.isRegistered(),
           10000,
           "Checking XMTP registration timed out."
         );
@@ -684,26 +472,24 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
       try {
         const canMessageMap = await withTimeout(
-          builtClient.canMessage([
+          xmtpClient.canMessage([
             {
               identifier,
               identifierKind: IdentifierKind.Ethereum,
             },
           ]),
-          7000,
+          8000,
           "Checking XMTP canMessage timed out."
         );
+
         attempt.canMessageReady = Boolean(canMessageMap.get(identifier));
       } catch (error) {
-        const suffix = `canMessage:${stringifyError(error)}`;
-        attempt.error = attempt.error ? `${attempt.error} | ${suffix}` : suffix;
+        const text = `canMessage:${stringifyError(error)}`;
+        attempt.error = attempt.error ? `${attempt.error} | ${text}` : text;
       }
 
-      attempt.conversationAccess = await checkConversationAccess(builtClient);
+      attempt.conversationAccess = await verifyConversationAccess(xmtpClient);
 
-      // Strict readiness gate:
-      // - Registration must be confirmed true.
-      // - And either canMessage self-check or conversations access must pass.
       const ready =
         attempt.isRegistered === true &&
         (attempt.canMessageReady === true || attempt.conversationAccess === true);
@@ -717,309 +503,56 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         attempt,
       };
     },
-    [checkConversationAccess]
+    [verifyConversationAccess]
   );
 
-  const collectRestoreCandidates = useCallback(
-    (envCandidates: XMTPEnv[]): RestoreCandidate[] => {
-      const nowIso = new Date().toISOString();
-      const dedupe = new Map<string, RestoreCandidate>();
-      const pushCandidate = (candidate: RestoreCandidate) => {
-        if (!isAddressCandidate(candidate.identifier)) {
-          return;
-        }
-        if (!isValidEnv(candidate.env)) {
-          return;
-        }
-        if (!candidate.dbEncryptionKey) {
-          return;
-        }
-
-        const key = `${candidate.env}|${candidate.identifier}|${candidate.dbEncryptionKey}`;
-        const existing = dedupe.get(key);
-        if (!existing) {
-          dedupe.set(key, candidate);
-          return;
-        }
-
-        const sourceWeight: Record<RestoreCandidate["source"], number> = {
-          session_store: 0,
-          legacy_last_successful: 1,
-          legacy_db_key: 2,
-        };
-
-        if (sourceWeight[candidate.source] < sourceWeight[existing.source]) {
-          dedupe.set(key, candidate);
-        }
-      };
-
-      const store = readSessionStore();
-      for (const scope of [...scopeKeys, ...identifierCandidates.map(value => `identifier:${value}`)]) {
-        const session = store[scope];
-        if (!session) {
-          continue;
-        }
-
-        pushCandidate({
-          env: session.env,
-          identifier: session.identifier,
-          dbEncryptionKey: session.dbEncryptionKey,
-          inboxId: session.inboxId,
-          installationId: session.installationId,
-          source: "session_store",
-          updatedAt: session.updatedAt,
-        });
+  const signWithEthereumProvider = useCallback(
+    async (message: string, accountAddress: Address | null): Promise<string | null> => {
+      if (typeof window === "undefined") {
+        return null;
       }
 
-      for (const legacyCandidate of readLegacyLastSuccessfulCandidates()) {
-        pushCandidate(legacyCandidate);
+      const ethereum = (
+        window as Window & {
+          ethereum?: {
+            request?: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+          };
+        }
+      ).ethereum;
+
+      if (!ethereum?.request || !accountAddress) {
+        return null;
       }
-
-      for (const env of envCandidates) {
-        for (const identifier of identifierCandidates) {
-          const dbEncryptionKey = loadLegacyDbEncryptionKey(env, identifier);
-          if (!dbEncryptionKey) {
-            continue;
-          }
-
-          pushCandidate({
-            env,
-            identifier,
-            dbEncryptionKey,
-            source: "legacy_db_key",
-            updatedAt: nowIso,
-          });
-        }
-      }
-
-      const sourceWeight: Record<RestoreCandidate["source"], number> = {
-        session_store: 0,
-        legacy_last_successful: 1,
-        legacy_db_key: 2,
-      };
-
-      return Array.from(dedupe.values()).sort((a, b) => {
-        const aPrimary = a.identifier === primaryIdentifier ? 0 : 1;
-        const bPrimary = b.identifier === primaryIdentifier ? 0 : 1;
-        if (aPrimary !== bPrimary) {
-          return aPrimary - bPrimary;
-        }
-
-        if (a.env !== b.env) {
-          const aEnvIndex = envCandidates.indexOf(a.env);
-          const bEnvIndex = envCandidates.indexOf(b.env);
-          const normalizedAEnvIndex = aEnvIndex === -1 ? Number.MAX_SAFE_INTEGER : aEnvIndex;
-          const normalizedBEnvIndex = bEnvIndex === -1 ? Number.MAX_SAFE_INTEGER : bEnvIndex;
-          if (normalizedAEnvIndex !== normalizedBEnvIndex) {
-            return normalizedAEnvIndex - normalizedBEnvIndex;
-          }
-        }
-
-        const sourceDelta = sourceWeight[a.source] - sourceWeight[b.source];
-        if (sourceDelta !== 0) {
-          return sourceDelta;
-        }
-
-        return Date.parse(b.updatedAt) - Date.parse(a.updatedAt);
-      });
-    },
-    [
-      identifierCandidates,
-      loadLegacyDbEncryptionKey,
-      primaryIdentifier,
-      readLegacyLastSuccessfulCandidates,
-      readSessionStore,
-      scopeKeys,
-    ]
-  );
-
-  const buildAndRestore = useCallback(async () => {
-    const attempts: XMTPRestoreAttemptDebug[] = [];
-    const envCandidates = resolveEnvCandidates();
-
-    if (identifierCandidates.length === 0) {
-      persistRestoreDebug({
-        result: "not_restored",
-        envCandidates,
-        identifierCandidates,
-        attempts,
-        reason: "missing_identifier_candidates",
-      });
-      return undefined;
-    }
-
-    const candidates = collectRestoreCandidates(envCandidates);
-
-    if (candidates.length === 0) {
-      persistRestoreDebug({
-        result: "not_restored",
-        envCandidates,
-        identifierCandidates,
-        attempts,
-        reason: "missing_persisted_session",
-      });
-      return undefined;
-    }
-
-    const maxAttempts = 6;
-    let attempted = 0;
-
-    for (const candidate of candidates) {
-      if (attempted >= maxAttempts) {
-        break;
-      }
-      attempted += 1;
-
-      const restoreAttempt: XMTPRestoreAttemptDebug = {
-        env: candidate.env,
-        identifier: candidate.identifier,
-        usedDbEncryptionKey: true,
-        build: "failed",
-        inboxId: null,
-        installationId: null,
-        matchesPersistedInstallation: null,
-        registrationCheckFailed: false,
-        installationInInbox: null,
-        conversationAccess: null,
-        isRegistered: null,
-        canMessageReady: null,
-      };
 
       try {
-        const builtClient = await withTimeout(
-          Client.build(
-            {
-              identifier: candidate.identifier,
-              identifierKind: IdentifierKind.Ethereum,
-            },
-            {
-              env: candidate.env,
-              dbEncryptionKey: fromBase64(candidate.dbEncryptionKey),
-            }
-          ),
-          12000,
-          "Restoring XMTP session timed out."
-        );
-
-        restoreAttempt.build = "ok";
-        restoreAttempt.inboxId = (builtClient as { inboxId?: string }).inboxId ?? null;
-        restoreAttempt.installationId =
-          (builtClient as { installationId?: string }).installationId ?? null;
-
-        const { ready, attempt } = await verifyBuiltClient(
-          builtClient,
-          candidate.identifier,
-          candidate.env,
-          {
-            inboxId: candidate.inboxId,
-            installationId: candidate.installationId,
-          }
-        );
-
-        attempts.push({
-          ...restoreAttempt,
-          ...attempt,
+        const signature = await ethereum.request({
+          method: "personal_sign",
+          params: [stringToHex(message), accountAddress],
         });
 
-        if (!ready) {
-          builtClient.close();
-          continue;
-        }
-
-        const updatedSession: PersistedSession = {
-          env: candidate.env,
-          identifier: candidate.identifier,
-          dbEncryptionKey: candidate.dbEncryptionKey,
-          inboxId: (builtClient as { inboxId?: string }).inboxId,
-          installationId: (builtClient as { installationId?: string }).installationId,
-          updatedAt: new Date().toISOString(),
-        };
-
-        persistSession(updatedSession);
-        setClient(builtClient);
-
-        persistRestoreDebug({
-          result: "restored",
-          envCandidates,
-          identifierCandidates,
-          attempts,
-          restoredEnv: candidate.env,
-          restoredIdentifier: candidate.identifier,
-        });
-
-        return builtClient;
-      } catch (error) {
-        restoreAttempt.error = stringifyError(error);
-        attempts.push(restoreAttempt);
-
-        logError("restore:candidate_failed", error, {
-          env: candidate.env,
-          identifier: candidate.identifier,
-          source: candidate.source,
-        });
+        return typeof signature === "string" ? signature : null;
+      } catch {
+        return null;
       }
-    }
-
-    persistRestoreDebug({
-      result: "not_restored",
-      envCandidates,
-      identifierCandidates,
-      attempts,
-      reason: "no_usable_restore_candidate",
-    });
-
-    return undefined;
-  }, [
-    collectRestoreCandidates,
-    identifierCandidates,
-    logError,
-    persistRestoreDebug,
-    persistSession,
-    resolveEnvCandidates,
-    setClient,
-    verifyBuiltClient,
-  ]);
-
-  const signWithEthereumProvider = useCallback(async (message: string, accountAddress?: Address | null) => {
-    if (typeof window === "undefined") {
-      return null;
-    }
-
-    const ethereum = (window as Window & { ethereum?: { request?: (args: unknown) => Promise<unknown> } }).ethereum;
-
-    if (!ethereum?.request || !accountAddress) {
-      return null;
-    }
-
-    try {
-      const signature = await ethereum.request({
-        method: "personal_sign",
-        params: [stringToHex(message), accountAddress],
-      });
-
-      return typeof signature === "string" ? signature : null;
-    } catch {
-      return null;
-    }
-  }, []);
+    },
+    []
+  );
 
   const requestWalletSignature = useCallback(
     async (
       message: string,
       source: "preflight" | "xmtp_signer" | "xmtp_signer_eoa_fallback",
-      overrideSigningAddress?: Address | null
+      overrideAddress?: Address | null
     ) => {
-      const activeSigningAddress =
-        overrideSigningAddress ??
+      const signingAddress =
+        overrideAddress ??
         (walletClient?.account?.address as Address | undefined) ??
         (walletAddress as Address | undefined) ??
         null;
 
-      const messageHash = keccak256(stringToHex(message));
-      logDebug("signature:request:start", {
+      logDebug("signature:start", {
         source,
-        messageHash,
-        activeSigningAddress,
+        signingAddress,
       });
 
       const walletClientSignature = await withTimeout(
@@ -1030,7 +563,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
           try {
             return await walletClient.signMessage({
-              account: activeSigningAddress ?? walletClient.account,
+              account: signingAddress ?? walletClient.account,
               message,
             });
           } catch {
@@ -1044,20 +577,27 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       const wagmiSignature =
         typeof walletClientSignature === "string"
           ? walletClientSignature
-          : await withTimeout(signMessageAsync({ message }).catch(() => null), 35000, "Wallet signature timed out.");
+          : await withTimeout(
+              signMessageAsync({ message }).catch(() => null),
+              35000,
+              "Wallet signature timed out."
+            );
 
       const providerSignature =
         typeof wagmiSignature === "string"
           ? wagmiSignature
-          : await withTimeout(signWithEthereumProvider(message, activeSigningAddress), 35000, "Wallet signature timed out.");
+          : await withTimeout(
+              signWithEthereumProvider(message, signingAddress),
+              35000,
+              "Wallet signature timed out."
+            );
 
-      if (!providerSignature) {
+      if (!providerSignature || !providerSignature.startsWith("0x")) {
         throw new Error("Wallet signature request failed or was cancelled.");
       }
 
-      logDebug("signature:request:success", {
+      logDebug("signature:success", {
         source,
-        messageHash,
       });
 
       return hexToBytes(providerSignature as `0x${string}`);
@@ -1077,8 +617,9 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         process.env.NEXT_PUBLIC_LENS_CHAIN_ID && Number.isFinite(Number(process.env.NEXT_PUBLIC_LENS_CHAIN_ID))
           ? BigInt(process.env.NEXT_PUBLIC_LENS_CHAIN_ID)
           : null;
-      const inferredChainId = env === "production" ? LENS_MAINNET_CHAIN_ID : LENS_TESTNET_CHAIN_ID;
-      const chainId = walletChainId ?? configuredLensChainId ?? inferredChainId;
+
+      const chainId =
+        walletChainId ?? configuredLensChainId ?? (env === "production" ? LENS_MAINNET_CHAIN_ID : LENS_TESTNET_CHAIN_ID);
 
       const base = {
         getIdentifier: () =>
@@ -1088,7 +629,6 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           }) as Identifier,
         signMessage: async (message: string): Promise<Uint8Array> => {
           setConnectStage("prompt_signature");
-
           return requestWalletSignature(
             message,
             mode === "eoa_fallback" ? "xmtp_signer_eoa_fallback" : "xmtp_signer",
@@ -1100,7 +640,6 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       };
 
       const shouldUseScw = mode === "primary" && isScwIdentity && identifier === xmtpAddress;
-
       if (shouldUseScw) {
         return {
           type: "SCW",
@@ -1117,15 +656,15 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     [isScwIdentity, requestWalletSignature, walletAddress, walletClient?.account?.address, walletClient?.chain?.id, xmtpAddress]
   );
 
-  const revokeOldInstallations = useCallback(
-    async (signer: EOASigner | SCWSigner, env: XMTPEnv, sourceError: unknown) => {
+  const recoverInstallationLimit = useCallback(
+    async (signer: EOASigner | SCWSigner, env: XMTPEnv, error: unknown) => {
       const signerIdentifier = await signer.getIdentifier();
       const inboxId =
         (await withTimeout(
           getInboxIdForIdentifier(signerIdentifier, env),
           15000,
           "Resolving XMTP inbox timed out."
-        ).catch(() => undefined)) ?? extractInboxIdFromError(sourceError);
+        ).catch(() => undefined)) ?? extractInboxIdFromError(error);
 
       if (!inboxId) {
         throw new Error(
@@ -1153,12 +692,12 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       });
 
       const revokeCount = Math.max(1, installations.length - (XMTP_MAX_INSTALLATIONS - 1));
-      const installationIdsToRevoke = sortedInstallations
+      const installationIds = sortedInstallations
         .slice(0, revokeCount)
         .map(installation => installation.bytes);
 
       await withTimeout(
-        Client.revokeInstallations(signer, inboxId, installationIdsToRevoke, env),
+        Client.revokeInstallations(signer, inboxId, installationIds, env),
         90000,
         "Revoking old XMTP installations timed out."
       );
@@ -1166,23 +705,174 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     []
   );
 
-  const createAndRegisterClient = useCallback(
+  const initXMTPClient = useCallback(async () => {
+    if (client) {
+      return client;
+    }
+
+    const env = resolveEnv();
+    const attempts: RestoreAttemptDebug[] = [];
+
+    if (identifierCandidates.length === 0 || identityKeys.length === 0) {
+      persistRestoreDebug({
+        result: "not_restored",
+        envCandidates: [env],
+        identifierCandidates,
+        attempts,
+        reason: "missing_identity",
+      });
+      return undefined;
+    }
+
+    dispatch(setInitializing(true));
+    dispatch(setError(null));
+    setConnectStage("restore_session");
+
+    try {
+      const session = findPersistedSession(env);
+      if (!session) {
+        persistRestoreDebug({
+          result: "not_restored",
+          envCandidates: [env],
+          identifierCandidates,
+          attempts,
+          reason: "no_persisted_session",
+        });
+        return undefined;
+      }
+
+      logDebug("restore:start", {
+        env,
+        identifier: session.identifier,
+      });
+
+      try {
+        const builtClient = await withTimeout(
+          Client.build(
+            {
+              identifier: session.identifier,
+              identifierKind: IdentifierKind.Ethereum,
+            },
+            {
+              env,
+              dbEncryptionKey: fromBase64(session.dbEncryptionKey),
+            }
+          ),
+          12000,
+          "Restoring XMTP session timed out."
+        );
+
+        const { ready, attempt } = await verifyClientReady(builtClient, env, session.identifier, {
+          inboxId: session.inboxId,
+          installationId: session.installationId,
+        });
+
+        attempts.push(attempt);
+
+        if (!ready) {
+          builtClient.close();
+          persistRestoreDebug({
+            result: "not_restored",
+            envCandidates: [env],
+            identifierCandidates,
+            attempts,
+            reason: "session_not_ready",
+          });
+          return undefined;
+        }
+
+        const refreshedSession: PersistedSession = {
+          ...session,
+          inboxId: (builtClient as { inboxId?: string }).inboxId,
+          installationId: (builtClient as { installationId?: string }).installationId,
+          updatedAt: new Date().toISOString(),
+        };
+
+        persistSession(refreshedSession);
+        setClient(builtClient);
+        setConnectStage("connected");
+
+        persistRestoreDebug({
+          result: "restored",
+          envCandidates: [env],
+          identifierCandidates,
+          attempts,
+          restoredEnv: env,
+          restoredIdentifier: session.identifier,
+        });
+
+        return builtClient;
+      } catch (error) {
+        attempts.push({
+          env,
+          identifier: session.identifier,
+          usedDbEncryptionKey: true,
+          build: "failed",
+          inboxId: null,
+          installationId: null,
+          matchesPersistedInstallation: null,
+          registrationCheckFailed: false,
+          installationInInbox: null,
+          conversationAccess: null,
+          isRegistered: null,
+          canMessageReady: null,
+          error: stringifyError(error),
+        });
+
+        persistRestoreDebug({
+          result: "not_restored",
+          envCandidates: [env],
+          identifierCandidates,
+          attempts,
+          reason: "build_failed",
+        });
+
+        return undefined;
+      }
+    } catch (error) {
+      dispatch(setError(error as Error));
+      persistRestoreDebug({
+        result: "error",
+        envCandidates: [env],
+        identifierCandidates,
+        attempts,
+        reason: "restore_exception",
+        error: stringifyError(error),
+      });
+      return undefined;
+    } finally {
+      dispatch(setInitializing(false));
+    }
+  }, [
+    client,
+    dispatch,
+    findPersistedSession,
+    identifierCandidates,
+    identityKeys.length,
+    logDebug,
+    persistRestoreDebug,
+    persistSession,
+    resolveEnv,
+    setClient,
+    verifyClientReady,
+  ]);
+
+  const createAndRegister = useCallback(
     async (
       env: XMTPEnv,
       identifier: string,
       signer: EOASigner | SCWSigner,
-      signerType: "SCW" | "EOA"
+      signerType: "EOA" | "SCW"
     ) => {
-      const dbKeyBytes = new Uint8Array(32);
-      globalThis.crypto.getRandomValues(dbKeyBytes);
-      const dbEncryptionKey = toBase64(dbKeyBytes);
+      const dbEncryptionKeyBytes = new Uint8Array(32);
+      globalThis.crypto.getRandomValues(dbEncryptionKeyBytes);
 
       setConnectStage("create_client");
       const createdClient = await withTimeout(
         Client.create(signer, {
           env,
           disableAutoRegister: true,
-          dbEncryptionKey: dbKeyBytes,
+          dbEncryptionKey: dbEncryptionKeyBytes,
         }),
         120000,
         "Creating XMTP client timed out."
@@ -1210,16 +900,16 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         throw new Error("XMTP registration did not complete.");
       }
 
-      const hasConversationAccess = await checkConversationAccess(createdClient);
-      if (!hasConversationAccess) {
+      const { ready } = await verifyClientReady(createdClient, env, identifier);
+      if (!ready) {
         createdClient.close();
-        throw new Error("XMTP client did not pass conversation access check.");
+        throw new Error("XMTP client did not pass readiness checks.");
       }
 
       const persistedSession: PersistedSession = {
         env,
         identifier,
-        dbEncryptionKey,
+        dbEncryptionKey: toBase64(dbEncryptionKeyBytes),
         inboxId: (createdClient as { inboxId?: string }).inboxId,
         installationId: (createdClient as { installationId?: string }).installationId,
         signerType,
@@ -1232,52 +922,8 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
       return createdClient;
     },
-    [checkConversationAccess, persistSession, setClient]
+    [persistSession, setClient, verifyClientReady]
   );
-
-  const initXMTPClient = useCallback(async () => {
-    if (client) {
-      return client;
-    }
-
-    if (identifierCandidates.length === 0) {
-      persistRestoreDebug({
-        result: "not_restored",
-        envCandidates: [],
-        identifierCandidates,
-        attempts: [],
-        reason: "missing_identity",
-      });
-      return undefined;
-    }
-
-    dispatch(setInitializing(true));
-    dispatch(setError(null));
-
-    try {
-      return await buildAndRestore();
-    } catch (error) {
-      dispatch(setError(error as Error));
-      persistRestoreDebug({
-        result: "error",
-        envCandidates: resolveEnvCandidates(),
-        identifierCandidates,
-        attempts: [],
-        reason: "restore_exception",
-        error: stringifyError(error),
-      });
-      return undefined;
-    } finally {
-      dispatch(setInitializing(false));
-    }
-  }, [
-    buildAndRestore,
-    client,
-    dispatch,
-    identifierCandidates,
-    persistRestoreDebug,
-    resolveEnvCandidates,
-  ]);
 
   const createXMTPClient = useCallback(
     async (options?: XMTPConnectOptions) => {
@@ -1291,29 +937,23 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         return client;
       }
 
-      if (!walletAddress) {
-        throw new Error("Wallet is not connected. Reconnect your wallet and try again.");
-      }
-
-      if (!primaryIdentifier) {
-        throw new Error("Missing XMTP identity address.");
+      if (!walletAddress || !primaryIdentifier) {
+        throw new Error("Missing connected wallet identity.");
       }
 
       setConnectingXMTP(true);
       dispatch(setInitializing(true));
       dispatch(setError(null));
-      updateStage("idle");
 
       try {
         updateStage("restore_session");
-        const restoredClient = await buildAndRestore();
-        if (restoredClient) {
+        const restored = await initXMTPClient();
+        if (restored) {
           updateStage("connected");
-          return restoredClient;
+          return restored;
         }
 
         updateStage("build_failed_fallback_create");
-
         updateStage("prompt_signature");
         await withTimeout(
           requestWalletSignature(`Enable XMTP for w3rk (${primaryIdentifier})`, "preflight"),
@@ -1321,12 +961,12 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           "Wallet signature timed out."
         );
 
-        const env = resolveEnvCandidates()[0] ?? getEnv();
+        const env = resolveEnv();
 
-        const signerAttempts: Array<{
+        const attempts: Array<{
           identifier: string;
           mode: "primary" | "eoa_fallback";
-          signerType: "SCW" | "EOA";
+          signerType: "EOA" | "SCW";
         }> = [
           {
             identifier: primaryIdentifier,
@@ -1335,11 +975,8 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           },
         ];
 
-        const shouldTryEoaFallback =
-          isScwIdentity && Boolean(walletAddress) && walletAddress !== primaryIdentifier;
-
-        if (shouldTryEoaFallback) {
-          signerAttempts.push({
+        if (isScwIdentity && walletAddress && walletAddress !== primaryIdentifier) {
+          attempts.push({
             identifier: walletAddress,
             mode: "eoa_fallback",
             signerType: "EOA",
@@ -1348,7 +985,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
         let lastError: unknown;
 
-        for (const attempt of signerAttempts) {
+        for (const attempt of attempts) {
           const signer = buildSigner(attempt.identifier, env, attempt.mode);
 
           try {
@@ -1359,30 +996,33 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
               signerType: attempt.signerType,
             });
 
-            return await createAndRegisterClient(
+            const created = await createAndRegister(
               env,
               attempt.identifier,
               signer,
               attempt.signerType
             );
+            updateStage("connected");
+            return created;
           } catch (error) {
             lastError = error;
             logError("create:attempt_failed", error, {
               env,
               identifier: attempt.identifier,
               mode: attempt.mode,
-              signerType: attempt.signerType,
             });
 
-            if (parseInstallationLimitError(error)) {
+            if (isInstallationLimitError(error)) {
               try {
-                await revokeOldInstallations(signer, env, error);
-                return await createAndRegisterClient(
+                await recoverInstallationLimit(signer, env, error);
+                const recovered = await createAndRegister(
                   env,
                   attempt.identifier,
                   signer,
                   attempt.signerType
                 );
+                updateStage("connected");
+                return recovered;
               } catch (recoveryError) {
                 lastError = recoveryError;
                 logError("create:installation_limit_recovery_failed", recoveryError, {
@@ -1395,7 +1035,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           }
         }
 
-        if (parseInstallationLimitError(lastError)) {
+        if (isInstallationLimitError(lastError)) {
           throw new Error(
             "XMTP installation limit reached and automatic cleanup failed. Please revoke old XMTP installations and try again."
           );
@@ -1413,18 +1053,18 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       }
     },
     [
-      buildAndRestore,
       buildSigner,
       client,
-      createAndRegisterClient,
+      createAndRegister,
       dispatch,
+      initXMTPClient,
       isScwIdentity,
       logDebug,
       logError,
       primaryIdentifier,
+      recoverInstallationLimit,
       requestWalletSignature,
-      resolveEnvCandidates,
-      revokeOldInstallations,
+      resolveEnv,
       setClient,
       walletAddress,
       xmtpAddress,
@@ -1432,36 +1072,9 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
   );
 
   const wasXMTPEnabled = useCallback(() => {
-    const store = readSessionStore();
-    const hasScopedSession = scopeKeys.some(scope => Boolean(store[scope]));
-    if (hasScopedSession) {
-      return true;
-    }
-
-    if (typeof window === "undefined") {
-      return false;
-    }
-
-    try {
-      const raw = window.localStorage.getItem(XMTP_ENABLED_IDENTIFIERS_KEY);
-      if (!raw) {
-        return false;
-      }
-
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) {
-        return false;
-      }
-
-      const enabledIdentifiers = parsed
-        .filter((value): value is string => typeof value === "string")
-        .map(value => value.toLowerCase());
-
-      return identifierCandidates.some(identifier => enabledIdentifiers.includes(identifier));
-    } catch {
-      return false;
-    }
-  }, [identifierCandidates, readSessionStore, scopeKeys]);
+    const env = resolveEnv();
+    return Boolean(findPersistedSession(env));
+  }, [findPersistedSession, resolveEnv]);
 
   return {
     client,
