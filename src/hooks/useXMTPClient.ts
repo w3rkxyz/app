@@ -856,16 +856,27 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         walletChainId ??
         configuredLensChainId ??
         (fallbackEnv === "production" ? LENS_MAINNET_CHAIN_ID : LENS_TESTNET_CHAIN_ID);
-      const env: "local" | "dev" | "production" =
+      const configuredEnv =
         configuredEnvRaw === "local" ||
         configuredEnvRaw === "dev" ||
         configuredEnvRaw === "production"
           ? configuredEnvRaw
-          : persistedEnv
-            ? persistedEnv
-          : lensChainId === LENS_MAINNET_CHAIN_ID
-            ? "production"
-            : "dev";
+          : null;
+      const inferredEnv: "dev" | "production" =
+        lensChainId === LENS_MAINNET_CHAIN_ID ? "production" : "dev";
+      const envCandidates = Array.from(
+        new Set(
+          [
+            configuredEnv,
+            persistedEnv,
+            inferredEnv,
+            fallbackEnv,
+            "production",
+            "dev",
+            "local",
+          ].filter((value): value is "local" | "dev" | "production" => Boolean(value))
+        )
+      );
 
       const identifierCandidates = Array.from(
         new Set([
@@ -880,34 +891,36 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         identifierKind: IdentifierKind.Ethereum,
       }));
 
-      for (const identifier of identifiers) {
-        try {
-          logDebug("init:build:start", {
-            env,
-            identifier: identifier.identifier,
-          });
+      for (const env of envCandidates) {
+        for (const identifier of identifiers) {
+          try {
+            logDebug("init:build:start", {
+              env,
+              identifier: identifier.identifier,
+            });
 
-          const builtClient = await Client.build(identifier, { env });
-          const isRegistered = await builtClient.isRegistered();
+            const builtClient = await Client.build(identifier, { env });
+            const isRegistered = await builtClient.isRegistered();
 
-          logDebug("init:build:result", {
-            env,
-            identifier: identifier.identifier,
-            isRegistered,
-          });
+            logDebug("init:build:result", {
+              env,
+              identifier: identifier.identifier,
+              isRegistered,
+            });
 
-          if (isRegistered) {
-            setClient(builtClient);
-            persistEnabledState(env, [identifier.identifier]);
-            return builtClient;
+            if (isRegistered) {
+              setClient(builtClient);
+              persistEnabledState(env, [identifier.identifier]);
+              return builtClient;
+            }
+
+            builtClient.close();
+          } catch (error) {
+            logError("init:build:failed", error, {
+              env,
+              identifier: identifier.identifier,
+            });
           }
-
-          builtClient.close();
-        } catch (error) {
-          logError("init:build:failed", error, {
-            env,
-            identifier: identifier.identifier,
-          });
         }
       }
 

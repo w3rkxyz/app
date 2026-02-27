@@ -29,7 +29,7 @@ const ConversationsNav = () => {
   const { client } = useXMTP();
   const { address: walletAddress } = useAccount();
   const lensProfile = useSelector((state: RootState) => state.app.user);
-  const { createXMTPClient, initXMTPClient, connectingXMTP, connectStage, wasXMTPEnabled } =
+  const { createXMTPClient, initXMTPClient, connectingXMTP, connectStage } =
     useXMTPClient({
       walletAddress,
       lensAccountAddress: lensProfile?.address,
@@ -38,8 +38,7 @@ const ConversationsNav = () => {
     });
 
   const stopStreamRef = useRef<(() => void) | null>(null);
-  const attemptedAutoReconnectRef = useRef(false);
-  const autoReconnectKeyRef = useRef("");
+  const restoreInFlightRef = useRef(false);
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -84,33 +83,27 @@ const ConversationsNav = () => {
         return;
       }
 
-      const restoreKey = `${lensProfile?.address?.toLowerCase() ?? ""}|${walletAddress?.toLowerCase() ?? ""}`;
-      if (autoReconnectKeyRef.current !== restoreKey) {
-        autoReconnectKeyRef.current = restoreKey;
-        attemptedAutoReconnectRef.current = false;
+      if (restoreInFlightRef.current) {
+        return;
       }
 
       try {
-        const restoredClient = await initXMTPClient();
-        if (restoredClient) {
-          attemptedAutoReconnectRef.current = false;
-          return;
-        }
+        restoreInFlightRef.current = true;
 
-        if (attemptedAutoReconnectRef.current) {
-          return;
+        // Silent restore only: never trigger wallet signatures automatically on page load.
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          const restoredClient = await initXMTPClient();
+          if (restoredClient || cancelled) {
+            break;
+          }
+          await new Promise(resolve => setTimeout(resolve, 300 * (attempt + 1)));
         }
-
-        if (!wasXMTPEnabled()) {
-          return;
-        }
-
-        attemptedAutoReconnectRef.current = true;
-        await createXMTPClient();
       } catch (error) {
         if (!cancelled) {
           console.warn("XMTP auto-restore failed:", error);
         }
+      } finally {
+        restoreInFlightRef.current = false;
       }
     };
 
@@ -126,7 +119,6 @@ const ConversationsNav = () => {
     initXMTPClient,
     lensProfile?.address,
     walletAddress,
-    wasXMTPEnabled,
   ]);
 
   const handleEnable = async () => {
