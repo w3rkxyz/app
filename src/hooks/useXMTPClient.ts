@@ -372,6 +372,18 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     [buildDbKeyStorageKey, bytesToBase64]
   );
 
+  const removeDbEncryptionKey = useCallback(
+    (env: "local" | "dev" | "production", identifier: string) => {
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      const storageKey = buildDbKeyStorageKey(env, identifier);
+      window.localStorage.removeItem(storageKey);
+    },
+    [buildDbKeyStorageKey]
+  );
+
   const storeDbEncryptionKeyForRelatedIdentifiers = useCallback(
     (env: "local" | "dev" | "production", key: Uint8Array, identifiers: string[]) => {
       const normalized = Array.from(
@@ -1369,6 +1381,16 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         identifier,
         identifierKind: IdentifierKind.Ethereum,
       }));
+      const isInstallationLimitError = (error: unknown) => {
+        if (!(error instanceof Error)) {
+          return false;
+        }
+        const message = error.message?.toLowerCase() ?? "";
+        return (
+          message.includes("cannot register a new installation") &&
+          message.includes("installations")
+        );
+      };
 
       if (identifierCandidates.length === 0) {
         persistRestoreDebug({
@@ -1498,7 +1520,21 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                 if (builtClient) {
                   builtClient.close();
                 }
-                throw buildError;
+                if (attemptDebug.usedDbEncryptionKey && isInstallationLimitError(buildError)) {
+                  // This indicates a stale local DB key for this identifier/env.
+                  // Remove it so subsequent restore attempts can try without the stale key.
+                  removeDbEncryptionKey(env, identifier.identifier);
+                  logDebug("init:build:stale_db_key_removed", {
+                    env,
+                    identifier: identifier.identifier,
+                  });
+                }
+                logError("init:build:option_failed", buildError, {
+                  env,
+                  identifier: identifier.identifier,
+                  usedDbEncryptionKey: attemptDebug.usedDbEncryptionKey,
+                });
+                continue;
               }
             }
           } catch (error) {
@@ -1549,6 +1585,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     loadDbEncryptionKey,
     logDebug,
     logError,
+    removeDbEncryptionKey,
     stringifyError,
     walletClientAccountAddress,
     persistEnabledState,
