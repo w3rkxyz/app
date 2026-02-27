@@ -25,7 +25,7 @@ const ProfilePostCard = ({
 }: ProfilePostCardProps) => {
   return (
     <div className="group group-hover:bg-[#fafafa]">
-      <div className="bg-white group-hover:bg-[#fafafa] p-[8px] sm:p-[8px] sm:pb-[16px] md:p-[24px] lg:p-[24px] xl:p-[24px] grid sm:grid-cols-[92px_1fr] grid-cols-[64px_1fr] gap-x-[12px] md:gap-x-[20px] gap-y-[8px] hover:shadow-sm transition-shadow">
+      <div className="bg-white group-hover:bg-[#fafafa] p-[24px] sm:p-[8px] sm:pb-[16px] md:p-[24px] pb-[16px] md:pb-[24px] grid sm:grid-cols-[92px_1fr] grid-cols-[64px_1fr] gap-x-[12px] md:gap-x-[20px] gap-y-[8px] hover:shadow-sm transition-shadow">
         <div className="row-span-2 sm:row-span-3 sm:aspect-square">
           <Image
             src={profileImage}
@@ -38,13 +38,13 @@ const ProfilePostCard = ({
             }}
           />
         </div>
-        <div className="flex items-start justify-between sm:gap-[8px] gap-[12px] sm:flex-col flex-row md:gap-[16px] row-span-2 min-w-0">
+        <div className="flex items-start justify-between sm:gap-[8px] gap-[12px] sm:flex-col flex-row md:gap-[16px] row-span-2">
           <div className="flex flex-col justify-evenly h-full min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-[8px]">
               <h4 className="text-[14px] md:text-[16px] font-medium text-[#212121] leading-[20px] md:leading-[24px]">
                 {displayName}
               </h4>
-              <span className="inline-flex items-center justify-center h-[24px] py-[4px] px-[10px] bg-[#F2F2F2] text-[#323232] rounded-full text-[12px] font-medium">
+              <span className="inline-flex items-center justify-center h-[22px] py-[3px] px-[10px] bg-[#F2F2F2] text-[#323232] rounded-full text-[11px] font-medium">
                 {type === "job" ? "Job" : "Service"}
               </span>
             </div>
@@ -66,9 +66,9 @@ const ProfilePostCard = ({
         </div>
 
         <div className="col-span-2 mt-[8px]">
-          <div className="flex flex-wrap gap-[4px]">
+          <div className="flex flex-wrap gap-[12px]">
             {tags
-              .filter((tag) => tag.trim() !== "")
+              .filter((tag) => tag !== "[tag]" && tag.trim() !== "")
               .slice(0, 3)
               .map((tag, index) => (
                 <span
@@ -82,7 +82,7 @@ const ProfilePostCard = ({
         </div>
       </div>
       {!isLast && (
-        <hr className="border-0 h-[1px] bg-[#C3C7CE]" />
+        <hr className="border-0 h-[1px] bg-[#E8E8E8] my-0" />
       )}
     </div>
   );
