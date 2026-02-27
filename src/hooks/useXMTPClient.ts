@@ -177,6 +177,27 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     }
   };
 
+  const verifyBuiltClientUsable = useCallback(
+    async (
+      builtClient: Client<unknown>,
+      context: Record<string, unknown>
+    ): Promise<boolean> => {
+      try {
+        await withTimeout(
+          builtClient.conversations.list({ limit: 1n }),
+          5000,
+          "Verifying XMTP client usability timed out."
+        );
+        logDebug("restore:verify:usable", context);
+        return true;
+      } catch (error) {
+        logError("restore:verify:failed", error, context);
+        return false;
+      }
+    },
+    [logDebug, logError]
+  );
+
   const bytesToBase64 = useCallback((bytes: Uint8Array) => {
     let binary = "";
     for (const byte of bytes) {
@@ -636,14 +657,33 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
         updateStage("check_registration");
         logDebug("build:primary:isRegistered:start");
-        const isRegistered = await withTimeout(
-          builtClient.isRegistered(),
-          10000,
-          "Checking XMTP registration timed out."
-        );
+        let isRegistered = false;
+        let registrationCheckFailed = false;
+        try {
+          isRegistered = await withTimeout(
+            builtClient.isRegistered(),
+            10000,
+            "Checking XMTP registration timed out."
+          );
+        } catch (registrationCheckError) {
+          registrationCheckFailed = true;
+          logError("build:primary:isRegistered:failed", registrationCheckError, {
+            env,
+            identifier: primaryIdentifier.identifier,
+          });
+        }
         logDebug("build:primary:isRegistered:result", { isRegistered });
 
-        if (isRegistered) {
+        const isUsable =
+          isRegistered ||
+          (await verifyBuiltClientUsable(builtClient, {
+            phase: "create:build:primary",
+            env,
+            identifier: primaryIdentifier.identifier,
+            registrationCheckFailed,
+          }));
+
+        if (isUsable) {
           logDebug("build:primary:registered:reuse_client");
           if (primaryDbEncryptionKey) {
             storeDbEncryptionKeyForRelatedIdentifiers(env, primaryDbEncryptionKey, [
@@ -686,14 +726,33 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
           updateStage("check_registration");
           logDebug("build:fallback:isRegistered:start");
-          const isRegistered = await withTimeout(
-            builtFallbackClient.isRegistered(),
-            10000,
-            "Checking XMTP registration timed out."
-          );
+          let isRegistered = false;
+          let registrationCheckFailed = false;
+          try {
+            isRegistered = await withTimeout(
+              builtFallbackClient.isRegistered(),
+              10000,
+              "Checking XMTP registration timed out."
+            );
+          } catch (registrationCheckError) {
+            registrationCheckFailed = true;
+            logError("build:fallback:isRegistered:failed", registrationCheckError, {
+              env,
+              identifier: fallbackIdentifier.identifier,
+            });
+          }
           logDebug("build:fallback:isRegistered:result", { isRegistered });
 
-          if (isRegistered) {
+          const isUsable =
+            isRegistered ||
+            (await verifyBuiltClientUsable(builtFallbackClient, {
+              phase: "create:build:fallback",
+              env,
+              identifier: fallbackIdentifier.identifier,
+              registrationCheckFailed,
+            }));
+
+          if (isUsable) {
             logDebug("build:fallback:registered:reuse_client");
             if (fallbackDbEncryptionKey) {
               storeDbEncryptionKeyForRelatedIdentifiers(env, fallbackDbEncryptionKey, [
@@ -1093,6 +1152,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     getOrCreateDbEncryptionKey,
     storeDbEncryptionKeyForRelatedIdentifiers,
     persistEnabledState,
+    verifyBuiltClientUsable,
     expectedSigningAddress,
     actualWalletClientAddress,
     walletClientAccountAddress,
@@ -1217,14 +1277,10 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                 );
               } catch (registrationCheckError) {
                 registrationCheckFailed = true;
-                logDebug("init:build:registration_check_failed", {
+                logError("init:build:registration_check_failed", registrationCheckError, {
                   env,
                   identifier: identifier.identifier,
                   usedDbEncryptionKey: Boolean(options.dbEncryptionKey),
-                  reason:
-                    registrationCheckError instanceof Error
-                      ? registrationCheckError.message
-                      : "unknown",
                 });
               }
 
@@ -1236,7 +1292,17 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                 registrationCheckFailed,
               });
 
-              if (isRegistered) {
+              const isUsable =
+                isRegistered ||
+                (await verifyBuiltClientUsable(builtClient, {
+                  phase: "init:build",
+                  env,
+                  identifier: identifier.identifier,
+                  usedDbEncryptionKey: Boolean(options.dbEncryptionKey),
+                  registrationCheckFailed,
+                }));
+
+              if (isUsable) {
                 setClient(builtClient);
                 persistEnabledState(env, [identifier.identifier]);
                 return builtClient;
@@ -1273,6 +1339,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     walletClientAccountAddress,
     persistEnabledState,
     setClient,
+    verifyBuiltClientUsable,
     walletAddress,
     walletClient,
     xmtpAddress,
