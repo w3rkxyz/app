@@ -1753,8 +1753,24 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
             addKeyCandidate(dbEncryptionKey);
             const buildOptions =
               keyCandidates.length > 0
-                ? [...keyCandidates.map(key => ({ env, dbEncryptionKey: key })), { env }]
-                : [{ env }];
+                ? [
+                    ...keyCandidates.map((key, index) => ({
+                      env,
+                      dbEncryptionKey: key,
+                      source:
+                        index === 0 &&
+                        Boolean(
+                          lastSuccessfulConnection &&
+                            lastSuccessfulConnection.env === env &&
+                            lastSuccessfulConnection.identifier === identifier.identifier &&
+                            lastSuccessfulConnection.dbEncryptionKey
+                        )
+                          ? ("last_successful" as const)
+                          : ("persisted" as const),
+                    })),
+                    { env, source: "none" as const },
+                  ]
+                : [{ env, source: "none" as const }];
 
             for (const options of buildOptions) {
               const attemptDebug: XMTPRestoreAttemptDebug = {
@@ -1790,6 +1806,14 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                   (builtClient as { installationId?: string }).installationId ?? null;
                 attemptDebug.inboxId = builtInboxId;
                 attemptDebug.installationId = builtInstallationId;
+                const isLastSuccessfulExactBuild =
+                  options.source === "last_successful" &&
+                  Boolean(lastSuccessfulConnection) &&
+                  env === lastSuccessfulConnection?.env &&
+                  identifier.identifier === lastSuccessfulConnection?.identifier &&
+                  Boolean(options.dbEncryptionKey) &&
+                  (!lastSuccessfulConnection?.inboxId ||
+                    builtInboxId === lastSuccessfulConnection.inboxId);
                 const matchesPersistedInstallation = expectedInstallationHints.some(hint => {
                   const installationMatches =
                     Boolean(hint.installationId) &&
@@ -1880,6 +1904,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                 restoreAttempts.push(attemptDebug);
 
                 const isUsable =
+                  isLastSuccessfulExactBuild ||
                   isRegistered ||
                   installationInInbox ||
                   canMessageReady ||
