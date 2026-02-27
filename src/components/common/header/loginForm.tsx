@@ -71,6 +71,11 @@ const isSignatureRejected = (error: unknown) => {
   );
 };
 
+const isFamilyModalVisibilityError = (error: unknown) => {
+  const message = getErrMsg(error, "").toLowerCase();
+  return message.includes("family integrated modal is not visible");
+};
+
 export default function LoginForm({ owner }: { owner: string }) {
   const dispatch = useDispatch();
   const router = useRouter();
@@ -88,6 +93,8 @@ export default function LoginForm({ owner }: { owner: string }) {
   const [continuing, setContinuing] = useState(false);
   const [mintSuccessMessage, setMintSuccessMessage] = useState<string | null>(null);
   const [autoSelecting, setAutoSelecting] = useState(false);
+  const [pendingMintedAccount, setPendingMintedAccount] = useState<Account | null>(null);
+  const [activatingMintedAccount, setActivatingMintedAccount] = useState(false);
 
   const managedBy = useMemo(
     () => walletClient?.account.address ?? evmAddress(owner),
@@ -116,6 +123,11 @@ export default function LoginForm({ owner }: { owner: string }) {
   const profileCount = availableAccounts?.items.length ?? 0;
   const showPrepare = walletReady && !accountsLoading && !availableAccounts && !accountsError;
   const singleAccount = profileCount === 1 ? availableAccounts?.items[0]?.account : null;
+  const isFamilyConnectorActive = useMemo(() => {
+    const connectorId = wallet.connector?.id?.toLowerCase() ?? "";
+    const connectorName = wallet.connector?.name?.toLowerCase() ?? "";
+    return connectorId.includes("family") || connectorName.includes("family");
+  }, [wallet.connector?.id, wallet.connector?.name]);
 
   const waitForMintedAccount = useCallback(async (localName: string) => {
     const publicClient = getPublicClient();
@@ -228,7 +240,9 @@ export default function LoginForm({ owner }: { owner: string }) {
 
       setSessionClient(authenticated.value);
     } catch (error: unknown) {
-      const msg = getErrMsg(error, "Lens login failed");
+      const msg = isFamilyModalVisibilityError(error)
+        ? "Family approval window was not visible. Please retry and confirm in Family."
+        : getErrMsg(error, "Lens login failed");
       setAuthError(msg);
     } finally {
       setContinuing(false);
@@ -239,6 +253,7 @@ export default function LoginForm({ owner }: { owner: string }) {
     const input = e.target.value;
     setHandle(input);
     setMintSuccessMessage(null);
+    setPendingMintedAccount(null);
 
     if (/^\d/.test(input)) {
       setErrorMessage("Sorry, handles cannot start with a number.");
@@ -293,12 +308,12 @@ export default function LoginForm({ owner }: { owner: string }) {
       if (authenticated.isErr()) {
         if (isSignatureRejected(authenticated.error)) {
           setAuthError("Signature request was cancelled. Please sign to continue.");
-          return;
+          return false;
         }
 
         const msg = getErrMsg(authenticated.error, "Lens authentication failed");
         setAuthError(msg);
-        return;
+        return false;
       }
 
       const profile = getLensAccountData(account);
@@ -316,11 +331,37 @@ export default function LoginForm({ owner }: { owner: string }) {
 
       return true;
     } catch (error: unknown) {
-      const msg = getErrMsg(error, "Lens authentication failed");
+      const msg = isFamilyModalVisibilityError(error)
+        ? "Family approval window was not visible. Please retry and confirm in Family."
+        : getErrMsg(error, "Lens authentication failed");
       setAuthError(msg);
       return false;
     }
   }, [authenticate, dispatch, ensureLensChain, router, wallet.address, walletClient]);
+
+  const activateMintedAccount = useCallback(async () => {
+    if (!pendingMintedAccount) {
+      return;
+    }
+
+    setActivatingMintedAccount(true);
+    try {
+      const switched = await handleSelectAccount(pendingMintedAccount, {
+        redirectPath: "/onboarding",
+        toastMessage: "Profile created. Continue onboarding.",
+      });
+
+      if (!switched) {
+        return;
+      }
+
+      setPendingMintedAccount(null);
+      setSessionClient(null);
+      setHandle("");
+    } finally {
+      setActivatingMintedAccount(false);
+    }
+  }, [handleSelectAccount, pendingMintedAccount]);
 
   const handleSubmit = async () => {
     if (sessionClient === null || handle.trim() === "" || !walletClient) {
@@ -332,6 +373,7 @@ export default function LoginForm({ owner }: { owner: string }) {
     setShowError(false);
     setAuthError(null);
     setMintSuccessMessage(null);
+    setPendingMintedAccount(null);
     setCreatingProfile(true);
 
     try {
@@ -377,9 +419,13 @@ export default function LoginForm({ owner }: { owner: string }) {
         metadataUri: uri(metadataURI),
       };
 
-      await createAccountWithUsername(sessionClient, accountParams).andThen(
+      const mintResult = await createAccountWithUsername(sessionClient, accountParams).andThen(
         handleOperationWith(walletClient)
       );
+
+      if (mintResult.isErr()) {
+        throw mintResult.error;
+      }
 
       setMintSuccessMessage("Profile minted successfully. Activating your account...");
 
@@ -391,6 +437,12 @@ export default function LoginForm({ owner }: { owner: string }) {
         );
         setShowError(true);
         setMintSuccessMessage(null);
+        return;
+      }
+
+      if (isFamilyConnectorActive) {
+        setPendingMintedAccount(mintedAccount);
+        setMintSuccessMessage("Profile minted. Click Continue to activate and start onboarding.");
         return;
       }
 
@@ -412,7 +464,13 @@ export default function LoginForm({ owner }: { owner: string }) {
       setSessionClient(null);
       setHandle("");
     } catch (error: unknown) {
-      setErrorMessage(getErrMsg(error, "Failed to create profile. Please try again."));
+      if (isFamilyModalVisibilityError(error)) {
+        setErrorMessage(
+          "Family approval window was not visible. Please retry and confirm the mint transaction in the Family modal."
+        );
+      } else {
+        setErrorMessage(getErrMsg(error, "Failed to create profile. Please try again."));
+      }
       setShowError(true);
       setMintSuccessMessage(null);
     } finally {
@@ -433,6 +491,8 @@ export default function LoginForm({ owner }: { owner: string }) {
       setShowError(false);
       setAuthError(null);
       setMintSuccessMessage(null);
+      setPendingMintedAccount(null);
+      setActivatingMintedAccount(false);
       return;
     }
 
@@ -443,6 +503,8 @@ export default function LoginForm({ owner }: { owner: string }) {
       setShowError(false);
       setAuthError(null);
       setMintSuccessMessage(null);
+      setPendingMintedAccount(null);
+      setActivatingMintedAccount(false);
       localStorage.removeItem("activeHandle");
     }
 
@@ -456,6 +518,7 @@ export default function LoginForm({ owner }: { owner: string }) {
       authenticateLoading ||
       continuing ||
       creatingProfile ||
+      isFamilyConnectorActive ||
       !walletReady ||
       !isWalletContextReady
     ) {
@@ -478,6 +541,7 @@ export default function LoginForm({ owner }: { owner: string }) {
     continuing,
     creatingProfile,
     handleSelectAccount,
+    isFamilyConnectorActive,
     isWalletContextReady,
     singleAccount,
     walletReady,
@@ -600,6 +664,16 @@ export default function LoginForm({ owner }: { owner: string }) {
                   {mintSuccessMessage}
                 </span>
               )}
+              {pendingMintedAccount && (
+                <button
+                  type="button"
+                  className="h-[44px] w-full rounded-[12px] bg-[#0F172A] px-[14px] text-[14px] font-semibold text-white transition hover:bg-[#1E293B] disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={activateMintedAccount}
+                  disabled={activatingMintedAccount || authenticateLoading || continuing}
+                >
+                  {activatingMintedAccount ? "Waiting for signature..." : "Continue to onboarding"}
+                </button>
+              )}
               {showError && (
                 <span className="rounded-[12px] border border-[#FECACA] bg-[#FEF2F2] px-[12px] py-[10px] text-[12px] leading-[1.4] text-[#B91C1C]">
                   {errorMessage}
@@ -641,10 +715,28 @@ export default function LoginForm({ owner }: { owner: string }) {
             </>
           )}
 
-          {singleAccount && !accountsLoading && !autoSelecting && (
+          {singleAccount && !accountsLoading && !autoSelecting && !isFamilyConnectorActive && (
             <span className="rounded-[12px] border border-[#DBEAFE] bg-[#EFF6FF] px-[12px] py-[10px] text-[12px] leading-[1.4] text-[#1D4ED8]">
               Profile detected. Completing authentication...
             </span>
+          )}
+
+          {singleAccount && !accountsLoading && !autoSelecting && isFamilyConnectorActive && (
+            <>
+              <span className="rounded-[12px] border border-[#DBEAFE] bg-[#EFF6FF] px-[12px] py-[10px] text-[12px] leading-[1.4] text-[#1D4ED8]">
+                Profile detected. Continue to sign in with Family.
+              </span>
+              <button
+                type="button"
+                className="h-[44px] w-full rounded-[12px] bg-[#0F172A] px-[14px] text-[14px] font-semibold text-white transition hover:bg-[#1E293B] disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={() => {
+                  void handleSelectAccount(singleAccount);
+                }}
+                disabled={authenticateLoading || continuing || creatingProfile || activatingMintedAccount}
+              >
+                Continue as @{singleAccount.username?.localName || singleAccount.address.slice(0, 8)}
+              </button>
+            </>
           )}
 
           {authError && (
