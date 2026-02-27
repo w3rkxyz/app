@@ -306,26 +306,6 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       }
     ): Promise<boolean> => {
       try {
-        const localConversations = await withTimeout(
-          builtClient.conversations.list(),
-          6000,
-          "Listing XMTP conversations timed out."
-        );
-        const hasConversationAccess = Array.isArray(localConversations);
-        logDebug("restore:verify:conversation_access", {
-          ...context,
-          hasConversationAccess,
-          conversationCount: hasConversationAccess ? localConversations.length : null,
-        });
-        if (hasConversationAccess) {
-          return true;
-        }
-      } catch (error) {
-        logError("restore:verify:conversation_access_failed", error, context);
-        options?.onError?.(error);
-      }
-
-      try {
         const normalizedIdentifier = identifier.toLowerCase();
         const canMessageMap = await withTimeout(
           builtClient.canMessage([
@@ -1843,6 +1823,17 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                   (builtClient as { installationId?: string }).installationId ?? null;
                 attemptDebug.inboxId = builtInboxId;
                 attemptDebug.installationId = builtInstallationId;
+                const matchesLastSuccessfulInstallation = Boolean(
+                  options.source === "last_successful" &&
+                    lastSuccessfulConnection &&
+                    env === lastSuccessfulConnection.env &&
+                    identifier.identifier === lastSuccessfulConnection.identifier &&
+                    lastSuccessfulConnection.installationId &&
+                    builtInstallationId &&
+                    builtInstallationId === lastSuccessfulConnection.installationId &&
+                    (!lastSuccessfulConnection.inboxId ||
+                      builtInboxId === lastSuccessfulConnection.inboxId)
+                );
                 const isLastSuccessfulExactBuild =
                   options.source === "last_successful" &&
                   Boolean(lastSuccessfulConnection) &&
@@ -1851,6 +1842,12 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                   Boolean(options.dbEncryptionKey) &&
                   (!lastSuccessfulConnection?.inboxId ||
                     builtInboxId === lastSuccessfulConnection.inboxId);
+                if (isLastSuccessfulExactBuild && !matchesLastSuccessfulInstallation) {
+                  appendAttemptError(
+                    "lastSuccessfulMismatch",
+                    `Expected installation ${lastSuccessfulConnection?.installationId ?? "unknown"} but got ${builtInstallationId ?? "unknown"}`
+                  );
+                }
                 const matchesPersistedInstallation = expectedInstallationHints.some(hint => {
                   const installationMatches =
                     Boolean(hint.installationId) &&
@@ -1941,11 +1938,10 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                 restoreAttempts.push(attemptDebug);
 
                 const isUsable =
-                  isLastSuccessfulExactBuild ||
+                  matchesLastSuccessfulInstallation ||
                   isRegistered ||
                   installationInInbox ||
-                  canMessageReady ||
-                  matchesPersistedInstallation;
+                  canMessageReady;
                 if (isUsable) {
                   setClient(builtClient);
                   persistEnabledState(env, [identifier.identifier], {
