@@ -66,6 +66,7 @@ type XMTPRestoreAttemptDebug = {
   usedDbEncryptionKey: boolean;
   build: "ok" | "failed";
   registrationCheckFailed: boolean;
+  installationInInbox: boolean | null;
   isRegistered: boolean | null;
   canMessageReady: boolean | null;
   error?: string;
@@ -299,6 +300,60 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         return isReady;
       } catch (error) {
         logError("restore:verify:failed", error, context);
+        options?.onError?.(error);
+        return false;
+      }
+    },
+    [logDebug, logError]
+  );
+
+  const verifyBuiltClientInstallation = useCallback(
+    async (
+      builtClient: Client<unknown>,
+      env: "local" | "dev" | "production",
+      context: Record<string, unknown>,
+      options?: {
+        onError?: (error: unknown) => void;
+      }
+    ): Promise<boolean> => {
+      const inboxId = (builtClient as { inboxId?: string }).inboxId;
+      const installationIdBytes = (builtClient as { installationIdBytes?: Uint8Array }).installationIdBytes;
+      if (!inboxId || !installationIdBytes || installationIdBytes.length === 0) {
+        return false;
+      }
+
+      try {
+        const [inboxState] = await withTimeout(
+          Client.fetchInboxStates([inboxId], env),
+          10000,
+          "Checking XMTP inbox state timed out."
+        );
+        const installations = inboxState?.installations ?? [];
+        const hasInstallation = installations.some(installation => {
+          const bytes = installation.bytes;
+          if (bytes.length !== installationIdBytes.length) {
+            return false;
+          }
+          for (let i = 0; i < bytes.length; i += 1) {
+            if (bytes[i] !== installationIdBytes[i]) {
+              return false;
+            }
+          }
+          return true;
+        });
+
+        logDebug("restore:verify:installation_membership", {
+          ...context,
+          inboxId,
+          installationCount: installations.length,
+          hasInstallation,
+        });
+        return hasInstallation;
+      } catch (error) {
+        logError("restore:verify:installation_membership_failed", error, {
+          ...context,
+          inboxId,
+        });
         options?.onError?.(error);
         return false;
       }
@@ -793,9 +848,18 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           });
         }
         logDebug("build:primary:isRegistered:result", { isRegistered });
+        const hasInstallation = isRegistered
+          ? true
+          : await verifyBuiltClientInstallation(builtClient, env, {
+              phase: "create:build:primary",
+              env,
+              identifier: primaryIdentifier.identifier,
+              registrationCheckFailed,
+            });
 
         const isUsable =
           isRegistered ||
+          hasInstallation ||
           (await verifyBuiltClientReady(builtClient, primaryIdentifier.identifier, {
             phase: "create:build:primary",
             env,
@@ -862,9 +926,18 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
             });
           }
           logDebug("build:fallback:isRegistered:result", { isRegistered });
+          const hasInstallation = isRegistered
+            ? true
+            : await verifyBuiltClientInstallation(builtFallbackClient, env, {
+                phase: "create:build:fallback",
+                env,
+                identifier: fallbackIdentifier.identifier,
+                registrationCheckFailed,
+              });
 
           const isUsable =
             isRegistered ||
+            hasInstallation ||
             (await verifyBuiltClientReady(
               builtFallbackClient,
               fallbackIdentifier.identifier,
@@ -1276,6 +1349,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     getOrCreateDbEncryptionKey,
     storeDbEncryptionKeyForRelatedIdentifiers,
     persistEnabledState,
+    verifyBuiltClientInstallation,
     verifyBuiltClientReady,
     expectedSigningAddress,
     actualWalletClientAddress,
@@ -1433,6 +1507,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                 usedDbEncryptionKey: Boolean(options.dbEncryptionKey),
                 build: "failed",
                 registrationCheckFailed: false,
+                installationInInbox: null,
                 isRegistered: null,
                 canMessageReady: null,
               };
@@ -1477,8 +1552,26 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                   usedDbEncryptionKey: Boolean(options.dbEncryptionKey),
                   registrationCheckFailed: attemptDebug.registrationCheckFailed,
                 });
+                const installationInInbox = isRegistered
+                  ? true
+                  : await verifyBuiltClientInstallation(
+                      builtClient,
+                      env,
+                      {
+                        phase: "init:build",
+                        env,
+                        identifier: identifier.identifier,
+                        usedDbEncryptionKey: Boolean(options.dbEncryptionKey),
+                        registrationCheckFailed: attemptDebug.registrationCheckFailed,
+                      },
+                      {
+                        onError: installationError =>
+                          appendAttemptError("installationMembership", installationError),
+                      }
+                    );
+                attemptDebug.installationInInbox = installationInInbox;
 
-                const canMessageReady = isRegistered
+                const canMessageReady = isRegistered || installationInInbox
                   ? true
                   : await verifyBuiltClientReady(
                       builtClient,
@@ -1497,7 +1590,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                 attemptDebug.canMessageReady = canMessageReady;
                 restoreAttempts.push(attemptDebug);
 
-                const isUsable = isRegistered || canMessageReady;
+                const isUsable = isRegistered || installationInInbox || canMessageReady;
                 if (isUsable) {
                   setClient(builtClient);
                   persistEnabledState(env, [identifier.identifier]);
@@ -1590,6 +1683,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     walletClientAccountAddress,
     persistEnabledState,
     setClient,
+    verifyBuiltClientInstallation,
     verifyBuiltClientReady,
     walletAddress,
     walletClient,
