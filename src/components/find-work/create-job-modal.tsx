@@ -19,6 +19,7 @@ import { MetadataAttributeType, textOnly } from "@lens-protocol/metadata";
 import toast from "react-hot-toast";
 import { evmAddress } from "@lens-protocol/client";
 import { fetchAccount as fetchLensAccount, post } from "@lens-protocol/client/actions";
+import { handleOperationWith } from "@lens-protocol/client/viem";
 import { useLogin, useSessionClient, uri } from "@lens-protocol/react";
 import { useDispatch, useSelector } from "react-redux";
 import { useWalletClient } from "wagmi";
@@ -78,6 +79,7 @@ const extractTokenSymbol = (token: string) => {
   const match = token.match(/\(([^)]+)\)/);
   return match ? match[1] : token;
 };
+const isTxHash = (value: string) => /^0x[a-fA-F0-9]{64}$/.test(value);
 const LENS_TESTNET_CHAIN_ID = 37111;
 const LENS_TESTNET_APP = "0xC75A89145d765c396fd75CbD16380Eb184Bd2ca7";
 
@@ -361,6 +363,49 @@ const CreateJobModal = ({ open, onClose, onPublished }: CreateJobModalProps) => 
       if (result.isErr()) {
         toast.error(result.error.message);
         return;
+      }
+
+      const operationValue: any = result.value;
+      if (operationValue?.__typename === "PostOperationValidationFailed") {
+        toast.error(operationValue.reason || "Post validation failed.");
+        return;
+      }
+
+      if (operationValue?.__typename === "TransactionWillFail") {
+        toast.error(operationValue.reason || "Transaction will fail.");
+        return;
+      }
+
+      if (
+        operationValue?.__typename === "SelfFundedTransactionRequest" ||
+        operationValue?.__typename === "SponsoredTransactionRequest"
+      ) {
+        if (!walletClient) {
+          toast.error("Connect your wallet to complete this Lens transaction.");
+          return;
+        }
+
+        const operationHandler = handleOperationWith(walletClient as any) as any;
+        const txResult = await operationHandler(operationValue);
+        if (txResult.isErr()) {
+          toast.error(txResult.error?.message || "Failed to submit Lens transaction.");
+          return;
+        }
+
+        const txIdentifier = String(txResult.value ?? "");
+        if (isTxHash(txIdentifier)) {
+          const waitResult = await publishClient.waitForTransaction(txIdentifier);
+          if (waitResult.isErr()) {
+            toast.error(waitResult.error?.message || "Lens transaction was not confirmed.");
+            return;
+          }
+        }
+      } else if (operationValue?.__typename === "PostResponse" && isTxHash(operationValue.hash)) {
+        const waitResult = await publishClient.waitForTransaction(operationValue.hash);
+        if (waitResult.isErr()) {
+          toast.error(waitResult.error?.message || "Lens transaction was not confirmed.");
+          return;
+        }
       }
 
       const optimisticListing = {
