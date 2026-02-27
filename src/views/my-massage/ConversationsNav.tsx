@@ -29,14 +29,17 @@ const ConversationsNav = () => {
   const { client } = useXMTP();
   const { address: walletAddress } = useAccount();
   const lensProfile = useSelector((state: RootState) => state.app.user);
-  const { createXMTPClient, initXMTPClient, connectingXMTP, connectStage } = useXMTPClient({
-    walletAddress,
-    lensAccountAddress: lensProfile?.address,
-    lensProfileId: lensProfile?.id,
-    lensHandle: lensProfile?.handle,
-  });
+  const { createXMTPClient, initXMTPClient, connectingXMTP, connectStage, wasXMTPEnabled } =
+    useXMTPClient({
+      walletAddress,
+      lensAccountAddress: lensProfile?.address,
+      lensProfileId: lensProfile?.id,
+      lensHandle: lensProfile?.handle,
+    });
 
   const stopStreamRef = useRef<(() => void) | null>(null);
+  const attemptedAutoReconnectRef = useRef(false);
+  const autoReconnectKeyRef = useRef("");
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -81,8 +84,29 @@ const ConversationsNav = () => {
         return;
       }
 
+      const restoreKey = `${lensProfile?.address?.toLowerCase() ?? ""}|${walletAddress?.toLowerCase() ?? ""}`;
+      if (autoReconnectKeyRef.current !== restoreKey) {
+        autoReconnectKeyRef.current = restoreKey;
+        attemptedAutoReconnectRef.current = false;
+      }
+
       try {
-        await initXMTPClient();
+        const restoredClient = await initXMTPClient();
+        if (restoredClient) {
+          attemptedAutoReconnectRef.current = false;
+          return;
+        }
+
+        if (attemptedAutoReconnectRef.current) {
+          return;
+        }
+
+        if (!wasXMTPEnabled()) {
+          return;
+        }
+
+        attemptedAutoReconnectRef.current = true;
+        await createXMTPClient();
       } catch (error) {
         if (!cancelled) {
           console.warn("XMTP auto-restore failed:", error);
@@ -95,7 +119,15 @@ const ConversationsNav = () => {
     return () => {
       cancelled = true;
     };
-  }, [client, connectingXMTP, initXMTPClient, lensProfile?.address, walletAddress]);
+  }, [
+    client,
+    connectingXMTP,
+    createXMTPClient,
+    initXMTPClient,
+    lensProfile?.address,
+    walletAddress,
+    wasXMTPEnabled,
+  ]);
 
   const handleEnable = async () => {
     const toastId = toast.loading(stageLabel.idle);
