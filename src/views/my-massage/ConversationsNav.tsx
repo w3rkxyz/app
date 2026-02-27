@@ -29,7 +29,7 @@ const ConversationsNav = () => {
   const { client } = useXMTP();
   const { address: walletAddress } = useAccount();
   const lensProfile = useSelector((state: RootState) => state.app.user);
-  const { createXMTPClient, initXMTPClient, connectingXMTP, connectStage } =
+  const { createXMTPClient, initXMTPClient, connectingXMTP, connectStage, initializing } =
     useXMTPClient({
       walletAddress,
       lensAccountAddress: lensProfile?.address,
@@ -39,6 +39,7 @@ const ConversationsNav = () => {
 
   const stopStreamRef = useRef<(() => void) | null>(null);
   const restoreInFlightRef = useRef(false);
+  const [isRestoring, setIsRestoring] = useState(false);
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -75,7 +76,7 @@ const ConversationsNav = () => {
     let cancelled = false;
 
     const restoreClient = async () => {
-      if (client || connectingXMTP) {
+      if (client || connectingXMTP || initializing) {
         return;
       }
 
@@ -89,6 +90,9 @@ const ConversationsNav = () => {
 
       try {
         restoreInFlightRef.current = true;
+        if (!cancelled) {
+          setIsRestoring(true);
+        }
 
         // Silent restore only: never trigger wallet signatures automatically on page load.
         for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -104,6 +108,9 @@ const ConversationsNav = () => {
         }
       } finally {
         restoreInFlightRef.current = false;
+        if (!cancelled) {
+          setIsRestoring(false);
+        }
       }
     };
 
@@ -115,7 +122,7 @@ const ConversationsNav = () => {
   }, [
     client,
     connectingXMTP,
-    createXMTPClient,
+    initializing,
     initXMTPClient,
     lensProfile?.address,
     lensProfile?.handle,
@@ -126,6 +133,12 @@ const ConversationsNav = () => {
   const handleEnable = async () => {
     const toastId = toast.loading(stageLabel.idle);
     try {
+      const restoredClient = await initXMTPClient();
+      if (restoredClient) {
+        toast.success("XMTP connected", { id: toastId });
+        return;
+      }
+
       await createXMTPClient({
         onStage: stage => {
           const message = stageLabel[stage] ?? "Connecting XMTP...";
@@ -215,15 +228,21 @@ const ConversationsNav = () => {
         <div className="h-screen w-full bg-white flex items-center justify-center">
           <div className="text-center flex flex-col items-center justify-center">
             <Image src="/images/ChatsCircle.svg" alt="Enable messages" width={64} height={64} />
-            <p className="text-gray-500 text-lg mb-4">Enable Messages</p>
+            <p className="text-gray-500 text-lg mb-4">
+              {isRestoring || initializing ? "Restoring Messages..." : "Enable Messages"}
+            </p>
             <button
               onClick={handleEnable}
-              disabled={connectingXMTP}
+              disabled={connectingXMTP || isRestoring || initializing}
               className="px-6 py-2 bg-gray-900 text-white text-sm rounded-full hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {connectingXMTP ? "Connecting..." : "Enable"}
+              {connectingXMTP
+                ? "Connecting..."
+                : isRestoring || initializing
+                  ? "Restoring..."
+                  : "Enable"}
             </button>
-            {connectingXMTP && (
+            {(connectingXMTP || isRestoring || initializing) && (
               <p className="text-xs text-gray-500 mt-2">{stageLabel[connectStage] ?? "Connecting..."}</p>
             )}
           </div>

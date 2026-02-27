@@ -284,12 +284,17 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         return;
       }
 
+      const currentSessionIdentifiers = Array.from(
+        new Set(
+          [...identifiers, xmtpAddress ?? "", walletAddress ?? "", walletClientAccountAddress ?? ""]
+            .map(value => value.toLowerCase())
+            .filter(value => value.startsWith("0x") && value.length === 42)
+        )
+      );
       const persisted = getPersistedIdentifiers();
       const merged = Array.from(
         new Set(
-          [...persisted, ...identifiers, xmtpAddress ?? "", walletAddress ?? ""]
-            .map(value => value.toLowerCase())
-            .filter(value => value.startsWith("0x") && value.length === 42)
+          [...persisted, ...currentSessionIdentifiers]
         )
       );
 
@@ -302,7 +307,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         for (const key of sessionKeys) {
           const existing = currentSessionMap[key]?.identifiers ?? [];
           currentSessionMap[key] = {
-            identifiers: Array.from(new Set([...existing, ...merged])),
+            identifiers: Array.from(new Set([...existing, ...currentSessionIdentifiers])),
             env,
           };
         }
@@ -314,6 +319,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       getPersistedIdentifiers,
       getPersistedSessionMap,
       walletAddress,
+      walletClientAccountAddress,
       xmtpAddress,
     ]
   );
@@ -1000,11 +1006,13 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
       const identifierCandidates = Array.from(
         new Set([
+          ...restoreAddressCandidates,
           ...sessionState.identifiers,
           ...getPersistedIdentifiers(),
-          ...restoreAddressCandidates,
         ])
-      ).filter(value => value.startsWith("0x") && value.length === 42);
+      )
+        .filter(value => value.startsWith("0x") && value.length === 42)
+        .slice(0, 12);
 
       const identifiers: Identifier[] = identifierCandidates.map(identifier => ({
         identifier,
@@ -1019,8 +1027,16 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
               identifier: identifier.identifier,
             });
 
-            const builtClient = await Client.build(identifier, { env });
-            const isRegistered = await builtClient.isRegistered();
+            const builtClient = await withTimeout(
+              Client.build(identifier, { env }),
+              7000,
+              "Restoring XMTP session timed out."
+            );
+            const isRegistered = await withTimeout(
+              builtClient.isRegistered(),
+              8000,
+              "Checking XMTP registration timed out."
+            );
 
             logDebug("init:build:result", {
               env,
