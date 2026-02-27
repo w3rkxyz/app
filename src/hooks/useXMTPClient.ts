@@ -489,6 +489,39 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         }
       }
 
+      if (attempt.inboxId && attempt.installationId) {
+        try {
+          const [inboxState] = await withTimeout(
+            Client.fetchInboxStates([attempt.inboxId], env),
+            10000,
+            "Checking XMTP installation membership timed out."
+          );
+          const installations = inboxState?.installations ?? [];
+          const isInstallationInInbox = installations.some(installation => {
+            const installationRecord = installation as { id?: string; bytes?: Uint8Array };
+            if (installationRecord.id && installationRecord.id === attempt.installationId) {
+              return true;
+            }
+            const installationBytes = installationRecord.bytes;
+            const localBytes = (xmtpClient as { installationIdBytes?: Uint8Array }).installationIdBytes;
+            if (!installationBytes || !localBytes || installationBytes.length !== localBytes.length) {
+              return false;
+            }
+            for (let i = 0; i < installationBytes.length; i += 1) {
+              if (installationBytes[i] !== localBytes[i]) {
+                return false;
+              }
+            }
+            return true;
+          });
+
+          attempt.installationInInbox = isInstallationInInbox;
+        } catch (membershipError) {
+          const text = `installationMembership:${stringifyError(membershipError)}`;
+          attempt.error = attempt.error ? `${attempt.error} | ${text}` : text;
+        }
+      }
+
       try {
         attempt.isRegistered = await withTimeout(
           xmtpClient.isRegistered(),
@@ -521,8 +554,9 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       attempt.conversationAccess = await verifyConversationAccess(xmtpClient);
 
       const ready =
-        attempt.isRegistered === true &&
-        (attempt.canMessageReady === true || attempt.conversationAccess === true);
+        attempt.installationInInbox === true ||
+        (attempt.isRegistered === true &&
+          (attempt.canMessageReady === true || attempt.conversationAccess === true));
 
       if (!ready && !attempt.error) {
         attempt.error = "readiness_gate_failed";
