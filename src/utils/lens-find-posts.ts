@@ -17,6 +17,7 @@ export interface W3rkListing {
 }
 
 type AttributeRecord = Record<string, string>;
+type RawLensPost = any;
 
 const DEFAULT_PROFILE_IMAGE = "https://static.hey.xyz/images/default.png";
 const RESERVED_TAGS = new Set(["w3rk", "job", "service"]);
@@ -167,6 +168,86 @@ export const mapLensPostToW3rkListing = (
   };
 };
 
+const mapAndFilterListings = (items: RawLensPost[], type: W3rkListingType): W3rkListing[] => {
+  return (items || [])
+    .map(item => mapLensPostToW3rkListing(item, type))
+    .filter((item): item is W3rkListing => Boolean(item));
+};
+
+const TESTNET_GRAPHQL = "https://api.testnet.lens.xyz/graphql";
+
+const fetchListingsFromGraphQL = async (
+  type: W3rkListingType,
+  authorAddress?: string
+): Promise<W3rkListing[]> => {
+  const endpoint = process.env.NEXT_PUBLIC_LENS_API_URL || TESTNET_GRAPHQL;
+  const query = `
+    query Posts($request: PostsRequest!) {
+      posts(request: $request) {
+        items {
+          __typename
+          ... on Post {
+            id
+            author {
+              address
+              owner
+              username {
+                localName
+              }
+              metadata {
+                ... on AccountMetadata {
+                  name
+                  picture
+                }
+              }
+            }
+            metadata {
+              __typename
+              ... on TextOnlyMetadata {
+                content
+                tags
+                attributes {
+                  key
+                  value
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const variables = {
+    request: {
+      filter: {
+        ...(authorAddress ? { authors: [authorAddress] } : {}),
+        metadata: {
+          tags: {
+            all: ["w3rk", type],
+          },
+        },
+      },
+    },
+  };
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ query, variables }),
+    });
+    const json = await response.json();
+    const items = json?.data?.posts?.items;
+    return mapAndFilterListings(Array.isArray(items) ? items : [], type);
+  } catch (error) {
+    console.error("GraphQL listings fallback failed:", error);
+    return [];
+  }
+};
+
 export const fetchW3rkListings = async (type: W3rkListingType): Promise<W3rkListing[]> => {
   const result = await fetchPosts(client, {
     filter: {
@@ -178,13 +259,16 @@ export const fetchW3rkListings = async (type: W3rkListingType): Promise<W3rkList
     },
   });
 
-  if (result.isErr()) {
-    throw new Error(result.error.message);
+  if (!result.isErr()) {
+    const mapped = mapAndFilterListings(result.value?.items || [], type);
+    if (mapped.length > 0) {
+      return mapped;
+    }
+  } else {
+    console.error("Lens SDK listing fetch failed:", result.error.message);
   }
 
-  return (result.value?.items || [])
-    .map(item => mapLensPostToW3rkListing(item, type))
-    .filter((item): item is W3rkListing => Boolean(item));
+  return fetchListingsFromGraphQL(type);
 };
 
 export const fetchAuthorListings = async (
@@ -201,11 +285,14 @@ export const fetchAuthorListings = async (
     },
   });
 
-  if (result.isErr()) {
-    return [];
+  if (!result.isErr()) {
+    const mapped = mapAndFilterListings(result.value?.items || [], type);
+    if (mapped.length > 0) {
+      return mapped;
+    }
+  } else {
+    console.error("Lens SDK author fetch failed:", result.error.message);
   }
 
-  return (result.value?.items || [])
-    .map(item => mapLensPostToW3rkListing(item, type))
-    .filter((item): item is W3rkListing => Boolean(item));
+  return fetchListingsFromGraphQL(type, authorAddress);
 };
