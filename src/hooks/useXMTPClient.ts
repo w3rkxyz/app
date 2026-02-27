@@ -55,6 +55,7 @@ const XMTP_MAX_INSTALLATIONS = 10;
 type XMTPSessionState = {
   identifiers: string[];
   env?: "local" | "dev" | "production";
+  lastIdentifier?: string;
 };
 
 type XMTPSessionMap = Record<string, XMTPSessionState>;
@@ -242,6 +243,22 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     [buildDbKeyStorageKey, bytesToBase64]
   );
 
+  const storeDbEncryptionKeyForRelatedIdentifiers = useCallback(
+    (env: "local" | "dev" | "production", key: Uint8Array, identifiers: string[]) => {
+      const normalized = Array.from(
+        new Set(
+          identifiers
+            .map(identifier => identifier.toLowerCase())
+            .filter(identifier => identifier.startsWith("0x") && identifier.length === 42)
+        )
+      );
+      for (const identifier of normalized) {
+        storeDbEncryptionKey(env, identifier, key);
+      }
+    },
+    [storeDbEncryptionKey]
+  );
+
   const getOrCreateDbEncryptionKey = useCallback(
     (env: "local" | "dev" | "production", identifier: string): Uint8Array => {
       const existing = loadDbEncryptionKey(env, identifier);
@@ -301,7 +318,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         if (!value || typeof value !== "object") {
           return acc;
         }
-        const maybeState = value as { identifiers?: unknown; env?: unknown };
+        const maybeState = value as { identifiers?: unknown; env?: unknown; lastIdentifier?: unknown };
         const identifiers = Array.isArray(maybeState.identifiers)
           ? maybeState.identifiers
               .filter((item): item is string => typeof item === "string")
@@ -312,9 +329,17 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           maybeState.env === "local" || maybeState.env === "dev" || maybeState.env === "production"
             ? maybeState.env
             : undefined;
+        const lastIdentifier =
+          typeof maybeState.lastIdentifier === "string"
+            ? maybeState.lastIdentifier.toLowerCase()
+            : undefined;
+        const normalizedLastIdentifier =
+          lastIdentifier && lastIdentifier.startsWith("0x") && lastIdentifier.length === 42
+            ? lastIdentifier
+            : undefined;
 
-        if (identifiers.length > 0 || env) {
-          acc[key] = { identifiers, env };
+        if (identifiers.length > 0 || env || normalizedLastIdentifier) {
+          acc[key] = { identifiers, env, lastIdentifier: normalizedLastIdentifier };
         }
         return acc;
       }, {});
@@ -338,7 +363,8 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       )
     );
     const env = sessionKeys.map(key => sessionMap[key]?.env).find(Boolean);
-    return { identifiers, env };
+    const lastIdentifier = sessionKeys.map(key => sessionMap[key]?.lastIdentifier).find(Boolean);
+    return { identifiers, env, lastIdentifier };
   }, [getActiveSessionKeys, getPersistedSessionMap]);
 
   const getPersistedIdentifiers = useCallback(() => {
@@ -379,6 +405,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
             .filter(value => value.startsWith("0x") && value.length === 42)
         )
       );
+      const preferredIdentifier = currentSessionIdentifiers[0];
       const persisted = getPersistedIdentifiers();
       const merged = Array.from(
         new Set(
@@ -397,6 +424,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           currentSessionMap[key] = {
             identifiers: Array.from(new Set([...existing, ...currentSessionIdentifiers])),
             env,
+            lastIdentifier: preferredIdentifier ?? currentSessionMap[key]?.lastIdentifier,
           };
         }
         window.localStorage.setItem(XMTP_ENABLED_SESSION_MAP_KEY, JSON.stringify(currentSessionMap));
@@ -617,6 +645,14 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
         if (isRegistered) {
           logDebug("build:primary:registered:reuse_client");
+          if (primaryDbEncryptionKey) {
+            storeDbEncryptionKeyForRelatedIdentifiers(env, primaryDbEncryptionKey, [
+              primaryIdentifier.identifier,
+              xmtpAddress ?? "",
+              walletAddress ?? "",
+              walletClientAccountAddress ?? "",
+            ]);
+          }
           setClient(builtClient);
           persistEnabledState(env, [primaryIdentifier.identifier]);
           updateStage("connected");
@@ -659,6 +695,14 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
           if (isRegistered) {
             logDebug("build:fallback:registered:reuse_client");
+            if (fallbackDbEncryptionKey) {
+              storeDbEncryptionKeyForRelatedIdentifiers(env, fallbackDbEncryptionKey, [
+                fallbackIdentifier.identifier,
+                xmtpAddress ?? "",
+                walletAddress ?? "",
+                walletClientAccountAddress ?? "",
+              ]);
+            }
             setClient(builtFallbackClient);
             persistEnabledState(env, [fallbackIdentifier.identifier]);
             updateStage("connected");
@@ -766,7 +810,12 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           120000,
           "Creating XMTP client timed out."
         );
-        storeDbEncryptionKey(env, signerIdentifier.identifier, dbEncryptionKey);
+        storeDbEncryptionKeyForRelatedIdentifiers(env, dbEncryptionKey, [
+          signerIdentifier.identifier,
+          xmtpAddress ?? "",
+          walletAddress ?? "",
+          walletClientAccountAddress ?? "",
+        ]);
         logDebug("create:success", {
           mode,
           inboxId: (createdClient as { inboxId?: string }).inboxId ?? null,
@@ -1042,10 +1091,11 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     logError,
     loadDbEncryptionKey,
     getOrCreateDbEncryptionKey,
-    storeDbEncryptionKey,
+    storeDbEncryptionKeyForRelatedIdentifiers,
     persistEnabledState,
     expectedSigningAddress,
     actualWalletClientAddress,
+    walletClientAccountAddress,
     signingAddress,
   ]);
 
@@ -1104,13 +1154,14 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
       const identifierCandidates = Array.from(
         new Set([
-          ...restoreAddressCandidates,
+          ...(sessionState.lastIdentifier ? [sessionState.lastIdentifier] : []),
           ...sessionState.identifiers,
+          ...restoreAddressCandidates,
           ...getPersistedIdentifiers(),
         ])
       )
         .filter(value => value.startsWith("0x") && value.length === 42)
-        .slice(0, 4);
+        .slice(0, 6);
 
       const identifiers: Identifier[] = identifierCandidates.map(identifier => ({
         identifier,

@@ -29,7 +29,7 @@ const ConversationsNav = () => {
   const { client } = useXMTP();
   const { address: walletAddress } = useAccount();
   const lensProfile = useSelector((state: RootState) => state.app.user);
-  const { createXMTPClient, initXMTPClient, connectingXMTP, connectStage, initializing } =
+  const { createXMTPClient, initXMTPClient, connectingXMTP, connectStage } =
     useXMTPClient({
       walletAddress,
       lensAccountAddress: lensProfile?.address,
@@ -40,7 +40,6 @@ const ConversationsNav = () => {
   const stopStreamRef = useRef<(() => void) | null>(null);
   const restoreInFlightRef = useRef(false);
   const attemptedRestoreKeyRef = useRef("");
-  const [isRestoring, setIsRestoring] = useState(false);
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -77,7 +76,7 @@ const ConversationsNav = () => {
     let cancelled = false;
 
     const restoreClient = async () => {
-      if (client || connectingXMTP || initializing) {
+      if (client || connectingXMTP) {
         return;
       }
 
@@ -103,9 +102,6 @@ const ConversationsNav = () => {
       try {
         attemptedRestoreKeyRef.current = restoreKey;
         restoreInFlightRef.current = true;
-        if (!cancelled) {
-          setIsRestoring(true);
-        }
 
         // Silent restore only: never trigger wallet signatures automatically on page load.
         await initXMTPClient();
@@ -115,9 +111,6 @@ const ConversationsNav = () => {
         }
       } finally {
         restoreInFlightRef.current = false;
-        if (!cancelled) {
-          setIsRestoring(false);
-        }
       }
     };
 
@@ -129,7 +122,6 @@ const ConversationsNav = () => {
   }, [
     client,
     connectingXMTP,
-    initializing,
     initXMTPClient,
     lensProfile?.address,
     lensProfile?.handle,
@@ -236,23 +228,17 @@ const ConversationsNav = () => {
         <div className="h-screen w-full bg-white flex items-center justify-center">
           <div className="text-center flex flex-col items-center justify-center">
             <Image src="/images/ChatsCircle.svg" alt="Enable messages" width={64} height={64} />
-            <p className="text-gray-500 text-lg mb-4">
-              {isRestoring || initializing ? "Restoring Messages..." : "Enable Messages"}
-            </p>
+            <p className="text-gray-500 text-lg mb-4">Enable Messages</p>
             <button
               onClick={handleEnable}
               disabled={connectingXMTP}
               className="px-6 py-2 bg-gray-900 text-white text-sm rounded-full hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {connectingXMTP
-                ? "Connecting..."
-                : isRestoring || initializing
-                  ? "Enable"
-                  : "Enable"}
+              {connectingXMTP ? "Connecting..." : "Enable"}
             </button>
-            {(connectingXMTP || isRestoring || initializing) && (
+            {connectingXMTP && (
               <p className="text-xs text-gray-500 mt-2">
-                {connectingXMTP ? stageLabel[connectStage] ?? "Connecting..." : "Checking existing XMTP session..."}
+                {stageLabel[connectStage] ?? "Connecting..."}
               </p>
             )}
           </div>
