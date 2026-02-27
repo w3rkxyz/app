@@ -60,6 +60,18 @@ type XMTPSessionState = {
   lastInboxId?: string;
   lastInstallationId?: string;
 };
+type XMTPSessionStateResolved = {
+  identifiers: string[];
+  env?: "local" | "dev" | "production";
+  lastIdentifier?: string;
+  lastInboxId?: string;
+  lastInstallationId?: string;
+  identifierHints: string[];
+  installationHints: Array<{
+    inboxId?: string;
+    installationId?: string;
+  }>;
+};
 
 type XMTPSessionMap = Record<string, XMTPSessionState>;
 type XMTPRestoreAttemptDebug = {
@@ -571,11 +583,16 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     }
   }, []);
 
-  const getPersistedSessionState = useCallback(() => {
+  const getPersistedSessionState = useCallback((): XMTPSessionStateResolved => {
     const sessionMap = getPersistedSessionMap();
     const sessionKeys = getActiveSessionKeys();
     if (sessionKeys.length === 0) {
-      return { identifiers: [] as string[], env: undefined as XMTPSessionState["env"] };
+      return {
+        identifiers: [],
+        env: undefined,
+        identifierHints: [],
+        installationHints: [],
+      };
     }
 
     const identifiers = Array.from(
@@ -589,7 +606,28 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     const lastInstallationId = sessionKeys
       .map(key => sessionMap[key]?.lastInstallationId)
       .find(Boolean);
-    return { identifiers, env, lastIdentifier, lastInboxId, lastInstallationId };
+    const identifierHints = Array.from(
+      new Set(
+        sessionKeys
+          .map(key => sessionMap[key]?.lastIdentifier)
+          .filter((value): value is string => Boolean(value))
+      )
+    );
+    const installationHints = sessionKeys
+      .map(key => ({
+        inboxId: sessionMap[key]?.lastInboxId,
+        installationId: sessionMap[key]?.lastInstallationId,
+      }))
+      .filter(hint => Boolean(hint.inboxId || hint.installationId));
+    return {
+      identifiers,
+      env,
+      lastIdentifier,
+      lastInboxId,
+      lastInstallationId,
+      identifierHints,
+      installationHints,
+    };
   }, [getActiveSessionKeys, getPersistedSessionMap]);
 
   const getPersistedIdentifiers = useCallback(() => {
@@ -1500,6 +1538,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       const identifierCandidates = Array.from(
         new Set([
           ...(sessionState.lastIdentifier ? [sessionState.lastIdentifier] : []),
+          ...sessionState.identifierHints,
           ...sessionState.identifiers,
           ...restoreAddressCandidates,
           ...getPersistedIdentifiers(),
@@ -1512,8 +1551,17 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         identifier,
         identifierKind: IdentifierKind.Ethereum,
       }));
-      const expectedInboxId = sessionState.lastInboxId ?? null;
-      const expectedInstallationId = sessionState.lastInstallationId ?? null;
+      const expectedInstallationHints = [
+        ...(sessionState.lastInboxId || sessionState.lastInstallationId
+          ? [
+              {
+                inboxId: sessionState.lastInboxId,
+                installationId: sessionState.lastInstallationId,
+              },
+            ]
+          : []),
+        ...sessionState.installationHints,
+      ];
       const isInstallationLimitError = (error: unknown) => {
         if (!(error instanceof Error)) {
           return false;
@@ -1593,12 +1641,30 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                   (builtClient as { installationId?: string }).installationId ?? null;
                 attemptDebug.inboxId = builtInboxId;
                 attemptDebug.installationId = builtInstallationId;
-                const matchesPersistedInstallation = Boolean(
-                  expectedInstallationId &&
+                const matchesPersistedInstallation = expectedInstallationHints.some(hint => {
+                  const installationMatches =
+                    Boolean(hint.installationId) &&
+                    Boolean(builtInstallationId) &&
+                    hint.installationId === builtInstallationId;
+                  const inboxMatches =
+                    Boolean(hint.inboxId) &&
+                    Boolean(builtInboxId) &&
+                    hint.inboxId === builtInboxId;
+                  if (!installationMatches && !inboxMatches) {
+                    return false;
+                  }
+                  if (hint.inboxId && builtInboxId && hint.inboxId !== builtInboxId) {
+                    return false;
+                  }
+                  if (
+                    hint.installationId &&
                     builtInstallationId &&
-                    builtInstallationId === expectedInstallationId &&
-                    (!expectedInboxId || builtInboxId === expectedInboxId)
-                );
+                    hint.installationId !== builtInstallationId
+                  ) {
+                    return false;
+                  }
+                  return true;
+                });
                 attemptDebug.matchesPersistedInstallation = matchesPersistedInstallation;
 
                 let isRegistered = false;
