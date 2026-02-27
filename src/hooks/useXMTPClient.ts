@@ -50,7 +50,7 @@ type XMTPEnv = "local" | "dev" | "production";
 type PersistedSession = {
   env: XMTPEnv;
   identifier: string;
-  dbEncryptionKey: string;
+  dbEncryptionKey?: string;
   inboxId?: string;
   installationId?: string;
   signerType?: "EOA" | "SCW";
@@ -332,9 +332,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         if (
           !isValidEnv(candidate.env) ||
           typeof candidate.identifier !== "string" ||
-          !isAddress(candidate.identifier.toLowerCase()) ||
-          typeof candidate.dbEncryptionKey !== "string" ||
-          candidate.dbEncryptionKey.length === 0
+          !isAddress(candidate.identifier.toLowerCase())
         ) {
           continue;
         }
@@ -342,7 +340,10 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         normalizedRecords[key] = {
           env: candidate.env,
           identifier: candidate.identifier.toLowerCase(),
-          dbEncryptionKey: candidate.dbEncryptionKey,
+          dbEncryptionKey:
+            typeof candidate.dbEncryptionKey === "string" && candidate.dbEncryptionKey.length > 0
+              ? candidate.dbEncryptionKey
+              : undefined,
           inboxId:
             typeof candidate.inboxId === "string" && candidate.inboxId.length > 0
               ? candidate.inboxId
@@ -393,6 +394,39 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
 
       return sessions[0] ?? null;
+    },
+    [identityKeys, identifierCandidates, readSessionStore]
+  );
+
+  const collectRestoreSessions = useCallback(
+    (envCandidates: XMTPEnv[]): PersistedSession[] => {
+      const store = readSessionStore();
+      const scopedKeys = unique([
+        ...identityKeys,
+        ...identifierCandidates.map(identifier => `identifier:${identifier}`),
+      ]);
+      const scopedSessions = scopedKeys
+        .map(key => store.records[key])
+        .filter((value): value is PersistedSession => Boolean(value));
+
+      const fallbackSessions = envCandidates.flatMap(env =>
+        identifierCandidates.map(identifier => ({
+          env,
+          identifier,
+          updatedAt: new Date(0).toISOString(),
+        }))
+      );
+
+      const dedupe = new Map<string, PersistedSession>();
+      for (const session of [...scopedSessions, ...fallbackSessions]) {
+        const key = `${session.env}|${session.identifier}|${session.dbEncryptionKey ?? "none"}`;
+        const existing = dedupe.get(key);
+        if (!existing || Date.parse(session.updatedAt) > Date.parse(existing.updatedAt)) {
+          dedupe.set(key, session);
+        }
+      }
+
+      return Array.from(dedupe.values());
     },
     [identityKeys, identifierCandidates, readSessionStore]
   );
@@ -734,9 +768,10 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     setConnectStage("restore_session");
 
     try {
-      const sessions = envCandidates
+      const preferredSessions = envCandidates
         .map(env => findPersistedSession(env))
         .filter((value): value is PersistedSession => Boolean(value));
+      const sessions = collectRestoreSessions(envCandidates);
       if (sessions.length === 0) {
         persistRestoreDebug({
           result: "not_restored",
@@ -749,6 +784,11 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       }
 
       sessions.sort((a, b) => {
+        const aPreferred = preferredSessions.includes(a) ? 0 : 1;
+        const bPreferred = preferredSessions.includes(b) ? 0 : 1;
+        if (aPreferred !== bPreferred) {
+          return aPreferred - bPreferred;
+        }
         const aPrimary = a.identifier === primaryIdentifier ? 0 : 1;
         const bPrimary = b.identifier === primaryIdentifier ? 0 : 1;
         if (aPrimary !== bPrimary) {
@@ -764,76 +804,109 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
       for (const session of sessions) {
         const env = session.env;
-        logDebug("restore:start", {
-          env,
-          identifier: session.identifier,
-        });
-
-        try {
-          const builtClient = await withTimeout(
-            Client.build(
+        const buildOptions = session.dbEncryptionKey
+          ? [
               {
-                identifier: session.identifier,
-                identifierKind: IdentifierKind.Ethereum,
+                usedDbEncryptionKey: true,
+                options: {
+                  env,
+                  dbEncryptionKey: fromBase64(session.dbEncryptionKey),
+                },
               },
               {
-                env,
-                dbEncryptionKey: fromBase64(session.dbEncryptionKey),
-              }
-            ),
-            12000,
-            "Restoring XMTP session timed out."
-          );
+                usedDbEncryptionKey: false,
+                options: {
+                  env,
+                },
+              },
+            ]
+          : [
+              {
+                usedDbEncryptionKey: false,
+                options: {
+                  env,
+                },
+              },
+            ];
 
-          const { ready, attempt } = await verifyClientReady(builtClient, env, session.identifier, {
-            inboxId: session.inboxId,
-            installationId: session.installationId,
-          });
-          attempts.push(attempt);
-
-          if (!ready) {
-            builtClient.close();
-            continue;
-          }
-
-          const refreshedSession: PersistedSession = {
-            ...session,
-            inboxId: (builtClient as { inboxId?: string }).inboxId,
-            installationId: (builtClient as { installationId?: string }).installationId,
-            updatedAt: new Date().toISOString(),
-          };
-
-          persistSession(refreshedSession);
-          setClient(builtClient);
-          setConnectStage("connected");
-
-          persistRestoreDebug({
-            result: "restored",
-            envCandidates,
-            identifierCandidates,
-            attempts,
-            restoredEnv: env,
-            restoredIdentifier: session.identifier,
-          });
-
-          return builtClient;
-        } catch (error) {
-          attempts.push({
+        for (const buildOption of buildOptions) {
+          logDebug("restore:start", {
             env,
             identifier: session.identifier,
-            usedDbEncryptionKey: true,
-            build: "failed",
-            inboxId: null,
-            installationId: null,
-            matchesPersistedInstallation: null,
-            registrationCheckFailed: false,
-            installationInInbox: null,
-            conversationAccess: null,
-            isRegistered: null,
-            canMessageReady: null,
-            error: stringifyError(error),
+            usedDbEncryptionKey: buildOption.usedDbEncryptionKey,
           });
-          continue;
+
+          try {
+            const builtClient = await withTimeout(
+              Client.build(
+                {
+                  identifier: session.identifier,
+                  identifierKind: IdentifierKind.Ethereum,
+                },
+                buildOption.options
+              ),
+              12000,
+              "Restoring XMTP session timed out."
+            );
+
+            const { ready, attempt } = await verifyClientReady(builtClient, env, session.identifier, {
+              inboxId: session.inboxId,
+              installationId: session.installationId,
+            });
+            attempts.push({
+              ...attempt,
+              usedDbEncryptionKey: buildOption.usedDbEncryptionKey,
+            });
+
+            if (!ready) {
+              builtClient.close();
+              continue;
+            }
+
+            const refreshedSession: PersistedSession = {
+              ...session,
+              dbEncryptionKey: buildOption.usedDbEncryptionKey ? session.dbEncryptionKey : undefined,
+              inboxId: (builtClient as { inboxId?: string }).inboxId,
+              installationId: (builtClient as { installationId?: string }).installationId,
+              updatedAt: new Date().toISOString(),
+            };
+
+            persistSession(refreshedSession);
+            setClient(builtClient);
+            setConnectStage("connected");
+
+            persistRestoreDebug({
+              result: "restored",
+              envCandidates,
+              identifierCandidates,
+              attempts,
+              restoredEnv: env,
+              restoredIdentifier: session.identifier,
+            });
+
+            return builtClient;
+          } catch (error) {
+            attempts.push({
+              env,
+              identifier: session.identifier,
+              usedDbEncryptionKey: buildOption.usedDbEncryptionKey,
+              build: "failed",
+              inboxId: null,
+              installationId: null,
+              matchesPersistedInstallation: null,
+              registrationCheckFailed: false,
+              installationInInbox: null,
+              conversationAccess: null,
+              isRegistered: null,
+              canMessageReady: null,
+              error: stringifyError(error),
+            });
+
+            if (buildOption.usedDbEncryptionKey && isInstallationLimitError(error)) {
+              // Continue to no-key fallback attempt for the same env/identifier.
+              continue;
+            }
+          }
         }
       }
 
@@ -863,6 +936,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     client,
     dispatch,
     findPersistedSession,
+    collectRestoreSessions,
     identifierCandidates,
     logDebug,
     persistRestoreDebug,
