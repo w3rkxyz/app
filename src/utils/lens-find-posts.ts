@@ -216,7 +216,7 @@ const fetchListingsFromGraphQL = async (
 
   const variables = {
     request: {
-      pageSize: 50,
+      pageSize: "FIFTY",
       filter: {
         ...(authorAddress ? { authors: [authorAddress] } : {}),
         metadata: {
@@ -238,6 +238,10 @@ const fetchListingsFromGraphQL = async (
       cache: "no-store",
     });
     const json = await response.json();
+    if (Array.isArray(json?.errors) && json.errors.length > 0) {
+      console.error("GraphQL listings query errors:", json.errors);
+      return [];
+    }
     const items = json?.data?.posts?.items;
     return mapAndFilterListings(Array.isArray(items) ? items : [], type);
   } catch (error) {

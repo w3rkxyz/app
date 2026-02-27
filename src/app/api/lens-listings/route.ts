@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
 
   const variables = {
     request: {
-      pageSize: 50,
+      pageSize: "FIFTY",
       filter: {
         ...(author ? { authors: [author] } : {}),
         metadata: {
@@ -72,6 +72,10 @@ export async function GET(request: NextRequest) {
       cache: "no-store",
     });
     const json = await response.json();
+    if (Array.isArray(json?.errors) && json.errors.length > 0) {
+      console.error("lens-listings graphql errors:", json.errors);
+      return NextResponse.json({ items: [] }, { status: 200 });
+    }
     const items = json?.data?.posts?.items;
     return NextResponse.json({ items: Array.isArray(items) ? items : [] }, { status: 200 });
   } catch (error) {
