@@ -12,6 +12,9 @@ import { getPublicClient } from "@/client";
 import { Notification, W3RK_NOTIFICATION_ICONS } from "@/utils/notifications";
 
 const DEFAULT_PROFILE_AVATAR = "https://static.hey.xyz/images/default.png";
+const DEFAULT_NOTIFICATION_BATCH_SIZE = 12;
+const ESTIMATED_NOTIFICATION_ROW_HEIGHT = 110;
+const MIN_MEANINGFUL_SCROLL_PX = 180;
 
 type NotificationListItem = {
   id: string;
@@ -86,6 +89,7 @@ const Notifications = () => {
   const [lensLoading, setLensLoading] = useState(false);
   const [w3rkError, setW3rkError] = useState<string | null>(null);
   const [lensError, setLensError] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(0);
   const isLensFirstFetchRef = useRef(true);
   const w3rkActorCacheRef = useRef<Record<string, { avatar: string; localHandle: string }>>({});
 
@@ -462,6 +466,13 @@ const Notifications = () => {
     [lensNotifications, w3rkNotifications]
   );
 
+  const visibleNotifications = useMemo(
+    () => mergedNotifications.slice(0, visibleCount),
+    [mergedNotifications, visibleCount]
+  );
+
+  const hasMoreNotifications = visibleCount < mergedNotifications.length;
+
   const mergedState = useMemo(() => {
     if (mergedNotifications.length > 0) return "data";
     if (w3rkLoading || lensLoading) return "loading";
@@ -475,6 +486,36 @@ const Notifications = () => {
     }
     return w3rkError || lensError || null;
   }, [lensError, w3rkError]);
+
+  useEffect(() => {
+    const total = mergedNotifications.length;
+    if (total === 0) {
+      setVisibleCount(0);
+      return;
+    }
+
+    const viewportHeight = typeof window !== "undefined" ? window.innerHeight : 900;
+    const itemsPerViewport = Math.ceil(viewportHeight / ESTIMATED_NOTIFICATION_ROW_HEIGHT);
+    const minItemsForMeaningfulScroll =
+      itemsPerViewport + Math.ceil(MIN_MEANINGFUL_SCROLL_PX / ESTIMATED_NOTIFICATION_ROW_HEIGHT);
+    const shouldPaginate = total > minItemsForMeaningfulScroll;
+    const initialVisible = shouldPaginate
+      ? Math.min(total, Math.max(DEFAULT_NOTIFICATION_BATCH_SIZE, minItemsForMeaningfulScroll))
+      : total;
+
+    setVisibleCount(prev => {
+      if (prev === 0) {
+        return initialVisible;
+      }
+      return Math.min(total, Math.max(prev, initialVisible));
+    });
+  }, [mergedNotifications.length]);
+
+  const handleViewMore = () => {
+    setVisibleCount(prev =>
+      Math.min(prev + DEFAULT_NOTIFICATION_BATCH_SIZE, mergedNotifications.length)
+    );
+  };
 
   const renderNotificationList = (items: NotificationListItem[], state: string, error?: string | null) => {
     if (state === "loading") {
@@ -577,12 +618,19 @@ const Notifications = () => {
 
         <div className="notification-box rounded-[16px] px-[8px] py-[8px] bg-white mb-[20px]">
           <ul className="divide-y divide-[#E4E4E7]">
-            {renderNotificationList(mergedNotifications, mergedState, mergedError)}
+            {renderNotificationList(visibleNotifications, mergedState, mergedError)}
           </ul>
 
-          <div className="pt-[12px] flex justify-center">
-            <button className="px-[18px] py-[8px] text-[14px] rounded-full border border-[#E4E4E7] bg-white hover:bg-[#F8F8F8]">View more</button>
-          </div>
+          {mergedState === "data" && hasMoreNotifications ? (
+            <div className="pt-[12px] flex justify-center">
+              <button
+                onClick={handleViewMore}
+                className="px-[18px] py-[8px] text-[14px] rounded-full border border-[#E4E4E7] bg-white hover:bg-[#F8F8F8]"
+              >
+                View more
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
