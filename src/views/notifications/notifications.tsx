@@ -4,13 +4,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useSelector } from "react-redux";
 import { useSessionClient } from "@lens-protocol/react";
-import { fetchNotifications as fetchLensNotifications } from "@lens-protocol/client/actions";
 import { formatDistanceToNow } from "date-fns";
-import {
-  Notification,
-  getW3rkNotifications,
-  W3RK_NOTIFICATION_ICONS,
-} from "@/utils/notifications";
+import { Notification, W3RK_NOTIFICATION_ICONS } from "@/utils/notifications";
 
 type NotificationListItem = {
   id: string;
@@ -19,6 +14,38 @@ type NotificationListItem = {
   createdAt: Date;
   icon: string;
 };
+
+type W3rkApiNotification = {
+  id: string;
+  message?: string;
+  type: Notification["type"];
+  read?: boolean;
+  createdAt?: string;
+  senderHandle?: string;
+  icon?: string;
+};
+
+const LENS_NOTIFICATIONS_QUERY = `
+  query NotificationsMinimal($request: NotificationRequest!) {
+    notifications(request: $request) {
+      items {
+        __typename
+        ... on FollowNotification {
+          id
+          followers {
+            followedAt
+            account {
+              address
+              username {
+                localName
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+`;
 
 const Notifications = () => {
   const { user: profile } = useSelector((state: any) => state.app);
@@ -84,35 +111,72 @@ const Notifications = () => {
       return;
     }
 
-    setW3rkLoading(true);
-    setW3rkError(null);
+    let mounted = true;
+    let intervalId: number | null = null;
 
-    const unsubscribe = getW3rkNotifications(
-      activeLensAddress,
-      newNotifications => {
-        const normalized = newNotifications.map((notification, idx) => {
-          const typedNotification = notification as Notification;
+    const loadW3rkNotifications = async (initialLoad = false) => {
+      if (initialLoad) {
+        setW3rkLoading(true);
+      }
+      setW3rkError(null);
+
+      try {
+        const response = await fetch(
+          `/api/notifications/w3rk?recipientLensAddress=${encodeURIComponent(activeLensAddress)}`,
+          { cache: "no-store" }
+        );
+
+        const payload = (await response.json().catch(() => ({}))) as {
+          items?: W3rkApiNotification[];
+          error?: string;
+        };
+
+        if (!mounted) {
+          return;
+        }
+
+        if (!response.ok) {
+          setW3rkError(payload.error || "Could not load notifications.");
+          setW3rkLoading(false);
+          return;
+        }
+
+        const normalized = (payload.items || []).map((notification, idx) => {
+          const typedNotification = notification as unknown as Notification;
           return {
-            id: typedNotification.id || `w3rk-${idx}`,
+            id: notification.id || `w3rk-${idx}`,
             message: getW3rkMessage(typedNotification),
-            read: !!typedNotification.read,
-            createdAt: toDate(typedNotification.createdAt),
+            read: !!notification.read,
+            createdAt: toDate(notification.createdAt),
             icon:
-              typedNotification.icon ||
+              notification.icon ||
               W3RK_NOTIFICATION_ICONS[typedNotification.type] ||
               "/images/notification.svg",
           };
         });
+
         setW3rkNotifications(sortByDateDesc(normalized));
         setW3rkLoading(false);
-      },
-      error => {
-        setW3rkError(error.message || "Could not load notifications.");
+      } catch (error) {
+        if (!mounted) {
+          return;
+        }
+        setW3rkError(error instanceof Error ? error.message : "Could not load notifications.");
         setW3rkLoading(false);
       }
-    );
+    };
 
-    return () => unsubscribe();
+    void loadW3rkNotifications(true);
+    intervalId = window.setInterval(() => {
+      void loadW3rkNotifications(false);
+    }, 30000);
+
+    return () => {
+      mounted = false;
+      if (intervalId) {
+        window.clearInterval(intervalId);
+      }
+    };
   }, [activeLensAddress]);
 
   useEffect(() => {
@@ -134,94 +198,70 @@ const Notifications = () => {
       }
       setLensError(null);
 
-      const result = await fetchLensNotifications(sessionClient as any, {
-        filter: {
-          timeBasedAggregation: true,
+      const credentials = await (sessionClient as any).getCredentials().unwrapOr(null);
+      const accessToken = credentials?.accessToken;
+
+      if (!accessToken) {
+        if (mounted) {
+          setLensNotifications([]);
+          setLensLoading(false);
+          setLensError("Lens session token missing. Please login again.");
+        }
+        return;
+      }
+
+      const lensEndpoint =
+        process.env.NEXT_PUBLIC_LENS_API_URL || "https://api.testnet.lens.xyz/graphql";
+      const response = await fetch(lensEndpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
+        body: JSON.stringify({
+          query: LENS_NOTIFICATIONS_QUERY,
+          variables: {
+            request: {
+              filter: {
+                timeBasedAggregation: true,
+              },
+            },
+          },
+        }),
       });
+
+      const payload = (await response.json().catch(() => ({}))) as {
+        data?: { notifications?: { items?: any[] } };
+        errors?: Array<{ message?: string }>;
+      };
 
       if (!mounted) return;
 
-      if (result.isErr()) {
-        setLensError(result.error.message || "Could not load Lens activity.");
+      if (!response.ok || payload.errors?.length) {
+        const message =
+          payload.errors?.[0]?.message || `Could not load Lens activity (${response.status}).`;
+        setLensError(message);
         setLensLoading(false);
         return;
       }
 
-      const items = (result.value?.items || []) as any[];
-      const normalized = items.map((item, idx) => {
-        const typename = String(item?.__typename || item?.type || "");
-        const lensId = item?.id ? `lens-${item.id}` : `lens-${idx}`;
+      const items = payload.data?.notifications?.items || [];
+      const normalized = items
+        .filter(item => item?.__typename === "FollowNotification")
+        .flatMap((item: any, idx: number) => {
+          const followers = Array.isArray(item?.followers) ? item.followers : [];
+          if (followers.length === 0) {
+            return [];
+          }
 
-        if (typename.includes("Follow")) {
-          const follower = Array.isArray(item?.followers) ? item.followers[0] : null;
-          return {
-            id: lensId,
+          return followers.map((follower: any, followerIdx: number) => ({
+            id: `lens-follow-${item.id || idx}-${followerIdx}`,
             message: `${displayLensActor(follower?.account)} followed you on Lens.`,
             read: true,
-            createdAt: toDate(follower?.followedAt || item?.createdAt || item?.timestamp),
+            createdAt: toDate(follower?.followedAt),
             icon: "/images/UserCirclePlus.svg",
-          };
-        }
-
-        if (typename.includes("Comment")) {
-          return {
-            id: lensId,
-            message: "Someone commented on your Lens post.",
-            read: true,
-            createdAt: toDate(item?.comment?.createdAt || item?.createdAt || item?.timestamp),
-            icon: "/images/messageIcon.svg",
-          };
-        }
-
-        if (typename.includes("Reaction")) {
-          return {
-            id: lensId,
-            message: "Someone reacted to your Lens post.",
-            read: true,
-            createdAt: toDate(item?.createdAt || item?.timestamp),
-            icon: "/images/notification.svg",
-          };
-        }
-
-        if (typename.includes("Mention")) {
-          return {
-            id: lensId,
-            message: "You were mentioned in a Lens post.",
-            read: true,
-            createdAt: toDate(item?.createdAt || item?.timestamp),
-            icon: "/images/notification.svg",
-          };
-        }
-
-        if (typename.includes("Quote")) {
-          return {
-            id: lensId,
-            message: "Someone quoted your Lens post.",
-            read: true,
-            createdAt: toDate(item?.quote?.createdAt || item?.createdAt || item?.timestamp),
-            icon: "/images/notification.svg",
-          };
-        }
-
-        if (typename.includes("Repost")) {
-          return {
-            id: lensId,
-            message: "Someone reposted your Lens post.",
-            read: true,
-            createdAt: toDate(item?.createdAt || item?.timestamp),
-            icon: "/images/notification.svg",
-          };
-        }
-
-        return {
-          id: lensId,
-          message: "New Lens activity.",
-          read: true,
-          createdAt: toDate(item?.createdAt || item?.timestamp || item?.actionDate),
-          icon: "/images/notification.svg",
-        };
-      });
+          }));
+        });
 
       setLensNotifications(sortByDateDesc(normalized));
       setLensLoading(false);
