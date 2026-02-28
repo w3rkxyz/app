@@ -13,10 +13,12 @@ import { useXMTPClient } from "@/hooks/useXMTPClient";
 import toast from "react-hot-toast";
 
 const XMTP_RESTORE_DEBUG_KEY = "w3rk:xmtp:restore-debug:last";
+const XMTP_UI_RESTORE_DEBUG_KEY = "w3rk:xmtp:restore-ui:last";
 const XMTP_LAST_ENV_KEY = "w3rk:xmtp:last-env";
 const XMTP_ENABLED_SESSION_MAP_KEY = "w3rk:xmtp:enabled-session-map";
 const XMTP_LAST_SUCCESSFUL_CONNECTION_KEY = "w3rk:xmtp:last-successful-connection";
 const XMTP_LAST_SUCCESSFUL_CONNECTION_MAP_KEY = "w3rk:xmtp:last-successful-connection-map";
+const WALLET_READY_TIMEOUT_MS = 5000;
 const RESTORE_TIMEOUT_MS = 15000;
 
 const stageLabel: Record<string, string> = {
@@ -40,7 +42,7 @@ const ConversationsNav = () => {
   const walletClientChainId =
     typeof walletClient?.chain?.id === "number" ? walletClient.chain.id : null;
   const lensProfile = useSelector((state: RootState) => state.app.user);
-  const { createXMTPClient, initXMTPClient, connectingXMTP, connectStage, initializing } =
+  const { createXMTPClient, initXMTPClient, connectingXMTP, connectStage } =
     useXMTPClient({
       walletAddress,
       lensAccountAddress: lensProfile?.address,
@@ -62,6 +64,21 @@ const ConversationsNav = () => {
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [restoreAttemptId, setRestoreAttemptId] = useState<string | null>(null);
 
+  const persistUiRestoreDebug = useCallback((payload: Record<string, unknown>) => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const snapshot = {
+      timestamp: new Date().toISOString(),
+      ...payload,
+    };
+    try {
+      window.localStorage.setItem(XMTP_UI_RESTORE_DEBUG_KEY, JSON.stringify(snapshot));
+    } catch {
+      // no-op
+    }
+  }, []);
+
   const clearWalletReadyTimeout = useCallback(() => {
     if (walletReadyTimeoutRef.current) {
       clearTimeout(walletReadyTimeoutRef.current);
@@ -75,15 +92,31 @@ const ConversationsNav = () => {
     }
     walletReadyTimeoutRef.current = setTimeout(() => {
       walletReadyTimeoutRef.current = null;
+      persistUiRestoreDebug({
+        event: "wallet_ready_timeout",
+        timeoutMs: WALLET_READY_TIMEOUT_MS,
+        walletAddress: walletAddress?.toLowerCase() ?? null,
+        walletClientAddress,
+        walletClientChainId,
+        isConnected,
+        isReconnecting,
+      });
       console.warn("[XMTP_UI_RESTORE]", {
         event: "wallet_ready_timeout",
-        timeoutMs: RESTORE_TIMEOUT_MS,
+        timeoutMs: WALLET_READY_TIMEOUT_MS,
       });
       setRestorePhase("failed");
       setRestoreCompleted(true);
-      setRestoreError("Wallet provider is still preparing. Retry once wallet is ready.");
-    }, RESTORE_TIMEOUT_MS);
-  }, []);
+      setRestoreError("Wallet reconnect is taking too long. Retry or reconnect wallet.");
+    }, WALLET_READY_TIMEOUT_MS);
+  }, [
+    isConnected,
+    isReconnecting,
+    persistUiRestoreDebug,
+    walletAddress,
+    walletClientAddress,
+    walletClientChainId,
+  ]);
 
   const getRestoreAttemptId = () =>
     `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
@@ -94,17 +127,26 @@ const ConversationsNav = () => {
     }
 
     const payload = window.localStorage.getItem(XMTP_RESTORE_DEBUG_KEY);
-    if (!payload) {
+    const uiPayload = window.localStorage.getItem(XMTP_UI_RESTORE_DEBUG_KEY);
+    if (!payload && !uiPayload) {
       toast.error("No XMTP debug data found yet.");
       return;
     }
 
     try {
+      const combinedPayload = JSON.stringify(
+        {
+          uiRestore: uiPayload ? JSON.parse(uiPayload) : null,
+          xmtpRestore: payload ? JSON.parse(payload) : null,
+        },
+        null,
+        2
+      );
       if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(payload);
+        await navigator.clipboard.writeText(combinedPayload);
       } else {
         const textArea = document.createElement("textarea");
-        textArea.value = payload;
+        textArea.value = combinedPayload;
         textArea.setAttribute("readonly", "true");
         textArea.style.position = "fixed";
         textArea.style.left = "-9999px";
@@ -168,12 +210,17 @@ const ConversationsNav = () => {
         setRestoreCompleted(false);
         setRestoreError(null);
         setRestoreAttemptId(null);
+        persistUiRestoreDebug({
+          event: "wallet_disconnected",
+          walletAddress: walletAddress?.toLowerCase() ?? null,
+          isConnected,
+          isReconnecting,
+        });
         attemptedRestoreKeyRef.current = "";
         return;
       }
 
-      const walletReady =
-        Boolean(walletAddress) && Boolean(walletClientAddress) && !isReconnecting;
+      const walletReady = Boolean(walletAddress);
 
       if (!walletReady) {
         if (restoreCompleted && (restorePhase === "failed" || restorePhase === "timeout")) {
@@ -183,6 +230,15 @@ const ConversationsNav = () => {
         setRestoreCompleted(false);
         setRestoreError(null);
         startWalletReadyTimeout();
+        persistUiRestoreDebug({
+          event: "wallet_not_ready",
+          walletAddress: walletAddress?.toLowerCase() ?? null,
+          walletClientAddress,
+          walletClientChainId,
+          isConnected,
+          isReconnecting,
+          walletReady,
+        });
         console.info("[XMTP_UI_RESTORE]", {
           event: "wallet_not_ready",
           timestamp: new Date().toISOString(),
@@ -206,8 +262,6 @@ const ConversationsNav = () => {
 
       const restoreKey = [
         walletAddress?.toLowerCase() ?? "",
-        walletClientAddress ?? "",
-        walletClientChainId?.toString() ?? "",
         lensProfile?.address?.toLowerCase() ?? "",
         lensProfile?.id ?? "",
         lensProfile?.handle?.toLowerCase() ?? "",
@@ -246,6 +300,20 @@ const ConversationsNav = () => {
           lensProfileId: lensProfile?.id ?? null,
           lensHandle: lensProfile?.handle ?? null,
         });
+        persistUiRestoreDebug({
+          event: "restore_start",
+          attemptId,
+          startedAt: new Date(startedAt).toISOString(),
+          walletAddress: walletAddress?.toLowerCase() ?? null,
+          walletClientAddress,
+          walletClientChainId,
+          isConnected,
+          isReconnecting,
+          walletReady,
+          lensAccountAddress: lensProfile?.address?.toLowerCase() ?? null,
+          lensProfileId: lensProfile?.id ?? null,
+          lensHandle: lensProfile?.handle ?? null,
+        });
 
         // Silent restore only: never trigger wallet signatures automatically on page load.
         const restoredClient = await Promise.race([
@@ -278,6 +346,13 @@ const ConversationsNav = () => {
             durationMs: Date.now() - startedAt,
             result: restoredClient ? "restored" : "not_restored",
           });
+          persistUiRestoreDebug({
+            event: "restore_end",
+            attemptId,
+            endedAt: new Date().toISOString(),
+            durationMs: Date.now() - startedAt,
+            result: restoredClient ? "restored" : "not_restored",
+          });
         }
       } catch (error) {
         if (!cancelled) {
@@ -301,10 +376,24 @@ const ConversationsNav = () => {
             error: message,
             isTimeout,
           });
+          persistUiRestoreDebug({
+            event: "restore_failed",
+            attemptId,
+            endedAt: new Date().toISOString(),
+            durationMs: Date.now() - startedAt,
+            error: message,
+            isTimeout,
+          });
         }
       } finally {
         restoreInFlightRef.current = false;
         if (!cancelled && !restoreResolved) {
+          persistUiRestoreDebug({
+            event: "restore_finalized_without_resolution",
+            attemptId,
+          });
+          setRestorePhase("failed");
+          setRestoreError("Restore ended unexpectedly. Retry or reconnect wallet.");
           setRestoreCompleted(true);
         }
       }
@@ -328,6 +417,7 @@ const ConversationsNav = () => {
     restoreCompleted,
     restorePhase,
     startWalletReadyTimeout,
+    persistUiRestoreDebug,
     walletAddress,
     walletClientAddress,
     walletClientChainId,
@@ -372,6 +462,10 @@ const ConversationsNav = () => {
 
   const handleRetryRestore = () => {
     clearWalletReadyTimeout();
+    persistUiRestoreDebug({
+      event: "restore_retry_clicked",
+      restoreAttemptId,
+    });
     attemptedRestoreKeyRef.current = "";
     setRestorePhase("idle");
     setRestoreCompleted(false);
@@ -379,11 +473,25 @@ const ConversationsNav = () => {
     setRestoreAttemptId(null);
   };
 
+  const handleReconnectWallet = () => {
+    persistUiRestoreDebug({
+      event: "reconnect_wallet_clicked",
+      restoreAttemptId,
+    });
+    if (typeof window !== "undefined") {
+      window.location.reload();
+    }
+  };
+
   const handleResetRestore = () => {
     if (typeof window === "undefined") {
       return;
     }
     clearWalletReadyTimeout();
+    persistUiRestoreDebug({
+      event: "restore_reset_clicked",
+      restoreAttemptId,
+    });
     window.localStorage.removeItem(XMTP_LAST_ENV_KEY);
     window.localStorage.removeItem(XMTP_ENABLED_SESSION_MAP_KEY);
     window.localStorage.removeItem(XMTP_LAST_SUCCESSFUL_CONNECTION_KEY);
@@ -405,14 +513,13 @@ const ConversationsNav = () => {
     !client &&
     isConnected &&
     !connectingXMTP &&
-    showEnableActions &&
-    !initializing;
+    showEnableActions;
   const showRestoreState =
     !client &&
     isConnected &&
     !showEnableState &&
     !connectingXMTP &&
-    (restorePhase === "waiting_wallet" || restorePhase === "running" || initializing);
+    (restorePhase === "waiting_wallet" || restorePhase === "running");
   const restorePrimaryLabel =
     restorePhase === "waiting_wallet" ? "Preparing Wallet..." : "Restoring Messages...";
   const restoreSecondaryLabel =
@@ -516,6 +623,13 @@ const ConversationsNav = () => {
                     className="px-4 py-2 border border-[#D3D3D3] text-[#333] text-xs rounded-full hover:bg-[#F8F8F8]"
                   >
                     Retry
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleReconnectWallet}
+                    className="px-4 py-2 border border-[#D3D3D3] text-[#333] text-xs rounded-full hover:bg-[#F8F8F8]"
+                  >
+                    Reconnect wallet
                   </button>
                   <button
                     type="button"
