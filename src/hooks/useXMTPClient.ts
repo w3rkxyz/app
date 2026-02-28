@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useCallback, useState } from "react";
 import {
   Client,
+  Opfs,
   IdentifierKind,
   getInboxIdForIdentifier,
   type SCWSigner,
@@ -35,6 +36,8 @@ const XMTP_LAST_ENV_KEY = "w3rk:xmtp:last-env";
 const XMTP_ENABLED_SESSION_MAP_KEY = "w3rk:xmtp:enabled-session-map";
 const XMTP_DB_KEY_STORAGE_LEGACY_PREFIX = "w3rk:xmtp:db-key";
 const XMTP_DB_KEY_STORAGE_SUFFIX = "dbEncryptionKey";
+const XMTP_DB_BACKUP_STORAGE_PREFIX = "w3rk:xmtp:db-backup";
+const XMTP_DB_BACKUP_MAX_BYTES = 2_000_000;
 const XMTP_RESTORE_DEBUG_KEY = "w3rk:xmtp:restore-debug:last";
 const XMTP_LAST_SUCCESSFUL_CONNECTION_KEY = "w3rk:xmtp:last-successful-connection";
 const XMTP_LAST_SUCCESSFUL_CONNECTION_MAP_KEY = "w3rk:xmtp:last-successful-connection-map";
@@ -611,6 +614,103 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     [normalizeIdentifierAddress]
   );
 
+  const buildDbBackupStorageKey = useCallback(
+    (env: "local" | "dev" | "production", identifier: string) => {
+      const normalized = normalizeIdentifierAddress(identifier);
+      return normalized ? `${XMTP_DB_BACKUP_STORAGE_PREFIX}:${env}:${normalized}` : null;
+    },
+    [normalizeIdentifierAddress]
+  );
+
+  const loadDbBackup = useCallback(
+    (env: "local" | "dev" | "production", identifier: string): Uint8Array | undefined => {
+      if (typeof window === "undefined") {
+        return undefined;
+      }
+      const key = buildDbBackupStorageKey(env, identifier);
+      if (!key) {
+        return undefined;
+      }
+      const raw = window.localStorage.getItem(key);
+      if (!raw) {
+        return undefined;
+      }
+      try {
+        const bytes = base64ToBytes(raw);
+        return bytes.length > 0 ? bytes : undefined;
+      } catch {
+        return undefined;
+      }
+    },
+    [base64ToBytes, buildDbBackupStorageKey]
+  );
+
+  const persistDbBackupFromOpfs = useCallback(
+    async (env: "local" | "dev" | "production", identifier: string, dbPath: string | null) => {
+      if (typeof window === "undefined" || !dbPath) {
+        return false;
+      }
+      const storageKey = buildDbBackupStorageKey(env, identifier);
+      if (!storageKey) {
+        return false;
+      }
+
+      let opfs: Opfs | null = null;
+      try {
+        opfs = await Opfs.create(false);
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          const exists = await opfs.fileExists(dbPath);
+          if (!exists) {
+            await new Promise(resolve => setTimeout(resolve, 150));
+            continue;
+          }
+
+          const exported = await opfs.exportDb(dbPath);
+          if (!exported || exported.length === 0 || exported.length > XMTP_DB_BACKUP_MAX_BYTES) {
+            return false;
+          }
+          window.localStorage.setItem(storageKey, bytesToBase64(exported));
+          return true;
+        }
+        return false;
+      } catch {
+        return false;
+      } finally {
+        opfs?.close();
+      }
+    },
+    [buildDbBackupStorageKey, bytesToBase64]
+  );
+
+  const restoreDbBackupToOpfsIfMissing = useCallback(
+    async (env: "local" | "dev" | "production", identifier: string, dbPath: string | null) => {
+      if (typeof window === "undefined" || !dbPath) {
+        return false;
+      }
+
+      const backupBytes = loadDbBackup(env, identifier);
+      if (!backupBytes || backupBytes.length === 0) {
+        return false;
+      }
+
+      let opfs: Opfs | null = null;
+      try {
+        opfs = await Opfs.create(false);
+        const exists = await opfs.fileExists(dbPath);
+        if (exists) {
+          return false;
+        }
+        await opfs.importDb(dbPath, backupBytes);
+        return true;
+      } catch {
+        return false;
+      } finally {
+        opfs?.close();
+      }
+    },
+    [loadDbBackup]
+  );
+
   const isInstallationLimitError = useCallback((error: unknown) => {
     const message = stringifyError(error).toLowerCase();
     return (
@@ -678,6 +778,10 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
       const normalizedWallet = walletIdentifier.toLowerCase();
       const stableDbPath = buildStableDbPath(env, normalizedWallet);
+      const backupStorageKey = buildDbBackupStorageKey(env, normalizedWallet);
+      const backupPresent = Boolean(
+        backupStorageKey && window.localStorage.getItem(backupStorageKey)
+      );
       const canonicalStorageKey = buildDbKeyStorageKey(env, normalizedWallet);
       const legacyStorageKey = buildLegacyDbKeyStorageKey(env, normalizedWallet);
       const canonicalDbKeyPresent = Boolean(
@@ -695,6 +799,8 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         walletAddress: walletAddress?.toLowerCase() ?? null,
         walletIdentifier: normalizedWallet,
         stableDbPath,
+        backupStorageKey,
+        backupPresent,
         inboxId: clientLike?.inboxId ?? null,
         installationId: clientLike?.installationId ?? null,
         canonicalDbKeyStorageKey: canonicalStorageKey,
@@ -708,6 +814,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     [
       buildDbKeyStorageKey,
       buildStableDbPath,
+      buildDbBackupStorageKey,
       buildLegacyDbKeyStorageKey,
       inspectIndexedDbState,
       walletAddress,
@@ -1591,6 +1698,20 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           createdClient as { inboxId?: string; installationId?: string },
           dbEncryptionKey
         );
+        if (dbPath) {
+          const didPersistBackup = await persistDbBackupFromOpfs(
+            env,
+            signerIdentifier.identifier,
+            dbPath
+          );
+          logDebug("create:db_backup:persisted", {
+            mode,
+            env,
+            identifier: signerIdentifier.identifier,
+            dbPath,
+            didPersistBackup,
+          });
+        }
 
         return createdClient;
       };
@@ -1917,6 +2038,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     isInstallationLimitError,
     persistEnabledState,
     persistLastSuccessfulConnection,
+    persistDbBackupFromOpfs,
     logEnablePersistenceSnapshot,
     getPreferredEnv,
     verifyBuiltClientInstallation,
@@ -2066,6 +2188,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
       const MAX_BUILD_ATTEMPTS = 6;
       let attempts = 0;
+      const opfsBackupRestoreAttempts = new Set<string>();
 
       for (const identifier of identifiers) {
         for (const env of envCandidates) {
@@ -2111,6 +2234,24 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
             addKeyCandidate(dbEncryptionKey);
             const stableDbPath = buildStableDbPath(env, identifier.identifier);
+            if (stableDbPath) {
+              const opfsAttemptKey = `${env}:${identifier.identifier}:${stableDbPath}`;
+              if (!opfsBackupRestoreAttempts.has(opfsAttemptKey)) {
+                opfsBackupRestoreAttempts.add(opfsAttemptKey);
+                const restoredFromBackup = await restoreDbBackupToOpfsIfMissing(
+                  env,
+                  identifier.identifier,
+                  stableDbPath
+                );
+                logDebug("init:build:db_backup:restore_attempt", {
+                  restoreAttemptId,
+                  env,
+                  identifier: identifier.identifier,
+                  dbPath: stableDbPath,
+                  restoredFromBackup,
+                });
+              }
+            }
             const buildOptions =
               keyCandidates.length > 0
                 ? [
@@ -2325,6 +2466,20 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                   canMessageReady;
                 if (isUsable) {
                   setClient(builtClient);
+                  if (stableDbPath) {
+                    const persistedBackup = await persistDbBackupFromOpfs(
+                      env,
+                      identifier.identifier,
+                      stableDbPath
+                    );
+                    logDebug("init:build:db_backup:persisted", {
+                      restoreAttemptId,
+                      env,
+                      identifier: identifier.identifier,
+                      dbPath: stableDbPath,
+                      persistedBackup,
+                    });
+                  }
                   persistEnabledState(env, [identifier.identifier], {
                     inboxId: builtInboxId,
                     installationId: builtInstallationId,
@@ -2458,6 +2613,8 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     logError,
     removeDbEncryptionKey,
     shouldRotateDbKey,
+    restoreDbBackupToOpfsIfMissing,
+    persistDbBackupFromOpfs,
     stringifyError,
     walletClientAccountAddress,
     persistEnabledState,
