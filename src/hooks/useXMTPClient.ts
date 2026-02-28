@@ -130,6 +130,7 @@ type XMTPRestoreDebugSnapshot = {
 type XMTPLastSuccessfulConnection = {
   env: "local" | "dev" | "production";
   identifier: string;
+  dbPath?: string;
   inboxId?: string;
   installationId?: string;
   dbEncryptionKey?: string;
@@ -593,14 +594,6 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     return getEnv();
   }, []);
 
-  const hasRestoreDbKeyForWallet = useCallback(() => {
-    if (!walletAddress) {
-      return false;
-    }
-    const env = getPreferredRestoreEnv();
-    return Boolean(loadDbEncryptionKey(env, walletAddress.toLowerCase()));
-  }, [getPreferredRestoreEnv, loadDbEncryptionKey, walletAddress]);
-
   const buildStableDbPath = useCallback(
     (env: "local" | "dev" | "production", identifier: string) => {
       const normalized = normalizeIdentifierAddress(identifier);
@@ -667,6 +660,57 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     }
   }, []);
 
+  const inspectOpfsPaths = useCallback(
+    async (paths: string[]) => {
+      const checkedPaths = Array.from(
+        new Set(paths.filter((value): value is string => typeof value === "string" && value.length > 0))
+      );
+      if (checkedPaths.length === 0) {
+        return {
+          opfsAvailable: false,
+          opfsError: null as string | null,
+          opfsFiles: [] as string[],
+          checkedPaths,
+          existingPaths: [] as string[],
+        };
+      }
+
+      let opfs: Opfs | null = null;
+      try {
+        opfs = await Opfs.create(false);
+        const opfsFiles = await opfs.listFiles().catch(() => [] as string[]);
+        const existingPaths: string[] = [];
+        for (const path of checkedPaths) {
+          try {
+            if (await opfs.fileExists(path)) {
+              existingPaths.push(path);
+            }
+          } catch {
+            // ignore per-path check failures
+          }
+        }
+        return {
+          opfsAvailable: true,
+          opfsError: null as string | null,
+          opfsFiles,
+          checkedPaths,
+          existingPaths,
+        };
+      } catch (error) {
+        return {
+          opfsAvailable: false,
+          opfsError: stringifyError(error),
+          opfsFiles: [] as string[],
+          checkedPaths,
+          existingPaths: [] as string[],
+        };
+      } finally {
+        opfs?.close();
+      }
+    },
+    [stringifyError]
+  );
+
   const logEnablePersistenceSnapshot = useCallback(
     async (
       stage: string,
@@ -689,6 +733,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         legacyStorageKey && window.localStorage.getItem(legacyStorageKey)
       );
       const idbSnapshot = await inspectIndexedDbState();
+      const opfsSnapshot = stableDbPath ? await inspectOpfsPaths([stableDbPath]) : null;
 
       console.info("[XMTP_PERSISTENCE]", {
         stage,
@@ -704,6 +749,11 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         legacyDbKeyStorageKey: legacyStorageKey,
         legacyDbKeyPresent,
         lastEnv: window.localStorage.getItem(XMTP_LAST_ENV_KEY),
+        opfsAvailable: opfsSnapshot?.opfsAvailable ?? false,
+        opfsError: opfsSnapshot?.opfsError ?? null,
+        opfsFiles: opfsSnapshot?.opfsFiles ?? [],
+        opfsCheckedPaths: opfsSnapshot?.checkedPaths ?? [],
+        opfsExistingPaths: opfsSnapshot?.existingPaths ?? [],
         ...idbSnapshot,
       });
     },
@@ -711,6 +761,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       buildDbKeyStorageKey,
       buildStableDbPath,
       buildLegacyDbKeyStorageKey,
+      inspectOpfsPaths,
       inspectIndexedDbState,
       walletAddress,
     ]
@@ -819,6 +870,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       return {
         env: parsed.env,
         identifier: normalizedIdentifier,
+        dbPath: typeof parsed.dbPath === "string" ? parsed.dbPath : undefined,
         inboxId: typeof parsed.inboxId === "string" ? parsed.inboxId : undefined,
         installationId:
           typeof parsed.installationId === "string" ? parsed.installationId : undefined,
@@ -890,7 +942,8 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       env: "local" | "dev" | "production",
       identifier: string,
       clientLike: { inboxId?: string; installationId?: string },
-      dbEncryptionKey?: Uint8Array
+      dbEncryptionKey?: Uint8Array,
+      dbPath?: string | null
     ) => {
       if (typeof window === "undefined") {
         return;
@@ -904,6 +957,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       const payload: XMTPLastSuccessfulConnection = {
         env,
         identifier: normalizedIdentifier,
+        dbPath: dbPath ?? undefined,
         inboxId: clientLike.inboxId,
         installationId: clientLike.installationId,
         dbEncryptionKey:
@@ -1087,6 +1141,65 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       installationHints,
     };
   }, [getActiveSessionKeys, getPersistedSessionMap]);
+
+  const getRestoreIdentifierCandidates = useCallback(
+    (lastSuccessful?: XMTPLastSuccessfulConnection | null) => {
+      const sessionState = getPersistedSessionState();
+      return Array.from(
+        new Set(
+          [
+            lastSuccessful?.identifier,
+            xmtpAddress,
+            lensAccountAddress,
+            walletAddress,
+            walletClientAccountAddress,
+            ...sessionState.identifiers,
+            ...sessionState.identifierHints,
+          ]
+            .filter((value): value is string => Boolean(value))
+            .map(value => value.toLowerCase())
+            .filter(value => value.startsWith("0x") && value.length === 42)
+        )
+      );
+    },
+    [
+      getPersistedSessionState,
+      lensAccountAddress,
+      walletAddress,
+      walletClientAccountAddress,
+      xmtpAddress,
+    ]
+  );
+
+  const hasRestoreDbKeyForWallet = useCallback(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    const lastSuccessful = getLastSuccessfulConnection();
+    const persistedEnvRaw = window.localStorage.getItem(XMTP_LAST_ENV_KEY);
+    const persistedEnv =
+      persistedEnvRaw === "local" || persistedEnvRaw === "dev" || persistedEnvRaw === "production"
+        ? persistedEnvRaw
+        : undefined;
+    const envCandidates = buildEnvCandidates(
+      getPreferredRestoreEnv(),
+      persistedEnv,
+      lastSuccessful?.env
+    );
+    const identifierCandidates = getRestoreIdentifierCandidates(lastSuccessful);
+    if (identifierCandidates.length === 0) {
+      return false;
+    }
+    return identifierCandidates.some(identifier =>
+      envCandidates.some(env => Boolean(loadDbEncryptionKey(env, identifier)))
+    );
+  }, [
+    buildEnvCandidates,
+    getLastSuccessfulConnection,
+    getPreferredRestoreEnv,
+    getRestoreIdentifierCandidates,
+    loadDbEncryptionKey,
+  ]);
 
   const wipeXMTPIdentity = useCallback(async () => {
     try {
@@ -1469,7 +1582,8 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
             env,
             primaryIdentifier.identifier,
             builtClient as { inboxId?: string; installationId?: string },
-            primaryDbEncryptionKey
+            primaryDbEncryptionKey,
+            primaryDbPath
           );
           updateStage("connected");
           return builtClient;
@@ -1558,7 +1672,8 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
               env,
               fallbackIdentifier.identifier,
               builtFallbackClient as { inboxId?: string; installationId?: string },
-              fallbackDbEncryptionKey
+              fallbackDbEncryptionKey,
+              fallbackDbPath
             );
             updateStage("connected");
             return builtFallbackClient;
@@ -1695,7 +1810,8 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           env,
           signerIdentifier.identifier,
           createdClient as { inboxId?: string; installationId?: string },
-          dbEncryptionKey
+          dbEncryptionKey,
+          dbPath
         );
 
         return createdClient;
@@ -1781,6 +1897,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         const directDbKey = directIdentifier
           ? loadDbEncryptionKey(env, directIdentifier)
           : undefined;
+        const directDbPath = directIdentifier ? buildStableDbPath(env, directIdentifier) : null;
 
         setClient(directClient);
         persistEnabledState(env, [xmtpAddress ?? ""], {
@@ -1791,7 +1908,8 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           env,
           directIdentifier,
           directClient as { inboxId?: string; installationId?: string },
-          directDbKey
+          directDbKey,
+          directDbPath
         );
         await logEnablePersistenceSnapshot(
           "create_connected_primary",
@@ -1827,6 +1945,9 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
             const recoveredDbKey = recoveredIdentifier
               ? loadDbEncryptionKey(env, recoveredIdentifier)
               : undefined;
+            const recoveredDbPath = recoveredIdentifier
+              ? buildStableDbPath(env, recoveredIdentifier)
+              : null;
             setClient(recoveredClient);
             persistEnabledState(env, [xmtpAddress ?? ""], {
               inboxId: (recoveredClient as { inboxId?: string }).inboxId ?? null,
@@ -1837,7 +1958,8 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
               env,
               recoveredIdentifier,
               recoveredClient as { inboxId?: string; installationId?: string },
-              recoveredDbKey
+              recoveredDbKey,
+              recoveredDbPath
             );
             await logEnablePersistenceSnapshot(
               "create_connected_primary_installation_limit_recovery",
@@ -1893,6 +2015,9 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
             const fallbackDbKey = fallbackIdentifier
               ? loadDbEncryptionKey(env, fallbackIdentifier)
               : undefined;
+            const fallbackDbPath = fallbackIdentifier
+              ? buildStableDbPath(env, fallbackIdentifier)
+              : null;
             setClient(fallbackClient);
             persistEnabledState(env, [walletAddress ?? ""], {
               inboxId: (fallbackClient as { inboxId?: string }).inboxId ?? null,
@@ -1902,7 +2027,8 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
               env,
               fallbackIdentifier,
               fallbackClient as { inboxId?: string; installationId?: string },
-              fallbackDbKey
+              fallbackDbKey,
+              fallbackDbPath
             );
             await logEnablePersistenceSnapshot(
               "create_connected_eoa_fallback",
@@ -1949,6 +2075,9 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                 const recoveredDbKey = recoveredIdentifier
                   ? loadDbEncryptionKey(env, recoveredIdentifier)
                   : undefined;
+                const recoveredDbPath = recoveredIdentifier
+                  ? buildStableDbPath(env, recoveredIdentifier)
+                  : null;
                 setClient(recoveredClient);
                 persistEnabledState(env, [walletAddress ?? ""], {
                   inboxId: (recoveredClient as { inboxId?: string }).inboxId ?? null,
@@ -1959,7 +2088,8 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                   env,
                   recoveredIdentifier,
                   recoveredClient as { inboxId?: string; installationId?: string },
-                  recoveredDbKey
+                  recoveredDbKey,
+                  recoveredDbPath
                 );
                 await logEnablePersistenceSnapshot(
                   "create_connected_eoa_fallback_installation_limit_recovery",
@@ -2037,11 +2167,8 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
    */
   const initXMTPClient = useCallback(async () => {
     const lastSuccessfulConnection = getLastSuccessfulConnection();
-    const restoreAddressCandidates = walletAddress
-      ? [walletAddress.toLowerCase()].filter(
-          (value): value is string => value.startsWith("0x") && value.length === 42
-        )
-      : [];
+    const persistedSessionState = getPersistedSessionState();
+    const restoreAddressCandidates = getRestoreIdentifierCandidates(lastSuccessfulConnection);
     const restoreAttempts: XMTPRestoreAttemptDebug[] = [];
     const restoreAttemptId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
     const restoreStartedAtMs = Date.now();
@@ -2109,47 +2236,32 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           ? persistedEnvRaw
           : undefined;
       const preferredEnv = getPreferredRestoreEnv();
-      const primaryWalletIdentifier = restoreAddressCandidates[0];
-      const primaryDbEncryptionKey = loadDbEncryptionKey(preferredEnv, primaryWalletIdentifier);
-      const lastSuccessfulDbKeyCandidate =
-        lastSuccessfulConnection &&
-        lastSuccessfulConnection.identifier === primaryWalletIdentifier &&
-        lastSuccessfulConnection.dbEncryptionKey
-          ? lastSuccessfulConnection.dbEncryptionKey
-          : undefined;
-
-      if (!primaryDbEncryptionKey && !lastSuccessfulDbKeyCandidate) {
-        restoreReason = "missing_db_encryption_key";
-        const endedAt = new Date().toISOString();
-        persistRestoreDebug({
-          result: "not_restored",
-          restoreAttemptId,
-          restoreStartedAt: restoreStartedAtIso,
-          restoreEndedAt: endedAt,
-          restoreDurationMs: Date.now() - restoreStartedAtMs,
-          walletReadyState,
-          identity: baseIdentity,
-          envCandidates: [preferredEnv],
-          identifierCandidates: [primaryWalletIdentifier],
-          attempts: restoreAttempts,
-          reason: "missing_db_encryption_key",
-        });
-        return undefined;
-      }
 
       const envCandidates = buildEnvCandidates(
         preferredEnv,
         persistedEnv,
         lastSuccessfulConnection?.env
       );
-
-      const identifierCandidates = [primaryWalletIdentifier];
+      const identifierCandidates = restoreAddressCandidates;
 
       const identifiers: Identifier[] = identifierCandidates.map(identifier => ({
         identifier,
         identifierKind: IdentifierKind.Ethereum,
       }));
       const expectedInstallationHints: Array<{ inboxId?: string; installationId?: string }> = [];
+      if (persistedSessionState.lastInboxId || persistedSessionState.lastInstallationId) {
+        expectedInstallationHints.push({
+          inboxId: persistedSessionState.lastInboxId,
+          installationId: persistedSessionState.lastInstallationId,
+        });
+      }
+      expectedInstallationHints.push(...persistedSessionState.installationHints);
+      if (lastSuccessfulConnection?.inboxId || lastSuccessfulConnection?.installationId) {
+        expectedInstallationHints.push({
+          inboxId: lastSuccessfulConnection.inboxId,
+          installationId: lastSuccessfulConnection.installationId,
+        });
+      }
 
       if (identifierCandidates.length === 0) {
         restoreReason = "identifier_candidates_empty";
@@ -2172,7 +2284,11 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
       const MAX_BUILD_ATTEMPTS = 6;
       let attempts = 0;
+      let hadAnyKeyCandidate = false;
+      let attemptedAnyBuild = false;
+      let hitInstallationLimitDuringRestore = false;
 
+      outerLoop:
       for (const identifier of identifiers) {
         for (const env of envCandidates) {
           if (attempts >= MAX_BUILD_ATTEMPTS) {
@@ -2216,32 +2332,114 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
             }
 
             addKeyCandidate(dbEncryptionKey);
+            if (keyCandidates.length === 0) {
+              restoreReason = "missing_db_encryption_key";
+              restoreAttempts.push({
+                env,
+                identifier: identifier.identifier,
+                usedDbEncryptionKey: false,
+                build: "failed",
+                buildErrorType: null,
+                inboxId: null,
+                installationId: null,
+                matchesPersistedInstallation: null,
+                registrationCheckFailed: false,
+                installationInInbox: null,
+                conversationAccess: null,
+                isRegistered: null,
+                canMessageReady: null,
+                error: "missingDbEncryptionKey",
+              });
+              continue;
+            }
+            hadAnyKeyCandidate = true;
+
             const stableDbPath = buildStableDbPath(env, identifier.identifier);
-            const buildOptions =
-              keyCandidates.length > 0
-                ? [
-                    ...keyCandidates.map((key, index) => ({
-                      env,
-                      dbEncryptionKey: key,
-                      ...(stableDbPath ? { dbPath: stableDbPath } : {}),
-                      source:
-                        index === 0 &&
-                        Boolean(
-                          lastSuccessfulConnection &&
-                            lastSuccessfulConnection.env === env &&
-                            lastSuccessfulConnection.identifier === identifier.identifier &&
-                            lastSuccessfulConnection.dbEncryptionKey
-                        )
-                          ? ("last_successful" as const)
-                          : ("persisted" as const),
-                    })),
-                    { env, ...(stableDbPath ? { dbPath: stableDbPath } : {}), source: "none" as const },
-                  ]
-                : [{ env, ...(stableDbPath ? { dbPath: stableDbPath } : {}), source: "none" as const }];
+            const lastSuccessfulDbPath =
+              lastSuccessfulConnection &&
+              lastSuccessfulConnection.env === env &&
+              lastSuccessfulConnection.identifier === identifier.identifier &&
+              typeof lastSuccessfulConnection.dbPath === "string" &&
+              lastSuccessfulConnection.dbPath.length > 0
+                ? lastSuccessfulConnection.dbPath
+                : null;
+            const dbPathCandidates = Array.from(
+              new Set(
+                [lastSuccessfulDbPath, stableDbPath].filter(
+                  (value): value is string => Boolean(value && value.length > 0)
+                )
+              )
+            );
+            if (dbPathCandidates.length === 0) {
+              restoreReason = "missing_db_path";
+              restoreAttempts.push({
+                env,
+                identifier: identifier.identifier,
+                usedDbEncryptionKey: true,
+                build: "failed",
+                buildErrorType: null,
+                inboxId: null,
+                installationId: null,
+                matchesPersistedInstallation: null,
+                registrationCheckFailed: false,
+                installationInInbox: null,
+                conversationAccess: null,
+                isRegistered: null,
+                canMessageReady: null,
+                error: "missingDbPath",
+              });
+              continue;
+            }
+
+            const opfsSnapshot = await inspectOpfsPaths(dbPathCandidates);
+            const opfsExistingPaths = new Set(opfsSnapshot.existingPaths);
+            const effectiveDbPaths = opfsSnapshot.opfsAvailable
+              ? dbPathCandidates.filter(path => opfsExistingPaths.has(path))
+              : dbPathCandidates;
+
+            if (opfsSnapshot.opfsAvailable && effectiveDbPaths.length === 0) {
+              restoreReason = "missing_local_db";
+              restoreAttempts.push({
+                env,
+                identifier: identifier.identifier,
+                usedDbEncryptionKey: true,
+                build: "failed",
+                buildErrorType: null,
+                inboxId: null,
+                installationId: null,
+                matchesPersistedInstallation: null,
+                registrationCheckFailed: false,
+                installationInInbox: null,
+                conversationAccess: null,
+                isRegistered: null,
+                canMessageReady: null,
+                error: `missingLocalDb:${dbPathCandidates.join(",")}`,
+              });
+              continue;
+            }
+
+            const buildOptions = effectiveDbPaths.flatMap(dbPath =>
+              keyCandidates.map((key, index) => ({
+                env,
+                dbEncryptionKey: key,
+                dbPath,
+                source:
+                  index === 0 &&
+                  Boolean(
+                    lastSuccessfulConnection &&
+                      lastSuccessfulConnection.env === env &&
+                      lastSuccessfulConnection.identifier === identifier.identifier &&
+                      lastSuccessfulConnection.dbEncryptionKey
+                  )
+                    ? ("last_successful" as const)
+                    : ("persisted" as const),
+              }))
+            );
 
             for (const options of buildOptions) {
               const optionDbEncryptionKey =
                 "dbEncryptionKey" in options ? options.dbEncryptionKey : undefined;
+              const optionDbPath = "dbPath" in options ? options.dbPath : null;
               const attemptDebug: XMTPRestoreAttemptDebug = {
                 env,
                 identifier: identifier.identifier,
@@ -2271,10 +2469,12 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                 env,
                 identifier: identifier.identifier,
                 optionSource: options.source,
+                dbPath: optionDbPath,
                 usedDbEncryptionKey: Boolean(optionDbEncryptionKey),
                 attempt: attempts,
               });
               try {
+                attemptedAnyBuild = true;
                 builtClient = await withTimeout(
                   Client.build(identifier, options),
                   4000,
@@ -2285,6 +2485,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                   env,
                   identifier: identifier.identifier,
                   optionSource: options.source,
+                  dbPath: optionDbPath,
                   usedDbEncryptionKey: Boolean(optionDbEncryptionKey),
                   durationMs: Date.now() - clientBuildStartedAtMs,
                 });
@@ -2439,7 +2640,8 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                     env,
                     identifier.identifier,
                     builtClient as { inboxId?: string; installationId?: string },
-                    optionDbEncryptionKey
+                    optionDbEncryptionKey,
+                    optionDbPath
                   );
                   restoreResult = "restored";
                   restoreReason = "usable_restore_candidate";
@@ -2481,11 +2683,17 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                   restoreAttemptId,
                   env,
                   identifier: identifier.identifier,
+                  dbPath: optionDbPath,
                   usedDbEncryptionKey: attemptDebug.usedDbEncryptionKey,
                   buildErrorType: attemptDebug.buildErrorType,
                   buildErrorMessage: stringifyError(buildError),
                   durationMs: Date.now() - clientBuildStartedAtMs,
                 });
+                if (isInstallationLimitError(buildError)) {
+                  hitInstallationLimitDuringRestore = true;
+                  restoreReason = "restore_build_triggered_registration";
+                  break outerLoop;
+                }
                 continue;
               }
             }
@@ -2501,6 +2709,17 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         }
       }
 
+      if (hitInstallationLimitDuringRestore) {
+        logDebug("init:restore:installation_limit_guarded", {
+          restoreAttemptId,
+          attempts: restoreAttempts.length,
+        });
+      } else if (!attemptedAnyBuild && !hadAnyKeyCandidate) {
+        restoreReason = "missing_db_encryption_key";
+      } else if (!attemptedAnyBuild && restoreReason === "no_usable_restore_candidate") {
+        restoreReason = "missing_local_db";
+      }
+
       persistRestoreDebug({
         result: "not_restored",
         restoreAttemptId,
@@ -2512,7 +2731,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         envCandidates,
         identifierCandidates,
         attempts: restoreAttempts,
-        reason: "no_usable_restore_candidate",
+        reason: restoreReason,
       });
       return undefined;
     } catch (error) {
@@ -2556,8 +2775,12 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     lensProfileId,
     persistRestoreDebug,
     buildEnvCandidates,
+    getPersistedSessionState,
+    getRestoreIdentifierCandidates,
     classifyBuildError,
     getPreferredRestoreEnv,
+    inspectOpfsPaths,
+    isInstallationLimitError,
     loadDbEncryptionKey,
     buildStableDbPath,
     logDebug,
