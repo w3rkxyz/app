@@ -411,19 +411,24 @@ const Notifications = () => {
     };
   }, [authenticatedUser?.address, profile?.address, sessionClient]);
 
-  const w3rkState = useMemo(() => {
-    if (w3rkLoading) return "loading";
-    if (w3rkError) return "error";
-    if (w3rkNotifications.length === 0) return "empty";
-    return "data";
-  }, [w3rkError, w3rkLoading, w3rkNotifications.length]);
+  const mergedNotifications = useMemo(
+    () => sortByDateDesc([...w3rkNotifications, ...lensNotifications]),
+    [lensNotifications, w3rkNotifications]
+  );
 
-  const lensState = useMemo(() => {
-    if (lensLoading) return "loading";
-    if (lensError) return "error";
-    if (lensNotifications.length === 0) return "empty";
-    return "data";
-  }, [lensError, lensLoading, lensNotifications.length]);
+  const mergedState = useMemo(() => {
+    if (mergedNotifications.length > 0) return "data";
+    if (w3rkLoading || lensLoading) return "loading";
+    if (w3rkError || lensError) return "error";
+    return "empty";
+  }, [lensError, lensLoading, mergedNotifications.length, w3rkError, w3rkLoading]);
+
+  const mergedError = useMemo(() => {
+    if (w3rkError && lensError) {
+      return `${w3rkError} ${lensError}`.trim();
+    }
+    return w3rkError || lensError || null;
+  }, [lensError, w3rkError]);
 
   const renderNotificationList = (items: NotificationListItem[], state: string, error?: string | null) => {
     if (state === "loading") {
@@ -502,22 +507,12 @@ const Notifications = () => {
 
         <div className="notification-box rounded-[16px] px-[8px] py-[8px] bg-white mb-[20px]">
           <ul className="divide-y divide-[#E4E4E7]">
-            {renderNotificationList(w3rkNotifications, w3rkState, w3rkError)}
+            {renderNotificationList(mergedNotifications, mergedState, mergedError)}
           </ul>
 
           <div className="pt-[12px] flex justify-center">
             <button className="px-[18px] py-[8px] text-[14px] rounded-full border border-[#E4E4E7] bg-white hover:bg-[#F8F8F8]">View more</button>
           </div>
-        </div>
-
-        <button className="text-[#212121E5] px-[16px] py-[7px] sm:px-[14px] sm:py-[4px] text-lg w-fit h-fit cursor-pointer mb-[12px] font-semibold">
-          Lens Activity
-        </button>
-
-        <div className="notification-box rounded-[16px] px-[8px] py-[8px] bg-white mb-[20px]">
-          <ul className="divide-y divide-[#E4E4E7]">
-            {renderNotificationList(lensNotifications, lensState, lensError)}
-          </ul>
         </div>
       </div>
     </div>
