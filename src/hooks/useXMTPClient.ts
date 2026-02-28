@@ -599,6 +599,26 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     return Boolean(loadDbEncryptionKey(env, walletAddress.toLowerCase()));
   }, [getPreferredRestoreEnv, loadDbEncryptionKey, walletAddress]);
 
+  const buildStableDbPath = useCallback(
+    (env: "local" | "dev" | "production", identifier: string) => {
+      const normalized = normalizeIdentifierAddress(identifier);
+      if (!normalized) {
+        return null;
+      }
+      // Keep db file stable per env + wallet identifier so create/build point to the same local DB.
+      return `xmtp-${env}-${normalized.replace(/^0x/, "")}.db3`;
+    },
+    [normalizeIdentifierAddress]
+  );
+
+  const isInstallationLimitError = useCallback((error: unknown) => {
+    const message = stringifyError(error).toLowerCase();
+    return (
+      message.includes("cannot register a new installation") &&
+      message.includes("installations")
+    );
+  }, [stringifyError]);
+
   const inspectIndexedDbState = useCallback(async () => {
     if (typeof window === "undefined" || typeof window.indexedDB === "undefined") {
       return {
@@ -657,6 +677,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       }
 
       const normalizedWallet = walletIdentifier.toLowerCase();
+      const stableDbPath = buildStableDbPath(env, normalizedWallet);
       const canonicalStorageKey = buildDbKeyStorageKey(env, normalizedWallet);
       const legacyStorageKey = buildLegacyDbKeyStorageKey(env, normalizedWallet);
       const canonicalDbKeyPresent = Boolean(
@@ -673,6 +694,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         env,
         walletAddress: walletAddress?.toLowerCase() ?? null,
         walletIdentifier: normalizedWallet,
+        stableDbPath,
         inboxId: clientLike?.inboxId ?? null,
         installationId: clientLike?.installationId ?? null,
         canonicalDbKeyStorageKey: canonicalStorageKey,
@@ -685,6 +707,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     },
     [
       buildDbKeyStorageKey,
+      buildStableDbPath,
       buildLegacyDbKeyStorageKey,
       inspectIndexedDbState,
       walletAddress,
@@ -693,6 +716,9 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
   const classifyBuildError = useCallback((error: unknown) => {
     const message = stringifyError(error).toLowerCase();
+    if (isInstallationLimitError(error)) {
+      return "other" as const;
+    }
     if (
       message.includes("missing identity update") ||
       message.includes("identity") ||
@@ -702,7 +728,8 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       return "missing_identity" as const;
     }
     if (
-      message.includes("db") ||
+      /\bdb\b/.test(message) ||
+      message.includes("database") ||
       message.includes("decrypt") ||
       message.includes("encryption key") ||
       message.includes("invalid key")
@@ -718,12 +745,15 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       return "environment_mismatch" as const;
     }
     return "other" as const;
-  }, [stringifyError]);
+  }, [isInstallationLimitError, stringifyError]);
 
   const shouldRotateDbKey = useCallback((error: unknown) => {
+    if (isInstallationLimitError(error)) {
+      return false;
+    }
     const classified = classifyBuildError(error);
     return classified === "db_key_mismatch";
-  }, [classifyBuildError]);
+  }, [classifyBuildError, isInstallationLimitError]);
 
   const buildEnvCandidates = useCallback(
     (
@@ -1270,10 +1300,12 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       try {
         logDebug("build:primary:start", { identifier: primaryIdentifier.identifier });
         const primaryDbEncryptionKey = loadDbEncryptionKey(env, primaryIdentifier.identifier);
+        const primaryDbPath = buildStableDbPath(env, primaryIdentifier.identifier);
         const builtClient = await withTimeout(
           Client.build(primaryIdentifier, {
             env,
             ...(primaryDbEncryptionKey ? { dbEncryptionKey: primaryDbEncryptionKey } : {}),
+            ...(primaryDbPath ? { dbPath: primaryDbPath } : {}),
           }),
           8000,
           "Restoring XMTP session timed out."
@@ -1352,10 +1384,12 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         try {
           logDebug("build:fallback:start", { identifier: fallbackIdentifier.identifier });
           const fallbackDbEncryptionKey = loadDbEncryptionKey(env, fallbackIdentifier.identifier);
+          const fallbackDbPath = buildStableDbPath(env, fallbackIdentifier.identifier);
           const builtFallbackClient = await withTimeout(
             Client.build(fallbackIdentifier, {
               env,
               ...(fallbackDbEncryptionKey ? { dbEncryptionKey: fallbackDbEncryptionKey } : {}),
+              ...(fallbackDbPath ? { dbPath: fallbackDbPath } : {}),
             }),
             8000,
             "Restoring XMTP session timed out."
@@ -1480,16 +1514,6 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
       let failedMethod: "Client.create" | "client.isRegistered" | "client.register" =
         "Client.create";
-      const isInstallationLimitError = (error: unknown) => {
-        if (!(error instanceof Error)) {
-          return false;
-        }
-        const message = error.message?.toLowerCase() ?? "";
-        return (
-          message.includes("cannot register a new installation") &&
-          message.includes("installations")
-        );
-      };
 
       const extractInboxIdFromError = (error: unknown) => {
         if (!(error instanceof Error)) {
@@ -1507,6 +1531,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       ) => {
         const signerIdentifier = await activeSigner.getIdentifier();
         const dbEncryptionKey = getOrCreateDbEncryptionKey(env, signerIdentifier.identifier);
+        const dbPath = buildStableDbPath(env, signerIdentifier.identifier);
 
         updateStage("create_client");
         logDebug("create:start", {
@@ -1521,6 +1546,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
             env,
             disableAutoRegister: true,
             dbEncryptionKey,
+            ...(dbPath ? { dbPath } : {}),
           }),
           120000,
           "Creating XMTP client timed out."
@@ -1885,8 +1911,10 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     logDebug,
     logError,
     loadDbEncryptionKey,
+    buildStableDbPath,
     getOrCreateDbEncryptionKey,
     storeDbEncryptionKey,
+    isInstallationLimitError,
     persistEnabledState,
     persistLastSuccessfulConnection,
     logEnablePersistenceSnapshot,
@@ -2082,12 +2110,14 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
             }
 
             addKeyCandidate(dbEncryptionKey);
+            const stableDbPath = buildStableDbPath(env, identifier.identifier);
             const buildOptions =
               keyCandidates.length > 0
                 ? [
                     ...keyCandidates.map((key, index) => ({
                       env,
                       dbEncryptionKey: key,
+                      ...(stableDbPath ? { dbPath: stableDbPath } : {}),
                       source:
                         index === 0 &&
                         Boolean(
@@ -2099,9 +2129,9 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                           ? ("last_successful" as const)
                           : ("persisted" as const),
                     })),
-                    { env, source: "none" as const },
+                    { env, ...(stableDbPath ? { dbPath: stableDbPath } : {}), source: "none" as const },
                   ]
-                : [{ env, source: "none" as const }];
+                : [{ env, ...(stableDbPath ? { dbPath: stableDbPath } : {}), source: "none" as const }];
 
             for (const options of buildOptions) {
               const optionDbEncryptionKey =
@@ -2423,6 +2453,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     classifyBuildError,
     getPreferredRestoreEnv,
     loadDbEncryptionKey,
+    buildStableDbPath,
     logDebug,
     logError,
     removeDbEncryptionKey,
