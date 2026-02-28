@@ -5,13 +5,18 @@ import Image from "next/image";
 import { MetadataAttributeType, textOnly } from "@lens-protocol/metadata";
 import { uploadMetadataToLensStorage } from "@/utils/storage-client";
 import toast from "react-hot-toast";
-import { useSessionClient, uri } from "@lens-protocol/react";
-import { post } from "@lens-protocol/client/actions";
-import { getAcceptedTokens } from "@/api";
+import { evmAddress } from "@lens-protocol/client";
+import { fetchAccount as fetchLensAccount, post } from "@lens-protocol/client/actions";
+import { handleOperationWith } from "@lens-protocol/client/viem";
+import { useLogin, useSessionClient, uri } from "@lens-protocol/react";
+import { client, getLensClient } from "@/client";
+import { displayLoginModal } from "@/redux/app";
 import CreatePostRoleSelection from "@/views/profile/CreatePostRoleSelection";
 import CreatePostJobForm from "@/views/profile/CreatePostJobForm";
 import Step3ServiceForm from "@/components/onboarding/step-3-service-form";
 import { RateType } from "@/types/onboarding";
+import { useDispatch, useSelector } from "react-redux";
+import { useWalletClient } from "wagmi";
 
 type Props = {
     handleCloseModal?: () => void;
@@ -22,8 +27,16 @@ function removeAtSymbol(text: string) {
     return text.startsWith("@") ? text.slice(1) : text;
 }
 
+const isTxHash = (value: string) => /^0x[a-fA-F0-9]{64}$/.test(value);
+const LENS_TESTNET_CHAIN_ID = 37111;
+const LENS_TESTNET_APP = "0xC75A89145d765c396fd75CbD16380Eb184Bd2ca7";
+
 const CreatePostModal = ({ handleCloseModal, handle }: Props) => {
+    const dispatch = useDispatch();
     const { data: sessionClient } = useSessionClient();
+    const { data: walletClient } = useWalletClient();
+    const { execute: authenticate } = useLogin();
+    const { user: profile } = useSelector((state: any) => state.app);
     const myDivRef = useRef<HTMLDivElement>(null);
     const [showMobile, setShowMobile] = useState(false);
     const [step, setStep] = useState(1);
@@ -182,10 +195,143 @@ const CreatePostModal = ({ handleCloseModal, handle }: Props) => {
         }));
     };
 
+    const ensureLensChain = async (): Promise<boolean> => {
+        if (!walletClient) {
+            return false;
+        }
+
+        const currentChainId = walletClient.chain?.id;
+        if (currentChainId === LENS_TESTNET_CHAIN_ID) {
+            return true;
+        }
+
+        try {
+            await walletClient.switchChain({ id: LENS_TESTNET_CHAIN_ID });
+            return true;
+        } catch (error: any) {
+            if (error?.code !== 4902) {
+                toast.error("Please switch to Lens Chain Testnet to continue.");
+                return false;
+            }
+
+            try {
+                await walletClient.addChain({
+                    chain: {
+                        id: LENS_TESTNET_CHAIN_ID,
+                        name: "Lens Chain Testnet",
+                        nativeCurrency: {
+                            name: "GHO",
+                            symbol: "GHO",
+                            decimals: 18,
+                        },
+                        rpcUrls: {
+                            default: { http: ["https://rpc.testnet.lens.xyz"] },
+                        },
+                        blockExplorers: {
+                            default: {
+                                name: "Lens Explorer",
+                                url: "https://block-explorer.testnet.lens.xyz",
+                            },
+                        },
+                    },
+                });
+                await walletClient.switchChain({ id: LENS_TESTNET_CHAIN_ID });
+                return true;
+            } catch {
+                toast.error("Could not add Lens Chain Testnet to your wallet.");
+                return false;
+            }
+        }
+    };
+
+    const ensureSessionForPublish = async () => {
+        if (sessionClient) {
+            return sessionClient;
+        }
+
+        if (!walletClient?.account.address) {
+            dispatch(displayLoginModal({ display: true }));
+            toast.error("Connect your wallet, then sign in to Lens.");
+            return null;
+        }
+
+        const profileAddress = profile?.address;
+        if (!profileAddress) {
+            dispatch(displayLoginModal({ display: true }));
+            toast.error("Please sign in to Lens first.");
+            return null;
+        }
+
+        const onLensChain = await ensureLensChain();
+        if (!onLensChain) {
+            return null;
+        }
+
+        const accountResult = await fetchLensAccount(client, { address: profileAddress });
+        const lensAccount: any = accountResult.unwrapOr(null);
+
+        if (!lensAccount?.address) {
+            dispatch(displayLoginModal({ display: true }));
+            toast.error("Could not load your Lens profile. Please sign in again.");
+            return null;
+        }
+
+        const appAddress = process.env.NEXT_PUBLIC_APP_ADDRESS_TESTNET || LENS_TESTNET_APP;
+        const connectedWallet = walletClient.account.address.toLowerCase();
+        const ownerAddress = String(lensAccount.owner || "").toLowerCase();
+        const isOwner = ownerAddress === connectedWallet;
+
+        const authRequest = isOwner
+            ? {
+                accountOwner: {
+                    account: lensAccount.address,
+                    app: evmAddress(appAddress),
+                    owner: walletClient.account.address,
+                },
+            }
+            : {
+                accountManager: {
+                    account: lensAccount.address,
+                    app: evmAddress(appAddress),
+                    manager: walletClient.account.address,
+                },
+            };
+
+        try {
+            const authenticated = await authenticate({
+                ...authRequest,
+                signMessage: async (message: string) => walletClient.signMessage({ message }),
+            });
+
+            if (authenticated.isErr()) {
+                dispatch(displayLoginModal({ display: true }));
+                toast.error(authenticated.error.message || "Lens authentication failed.");
+                return null;
+            }
+        } catch (error: any) {
+            dispatch(displayLoginModal({ display: true }));
+            toast.error(error?.message || "Lens authentication failed.");
+            return null;
+        }
+
+        const resumed = await getLensClient();
+        if (!resumed.isSessionClient()) {
+            dispatch(displayLoginModal({ display: true }));
+            toast.error("Please finish signing in to Lens.");
+            return null;
+        }
+
+        return resumed;
+    };
+
     const handlePublish = async () => {
+        const publishClient = await ensureSessionForPublish();
+        if (!publishClient) {
+            return;
+        }
+
         setSavingData(true);
         const isJob = role === "client";
-        const data = isJob ? jobData : serviceData;
         const type = isJob ? "job" : "service";
 
         // Construct metadata
@@ -242,28 +388,68 @@ const CreatePostModal = ({ handleCloseModal, handle }: Props) => {
         });
 
         try {
-            if (!sessionClient) {
-                toast.error("Please connect your wallet and sign in to Lens.");
-                setSavingData(false);
-                return;
-            }
-            const heyMetadataURI = await uploadMetadataToLensStorage(heyMetadata);
-            const heyResult = await post(sessionClient, {
+            const heyMetadataURI = await uploadMetadataToLensStorage(heyMetadata, {
+                chainId: LENS_TESTNET_CHAIN_ID,
+                environment: "production",
+            });
+            const heyResult = await post(publishClient, {
                 contentUri: uri(heyMetadataURI),
             });
 
             if (heyResult.isErr()) {
                 toast.error(heyResult.error.message);
-                setSavingData(false);
                 return;
             }
 
-            setSavingData(false);
+            const operationValue: any = heyResult.value;
+            if (operationValue?.__typename === "PostOperationValidationFailed") {
+                toast.error(operationValue.reason || "Post validation failed.");
+                return;
+            }
+
+            if (operationValue?.__typename === "TransactionWillFail") {
+                toast.error(operationValue.reason || "Transaction will fail.");
+                return;
+            }
+
+            if (
+                operationValue?.__typename === "SelfFundedTransactionRequest" ||
+                operationValue?.__typename === "SponsoredTransactionRequest"
+            ) {
+                if (!walletClient) {
+                    toast.error("Connect your wallet to complete this Lens transaction.");
+                    return;
+                }
+
+                const operationHandler = handleOperationWith(walletClient as any) as any;
+                const txResult = await operationHandler(operationValue);
+                if (txResult.isErr()) {
+                    toast.error(txResult.error?.message || "Failed to submit Lens transaction.");
+                    return;
+                }
+
+                const txIdentifier = String(txResult.value ?? "");
+                if (isTxHash(txIdentifier)) {
+                    const waitResult = await publishClient.waitForTransaction(txIdentifier);
+                    if (waitResult.isErr()) {
+                        toast.error(waitResult.error?.message || "Lens transaction was not confirmed.");
+                        return;
+                    }
+                }
+            } else if (operationValue?.__typename === "PostResponse" && isTxHash(operationValue.hash)) {
+                const waitResult = await publishClient.waitForTransaction(operationValue.hash);
+                if (waitResult.isErr()) {
+                    toast.error(waitResult.error?.message || "Lens transaction was not confirmed.");
+                    return;
+                }
+            }
+
             handleCloseModal?.();
             isJob ? toast.success("Job Posted Successfully!") : toast.success("Service Listed!");
         } catch (error: any) {
             console.error("Failed to create post:", error);
             toast.error(error?.message || "Failed to create post. Please try again.");
+        } finally {
             setSavingData(false);
         }
     };
