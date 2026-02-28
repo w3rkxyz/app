@@ -1806,6 +1806,18 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           logDebug("create:register:success", { mode });
         }
 
+        try {
+          // Warm a minimal sync pass so local state is flushed before potential page reloads.
+          await withTimeout(
+            createdClient.conversations.sync(),
+            8000,
+            "XMTP conversation sync timed out."
+          );
+          logDebug("create:post_register_sync:success", { mode });
+        } catch (syncError) {
+          logError("create:post_register_sync:failed", syncError, { mode });
+        }
+
         persistLastSuccessfulConnection(
           env,
           signerIdentifier.identifier,
@@ -2690,7 +2702,6 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                 });
                 if (isInstallationLimitError(buildError)) {
                   hitInstallationLimitDuringRestore = true;
-                  restoreReason = "restore_build_triggered_registration";
                   // Keep evaluating other identifier candidates that may have a valid local session.
                   break;
                 }
@@ -2710,6 +2721,9 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       }
 
       if (hitInstallationLimitDuringRestore) {
+        if (restoreReason === "no_usable_restore_candidate") {
+          restoreReason = "restore_build_triggered_registration";
+        }
         logDebug("init:restore:installation_limit_guarded", {
           restoreAttemptId,
           attempts: restoreAttempts.length,
