@@ -14,10 +14,6 @@ import toast from "react-hot-toast";
 
 const XMTP_RESTORE_DEBUG_KEY = "w3rk:xmtp:restore-debug:last";
 const XMTP_UI_RESTORE_DEBUG_KEY = "w3rk:xmtp:restore-ui:last";
-const XMTP_LAST_ENV_KEY = "w3rk:xmtp:last-env";
-const XMTP_ENABLED_SESSION_MAP_KEY = "w3rk:xmtp:enabled-session-map";
-const XMTP_LAST_SUCCESSFUL_CONNECTION_KEY = "w3rk:xmtp:last-successful-connection";
-const XMTP_LAST_SUCCESSFUL_CONNECTION_MAP_KEY = "w3rk:xmtp:last-successful-connection-map";
 const WALLET_READY_TIMEOUT_MS = 5000;
 const RESTORE_TIMEOUT_MS = 15000;
 
@@ -42,13 +38,19 @@ const ConversationsNav = () => {
   const walletClientChainId =
     typeof walletClient?.chain?.id === "number" ? walletClient.chain.id : null;
   const lensProfile = useSelector((state: RootState) => state.app.user);
-  const { createXMTPClient, initXMTPClient, connectingXMTP, connectStage, hasRestoreDbKeyForWallet } =
-    useXMTPClient({
-      walletAddress,
-      lensAccountAddress: lensProfile?.address,
-      lensProfileId: lensProfile?.id,
-      lensHandle: lensProfile?.handle,
-    });
+  const {
+    createXMTPClient,
+    initXMTPClient,
+    connectingXMTP,
+    connectStage,
+    hasRestoreDbKeyForWallet,
+    wipeXMTPIdentity,
+  } = useXMTPClient({
+    walletAddress,
+    lensAccountAddress: lensProfile?.address,
+    lensProfileId: lensProfile?.id,
+    lensHandle: lensProfile?.handle,
+  });
 
   const stopStreamRef = useRef<(() => void) | null>(null);
   const restoreInFlightRef = useRef(false);
@@ -477,21 +479,15 @@ const ConversationsNav = () => {
     }
   };
 
-  const handleResetRestore = () => {
-    if (typeof window === "undefined") {
-      return;
-    }
+  const handleResetRestore = async () => {
     clearWalletReadyTimeout();
     persistUiRestoreDebug({
       event: "restore_reset_clicked",
       restoreAttemptId,
     });
-    window.localStorage.removeItem(XMTP_LAST_ENV_KEY);
-    window.localStorage.removeItem(XMTP_ENABLED_SESSION_MAP_KEY);
-    window.localStorage.removeItem(XMTP_LAST_SUCCESSFUL_CONNECTION_KEY);
-    window.localStorage.removeItem(XMTP_LAST_SUCCESSFUL_CONNECTION_MAP_KEY);
+    await wipeXMTPIdentity();
     handleRetryRestore();
-    toast.success("XMTP restore state reset. You can retry restore or enable messaging.");
+    toast.success("XMTP identity reset. You can retry restore or enable messaging.");
   };
 
   useEffect(() => {
