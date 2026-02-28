@@ -566,6 +566,39 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     return lensChainId === LENS_MAINNET_CHAIN_ID ? "production" : "dev";
   }, [walletClient]);
 
+  const getPreferredRestoreEnv = useCallback((): "local" | "dev" | "production" => {
+    const configuredEnvRaw =
+      process.env.NEXT_PUBLIC_XMTP_ENV ?? process.env.NEXT_PUBLIC_XMTP_ENVIRONMENT;
+    if (
+      configuredEnvRaw === "local" ||
+      configuredEnvRaw === "dev" ||
+      configuredEnvRaw === "production"
+    ) {
+      return configuredEnvRaw;
+    }
+
+    if (typeof window !== "undefined") {
+      const persistedEnvRaw = window.localStorage.getItem(XMTP_LAST_ENV_KEY);
+      if (
+        persistedEnvRaw === "local" ||
+        persistedEnvRaw === "dev" ||
+        persistedEnvRaw === "production"
+      ) {
+        return persistedEnvRaw;
+      }
+    }
+
+    return getEnv();
+  }, []);
+
+  const hasRestoreDbKeyForWallet = useCallback(() => {
+    if (!walletAddress) {
+      return false;
+    }
+    const env = getPreferredRestoreEnv();
+    return Boolean(loadDbEncryptionKey(env, walletAddress.toLowerCase()));
+  }, [getPreferredRestoreEnv, loadDbEncryptionKey, walletAddress]);
+
   const classifyBuildError = useCallback((error: unknown) => {
     const message = stringifyError(error).toLowerCase();
     if (
@@ -1752,21 +1785,12 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
    * Reconnect/initiate an existing XMTP client using `Client.build`
    */
   const initXMTPClient = useCallback(async () => {
-    const sessionState = getPersistedSessionState();
     const lastSuccessfulConnection = getLastSuccessfulConnection();
-    const restoreAddressCandidatesBase = [xmtpAddress, walletAddress, walletClientAccountAddress]
-      .filter((value): value is string => Boolean(value))
-      .map(value => value.toLowerCase())
-      .filter(value => value.startsWith("0x") && value.length === 42);
-    const restoreAddressCandidates = isScwIdentity
-      ? Array.from(
-          new Set(
-            [xmtpAddress?.toLowerCase(), ...restoreAddressCandidatesBase].filter(
-              (value): value is string => Boolean(value)
-            )
-          )
+    const restoreAddressCandidates = walletAddress
+      ? [walletAddress.toLowerCase()].filter(
+          (value): value is string => value.startsWith("0x") && value.length === 42
         )
-      : restoreAddressCandidatesBase;
+      : [];
     const restoreAttempts: XMTPRestoreAttemptDebug[] = [];
     const restoreAttemptId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
     const restoreStartedAtMs = Date.now();
@@ -1796,7 +1820,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       walletReadyState,
     });
 
-    if (restoreAddressCandidates.length === 0 && sessionState.identifiers.length === 0) {
+    if (restoreAddressCandidates.length === 0) {
       const endedAt = new Date().toISOString();
       persistRestoreDebug({
         result: "not_restored",
@@ -1809,14 +1833,14 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         envCandidates: [],
         identifierCandidates: [],
         attempts: restoreAttempts,
-        reason: "missing_restore_identifiers",
+        reason: "missing_wallet_address",
       });
       logDebug("init:restore:end", {
         restoreAttemptId,
         restoreEndedAt: endedAt,
         restoreDurationMs: Date.now() - restoreStartedAtMs,
         result: "not_restored",
-        reason: "missing_restore_identifiers",
+        reason: "missing_wallet_address",
       });
       return;
     }
@@ -1833,43 +1857,48 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         persistedEnvRaw === "local" || persistedEnvRaw === "dev" || persistedEnvRaw === "production"
           ? persistedEnvRaw
           : undefined;
-      const preferredEnv = getPreferredEnv();
+      const preferredEnv = getPreferredRestoreEnv();
+      const primaryWalletIdentifier = restoreAddressCandidates[0];
+      const primaryDbEncryptionKey = loadDbEncryptionKey(preferredEnv, primaryWalletIdentifier);
+      const lastSuccessfulDbKeyCandidate =
+        lastSuccessfulConnection &&
+        lastSuccessfulConnection.identifier === primaryWalletIdentifier &&
+        lastSuccessfulConnection.dbEncryptionKey
+          ? lastSuccessfulConnection.dbEncryptionKey
+          : undefined;
+
+      if (!primaryDbEncryptionKey && !lastSuccessfulDbKeyCandidate) {
+        restoreReason = "missing_db_encryption_key";
+        const endedAt = new Date().toISOString();
+        persistRestoreDebug({
+          result: "not_restored",
+          restoreAttemptId,
+          restoreStartedAt: restoreStartedAtIso,
+          restoreEndedAt: endedAt,
+          restoreDurationMs: Date.now() - restoreStartedAtMs,
+          walletReadyState,
+          identity: baseIdentity,
+          envCandidates: [preferredEnv],
+          identifierCandidates: [primaryWalletIdentifier],
+          attempts: restoreAttempts,
+          reason: "missing_db_encryption_key",
+        });
+        return undefined;
+      }
+
       const envCandidates = buildEnvCandidates(
         preferredEnv,
-        sessionState.env ?? persistedEnv,
+        persistedEnv,
         lastSuccessfulConnection?.env
       );
 
-      const identifierCandidates = Array.from(
-        new Set([
-          ...(isScwIdentity && xmtpAddress ? [xmtpAddress.toLowerCase()] : []),
-          ...(lastSuccessfulConnection?.identifier
-            ? [lastSuccessfulConnection.identifier]
-            : []),
-          ...(sessionState.lastIdentifier ? [sessionState.lastIdentifier] : []),
-          ...sessionState.identifierHints,
-          ...sessionState.identifiers,
-          ...restoreAddressCandidates,
-        ])
-      )
-        .filter(value => value.startsWith("0x") && value.length === 42)
-        .slice(0, 6);
+      const identifierCandidates = [primaryWalletIdentifier];
 
       const identifiers: Identifier[] = identifierCandidates.map(identifier => ({
         identifier,
         identifierKind: IdentifierKind.Ethereum,
       }));
-      const expectedInstallationHints = [
-        ...(sessionState.lastInboxId || sessionState.lastInstallationId
-          ? [
-              {
-                inboxId: sessionState.lastInboxId,
-                installationId: sessionState.lastInstallationId,
-              },
-            ]
-          : []),
-        ...sessionState.installationHints,
-      ];
+      const expectedInstallationHints: Array<{ inboxId?: string; installationId?: string }> = [];
 
       if (identifierCandidates.length === 0) {
         restoreReason = "identifier_candidates_empty";
@@ -2275,8 +2304,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     persistRestoreDebug,
     buildEnvCandidates,
     classifyBuildError,
-    getPreferredEnv,
-    getPersistedSessionState,
+    getPreferredRestoreEnv,
     loadDbEncryptionKey,
     logDebug,
     logError,
@@ -2303,6 +2331,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     connectStage,
     createXMTPClient,
     initXMTPClient,
+    hasRestoreDbKeyForWallet,
     wasXMTPEnabled,
   };
 }

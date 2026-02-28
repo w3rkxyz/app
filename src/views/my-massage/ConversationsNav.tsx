@@ -42,7 +42,7 @@ const ConversationsNav = () => {
   const walletClientChainId =
     typeof walletClient?.chain?.id === "number" ? walletClient.chain.id : null;
   const lensProfile = useSelector((state: RootState) => state.app.user);
-  const { createXMTPClient, initXMTPClient, connectingXMTP, connectStage } =
+  const { createXMTPClient, initXMTPClient, connectingXMTP, connectStage, hasRestoreDbKeyForWallet } =
     useXMTPClient({
       walletAddress,
       lensAccountAddress: lensProfile?.address,
@@ -253,19 +253,23 @@ const ConversationsNav = () => {
       }
       clearWalletReadyTimeout();
 
-      if (!walletAddress && !lensProfile?.address && !lensProfile?.id && !lensProfile?.handle) {
+      const hasRestoreDbKey = hasRestoreDbKeyForWallet();
+      if (!hasRestoreDbKey) {
+        const missingDbKeyAttemptId = getRestoreAttemptId();
+        attemptedRestoreKeyRef.current = walletAddress?.toLowerCase() ?? "";
+        setRestoreAttemptId(missingDbKeyAttemptId);
         setRestorePhase("failed");
         setRestoreCompleted(true);
-        setRestoreError("Wallet identity is not ready yet. Retry.");
+        setRestoreError("No local XMTP session found on this browser. Enable messaging.");
+        persistUiRestoreDebug({
+          event: "restore_prereq_missing_db_key",
+          attemptId: missingDbKeyAttemptId,
+          walletAddress: walletAddress?.toLowerCase() ?? null,
+        });
         return;
       }
 
-      const restoreKey = [
-        walletAddress?.toLowerCase() ?? "",
-        lensProfile?.address?.toLowerCase() ?? "",
-        lensProfile?.id ?? "",
-        lensProfile?.handle?.toLowerCase() ?? "",
-      ].join("|");
+      const restoreKey = walletAddress?.toLowerCase() ?? "";
 
       if (attemptedRestoreKeyRef.current === restoreKey && restoreCompleted) {
         return;
@@ -417,6 +421,7 @@ const ConversationsNav = () => {
     restoreCompleted,
     restorePhase,
     startWalletReadyTimeout,
+    hasRestoreDbKeyForWallet,
     persistUiRestoreDebug,
     walletAddress,
     walletClientAddress,
