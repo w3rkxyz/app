@@ -550,16 +550,18 @@ const Notifications = () => {
       const read = !!notification.read;
       const createdAt = notification.createdAt;
       const profileImage = (
-        <Image
-          src={notification.avatar || DEFAULT_PROFILE_AVATAR}
-          className="rounded-full object-cover"
-          alt="Profile"
-          height={56}
-          width={56}
-          onError={({ currentTarget }) => {
-            currentTarget.src = DEFAULT_PROFILE_AVATAR;
-          }}
-        />
+        <div className="w-[56px] h-[56px] min-w-[56px] min-h-[56px] rounded-full overflow-hidden flex-shrink-0">
+          <Image
+            src={notification.avatar || DEFAULT_PROFILE_AVATAR}
+            className="w-full h-full rounded-full object-cover object-center"
+            alt="Profile"
+            height={56}
+            width={56}
+            onError={({ currentTarget }) => {
+              currentTarget.src = DEFAULT_PROFILE_AVATAR;
+            }}
+          />
+        </div>
       );
       return (
         <li
@@ -574,7 +576,7 @@ const Notifications = () => {
 
           <div className="flex items-center gap-2">
             {notification.actorHref ? (
-              <Link href={notification.actorHref} className="rounded-full">
+              <Link href={notification.actorHref} className="rounded-full block">
                 {profileImage}
               </Link>
             ) : (
