@@ -20,18 +20,20 @@ const NotificationPopup: React.FC<NotificationPopupProps> = ({ notification, onC
 
   const getNotificationMessage = (notification: Notification) => {
     switch (notification.type) {
-      case "contract_offer":
+      case "contract_proposal":
         return `@${notification.senderHandle || "Someone"} has sent you a contract offer!`;
-      case "contract_accepted":
-        return `@${notification.senderHandle || "Someone"} has accepted your contract offer!`;
-      case "contract_declined":
-        return `@${notification.senderHandle || "Someone"} has declined your contract offer`;
-      case "contract_stage_updated":
-        return `@${notification.senderHandle || "Someone"} has updated the contract status`;
+      case "contract_started":
+        return `@${notification.senderHandle || "Someone"} accepted your contract proposal.`;
+      case "payment_requested":
+        return `@${notification.senderHandle || "Someone"} requested contract payment.`;
       case "contract_completed":
-        return `@${notification.senderHandle || "Someone"} has completed the contract`;
-      case "xp_earned":
-        return `You earned ${notification.xpAmount} XP!`;
+        return `@${notification.senderHandle || "Someone"} marked the contract as completed.`;
+      case "contract_cancelled":
+        return `@${notification.senderHandle || "Someone"} cancelled the contract.`;
+      case "escrow_funded":
+        return "Escrow has been funded for your contract.";
+      case "escrow_released":
+        return "Escrow payment has been released.";
       default:
         return notification.message;
     }
@@ -39,18 +41,20 @@ const NotificationPopup: React.FC<NotificationPopupProps> = ({ notification, onC
 
   const getNotificationTitle = (type: string) => {
     switch (type) {
-      case "contract_offer":
+      case "contract_proposal":
         return "New Contract Offer";
-      case "contract_accepted":
-        return "Contract Accepted";
-      case "contract_declined":
-        return "Contract Declined";
-      case "contract_stage_updated":
-        return "Contract Updated";
+      case "contract_started":
+        return "Contract Started";
+      case "payment_requested":
+        return "Payment Requested";
       case "contract_completed":
         return "Contract Completed";
-      case "xp_earned":
-        return "XP Earned";
+      case "contract_cancelled":
+        return "Contract Cancelled";
+      case "escrow_funded":
+        return "Escrow Funded";
+      case "escrow_released":
+        return "Escrow Released";
       default:
         return "Notification";
     }
