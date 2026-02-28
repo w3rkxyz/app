@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useSelector } from "react-redux";
-import { graphql } from "@lens-protocol/client";
+import { graphql, NotificationType, evmAddress } from "@lens-protocol/client";
 import { useAuthenticatedUser, useSessionClient } from "@lens-protocol/react";
 import { formatDistanceToNow } from "date-fns";
 import { Notification, W3RK_NOTIFICATION_ICONS } from "@/utils/notifications";
@@ -221,9 +221,23 @@ const Notifications = () => {
 
       const result = await (sessionClient as any).query(LENS_NOTIFICATIONS_QUERY as any, {
         request: {
+          orderBy: "DEFAULT",
           filter: {
+            notificationTypes: [NotificationType.Followed],
             includeLowScore: true,
             timeBasedAggregation: false,
+            graphs: [
+              { globalGraph: true },
+              ...(process.env.NEXT_PUBLIC_APP_ADDRESS_TESTNET
+                ? [{ app: evmAddress(process.env.NEXT_PUBLIC_APP_ADDRESS_TESTNET) }]
+                : []),
+            ],
+            feeds: [
+              { globalFeed: true },
+              ...(process.env.NEXT_PUBLIC_APP_ADDRESS_TESTNET
+                ? [{ app: evmAddress(process.env.NEXT_PUBLIC_APP_ADDRESS_TESTNET) }]
+                : []),
+            ],
           },
         },
       });
@@ -243,11 +257,6 @@ const Notifications = () => {
         return acc;
       }, {});
 
-      console.info("[notifications:lens] query result", {
-        totalItems: items.length,
-        typeCounts,
-      });
-
       const normalized = items
         .filter(item => item?.__typename === "FollowNotification")
         .flatMap((item: any, idx: number) => {
@@ -256,12 +265,7 @@ const Notifications = () => {
             return [];
           }
 
-          return followers
-            .filter((follower: any) => {
-              const address = follower?.account?.address?.toLowerCase();
-              return Boolean(address && address !== recipientLensAddress);
-            })
-            .map((follower: any, followerIdx: number) => ({
+          return followers.map((follower: any, followerIdx: number) => ({
               id: `lens-follow-${item.id || idx}-${followerIdx}`,
               message: `${displayLensActor(follower?.account)} followed you on Lens.`,
               read: true,
@@ -269,6 +273,12 @@ const Notifications = () => {
               icon: "/images/UserCirclePlus.svg",
             }));
         });
+
+      console.info("[notifications:lens] query result", {
+        totalItems: items.length,
+        typeCounts,
+        followedCount: normalized.length,
+      });
 
       setLensNotifications(sortByDateDesc(normalized));
       setLensLoading(false);
@@ -312,9 +322,13 @@ const Notifications = () => {
     }
 
     if (state === "error") {
+      const safeError =
+        error && error.includes("Firebase Admin credentials are missing")
+          ? "w3rk notifications are temporarily unavailable."
+          : error;
       return (
         <li className="px-[16px] py-[24px] text-[14px] text-red-500">
-          {error || "Could not load notifications."}
+          {safeError || "Could not load notifications."}
         </li>
       );
     }
