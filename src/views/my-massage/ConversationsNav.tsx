@@ -1,9 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useConversations } from "@/hooks/useConversations";
-import { useAccount } from "wagmi";
+import { useAccount, useWalletClient } from "wagmi";
 import NewConversation from "./newConversation";
 import ConversationsList from "./ConversationList";
 import { RootState } from "@/redux/store";
@@ -13,6 +13,11 @@ import { useXMTPClient } from "@/hooks/useXMTPClient";
 import toast from "react-hot-toast";
 
 const XMTP_RESTORE_DEBUG_KEY = "w3rk:xmtp:restore-debug:last";
+const XMTP_LAST_ENV_KEY = "w3rk:xmtp:last-env";
+const XMTP_ENABLED_SESSION_MAP_KEY = "w3rk:xmtp:enabled-session-map";
+const XMTP_LAST_SUCCESSFUL_CONNECTION_KEY = "w3rk:xmtp:last-successful-connection";
+const XMTP_LAST_SUCCESSFUL_CONNECTION_MAP_KEY = "w3rk:xmtp:last-successful-connection-map";
+const RESTORE_TIMEOUT_MS = 15000;
 
 const stageLabel: Record<string, string> = {
   idle: "Preparing XMTP...",
@@ -29,7 +34,11 @@ const stageLabel: Record<string, string> = {
 const ConversationsNav = () => {
   const { list, conversations, stream, activeConversation, loading } = useConversations();
   const { client } = useXMTP();
-  const { address: walletAddress, isConnected } = useAccount();
+  const { address: walletAddress, isConnected, isReconnecting } = useAccount();
+  const { data: walletClient } = useWalletClient();
+  const walletClientAddress = walletClient?.account?.address?.toLowerCase() ?? null;
+  const walletClientChainId =
+    typeof walletClient?.chain?.id === "number" ? walletClient.chain.id : null;
   const lensProfile = useSelector((state: RootState) => state.app.user);
   const { createXMTPClient, initXMTPClient, connectingXMTP, connectStage, initializing } =
     useXMTPClient({
@@ -43,10 +52,41 @@ const ConversationsNav = () => {
   const restoreInFlightRef = useRef(false);
   const manualEnableInFlightRef = useRef(false);
   const attemptedRestoreKeyRef = useRef("");
+  const walletReadyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [restoreFailed, setRestoreFailed] = useState(false);
-  const [restoring, setRestoring] = useState(false);
+  const [restorePhase, setRestorePhase] = useState<
+    "idle" | "waiting_wallet" | "running" | "failed" | "timeout"
+  >("idle");
+  const [restoreCompleted, setRestoreCompleted] = useState(false);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [restoreAttemptId, setRestoreAttemptId] = useState<string | null>(null);
+
+  const clearWalletReadyTimeout = useCallback(() => {
+    if (walletReadyTimeoutRef.current) {
+      clearTimeout(walletReadyTimeoutRef.current);
+      walletReadyTimeoutRef.current = null;
+    }
+  }, []);
+
+  const startWalletReadyTimeout = useCallback(() => {
+    if (walletReadyTimeoutRef.current) {
+      return;
+    }
+    walletReadyTimeoutRef.current = setTimeout(() => {
+      walletReadyTimeoutRef.current = null;
+      console.warn("[XMTP_UI_RESTORE]", {
+        event: "wallet_ready_timeout",
+        timeoutMs: RESTORE_TIMEOUT_MS,
+      });
+      setRestorePhase("failed");
+      setRestoreCompleted(true);
+      setRestoreError("Wallet provider is still preparing. Retry once wallet is ready.");
+    }, RESTORE_TIMEOUT_MS);
+  }, []);
+
+  const getRestoreAttemptId = () =>
+    `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 
   const handleCopyDebug = async () => {
     if (typeof window === "undefined") {
@@ -114,6 +154,7 @@ const ConversationsNav = () => {
 
     const restoreClient = async () => {
       if (client || connectingXMTP) {
+        clearWalletReadyTimeout();
         return;
       }
 
@@ -122,23 +163,57 @@ const ConversationsNav = () => {
       }
 
       if (!isConnected) {
-        setRestoreFailed(false);
+        clearWalletReadyTimeout();
+        setRestorePhase("idle");
+        setRestoreCompleted(false);
+        setRestoreError(null);
+        setRestoreAttemptId(null);
         attemptedRestoreKeyRef.current = "";
         return;
       }
 
+      const walletReady =
+        Boolean(walletAddress) && Boolean(walletClientAddress) && !isReconnecting;
+
+      if (!walletReady) {
+        if (restoreCompleted && (restorePhase === "failed" || restorePhase === "timeout")) {
+          return;
+        }
+        setRestorePhase("waiting_wallet");
+        setRestoreCompleted(false);
+        setRestoreError(null);
+        startWalletReadyTimeout();
+        console.info("[XMTP_UI_RESTORE]", {
+          event: "wallet_not_ready",
+          timestamp: new Date().toISOString(),
+          walletAddress: walletAddress?.toLowerCase() ?? null,
+          walletClientAddress,
+          walletClientChainId,
+          isConnected,
+          isReconnecting,
+          walletClientReady: Boolean(walletClientAddress),
+        });
+        return;
+      }
+      clearWalletReadyTimeout();
+
       if (!walletAddress && !lensProfile?.address && !lensProfile?.id && !lensProfile?.handle) {
+        setRestorePhase("failed");
+        setRestoreCompleted(true);
+        setRestoreError("Wallet identity is not ready yet. Retry.");
         return;
       }
 
       const restoreKey = [
         walletAddress?.toLowerCase() ?? "",
+        walletClientAddress ?? "",
+        walletClientChainId?.toString() ?? "",
         lensProfile?.address?.toLowerCase() ?? "",
         lensProfile?.id ?? "",
         lensProfile?.handle?.toLowerCase() ?? "",
       ].join("|");
 
-      if (attemptedRestoreKeyRef.current === restoreKey) {
+      if (attemptedRestoreKeyRef.current === restoreKey && restoreCompleted) {
         return;
       }
 
@@ -146,25 +221,92 @@ const ConversationsNav = () => {
         return;
       }
 
+      const attemptId = getRestoreAttemptId();
+      const startedAt = Date.now();
+      let restoreResolved = false;
+      setRestoreAttemptId(attemptId);
+      setRestorePhase("running");
+      setRestoreCompleted(false);
+      setRestoreError(null);
+
       try {
         attemptedRestoreKeyRef.current = restoreKey;
         restoreInFlightRef.current = true;
-        setRestoring(true);
-        setRestoreFailed(false);
+        console.info("[XMTP_UI_RESTORE]", {
+          event: "restore_start",
+          attemptId,
+          startedAt: new Date(startedAt).toISOString(),
+          walletAddress: walletAddress?.toLowerCase() ?? null,
+          walletClientAddress,
+          walletClientChainId,
+          isConnected,
+          isReconnecting,
+          walletClientReady: Boolean(walletClientAddress),
+          lensAccountAddress: lensProfile?.address?.toLowerCase() ?? null,
+          lensProfileId: lensProfile?.id ?? null,
+          lensHandle: lensProfile?.handle ?? null,
+        });
 
         // Silent restore only: never trigger wallet signatures automatically on page load.
-        const restoredClient = await initXMTPClient();
+        const restoredClient = await Promise.race([
+          initXMTPClient(),
+          new Promise<undefined>((_, reject) =>
+            setTimeout(
+              () => reject(new Error(`Restore timed out after ${RESTORE_TIMEOUT_MS}ms.`)),
+              RESTORE_TIMEOUT_MS
+            )
+          ),
+        ]);
+
         if (!restoredClient && !cancelled) {
-          setRestoreFailed(true);
+          setRestorePhase("failed");
+          setRestoreCompleted(true);
+          setRestoreError("No existing XMTP session found. Enable messaging to continue.");
+          restoreResolved = true;
+        } else if (!cancelled) {
+          setRestorePhase("idle");
+          setRestoreCompleted(true);
+          setRestoreError(null);
+          restoreResolved = true;
+        }
+
+        if (!cancelled) {
+          console.info("[XMTP_UI_RESTORE]", {
+            event: "restore_end",
+            attemptId,
+            endedAt: new Date().toISOString(),
+            durationMs: Date.now() - startedAt,
+            result: restoredClient ? "restored" : "not_restored",
+          });
         }
       } catch (error) {
         if (!cancelled) {
-          setRestoreFailed(true);
+          const message =
+            error instanceof Error && error.message ? error.message : "Unknown restore error.";
+          const isTimeout = message.toLowerCase().includes("timed out");
+          setRestorePhase(isTimeout ? "timeout" : "failed");
+          setRestoreCompleted(true);
+          setRestoreError(
+            isTimeout
+              ? "Restore is taking too long. Retry restore or reset messaging state."
+              : message
+          );
+          restoreResolved = true;
           console.warn("XMTP auto-restore failed:", error);
+          console.error("[XMTP_UI_RESTORE]", {
+            event: "restore_failed",
+            attemptId,
+            endedAt: new Date().toISOString(),
+            durationMs: Date.now() - startedAt,
+            error: message,
+            isTimeout,
+          });
         }
       } finally {
         restoreInFlightRef.current = false;
-        setRestoring(false);
+        if (!cancelled && !restoreResolved) {
+          setRestoreCompleted(true);
+        }
       }
     };
 
@@ -176,20 +318,31 @@ const ConversationsNav = () => {
   }, [
     client,
     connectingXMTP,
+    clearWalletReadyTimeout,
     isConnected,
+    isReconnecting,
     initXMTPClient,
     lensProfile?.address,
     lensProfile?.handle,
     lensProfile?.id,
+    restoreCompleted,
+    restorePhase,
+    startWalletReadyTimeout,
     walletAddress,
+    walletClientAddress,
+    walletClientChainId,
   ]);
 
   const handleEnable = async () => {
     const toastId = toast.loading(stageLabel.idle);
     try {
+      clearWalletReadyTimeout();
       manualEnableInFlightRef.current = true;
       attemptedRestoreKeyRef.current = "";
-      setRestoreFailed(false);
+      setRestorePhase("idle");
+      setRestoreCompleted(false);
+      setRestoreError(null);
+      setRestoreAttemptId(null);
       await createXMTPClient({
         onStage: stage => {
           const message = stageLabel[stage] ?? "Connecting XMTP...";
@@ -217,20 +370,55 @@ const ConversationsNav = () => {
     }
   };
 
+  const handleRetryRestore = () => {
+    clearWalletReadyTimeout();
+    attemptedRestoreKeyRef.current = "";
+    setRestorePhase("idle");
+    setRestoreCompleted(false);
+    setRestoreError(null);
+    setRestoreAttemptId(null);
+  };
+
+  const handleResetRestore = () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    clearWalletReadyTimeout();
+    window.localStorage.removeItem(XMTP_LAST_ENV_KEY);
+    window.localStorage.removeItem(XMTP_ENABLED_SESSION_MAP_KEY);
+    window.localStorage.removeItem(XMTP_LAST_SUCCESSFUL_CONNECTION_KEY);
+    window.localStorage.removeItem(XMTP_LAST_SUCCESSFUL_CONNECTION_MAP_KEY);
+    handleRetryRestore();
+    toast.success("XMTP restore state reset. You can retry restore or enable messaging.");
+  };
+
+  useEffect(
+    () => () => {
+      clearWalletReadyTimeout();
+    },
+    [clearWalletReadyTimeout]
+  );
+
   const showConnectWalletState = !client && !isConnected;
+  const showEnableActions = restoreCompleted && (restorePhase === "failed" || restorePhase === "timeout");
   const showEnableState =
     !client &&
     isConnected &&
     !connectingXMTP &&
-    restoreFailed &&
-    !restoring &&
+    showEnableActions &&
     !initializing;
   const showRestoreState =
     !client &&
     isConnected &&
     !showEnableState &&
     !connectingXMTP &&
-    (restoring || initializing || !restoreFailed);
+    (restorePhase === "waiting_wallet" || restorePhase === "running" || initializing);
+  const restorePrimaryLabel =
+    restorePhase === "waiting_wallet" ? "Preparing Wallet..." : "Restoring Messages...";
+  const restoreSecondaryLabel =
+    restorePhase === "waiting_wallet"
+      ? "Waiting for wallet provider to finish reconnecting..."
+      : "Checking existing XMTP session...";
 
   return (
     <div
@@ -304,15 +492,41 @@ const ConversationsNav = () => {
         <div className="h-screen w-full bg-white flex items-center justify-center">
           <div className="text-center flex flex-col items-center justify-center">
             <Image src="/images/ChatsCircle.svg" alt="Restoring messages" width={64} height={64} />
-            <p className="text-gray-500 text-lg mb-2">Restoring Messages...</p>
-            <p className="text-xs text-gray-500">Checking existing XMTP session...</p>
+            <p className="text-gray-500 text-lg mb-2">{restorePrimaryLabel}</p>
+            <p className="text-xs text-gray-500">{restoreSecondaryLabel}</p>
           </div>
         </div>
       ) : (
         <div className="h-screen w-full bg-white flex items-center justify-center">
           <div className="text-center flex flex-col items-center justify-center">
             <Image src="/images/ChatsCircle.svg" alt="Enable messages" width={64} height={64} />
-            <p className="text-gray-500 text-lg mb-4">Enable Messages</p>
+            <p className="text-gray-500 text-lg mb-3">Enable Messages</p>
+            {showEnableActions && (
+              <>
+                <p className="text-xs text-[#7A7A7A] max-w-[260px] mb-3 text-center">
+                  {restoreError ?? "Unable to restore XMTP session automatically."}
+                </p>
+                {restoreAttemptId && (
+                  <p className="text-[10px] text-[#9A9A9A] mb-3">Restore attempt: {restoreAttemptId}</p>
+                )}
+                <div className="flex gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={handleRetryRestore}
+                    className="px-4 py-2 border border-[#D3D3D3] text-[#333] text-xs rounded-full hover:bg-[#F8F8F8]"
+                  >
+                    Retry
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResetRestore}
+                    className="px-4 py-2 border border-[#D3D3D3] text-[#333] text-xs rounded-full hover:bg-[#F8F8F8]"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </>
+            )}
             <button
               onClick={handleEnable}
               disabled={connectingXMTP}

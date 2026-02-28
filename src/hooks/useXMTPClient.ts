@@ -96,6 +96,19 @@ type XMTPRestoreDebugSnapshot = {
   timestamp: string;
   result: "restored" | "not_restored" | "error";
   origin?: string | null;
+  restoreAttemptId?: string;
+  restoreStartedAt?: string;
+  restoreEndedAt?: string;
+  restoreDurationMs?: number;
+  walletReadyState?: {
+    walletAddress: string | null;
+    lensAccountAddress: string | null;
+    xmtpAddress: string | null;
+    walletClientAddress: string | null;
+    walletClientChainId: number | null;
+    hasWalletClient: boolean;
+    isScwIdentity: boolean;
+  };
   identity: {
     walletAddress: string | null;
     lensAccountAddress: string | null;
@@ -229,6 +242,11 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           isScwIdentity,
         },
         result: payload.result,
+        restoreAttemptId: payload.restoreAttemptId,
+        restoreStartedAt: payload.restoreStartedAt,
+        restoreEndedAt: payload.restoreEndedAt,
+        restoreDurationMs: payload.restoreDurationMs,
+        walletReadyState: payload.walletReadyState,
         envCandidates: payload.envCandidates,
         identifierCandidates: payload.identifierCandidates,
         attempts: payload.attempts,
@@ -1750,6 +1768,18 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         )
       : restoreAddressCandidatesBase;
     const restoreAttempts: XMTPRestoreAttemptDebug[] = [];
+    const restoreAttemptId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    const restoreStartedAtMs = Date.now();
+    const restoreStartedAtIso = new Date(restoreStartedAtMs).toISOString();
+    const walletReadyState: XMTPRestoreDebugSnapshot["walletReadyState"] = {
+      walletAddress: walletAddress?.toLowerCase() ?? null,
+      lensAccountAddress: lensAccountAddress?.toLowerCase() ?? null,
+      xmtpAddress: xmtpAddress ?? null,
+      walletClientAddress: walletClientAccountAddress ?? null,
+      walletClientChainId: typeof walletClient?.chain?.id === "number" ? walletClient.chain.id : null,
+      hasWalletClient: Boolean(walletClient),
+      isScwIdentity,
+    };
 
     const baseIdentity = {
       walletAddress: walletAddress?.toLowerCase() ?? null,
@@ -1760,13 +1790,32 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       isScwIdentity,
     };
 
+    logDebug("init:restore:start", {
+      restoreAttemptId,
+      restoreStartedAt: restoreStartedAtIso,
+      walletReadyState,
+    });
+
     if (restoreAddressCandidates.length === 0 && sessionState.identifiers.length === 0) {
+      const endedAt = new Date().toISOString();
       persistRestoreDebug({
         result: "not_restored",
+        restoreAttemptId,
+        restoreStartedAt: restoreStartedAtIso,
+        restoreEndedAt: endedAt,
+        restoreDurationMs: Date.now() - restoreStartedAtMs,
+        walletReadyState,
         identity: baseIdentity,
         envCandidates: [],
         identifierCandidates: [],
         attempts: restoreAttempts,
+        reason: "missing_restore_identifiers",
+      });
+      logDebug("init:restore:end", {
+        restoreAttemptId,
+        restoreEndedAt: endedAt,
+        restoreDurationMs: Date.now() - restoreStartedAtMs,
+        result: "not_restored",
         reason: "missing_restore_identifiers",
       });
       return;
@@ -1774,6 +1823,8 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
     dispatch(setInitializing(true));
     dispatch(setError(null));
+    let restoreResult: "restored" | "not_restored" | "error" = "not_restored";
+    let restoreReason = "no_usable_restore_candidate";
 
     try {
       const persistedEnvRaw =
@@ -1821,8 +1872,15 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       ];
 
       if (identifierCandidates.length === 0) {
+        restoreReason = "identifier_candidates_empty";
+        const endedAt = new Date().toISOString();
         persistRestoreDebug({
           result: "not_restored",
+          restoreAttemptId,
+          restoreStartedAt: restoreStartedAtIso,
+          restoreEndedAt: endedAt,
+          restoreDurationMs: Date.now() - restoreStartedAtMs,
+          walletReadyState,
           identity: baseIdentity,
           envCandidates,
           identifierCandidates,
@@ -1925,12 +1983,29 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
               };
 
               let builtClient: Client<unknown> | undefined;
+              const clientBuildStartedAtMs = Date.now();
+              logDebug("init:build:before_client_build", {
+                restoreAttemptId,
+                env,
+                identifier: identifier.identifier,
+                optionSource: options.source,
+                usedDbEncryptionKey: Boolean(optionDbEncryptionKey),
+                attempt: attempts,
+              });
               try {
                 builtClient = await withTimeout(
                   Client.build(identifier, options),
                   4000,
                   "Restoring XMTP session timed out."
                 );
+                logDebug("init:build:after_client_build", {
+                  restoreAttemptId,
+                  env,
+                  identifier: identifier.identifier,
+                  optionSource: options.source,
+                  usedDbEncryptionKey: Boolean(optionDbEncryptionKey),
+                  durationMs: Date.now() - clientBuildStartedAtMs,
+                });
                 attemptDebug.build = "ok";
                 const builtInboxId = (builtClient as { inboxId?: string }).inboxId ?? null;
                 const builtInstallationId =
@@ -2084,8 +2159,16 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                     builtClient as { inboxId?: string; installationId?: string },
                     optionDbEncryptionKey
                   );
+                  restoreResult = "restored";
+                  restoreReason = "usable_restore_candidate";
+                  const endedAt = new Date().toISOString();
                   persistRestoreDebug({
                     result: "restored",
+                    restoreAttemptId,
+                    restoreStartedAt: restoreStartedAtIso,
+                    restoreEndedAt: endedAt,
+                    restoreDurationMs: Date.now() - restoreStartedAtMs,
+                    walletReadyState,
                     identity: baseIdentity,
                     envCandidates,
                     identifierCandidates,
@@ -2113,11 +2196,13 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                   });
                 }
                 logError("init:build:option_failed", buildError, {
+                  restoreAttemptId,
                   env,
                   identifier: identifier.identifier,
                   usedDbEncryptionKey: attemptDebug.usedDbEncryptionKey,
                   buildErrorType: attemptDebug.buildErrorType,
                   buildErrorMessage: stringifyError(buildError),
+                  durationMs: Date.now() - clientBuildStartedAtMs,
                 });
                 continue;
               }
@@ -2136,6 +2221,11 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
 
       persistRestoreDebug({
         result: "not_restored",
+        restoreAttemptId,
+        restoreStartedAt: restoreStartedAtIso,
+        restoreEndedAt: new Date().toISOString(),
+        restoreDurationMs: Date.now() - restoreStartedAtMs,
+        walletReadyState,
         identity: baseIdentity,
         envCandidates,
         identifierCandidates,
@@ -2144,10 +2234,17 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       });
       return undefined;
     } catch (error) {
+      restoreResult = "error";
+      restoreReason = "init_exception";
       dispatch(setError(error as Error));
       console.error("Failed to init XMTP client:", error);
       persistRestoreDebug({
         result: "error",
+        restoreAttemptId,
+        restoreStartedAt: restoreStartedAtIso,
+        restoreEndedAt: new Date().toISOString(),
+        restoreDurationMs: Date.now() - restoreStartedAtMs,
+        walletReadyState,
         identity: baseIdentity,
         envCandidates: [],
         identifierCandidates: [],
@@ -2156,6 +2253,14 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
         reason: "init_exception",
       });
     } finally {
+      logDebug("init:restore:end", {
+        restoreAttemptId,
+        restoreEndedAt: new Date().toISOString(),
+        restoreDurationMs: Date.now() - restoreStartedAtMs,
+        result: restoreResult,
+        reason: restoreReason,
+        attemptCount: restoreAttempts.length,
+      });
       dispatch(setInitializing(false));
     }
   }, [
@@ -2184,6 +2289,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     setClient,
     verifyBuiltClientInstallation,
     verifyBuiltClientReady,
+    walletClient,
     walletAddress,
     xmtpAddress,
   ]);
