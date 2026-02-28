@@ -3,7 +3,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useSelector } from "react-redux";
-import { useSessionClient } from "@lens-protocol/react";
+import { graphql } from "@lens-protocol/client";
+import { useAuthenticatedUser, useSessionClient } from "@lens-protocol/react";
 import { formatDistanceToNow } from "date-fns";
 import { Notification, W3RK_NOTIFICATION_ICONS } from "@/utils/notifications";
 
@@ -25,7 +26,7 @@ type W3rkApiNotification = {
   icon?: string;
 };
 
-const LENS_NOTIFICATIONS_QUERY = `
+const LENS_NOTIFICATIONS_QUERY = graphql(`
   query NotificationsMinimal($request: NotificationRequest!) {
     notifications(request: $request) {
       items {
@@ -45,11 +46,12 @@ const LENS_NOTIFICATIONS_QUERY = `
       }
     }
   }
-`;
+`);
 
 const Notifications = () => {
   const { user: profile } = useSelector((state: any) => state.app);
   const { data: sessionClient } = useSessionClient();
+  const { data: authenticatedUser } = useAuthenticatedUser();
   const [w3rkNotifications, setW3rkNotifications] = useState<NotificationListItem[]>([]);
   const [lensNotifications, setLensNotifications] = useState<NotificationListItem[]>([]);
   const [w3rkLoading, setW3rkLoading] = useState(true);
@@ -58,7 +60,8 @@ const Notifications = () => {
   const [lensError, setLensError] = useState<string | null>(null);
   const isLensFirstFetchRef = useRef(true);
 
-  const activeLensAddress = profile?.address;
+  const activeLensAddress =
+    authenticatedUser?.address?.toLowerCase() || profile?.address?.toLowerCase();
 
   const toDate = (value: unknown) => {
     if (!value) return new Date();
@@ -198,54 +201,53 @@ const Notifications = () => {
       }
       setLensError(null);
 
-      const credentials = await (sessionClient as any).getCredentials().unwrapOr(null);
-      const accessToken = credentials?.accessToken;
+      const authenticated = await (sessionClient as any)
+        .getAuthenticatedUser()
+        .unwrapOr(null);
+      const recipientLensAddress =
+        authenticated?.address?.toLowerCase() || authenticatedUser?.address?.toLowerCase() || null;
 
-      if (!accessToken) {
-        if (mounted) {
-          setLensNotifications([]);
-          setLensLoading(false);
-          setLensError("Lens session token missing. Please login again.");
-        }
-        return;
-      }
-
-      const lensEndpoint =
-        process.env.NEXT_PUBLIC_LENS_API_URL || "https://api.testnet.lens.xyz/graphql";
-      const response = await fetch(lensEndpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          query: LENS_NOTIFICATIONS_QUERY,
-          variables: {
-            request: {
-              filter: {
-                timeBasedAggregation: true,
-              },
-            },
-          },
-        }),
+      console.info("[notifications:lens] recipient", {
+        recipientLensAddress,
+        profileLensAddress: profile?.address?.toLowerCase() || null,
+        authenticatedUserAddress: authenticatedUser?.address?.toLowerCase() || null,
       });
 
-      const payload = (await response.json().catch(() => ({}))) as {
-        data?: { notifications?: { items?: any[] } };
-        errors?: Array<{ message?: string }>;
-      };
-
-      if (!mounted) return;
-
-      if (!response.ok || payload.errors?.length) {
-        const message =
-          payload.errors?.[0]?.message || `Could not load Lens activity (${response.status}).`;
-        setLensError(message);
+      if (!recipientLensAddress) {
+        setLensError("Lens account not resolved. Please login again.");
         setLensLoading(false);
         return;
       }
 
-      const items = payload.data?.notifications?.items || [];
+      const result = await (sessionClient as any).query(LENS_NOTIFICATIONS_QUERY as any, {
+        request: {
+          filter: {
+            includeLowScore: true,
+            timeBasedAggregation: false,
+          },
+        },
+      });
+
+      if (!mounted) return;
+
+      if (result.isErr()) {
+        setLensError(result.error?.message || "Could not load Lens activity.");
+        setLensLoading(false);
+        return;
+      }
+
+      const items = result.value?.notifications?.items || [];
+      const typeCounts = items.reduce((acc: Record<string, number>, item: any) => {
+        const key = item?.__typename || "Unknown";
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {});
+
+      console.info("[notifications:lens] query result", {
+        totalItems: items.length,
+        typeCounts,
+      });
+
       const normalized = items
         .filter(item => item?.__typename === "FollowNotification")
         .flatMap((item: any, idx: number) => {
@@ -254,13 +256,18 @@ const Notifications = () => {
             return [];
           }
 
-          return followers.map((follower: any, followerIdx: number) => ({
-            id: `lens-follow-${item.id || idx}-${followerIdx}`,
-            message: `${displayLensActor(follower?.account)} followed you on Lens.`,
-            read: true,
-            createdAt: toDate(follower?.followedAt),
-            icon: "/images/UserCirclePlus.svg",
-          }));
+          return followers
+            .filter((follower: any) => {
+              const address = follower?.account?.address?.toLowerCase();
+              return Boolean(address && address !== recipientLensAddress);
+            })
+            .map((follower: any, followerIdx: number) => ({
+              id: `lens-follow-${item.id || idx}-${followerIdx}`,
+              message: `${displayLensActor(follower?.account)} followed you on Lens.`,
+              read: true,
+              createdAt: toDate(follower?.followedAt),
+              icon: "/images/UserCirclePlus.svg",
+            }));
         });
 
       setLensNotifications(sortByDateDesc(normalized));
@@ -279,7 +286,7 @@ const Notifications = () => {
         window.clearInterval(intervalId);
       }
     };
-  }, [sessionClient]);
+  }, [authenticatedUser?.address, profile?.address, sessionClient]);
 
   const w3rkState = useMemo(() => {
     if (w3rkLoading) return "loading";
