@@ -1818,15 +1818,39 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           logError("create:post_register_sync:failed", syncError, { mode });
         }
 
-        persistLastSuccessfulConnection(
-          env,
-          signerIdentifier.identifier,
-          createdClient as { inboxId?: string; installationId?: string },
-          dbEncryptionKey,
-          dbPath
-        );
+        // Validate that the local installation can be restored before we mark create as successful.
+        // This prevents "works until refresh" behavior when local XMTP persistence is broken.
+        try {
+          createdClient.close();
+          const rebuiltClient = await withTimeout(
+            Client.build(signerIdentifier, {
+              env,
+              dbEncryptionKey,
+              ...(dbPath ? { dbPath } : {}),
+            }),
+            12000,
+            "Validating XMTP local session restore timed out."
+          );
 
-        return createdClient;
+          persistLastSuccessfulConnection(
+            env,
+            signerIdentifier.identifier,
+            rebuiltClient as { inboxId?: string; installationId?: string },
+            dbEncryptionKey,
+            dbPath
+          );
+
+          return rebuiltClient;
+        } catch (restoreValidationError) {
+          logError("create:restore_validation:failed", restoreValidationError, {
+            mode,
+            env,
+            signerIdentifier: signerIdentifier.identifier,
+          });
+          throw new Error(
+            "XMTP local session could not be persisted. Please retry, then use Reset if this continues."
+          );
+        }
       };
 
       const recoverInstallationLimit = async (
@@ -2618,26 +2642,25 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                       }
                     );
                 attemptDebug.canMessageReady = canMessageReady;
-                let hasConversationAccessForLastSuccessful = false;
-                if (isLastSuccessfulExactBuild) {
-                  try {
-                    const conversations = await withTimeout(
-                      builtClient.conversations.list(),
-                      6000,
-                      "Listing XMTP conversations timed out."
-                    );
-                    hasConversationAccessForLastSuccessful = Array.isArray(conversations);
-                    attemptDebug.conversationAccess = hasConversationAccessForLastSuccessful;
-                  } catch (conversationError) {
-                    appendAttemptError("conversationList", conversationError);
-                    attemptDebug.conversationAccess = false;
-                  }
+                let hasConversationAccess = false;
+                try {
+                  const conversations = await withTimeout(
+                    builtClient.conversations.list(),
+                    6000,
+                    "Listing XMTP conversations timed out."
+                  );
+                  hasConversationAccess = Array.isArray(conversations);
+                  attemptDebug.conversationAccess = hasConversationAccess;
+                } catch (conversationError) {
+                  appendAttemptError("conversationList", conversationError);
+                  attemptDebug.conversationAccess = false;
                 }
                 restoreAttempts.push(attemptDebug);
 
                 const isUsable =
                   matchesLastSuccessfulInstallation ||
-                  hasConversationAccessForLastSuccessful ||
+                  (isLastSuccessfulExactBuild && hasConversationAccess) ||
+                  hasConversationAccess ||
                   isRegistered ||
                   installationInInbox ||
                   canMessageReady;
