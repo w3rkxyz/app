@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useSelector } from "react-redux";
-import { graphql, NotificationType, evmAddress } from "@lens-protocol/client";
+import { graphql, NotificationType } from "@lens-protocol/client";
 import { useAuthenticatedUser, useSessionClient } from "@lens-protocol/react";
 import { formatDistanceToNow } from "date-fns";
 import { Notification, W3RK_NOTIFICATION_ICONS } from "@/utils/notifications";
@@ -139,7 +139,13 @@ const Notifications = () => {
         }
 
         if (!response.ok) {
-          setW3rkError(payload.error || "Could not load notifications.");
+          const message = payload.error || "Could not load notifications.";
+          if (message.includes("Firebase Admin credentials are missing")) {
+            setW3rkNotifications([]);
+            setW3rkError(null);
+          } else {
+            setW3rkError(message);
+          }
           setW3rkLoading(false);
           return;
         }
@@ -225,19 +231,7 @@ const Notifications = () => {
           filter: {
             notificationTypes: [NotificationType.Followed],
             includeLowScore: true,
-            timeBasedAggregation: false,
-            graphs: [
-              { globalGraph: true },
-              ...(process.env.NEXT_PUBLIC_APP_ADDRESS_TESTNET
-                ? [{ app: evmAddress(process.env.NEXT_PUBLIC_APP_ADDRESS_TESTNET) }]
-                : []),
-            ],
-            feeds: [
-              { globalFeed: true },
-              ...(process.env.NEXT_PUBLIC_APP_ADDRESS_TESTNET
-                ? [{ app: evmAddress(process.env.NEXT_PUBLIC_APP_ADDRESS_TESTNET) }]
-                : []),
-            ],
+            timeBasedAggregation: true,
           },
         },
       });
