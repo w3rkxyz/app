@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useSelector } from "react-redux";
 import { NotificationType } from "@lens-protocol/client";
 import { fetchAccount, fetchFollowers, fetchNotifications } from "@lens-protocol/client/actions";
@@ -19,6 +20,8 @@ type NotificationListItem = {
   createdAt: Date;
   icon: string;
   avatar: string;
+  actorName?: string;
+  actorHref?: string;
 };
 
 type W3rkApiNotification = {
@@ -63,6 +66,16 @@ const resolveMediaUrl = (value: unknown) => {
 const resolveAccountAvatar = (account: any) =>
   resolveMediaUrl(account?.metadata?.picture) || DEFAULT_PROFILE_AVATAR;
 
+const toLocalHandle = (value: unknown) => {
+  if (typeof value !== "string") return "";
+  return value.trim().replace(/^@+/, "").trim().toLowerCase();
+};
+
+const toActorName = (localHandle: string, fallback: string) =>
+  localHandle ? `@${localHandle}` : fallback;
+
+const toActorHref = (localHandle: string) => (localHandle ? `/u/${localHandle}` : undefined);
+
 const Notifications = () => {
   const { user: profile } = useSelector((state: any) => state.app);
   const { data: sessionClient } = useSessionClient();
@@ -74,7 +87,7 @@ const Notifications = () => {
   const [w3rkError, setW3rkError] = useState<string | null>(null);
   const [lensError, setLensError] = useState<string | null>(null);
   const isLensFirstFetchRef = useRef(true);
-  const w3rkAvatarCacheRef = useRef<Record<string, string>>({});
+  const w3rkActorCacheRef = useRef<Record<string, { avatar: string; localHandle: string }>>({});
 
   const activeLensAddress =
     authenticatedUser?.address?.toLowerCase() || profile?.address?.toLowerCase();
@@ -187,7 +200,7 @@ const Notifications = () => {
         );
 
         const missingAvatarAddresses = senderAddresses.filter(
-          address => !w3rkAvatarCacheRef.current[address]
+          address => !w3rkActorCacheRef.current[address]
         );
 
         if (missingAvatarAddresses.length > 0) {
@@ -199,12 +212,18 @@ const Notifications = () => {
                 });
 
                 if (accountResult.isErr()) {
-                  return [address, DEFAULT_PROFILE_AVATAR] as const;
+                  return [address, { avatar: DEFAULT_PROFILE_AVATAR, localHandle: "" }] as const;
                 }
 
-                return [address, resolveAccountAvatar(accountResult.value)] as const;
+                return [
+                  address,
+                  {
+                    avatar: resolveAccountAvatar(accountResult.value),
+                    localHandle: toLocalHandle(accountResult.value?.username?.localName),
+                  },
+                ] as const;
               } catch {
-                return [address, DEFAULT_PROFILE_AVATAR] as const;
+                return [address, { avatar: DEFAULT_PROFILE_AVATAR, localHandle: "" }] as const;
               }
             })
           );
@@ -213,25 +232,38 @@ const Notifications = () => {
             return;
           }
 
-          avatarEntries.forEach(([address, avatar]) => {
-            w3rkAvatarCacheRef.current[address] = avatar || DEFAULT_PROFILE_AVATAR;
+          avatarEntries.forEach(([address, data]) => {
+            w3rkActorCacheRef.current[address] = {
+              avatar: data.avatar || DEFAULT_PROFILE_AVATAR,
+              localHandle: toLocalHandle(data.localHandle),
+            };
           });
         }
 
         const normalized = rawItems.map((notification, idx) => {
           const typedNotification = notification as unknown as Notification;
           const senderAddress = notification.senderLensAddress?.trim().toLowerCase();
+          const cachedActor = senderAddress ? w3rkActorCacheRef.current[senderAddress] : undefined;
+          const localHandle = cachedActor?.localHandle || toLocalHandle(notification.senderHandle);
+          const actorName = localHandle ? toActorName(localHandle, "") : "";
+          const actorHref = toActorHref(localHandle);
+          const contractMessage = getW3rkMessage(typedNotification);
+          const message =
+            typedNotification.type === "contract_proposal" && actorName
+              ? "has sent you a contract offer!"
+              : contractMessage;
           return {
             id: notification.id || `w3rk-${idx}`,
-            message: getW3rkMessage(typedNotification),
+            message,
             read: !!notification.read,
             createdAt: toDate(notification.createdAt),
             icon:
               notification.icon ||
               W3RK_NOTIFICATION_ICONS[typedNotification.type] ||
               "/images/notification.svg",
-            avatar:
-              (senderAddress && w3rkAvatarCacheRef.current[senderAddress]) || DEFAULT_PROFILE_AVATAR,
+            avatar: cachedActor?.avatar || DEFAULT_PROFILE_AVATAR,
+            actorName: actorName || undefined,
+            actorHref,
           };
         });
 
@@ -331,14 +363,21 @@ const Notifications = () => {
                   return [];
                 }
 
-                return followers.map((follower: any, followerIdx: number) => ({
-                  id: `lens-follow-${item.id || idx}-${follower?.account?.address || followerIdx}-${follower?.followedAt || followerIdx}`,
-                  message: `${displayLensActor(follower?.account)} followed you on Lens.`,
-                  read: true,
-                  createdAt: toDate(follower?.followedAt),
-                  icon: "/images/UserCirclePlus.svg",
-                  avatar: resolveAccountAvatar(follower?.account),
-                }));
+                return followers.map((follower: any, followerIdx: number) => {
+                  const account = follower?.account;
+                  const localHandle = toLocalHandle(account?.username?.localName);
+                  const actorName = toActorName(localHandle, displayLensActor(account));
+                  return {
+                    id: `lens-follow-${item.id || idx}-${follower?.account?.address || followerIdx}-${follower?.followedAt || followerIdx}`,
+                    message: "followed you on Lens.",
+                    read: true,
+                    createdAt: toDate(follower?.followedAt),
+                    icon: "/images/UserCirclePlus.svg",
+                    avatar: resolveAccountAvatar(account),
+                    actorName,
+                    actorHref: toActorHref(localHandle),
+                  };
+                });
               });
           }
         }
@@ -355,14 +394,21 @@ const Notifications = () => {
             fallbackError = fallbackResult.error?.message || "Could not load Lens followers.";
           } else {
             const followers = fallbackResult.value?.items || [];
-            fallbackItems = followers.map((entry: any, idx: number) => ({
-              id: `lens-follower-${entry?.follower?.address || idx}-${entry?.followedOn || idx}`,
-              message: `${displayLensActor(entry?.follower)} followed you on Lens.`,
-              read: true,
-              createdAt: toDate(entry?.followedOn),
-              icon: "/images/UserCirclePlus.svg",
-              avatar: resolveAccountAvatar(entry?.follower),
-            }));
+            fallbackItems = followers.map((entry: any, idx: number) => {
+              const account = entry?.follower;
+              const localHandle = toLocalHandle(account?.username?.localName);
+              const actorName = toActorName(localHandle, displayLensActor(account));
+              return {
+                id: `lens-follower-${entry?.follower?.address || idx}-${entry?.followedOn || idx}`,
+                message: "followed you on Lens.",
+                read: true,
+                createdAt: toDate(entry?.followedOn),
+                icon: "/images/UserCirclePlus.svg",
+                avatar: resolveAccountAvatar(account),
+                actorName,
+                actorHref: toActorHref(localHandle),
+              };
+            });
           }
         }
 
@@ -462,6 +508,18 @@ const Notifications = () => {
     return items.map((notification, idx) => {
       const read = !!notification.read;
       const createdAt = notification.createdAt;
+      const profileImage = (
+        <Image
+          src={notification.avatar || DEFAULT_PROFILE_AVATAR}
+          className="rounded-full object-cover"
+          alt="Profile"
+          height={56}
+          width={56}
+          onError={({ currentTarget }) => {
+            currentTarget.src = DEFAULT_PROFILE_AVATAR;
+          }}
+        />
+      );
       return (
         <li
           key={notification.id || `notif-${idx}`}
@@ -474,19 +532,31 @@ const Notifications = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <Image
-              src={notification.avatar || DEFAULT_PROFILE_AVATAR}
-              className="rounded-full object-cover"
-              alt="Profile"
-              height={56}
-              width={56}
-              onError={({ currentTarget }) => {
-                currentTarget.src = DEFAULT_PROFILE_AVATAR;
-              }}
-            />
+            {notification.actorHref ? (
+              <Link href={notification.actorHref} className="rounded-full">
+                {profileImage}
+              </Link>
+            ) : (
+              profileImage
+            )}
             <div className="flex-1">
               <div className="flex items-start justify-between">
-                <div className="text-[14px] font-medium text-[#111827]">{notification.message}</div>
+                <div className="text-[14px] font-medium text-[#111827]">
+                  {notification.actorName ? (
+                    <>
+                      {notification.actorHref ? (
+                        <Link href={notification.actorHref} className="hover:underline">
+                          {notification.actorName}
+                        </Link>
+                      ) : (
+                        notification.actorName
+                      )}{" "}
+                      {notification.message}
+                    </>
+                  ) : (
+                    notification.message
+                  )}
+                </div>
               </div>
               <div className="text-[12px] text-gray-400 mt-[6px]">
                 {formatDistanceToNow(createdAt, { addSuffix: true })}
@@ -499,7 +569,7 @@ const Notifications = () => {
   };
 
   return (
-    <div className="bg-white">
+    <div className="bg-white min-h-screen">
       <div className="max-w-[952px] mx-auto pt-[120px] sm:pt-[90px]">
         <button className="text-[#212121E5] px-[16px] py-[7px] sm:px-[14px] sm:py-[4px] text-lg w-fit h-fit cursor-pointer mb-[12px] font-semibold">
           All Notifications
