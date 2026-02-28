@@ -55,6 +55,7 @@ const ConversationsNav = () => {
   const manualEnableInFlightRef = useRef(false);
   const attemptedRestoreKeyRef = useRef("");
   const walletReadyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMountedRef = useRef(true);
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [restorePhase, setRestorePhase] = useState<
@@ -63,6 +64,7 @@ const ConversationsNav = () => {
   const [restoreCompleted, setRestoreCompleted] = useState(false);
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [restoreAttemptId, setRestoreAttemptId] = useState<string | null>(null);
+  const [restoreNonce, setRestoreNonce] = useState(0);
 
   const persistUiRestoreDebug = useCallback((payload: Record<string, unknown>) => {
     if (typeof window === "undefined") {
@@ -192,8 +194,6 @@ const ConversationsNav = () => {
   }, [client]);
 
   useEffect(() => {
-    let cancelled = false;
-
     const restoreClient = async () => {
       if (client || connectingXMTP) {
         clearWalletReadyTimeout();
@@ -300,9 +300,6 @@ const ConversationsNav = () => {
           isConnected,
           isReconnecting,
           walletClientReady: Boolean(walletClientAddress),
-          lensAccountAddress: lensProfile?.address?.toLowerCase() ?? null,
-          lensProfileId: lensProfile?.id ?? null,
-          lensHandle: lensProfile?.handle ?? null,
         });
         persistUiRestoreDebug({
           event: "restore_start",
@@ -314,9 +311,6 @@ const ConversationsNav = () => {
           isConnected,
           isReconnecting,
           walletReady,
-          lensAccountAddress: lensProfile?.address?.toLowerCase() ?? null,
-          lensProfileId: lensProfile?.id ?? null,
-          lensHandle: lensProfile?.handle ?? null,
         });
 
         // Silent restore only: never trigger wallet signatures automatically on page load.
@@ -330,19 +324,19 @@ const ConversationsNav = () => {
           ),
         ]);
 
-        if (!restoredClient && !cancelled) {
+        if (!restoredClient && isMountedRef.current) {
           setRestorePhase("failed");
           setRestoreCompleted(true);
           setRestoreError("No existing XMTP session found. Enable messaging to continue.");
           restoreResolved = true;
-        } else if (!cancelled) {
+        } else if (isMountedRef.current) {
           setRestorePhase("idle");
           setRestoreCompleted(true);
           setRestoreError(null);
           restoreResolved = true;
         }
 
-        if (!cancelled) {
+        if (isMountedRef.current) {
           console.info("[XMTP_UI_RESTORE]", {
             event: "restore_end",
             attemptId,
@@ -359,7 +353,7 @@ const ConversationsNav = () => {
           });
         }
       } catch (error) {
-        if (!cancelled) {
+        if (isMountedRef.current) {
           const message =
             error instanceof Error && error.message ? error.message : "Unknown restore error.";
           const isTimeout = message.toLowerCase().includes("timed out");
@@ -391,7 +385,7 @@ const ConversationsNav = () => {
         }
       } finally {
         restoreInFlightRef.current = false;
-        if (!cancelled && !restoreResolved) {
+        if (isMountedRef.current && !restoreResolved) {
           persistUiRestoreDebug({
             event: "restore_finalized_without_resolution",
             attemptId,
@@ -404,10 +398,6 @@ const ConversationsNav = () => {
     };
 
     void restoreClient();
-
-    return () => {
-      cancelled = true;
-    };
   }, [
     client,
     connectingXMTP,
@@ -415,9 +405,7 @@ const ConversationsNav = () => {
     isConnected,
     isReconnecting,
     initXMTPClient,
-    lensProfile?.address,
-    lensProfile?.handle,
-    lensProfile?.id,
+    restoreNonce,
     restoreCompleted,
     restorePhase,
     startWalletReadyTimeout,
@@ -476,6 +464,7 @@ const ConversationsNav = () => {
     setRestoreCompleted(false);
     setRestoreError(null);
     setRestoreAttemptId(null);
+    setRestoreNonce(prev => prev + 1);
   };
 
   const handleReconnectWallet = () => {
@@ -504,6 +493,13 @@ const ConversationsNav = () => {
     handleRetryRestore();
     toast.success("XMTP restore state reset. You can retry restore or enable messaging.");
   };
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(
     () => () => {

@@ -599,6 +599,98 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     return Boolean(loadDbEncryptionKey(env, walletAddress.toLowerCase()));
   }, [getPreferredRestoreEnv, loadDbEncryptionKey, walletAddress]);
 
+  const inspectIndexedDbState = useCallback(async () => {
+    if (typeof window === "undefined" || typeof window.indexedDB === "undefined") {
+      return {
+        indexedDbAvailable: false,
+        indexedDbDatabasesApiAvailable: false,
+        databaseNames: [] as string[],
+        hasLikelyXmtpDb: false,
+      };
+    }
+
+    const idb = window.indexedDB as IDBFactory & {
+      databases?: () => Promise<Array<{ name?: string }>>;
+    };
+    if (typeof idb.databases !== "function") {
+      return {
+        indexedDbAvailable: true,
+        indexedDbDatabasesApiAvailable: false,
+        databaseNames: [] as string[],
+        hasLikelyXmtpDb: false,
+      };
+    }
+
+    try {
+      const databases = await idb.databases();
+      const databaseNames = databases
+        .map(db => (typeof db.name === "string" ? db.name : ""))
+        .filter(name => name.length > 0);
+      const hasLikelyXmtpDb = databaseNames.some(name =>
+        /xmtp|libsql|sqlite|message|inbox/i.test(name)
+      );
+      return {
+        indexedDbAvailable: true,
+        indexedDbDatabasesApiAvailable: true,
+        databaseNames,
+        hasLikelyXmtpDb,
+      };
+    } catch {
+      return {
+        indexedDbAvailable: true,
+        indexedDbDatabasesApiAvailable: true,
+        databaseNames: [] as string[],
+        hasLikelyXmtpDb: false,
+      };
+    }
+  }, []);
+
+  const logEnablePersistenceSnapshot = useCallback(
+    async (
+      stage: string,
+      env: "local" | "dev" | "production",
+      walletIdentifier: string,
+      clientLike?: { inboxId?: string; installationId?: string }
+    ) => {
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      const normalizedWallet = walletIdentifier.toLowerCase();
+      const canonicalStorageKey = buildDbKeyStorageKey(env, normalizedWallet);
+      const legacyStorageKey = buildLegacyDbKeyStorageKey(env, normalizedWallet);
+      const canonicalDbKeyPresent = Boolean(
+        canonicalStorageKey && window.localStorage.getItem(canonicalStorageKey)
+      );
+      const legacyDbKeyPresent = Boolean(
+        legacyStorageKey && window.localStorage.getItem(legacyStorageKey)
+      );
+      const idbSnapshot = await inspectIndexedDbState();
+
+      console.info("[XMTP_PERSISTENCE]", {
+        stage,
+        origin: window.location.origin,
+        env,
+        walletAddress: walletAddress?.toLowerCase() ?? null,
+        walletIdentifier: normalizedWallet,
+        inboxId: clientLike?.inboxId ?? null,
+        installationId: clientLike?.installationId ?? null,
+        canonicalDbKeyStorageKey: canonicalStorageKey,
+        canonicalDbKeyPresent,
+        legacyDbKeyStorageKey: legacyStorageKey,
+        legacyDbKeyPresent,
+        lastEnv: window.localStorage.getItem(XMTP_LAST_ENV_KEY),
+        ...idbSnapshot,
+      });
+    },
+    [
+      buildDbKeyStorageKey,
+      buildLegacyDbKeyStorageKey,
+      inspectIndexedDbState,
+      walletAddress,
+    ]
+  );
+
   const classifyBuildError = useCallback((error: unknown) => {
     const message = stringifyError(error).toLowerCase();
     if (
@@ -1569,6 +1661,12 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
           directClient as { inboxId?: string; installationId?: string },
           directDbKey
         );
+        await logEnablePersistenceSnapshot(
+          "create_connected_primary",
+          env,
+          directIdentifier,
+          directClient as { inboxId?: string; installationId?: string }
+        );
         updateStage("connected");
         logDebug("create:connected", { mode: "primary" });
         return directClient;
@@ -1608,6 +1706,12 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
               recoveredIdentifier,
               recoveredClient as { inboxId?: string; installationId?: string },
               recoveredDbKey
+            );
+            await logEnablePersistenceSnapshot(
+              "create_connected_primary_installation_limit_recovery",
+              env,
+              recoveredIdentifier,
+              recoveredClient as { inboxId?: string; installationId?: string }
             );
             updateStage("connected");
             logDebug("create:connected", { mode: "primary_installation_limit_recovery" });
@@ -1668,6 +1772,12 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
               fallbackClient as { inboxId?: string; installationId?: string },
               fallbackDbKey
             );
+            await logEnablePersistenceSnapshot(
+              "create_connected_eoa_fallback",
+              env,
+              fallbackIdentifier,
+              fallbackClient as { inboxId?: string; installationId?: string }
+            );
             updateStage("connected");
             logDebug("create:connected", { mode: "eoa_fallback" });
             return fallbackClient;
@@ -1718,6 +1828,12 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                   recoveredIdentifier,
                   recoveredClient as { inboxId?: string; installationId?: string },
                   recoveredDbKey
+                );
+                await logEnablePersistenceSnapshot(
+                  "create_connected_eoa_fallback_installation_limit_recovery",
+                  env,
+                  recoveredIdentifier,
+                  recoveredClient as { inboxId?: string; installationId?: string }
                 );
                 updateStage("connected");
                 logDebug("create:connected", { mode: "eoa_fallback_installation_limit_recovery" });
@@ -1773,6 +1889,7 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
     storeDbEncryptionKey,
     persistEnabledState,
     persistLastSuccessfulConnection,
+    logEnablePersistenceSnapshot,
     getPreferredEnv,
     verifyBuiltClientInstallation,
     verifyBuiltClientReady,
