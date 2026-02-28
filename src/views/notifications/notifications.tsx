@@ -3,9 +3,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useSelector } from "react-redux";
-import { graphql, NotificationType } from "@lens-protocol/client";
-import { useAuthenticatedUser, useSessionClient } from "@lens-protocol/react";
+import { NotificationType } from "@lens-protocol/client";
+import { fetchFollowers, fetchNotifications } from "@lens-protocol/client/actions";
+import { evmAddress, useAuthenticatedUser, useSessionClient } from "@lens-protocol/react";
 import { formatDistanceToNow } from "date-fns";
+import { getPublicClient } from "@/client";
 import { Notification, W3RK_NOTIFICATION_ICONS } from "@/utils/notifications";
 
 type NotificationListItem = {
@@ -25,28 +27,6 @@ type W3rkApiNotification = {
   senderHandle?: string;
   icon?: string;
 };
-
-const LENS_NOTIFICATIONS_QUERY = graphql(`
-  query NotificationsMinimal($request: NotificationRequest!) {
-    notifications(request: $request) {
-      items {
-        __typename
-        ... on FollowNotification {
-          id
-          followers {
-            followedAt
-            account {
-              address
-              username {
-                localName
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-`);
 
 const Notifications = () => {
   const { user: profile } = useSelector((state: any) => state.app);
@@ -106,6 +86,17 @@ const Notifications = () => {
     }
   };
 
+  const isFirebaseAdminCredsError = (value: string | null | undefined) => {
+    if (!value) {
+      return false;
+    }
+    return (
+      value.includes("Firebase Admin credentials are missing") ||
+      value.includes("FIREBASE_SERVICE_ACCOUNT_JSON") ||
+      value.includes("FIREBASE_PROJECT_ID/FIREBASE_CLIENT_EMAIL/FIREBASE_PRIVATE_KEY")
+    );
+  };
+
   useEffect(() => {
     if (!activeLensAddress) {
       setW3rkNotifications([]);
@@ -140,7 +131,7 @@ const Notifications = () => {
 
         if (!response.ok) {
           const message = payload.error || "Could not load notifications.";
-          if (message.includes("Firebase Admin credentials are missing")) {
+          if (isFirebaseAdminCredsError(message)) {
             setW3rkNotifications([]);
             setW3rkError(null);
           } else {
@@ -170,7 +161,13 @@ const Notifications = () => {
         if (!mounted) {
           return;
         }
-        setW3rkError(error instanceof Error ? error.message : "Could not load notifications.");
+        const message = error instanceof Error ? error.message : "Could not load notifications.";
+        if (isFirebaseAdminCredsError(message)) {
+          setW3rkNotifications([]);
+          setW3rkError(null);
+        } else {
+          setW3rkError(message);
+        }
         setW3rkLoading(false);
       }
     };
@@ -193,90 +190,130 @@ const Notifications = () => {
     let intervalId: number | null = null;
 
     const loadLensNotifications = async (initialLoad = false) => {
-      if (!sessionClient || !(sessionClient as any).isSessionClient?.()) {
-        if (mounted) {
-          setLensNotifications([]);
-          setLensLoading(false);
-          setLensError(null);
-        }
-        return;
-      }
-
       if (initialLoad || isLensFirstFetchRef.current) {
         setLensLoading(true);
       }
       setLensError(null);
 
-      const authenticated = await (sessionClient as any)
-        .getAuthenticatedUser()
-        .unwrapOr(null);
-      const recipientLensAddress =
-        authenticated?.address?.toLowerCase() || authenticatedUser?.address?.toLowerCase() || null;
+      try {
+        const hasSessionClient = !!sessionClient && !!(sessionClient as any).isSessionClient?.();
+        const authenticated = hasSessionClient
+          ? await (sessionClient as any).getAuthenticatedUser().unwrapOr(null)
+          : null;
 
-      console.info("[notifications:lens] recipient", {
-        recipientLensAddress,
-        profileLensAddress: profile?.address?.toLowerCase() || null,
-        authenticatedUserAddress: authenticatedUser?.address?.toLowerCase() || null,
-      });
+        const recipientLensAddress = (
+          authenticated?.address ||
+          authenticatedUser?.address ||
+          profile?.address ||
+          ""
+        )
+          .trim()
+          .toLowerCase();
 
-      if (!recipientLensAddress) {
-        setLensError("Lens account not resolved. Please login again.");
-        setLensLoading(false);
-        return;
-      }
-
-      const result = await (sessionClient as any).query(LENS_NOTIFICATIONS_QUERY as any, {
-        request: {
-          orderBy: "DEFAULT",
-          filter: {
-            notificationTypes: [NotificationType.Followed],
-            includeLowScore: true,
-            timeBasedAggregation: true,
-          },
-        },
-      });
-
-      if (!mounted) return;
-
-      if (result.isErr()) {
-        setLensError(result.error?.message || "Could not load Lens activity.");
-        setLensLoading(false);
-        return;
-      }
-
-      const items = result.value?.notifications?.items || [];
-      const typeCounts = items.reduce((acc: Record<string, number>, item: any) => {
-        const key = item?.__typename || "Unknown";
-        acc[key] = (acc[key] || 0) + 1;
-        return acc;
-      }, {});
-
-      const normalized = items
-        .filter(item => item?.__typename === "FollowNotification")
-        .flatMap((item: any, idx: number) => {
-          const followers = Array.isArray(item?.followers) ? item.followers : [];
-          if (followers.length === 0) {
-            return [];
-          }
-
-          return followers.map((follower: any, followerIdx: number) => ({
-              id: `lens-follow-${item.id || idx}-${followerIdx}`,
-              message: `${displayLensActor(follower?.account)} followed you on Lens.`,
-              read: true,
-              createdAt: toDate(follower?.followedAt),
-              icon: "/images/UserCirclePlus.svg",
-            }));
+        console.info("[notifications:lens] recipient", {
+          recipientLensAddress: recipientLensAddress || null,
+          profileLensAddress: profile?.address?.toLowerCase() || null,
+          authenticatedUserAddress: authenticatedUser?.address?.toLowerCase() || null,
+          sessionAuthenticatedAddress: authenticated?.address?.toLowerCase() || null,
+          hasSessionClient,
         });
 
-      console.info("[notifications:lens] query result", {
-        totalItems: items.length,
-        typeCounts,
-        followedCount: normalized.length,
-      });
+        if (!recipientLensAddress) {
+          if (!mounted) return;
+          setLensNotifications([]);
+          setLensError(null);
+          setLensLoading(false);
+          return;
+        }
 
-      setLensNotifications(sortByDateDesc(normalized));
-      setLensLoading(false);
-      isLensFirstFetchRef.current = false;
+        let notificationItems: NotificationListItem[] = [];
+        let notificationsError: string | null = null;
+
+        if (hasSessionClient) {
+          const result = await fetchNotifications(sessionClient as any, {
+            orderBy: "DEFAULT" as any,
+            filter: {
+              notificationTypes: [NotificationType.Followed],
+              includeLowScore: true,
+              timeBasedAggregation: true,
+            },
+          });
+
+          if (result.isErr()) {
+            notificationsError = result.error?.message || "Could not load Lens activity.";
+          } else {
+            const items = result.value?.items || [];
+            notificationItems = items
+              .filter((item: any) => item?.__typename === "FollowNotification")
+              .flatMap((item: any, idx: number) => {
+                const followers = Array.isArray(item?.followers) ? item.followers : [];
+                if (followers.length === 0) {
+                  return [];
+                }
+
+                return followers.map((follower: any, followerIdx: number) => ({
+                  id: `lens-follow-${item.id || idx}-${follower?.account?.address || followerIdx}-${follower?.followedAt || followerIdx}`,
+                  message: `${displayLensActor(follower?.account)} followed you on Lens.`,
+                  read: true,
+                  createdAt: toDate(follower?.followedAt),
+                  icon: "/images/UserCirclePlus.svg",
+                }));
+              });
+          }
+        }
+
+        let fallbackItems: NotificationListItem[] = [];
+        let fallbackError: string | null = null;
+
+        if (notificationItems.length === 0) {
+          const fallbackResult = await fetchFollowers(getPublicClient(), {
+            account: evmAddress(recipientLensAddress as `0x${string}`),
+          });
+
+          if (fallbackResult.isErr()) {
+            fallbackError = fallbackResult.error?.message || "Could not load Lens followers.";
+          } else {
+            const followers = fallbackResult.value?.items || [];
+            fallbackItems = followers.map((entry: any, idx: number) => ({
+              id: `lens-follower-${entry?.follower?.address || idx}-${entry?.followedOn || idx}`,
+              message: `${displayLensActor(entry?.follower)} followed you on Lens.`,
+              read: true,
+              createdAt: toDate(entry?.followedOn),
+              icon: "/images/UserCirclePlus.svg",
+            }));
+          }
+        }
+
+        if (!mounted) return;
+
+        const merged = notificationItems.length > 0 ? notificationItems : fallbackItems;
+        const deduped = Array.from(new Map(merged.map(item => [item.id, item])).values());
+
+        console.info("[notifications:lens] query result", {
+          viaNotifications: notificationItems.length,
+          viaFollowersFallback: fallbackItems.length,
+          rendered: deduped.length,
+          notificationsError,
+          fallbackError,
+        });
+
+        setLensNotifications(sortByDateDesc(deduped));
+
+        if (deduped.length === 0 && notificationsError && fallbackError) {
+          setLensError(notificationsError);
+        } else {
+          setLensError(null);
+        }
+
+        setLensLoading(false);
+        isLensFirstFetchRef.current = false;
+      } catch (error) {
+        if (!mounted) {
+          return;
+        }
+        setLensError(error instanceof Error ? error.message : "Could not load Lens activity.");
+        setLensLoading(false);
+      }
     };
 
     void loadLensNotifications(true);
@@ -317,7 +354,7 @@ const Notifications = () => {
 
     if (state === "error") {
       const safeError =
-        error && error.includes("Firebase Admin credentials are missing")
+        isFirebaseAdminCredsError(error)
           ? "w3rk notifications are temporarily unavailable."
           : error;
       return (
