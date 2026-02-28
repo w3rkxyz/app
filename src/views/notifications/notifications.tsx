@@ -4,11 +4,13 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useSelector } from "react-redux";
 import { NotificationType } from "@lens-protocol/client";
-import { fetchFollowers, fetchNotifications } from "@lens-protocol/client/actions";
+import { fetchAccount, fetchFollowers, fetchNotifications } from "@lens-protocol/client/actions";
 import { evmAddress, useAuthenticatedUser, useSessionClient } from "@lens-protocol/react";
 import { formatDistanceToNow } from "date-fns";
 import { getPublicClient } from "@/client";
 import { Notification, W3RK_NOTIFICATION_ICONS } from "@/utils/notifications";
+
+const DEFAULT_PROFILE_AVATAR = "https://static.hey.xyz/images/default.png";
 
 type NotificationListItem = {
   id: string;
@@ -16,6 +18,7 @@ type NotificationListItem = {
   read: boolean;
   createdAt: Date;
   icon: string;
+  avatar: string;
 };
 
 type W3rkApiNotification = {
@@ -25,8 +28,40 @@ type W3rkApiNotification = {
   read?: boolean;
   createdAt?: string;
   senderHandle?: string;
+  senderLensAddress?: string;
   icon?: string;
 };
+
+const pickFirstNonEmptyString = (...values: unknown[]) => {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return "";
+};
+
+const resolveMediaUrl = (value: unknown) => {
+  if (!value) return "";
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "object") {
+    const media = value as any;
+    return pickFirstNonEmptyString(
+      media?.uri,
+      media?.url,
+      media?.optimized?.uri,
+      media?.optimized?.url,
+      media?.raw?.uri,
+      media?.raw?.url,
+      media?.original?.uri,
+      media?.original?.url
+    );
+  }
+  return "";
+};
+
+const resolveAccountAvatar = (account: any) =>
+  resolveMediaUrl(account?.metadata?.picture) || DEFAULT_PROFILE_AVATAR;
 
 const Notifications = () => {
   const { user: profile } = useSelector((state: any) => state.app);
@@ -39,6 +74,7 @@ const Notifications = () => {
   const [w3rkError, setW3rkError] = useState<string | null>(null);
   const [lensError, setLensError] = useState<string | null>(null);
   const isLensFirstFetchRef = useRef(true);
+  const w3rkAvatarCacheRef = useRef<Record<string, string>>({});
 
   const activeLensAddress =
     authenticatedUser?.address?.toLowerCase() || profile?.address?.toLowerCase();
@@ -141,8 +177,50 @@ const Notifications = () => {
           return;
         }
 
-        const normalized = (payload.items || []).map((notification, idx) => {
+        const rawItems = payload.items || [];
+        const senderAddresses = Array.from(
+          new Set(
+            rawItems
+              .map(item => item.senderLensAddress?.trim().toLowerCase())
+              .filter((value): value is string => !!value)
+          )
+        );
+
+        const missingAvatarAddresses = senderAddresses.filter(
+          address => !w3rkAvatarCacheRef.current[address]
+        );
+
+        if (missingAvatarAddresses.length > 0) {
+          const avatarEntries = await Promise.all(
+            missingAvatarAddresses.map(async address => {
+              try {
+                const accountResult = await fetchAccount(getPublicClient(), {
+                  address: evmAddress(address as `0x${string}`),
+                });
+
+                if (accountResult.isErr()) {
+                  return [address, DEFAULT_PROFILE_AVATAR] as const;
+                }
+
+                return [address, resolveAccountAvatar(accountResult.value)] as const;
+              } catch {
+                return [address, DEFAULT_PROFILE_AVATAR] as const;
+              }
+            })
+          );
+
+          if (!mounted) {
+            return;
+          }
+
+          avatarEntries.forEach(([address, avatar]) => {
+            w3rkAvatarCacheRef.current[address] = avatar || DEFAULT_PROFILE_AVATAR;
+          });
+        }
+
+        const normalized = rawItems.map((notification, idx) => {
           const typedNotification = notification as unknown as Notification;
+          const senderAddress = notification.senderLensAddress?.trim().toLowerCase();
           return {
             id: notification.id || `w3rk-${idx}`,
             message: getW3rkMessage(typedNotification),
@@ -152,6 +230,8 @@ const Notifications = () => {
               notification.icon ||
               W3RK_NOTIFICATION_ICONS[typedNotification.type] ||
               "/images/notification.svg",
+            avatar:
+              (senderAddress && w3rkAvatarCacheRef.current[senderAddress]) || DEFAULT_PROFILE_AVATAR,
           };
         });
 
@@ -257,6 +337,7 @@ const Notifications = () => {
                   read: true,
                   createdAt: toDate(follower?.followedAt),
                   icon: "/images/UserCirclePlus.svg",
+                  avatar: resolveAccountAvatar(follower?.account),
                 }));
               });
           }
@@ -280,6 +361,7 @@ const Notifications = () => {
               read: true,
               createdAt: toDate(entry?.followedOn),
               icon: "/images/UserCirclePlus.svg",
+              avatar: resolveAccountAvatar(entry?.follower),
             }));
           }
         }
@@ -388,11 +470,14 @@ const Notifications = () => {
 
           <div className="flex items-center gap-2">
             <Image
-              src="/images/profile.jpg"
+              src={notification.avatar || DEFAULT_PROFILE_AVATAR}
               className="rounded-full object-cover"
               alt="Profile"
               height={56}
               width={56}
+              onError={({ currentTarget }) => {
+                currentTarget.src = DEFAULT_PROFILE_AVATAR;
+              }}
             />
             <div className="flex-1">
               <div className="flex items-start justify-between">
