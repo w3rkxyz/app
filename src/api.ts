@@ -134,6 +134,16 @@ const createTransactionLink = (hash: any) => {
   return `${lensExplorer}/${hash}`;
 };
 
+const createW3rkNotificationBestEffort = async (
+  notification: Omit<Notification, "id" | "source" | "createdAt" | "read" | "icon">
+) => {
+  try {
+    await createNotification(notification);
+  } catch (error) {
+    console.error("Failed to persist w3rk notification:", error);
+  }
+};
+
 // Gets the users address
 // Note: This returns the EOA address, not the Lens Account address
 // Use user profile's address property for Lens Account address
@@ -392,18 +402,22 @@ const create_proposal = async (
 
     if (result) {
       // Only create notification if the transaction was successful
-      const notificationData: Omit<Notification, "id" | "createdAt" | "read"> & {
+      const notificationData: Omit<
+        Notification,
+        "id" | "source" | "createdAt" | "read" | "icon"
+      > & {
         senderHandle?: string;
       } = {
-        type: "contract_offer" as NotificationType,
+        type: "contract_proposal" as NotificationType,
         title: "New Contract Offer",
         message: `You have received a new contract offer for ${amount}`,
-        address: freelancerAccountAddress,
+        recipientLensAddress: freelancerAccountAddress,
         contractId: result,
+        txLink: result,
         ...(senderHandle ? { senderHandle } : {}),
       };
 
-      await createNotification(notificationData);
+      await createW3rkNotificationBestEffort(notificationData);
       return result;
     } else {
       // Show error alert if transaction failed
@@ -555,19 +569,31 @@ const accept_proposal = async (
     dispatch
   );
 
-  // Create notification for the client
-  const notificationData: Omit<Notification, "id" | "createdAt" | "read"> & {
-    senderHandle?: string;
-  } = {
-    type: "contract_accepted" as NotificationType,
-    title: "Contract Accepted",
-    message: "Your contract offer has been accepted",
-    address: contractDetails.freelancerAddress,
-    contractId: result,
-    ...(senderHandle ? { senderHandle } : {}),
-  };
+  if (!result) {
+    return result;
+  }
 
-  await createNotification(notificationData);
+  await Promise.all([
+    createW3rkNotificationBestEffort({
+      type: "contract_started" as NotificationType,
+      title: "Contract Started",
+      message: "Your contract proposal has been accepted and work can now begin.",
+      recipientLensAddress: contractDetails.clientAddress,
+      contractId: result,
+      txLink: result,
+      ...(senderHandle ? { senderHandle } : {}),
+    }),
+    createW3rkNotificationBestEffort({
+      type: "escrow_funded" as NotificationType,
+      title: "Escrow Funded",
+      message: "Escrow has been funded for your accepted contract.",
+      recipientLensAddress: contractDetails.freelancerAddress,
+      contractId: result,
+      txLink: result,
+      ...(senderHandle ? { senderHandle } : {}),
+    }),
+  ]);
+
   return result;
 };
 
@@ -596,11 +622,24 @@ const cancle_proposal = async (proposalId: number, dispatch: any) => {
     })
   );
   const contract = await getContract();
+  const readContract = getContractInstance();
+  const proposal = await readContract.getProposal(proposalId).catch(() => null);
 
   const result = await handleContractTransaction(
     () => contract.cancelProposal(proposalId), // Updated function name
     dispatch
   );
+
+  if (result && proposal?.freelancerAccount) {
+    await createW3rkNotificationBestEffort({
+      type: "contract_cancelled" as NotificationType,
+      title: "Contract Cancelled",
+      message: "A contract proposal sent to you was cancelled.",
+      recipientLensAddress: proposal.freelancerAccount,
+      proposalId,
+      txLink: result,
+    });
+  }
 
   return result;
 };
@@ -642,11 +681,25 @@ const request_payement = async (contractId: number, dispatch: any) => {
     })
   );
   const contract = await getContract();
+  const readContract = getContractInstance();
+  const contractData = await readContract.getContract(contractId).catch(() => null);
 
   const result = await handleContractTransaction(
     () => contract.requestPayment(contractId), // Updated function name
     dispatch
   );
+
+  if (result && contractData?.clientAccount) {
+    await createW3rkNotificationBestEffort({
+      type: "payment_requested" as NotificationType,
+      title: "Payment Requested",
+      message: "A freelancer has requested payment for your contract.",
+      recipientLensAddress: contractData.clientAccount,
+      contractId: String(contractId),
+      txLink: result,
+      senderLensAddress: contractData.freelancerAccount,
+    });
+  }
 
   return result;
 };
@@ -670,6 +723,38 @@ const release_payement = async (
       () => contract.releasePayment(contractId), // Updated function name
       dispatch
     );
+
+    if (result) {
+      await Promise.all([
+        createW3rkNotificationBestEffort({
+          type: "escrow_released" as NotificationType,
+          title: "Escrow Released",
+          message: "Escrow payment has been released for your contract.",
+          recipientLensAddress: contractDetails.freelancerAddress,
+          contractId: String(contractId),
+          txLink: result,
+          senderLensAddress: contractDetails.clientAddress,
+        }),
+        createW3rkNotificationBestEffort({
+          type: "contract_completed" as NotificationType,
+          title: "Contract Completed",
+          message: "Your contract was marked as completed.",
+          recipientLensAddress: contractDetails.freelancerAddress,
+          contractId: String(contractId),
+          txLink: result,
+          senderLensAddress: contractDetails.clientAddress,
+        }),
+        createW3rkNotificationBestEffort({
+          type: "contract_completed" as NotificationType,
+          title: "Contract Completed",
+          message: "You successfully completed this contract payment.",
+          recipientLensAddress: contractDetails.clientAddress,
+          contractId: String(contractId),
+          txLink: result,
+          senderLensAddress: contractDetails.freelancerAddress,
+        }),
+      ]);
+    }
 
     return result;
   } else {
