@@ -6,7 +6,7 @@ import {
   type Signer,
   Dm,
 } from "@xmtp/browser-sdk";
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { AccountData } from "@/utils/getLensProfile";
 
 export type ContentTypes = unknown;
@@ -126,6 +126,32 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children, client: in
       setClient(undefined);
     }
   }, [client, setClient]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const closeClientForUnload = () => {
+      if (!client) {
+        return;
+      }
+      try {
+        // Ensure the XMTP worker is closed before refresh/navigation so local state can flush.
+        client.close();
+      } catch {
+        // no-op
+      }
+    };
+
+    window.addEventListener("pagehide", closeClientForUnload);
+    window.addEventListener("beforeunload", closeClientForUnload);
+
+    return () => {
+      window.removeEventListener("pagehide", closeClientForUnload);
+      window.removeEventListener("beforeunload", closeClientForUnload);
+    };
+  }, [client]);
 
   // memo-ize the context value to prevent unnecessary re-renders
   const value = useMemo(
