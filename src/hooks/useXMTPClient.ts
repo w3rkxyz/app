@@ -2288,7 +2288,6 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
       let attemptedAnyBuild = false;
       let hitInstallationLimitDuringRestore = false;
 
-      outerLoop:
       for (const identifier of identifiers) {
         for (const env of envCandidates) {
           if (attempts >= MAX_BUILD_ATTEMPTS) {
@@ -2692,7 +2691,8 @@ export function useXMTPClient(params?: UseXMTPClientParams) {
                 if (isInstallationLimitError(buildError)) {
                   hitInstallationLimitDuringRestore = true;
                   restoreReason = "restore_build_triggered_registration";
-                  break outerLoop;
+                  // Keep evaluating other identifier candidates that may have a valid local session.
+                  break;
                 }
                 continue;
               }
